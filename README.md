@@ -20,6 +20,8 @@ versions:
 ```
 
 ```bash
+kubectl create -f example/etcd-clusters-tpr.yaml
+
 kubectl get thirdpartyresources
 NAME                      DESCRIPTION             VERSION(S)
 etcd-cluster.coreos.com   Managed etcd clusters   v1,v2
