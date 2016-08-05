@@ -1,13 +1,5 @@
 # kube-etcd-controller
 
-## Deploy kube-etcd-controller
-
-(TODO: deploy it using Kubernetes...)
-
-```bash
-./kube-etcd-controller --master=http://localhost:8080
-```
-
 ## Initialize the TPR 
 
 (TODO: auto create TPR when deploy the controller)
@@ -31,6 +23,15 @@ versions:
 kubectl get thirdpartyresources
 NAME                      DESCRIPTION             VERSION(S)
 etcd-cluster.coreos.com   Managed etcd clusters   v1,v2
+```
+
+
+## Deploy kube-etcd-controller
+
+(TODO: deploy it using Kubernetes...)
+
+```bash
+./kube-etcd-controller --master=http://localhost:8080
 ```
 
 ## Create an etcd cluster
