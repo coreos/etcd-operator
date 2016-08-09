@@ -12,7 +12,6 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/intstr"
 )
 
@@ -36,7 +35,8 @@ type Event struct {
 }
 
 type etcdClusterController struct {
-	kclient *unversioned.Client
+	kclient  *unversioned.Client
+	clusters map[string]*Cluster
 }
 
 func (c *etcdClusterController) Run() {
@@ -44,72 +44,20 @@ func (c *etcdClusterController) Run() {
 	for {
 		select {
 		case event := <-eventCh:
+			clusterName := event.Object.Metadata["name"]
 			switch event.Type {
 			case "ADDED":
-				c.createCluster(event.Object)
+				clus := newCluster(c.kclient)
+				c.clusters[clusterName] = clus
+				go clus.Run()
+				clus.Handle(event)
 			case "DELETED":
-				c.deleteCluster(event.Object)
+				clus := c.clusters[clusterName]
+				clus.Handle(event)
+				clus.Stop()
+				delete(c.clusters, clusterName)
 			}
 		case err := <-errCh:
-			panic(err)
-		}
-	}
-}
-
-func (c *etcdClusterController) createCluster(cluster EtcdCluster) {
-	size := cluster.Size
-	clusterName := cluster.Metadata["name"]
-
-	initialCluster := []string{}
-	for i := 0; i < size; i++ {
-		initialCluster = append(initialCluster, fmt.Sprintf("%s-%04d=http://%s-%04d:2380", clusterName, i, clusterName, i))
-	}
-
-	for i := 0; i < size; i++ {
-		etcdName := fmt.Sprintf("%s-%04d", clusterName, i)
-
-		svc := makeEtcdService(etcdName, clusterName)
-		_, err := c.kclient.Services("default").Create(svc)
-		if err != nil {
-			panic(err)
-		}
-		// TODO: add and expose client port
-		pod := makeEtcdPod(etcdName, clusterName, initialCluster)
-		_, err = c.kclient.Pods("default").Create(pod)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-func (c *etcdClusterController) deleteCluster(cluster EtcdCluster) {
-	clusterName := cluster.Metadata["name"]
-	option := api.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"etcd_cluster": clusterName,
-		}),
-	}
-
-	pods, err := c.kclient.Pods("default").List(option)
-	if err != nil {
-		panic(err)
-	}
-	for i := range pods.Items {
-		pod := &pods.Items[i]
-		err = c.kclient.Pods("default").Delete(pod.Name, nil)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	services, err := c.kclient.Services("default").List(option)
-	if err != nil {
-		panic(err)
-	}
-	for i := range services.Items {
-		service := &services.Items[i]
-		err = c.kclient.Services("default").Delete(service.Name)
-		if err != nil {
 			panic(err)
 		}
 	}
@@ -146,7 +94,8 @@ func monitorEtcdCluster() (<-chan *Event, <-chan error) {
 
 func main() {
 	c := &etcdClusterController{
-		kclient: mustCreateClient(masterHost),
+		kclient:  mustCreateClient(masterHost),
+		clusters: make(map[string]*Cluster),
 	}
 	log.Println("etcd cluster controller starts running...")
 	c.Run()
