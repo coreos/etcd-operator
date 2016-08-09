@@ -19,7 +19,7 @@ import (
 var masterHost string
 
 func init() {
-	flag.StringVar(&masterHost, "master", "http://127.0.0.1:8080", "usage")
+	flag.StringVar(&masterHost, "master", "http://127.0.0.1:8080", "TODO: usage")
 	flag.Parse()
 }
 
@@ -41,23 +41,23 @@ func (c *etcdClusterController) Run() {
 
 func (c *etcdClusterController) createCluster(event newCluster) {
 	size := event.Size
-	uuid := generateUUID()
+	clusterName := event.Metadata["name"]
 
 	initialCluster := []string{}
 	for i := 0; i < size; i++ {
-		initialCluster = append(initialCluster, fmt.Sprintf("etcd%d-%s=http://etcd%d-%s:2380", i, uuid, i, uuid))
+		initialCluster = append(initialCluster, fmt.Sprintf("%s-%04d=http://%s-%04d:2380", clusterName, i, clusterName, i))
 	}
 
 	for i := 0; i < size; i++ {
-		etcdName := fmt.Sprintf("etcd%d-%s", i, uuid)
+		etcdName := fmt.Sprintf("%s-%04d", clusterName, i)
 
-		svc := makeEtcdService(etcdName, uuid)
+		svc := makeEtcdService(etcdName, clusterName)
 		_, err := c.kclient.Services("default").Create(svc)
 		if err != nil {
 			panic(err)
 		}
 		// TODO: add and expose client port
-		pod := makeEtcdPod(etcdName, uuid, initialCluster)
+		pod := makeEtcdPod(etcdName, clusterName, initialCluster)
 		_, err = c.kclient.Pods("default").Create(pod)
 		if err != nil {
 			panic(err)
@@ -99,7 +99,7 @@ func monitorNewCluster() (<-chan newCluster, <-chan error) {
 				errc <- err
 			}
 			event := ev.Object
-			log.Println("new cluster size:", event.Size)
+			log.Println("new cluster size:", event.Size, event.Metadata)
 			events <- event
 		}
 	}()
