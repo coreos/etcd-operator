@@ -68,7 +68,7 @@ NAME                        CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
 example-etcd-cluster-0000   10.0.125.56   <none>        2380/TCP   49s
 example-etcd-cluster-0001   10.0.189.13   <none>        2380/TCP   49s
 example-etcd-cluster-0002   10.0.87.110   <none>        2380/TCP   49s
-kubernetes                                   10.0.0.1      <none>        443/TCP    8m
+kubernetes                  10.0.0.1      <none>        443/TCP    8m
 ```
 
 ```bash
