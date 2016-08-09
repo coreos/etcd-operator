@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pborman/uuid"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
@@ -128,14 +127,10 @@ func mustCreateClient(host string) *unversioned.Client {
 	return c
 }
 
-func generateUUID() string {
-	return uuid.New()
-}
-
-func makeEtcdService(etcdName, uuid string) *api.Service {
+func makeEtcdService(etcdName, clusterName string) *api.Service {
 	labels := map[string]string{
-		"etcd_node": etcdName,
-		"etcd_uuid": uuid,
+		"etcd_node":    etcdName,
+		"etcd_cluster": clusterName,
 	}
 	svc := &api.Service{
 		ObjectMeta: api.ObjectMeta{
@@ -155,14 +150,14 @@ func makeEtcdService(etcdName, uuid string) *api.Service {
 	return svc
 }
 
-func makeEtcdPod(etcdName, uuid string, initialCluster []string) *api.Pod {
+func makeEtcdPod(etcdName, clusterName string, initialCluster []string) *api.Pod {
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
 			Name: etcdName,
 			Labels: map[string]string{
-				"app":       "etcd",
-				"etcd_node": etcdName,
-				"etcd_uuid": uuid,
+				"app":          "etcd",
+				"etcd_node":    etcdName,
+				"etcd_cluster": clusterName,
 			},
 		},
 		Spec: api.PodSpec{
