@@ -1,5 +1,14 @@
 # kube-etcd-controller
 
+Managed etcd clusters on Kubernetes:
+
+- creation
+- destroy
+- resize
+- recovery
+- backup
+- rolling upgrade
+
 ## Initialize the TPR 
 
 (TODO: auto create TPR when deploy the controller)
@@ -76,7 +85,7 @@ $ kubectl log example-etcd-cluster-0000
 2016-08-05 00:33:32.454178 N | etcdmain: serving insecure client requests on 0.0.0.0:2379, this is strongly discouraged!
 ```
 
-## Destory an existing etcd cluster
+## Destroy an existing etcd cluster
 
 ```bash
 $ kubectl delete -f example/example-etcd-cluster.yaml
