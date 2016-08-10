@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kubeetcdctrl
+  labels:
+    name: kubeetcdctrl
+spec:
+  containers:
+    name: kubeetcdctrl
+    image: gcr.io/coreos-k8s-scale-testing/kubeetcdctrl:latest
