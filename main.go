@@ -14,7 +14,7 @@ import (
 var masterHost string
 
 func init() {
-	flag.StringVar(&masterHost, "master", "", "TODO: usage")
+	flag.StringVar(&masterHost, "master", "", "API Server addr, e.g. 'http://127.0.0.1:8080'")
 	flag.Parse()
 }
 
