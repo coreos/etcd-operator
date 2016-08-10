@@ -229,9 +229,9 @@ func buildInitialCluster(members []*etcdserverpb.Member, removed *etcdserverpb.M
 	return res
 }
 
-func findLostMember(members []*etcdserverpb.Member, nameOfLost *api.Pod) *etcdserverpb.Member {
+func findLostMember(members []*etcdserverpb.Member, lostMemberName string) *etcdserverpb.Member {
 	for _, m := range members {
-		if m.Name == nameOfLost {
+		if m.Name == lostMemberName {
 			return m
 		}
 	}
