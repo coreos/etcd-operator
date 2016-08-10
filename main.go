@@ -4,21 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/util/intstr"
 )
 
 var masterHost string
 
 func init() {
-	flag.StringVar(&masterHost, "master", "http://127.0.0.1:8080", "TODO: usage")
+	flag.StringVar(&masterHost, "master", "", "TODO: usage")
 	flag.Parse()
 }
 
@@ -40,14 +36,14 @@ type etcdClusterController struct {
 }
 
 func (c *etcdClusterController) Run() {
-	eventCh, errCh := monitorEtcdCluster()
+	eventCh, errCh := monitorEtcdCluster(c.kclient.RESTClient.Client)
 	for {
 		select {
 		case event := <-eventCh:
 			clusterName := event.Object.Metadata["name"]
 			switch event.Type {
 			case "ADDED":
-				clus := newCluster(c.kclient)
+				clus := newCluster(c.kclient, clusterName)
 				c.clusters[clusterName] = clus
 				go clus.Run()
 				clus.Handle(event)
@@ -63,11 +59,11 @@ func (c *etcdClusterController) Run() {
 	}
 }
 
-func monitorEtcdCluster() (<-chan *Event, <-chan error) {
+func monitorEtcdCluster(httpClient *http.Client) (<-chan *Event, <-chan error) {
 	events := make(chan *Event)
 	errc := make(chan error, 1)
 	go func() {
-		resp, err := http.Get(masterHost + "/apis/coreos.com/v1/namespaces/default/etcdclusters?watch=true")
+		resp, err := httpClient.Get(masterHost + "/apis/coreos.com/v1/namespaces/default/etcdclusters?watch=true")
 		if err != nil {
 			errc <- err
 			return
@@ -102,6 +98,19 @@ func main() {
 }
 
 func mustCreateClient(host string) *unversioned.Client {
+	if len(host) == 0 {
+		cfg, err := restclient.InClusterConfig()
+		if err != nil {
+			panic(err)
+		}
+		c, err := unversioned.NewInCluster()
+		if err != nil {
+			panic(err)
+		}
+		masterHost = cfg.Host
+		return c
+	}
+
 	cfg := &restclient.Config{
 		Host:  host,
 		QPS:   100,
@@ -112,74 +121,4 @@ func mustCreateClient(host string) *unversioned.Client {
 		panic(err)
 	}
 	return c
-}
-
-func makeEtcdService(etcdName, clusterName string) *api.Service {
-	labels := map[string]string{
-		"etcd_node":    etcdName,
-		"etcd_cluster": clusterName,
-	}
-	svc := &api.Service{
-		ObjectMeta: api.ObjectMeta{
-			Name:   etcdName,
-			Labels: labels,
-		},
-		Spec: api.ServiceSpec{
-			Ports: []api.ServicePort{{
-				Name:       "server",
-				Port:       2380,
-				TargetPort: intstr.FromInt(2380),
-				Protocol:   api.ProtocolTCP,
-			}},
-			Selector: labels,
-		},
-	}
-	return svc
-}
-
-func makeEtcdPod(etcdName, clusterName string, initialCluster []string) *api.Pod {
-	pod := &api.Pod{
-		ObjectMeta: api.ObjectMeta{
-			Name: etcdName,
-			Labels: map[string]string{
-				"app":          "etcd",
-				"etcd_node":    etcdName,
-				"etcd_cluster": clusterName,
-			},
-		},
-		Spec: api.PodSpec{
-			Containers: []api.Container{
-				{
-					Command: []string{
-						"/usr/local/bin/etcd",
-						"--name",
-						etcdName,
-						"--initial-advertise-peer-urls",
-						fmt.Sprintf("http://%s:2380", etcdName),
-						"--listen-peer-urls",
-						"http://0.0.0.0:2380",
-						"--listen-client-urls",
-						"http://0.0.0.0:2379",
-						"--advertise-client-urls",
-						fmt.Sprintf("http://%s:2379", etcdName),
-						"--initial-cluster",
-						strings.Join(initialCluster, ","),
-						"--initial-cluster-state",
-						"new",
-					},
-					Name:  etcdName,
-					Image: "gcr.io/coreos-k8s-scale-testing/etcd-amd64:3.0.4",
-					Ports: []api.ContainerPort{
-						{
-							Name:          "server",
-							ContainerPort: int32(2380),
-							Protocol:      api.ProtocolTCP,
-						},
-					},
-				},
-			},
-			RestartPolicy: api.RestartPolicyNever,
-		},
-	}
-	return pod
 }
