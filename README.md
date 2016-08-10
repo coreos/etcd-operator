@@ -30,10 +30,8 @@ etcd-cluster.coreos.com   Managed etcd clusters   v1,v2
 
 ## Deploy kube-etcd-controller
 
-(TODO: deploy it using Kubernetes...)
-
 ```bash
-$ ./kube-etcd-controller --master=http://localhost:8080
+$ kubectl create -f example/etcd-controller.yaml
 ```
 
 ## Create an etcd cluster
