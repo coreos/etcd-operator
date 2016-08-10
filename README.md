@@ -86,3 +86,20 @@ $ kubectl delete -f example/example-etcd-cluster.yaml
 $ kubectl get pods
 NAME                       READY     STATUS    RESTARTS   AGE
 ```
+## Try cluster reocvery
+
+Simulate a pod failure by simply delete it
+
+```bash
+$ kubectl delete pod example-etcd-cluster-0000
+```
+
+etcd controller will recover the failure by creating a new pod `example-etcd-cluster-0003`
+
+```bash
+$ kubectl get pods
+NAME                       READY     STATUS    RESTARTS   AGE
+example-etcd-cluster-0001   1/1       Running   0          5s
+example-etcd-cluster-0002   1/1       Running   0          5s
+example-etcd-cluster-0003   1/1       Running   0          5s
+```
