@@ -19,15 +19,14 @@ import (
 type clusterEventType string
 
 const (
-	newClsuterEventType    clusterEventType = "Add"
-	deleteClusterEventType clusterEventType = "Delete"
-	memberDeletedEventType clusterEventType = "MemberDeleted"
+	eventNewCluster    clusterEventType = "Add"
+	eventDeleteCluster clusterEventType = "Delete"
+	eventMemberDeleted clusterEventType = "MemberDeleted"
 )
 
 type clusterEvent struct {
-	Type       clusterEventType
-	Size       int
-	MemberName string
+	typ  clusterEventType
+	size int
 }
 
 type Cluster struct {
@@ -47,14 +46,14 @@ func newCluster(kclient *unversioned.Client, name string, size int) *Cluster {
 	}
 	go c.run()
 	c.send(&clusterEvent{
-		Type: newClsuterEventType,
-		Size: size,
+		typ:  eventNewCluster,
+		size: size,
 	})
 	return c
 }
 
 func (c *Cluster) Delete() {
-	c.send(&clusterEvent{Type: deleteClusterEventType})
+	c.send(&clusterEvent{typ: eventDeleteCluster})
 }
 
 func (c *Cluster) send(ev *clusterEvent) {
@@ -72,12 +71,12 @@ func (c *Cluster) run() {
 	for {
 		select {
 		case event := <-c.eventCh:
-			switch event.Type {
-			case newClsuterEventType:
-				c.create(event.Size)
-			case memberDeletedEventType:
+			switch event.typ {
+			case eventNewCluster:
+				c.create(event.size)
+			case eventMemberDeleted:
 
-			case deleteClusterEventType:
+			case eventDeleteCluster:
 				c.delete()
 				close(c.stopCh)
 				return
@@ -188,7 +187,7 @@ func (c *Cluster) monitorMembers() {
 
 		// TODO: put this into central event handling
 		cfg := clientv3.Config{
-			Endpoints: []string{makeEtcdClientAddr(currPods[0].Name)},
+			Endpoints: []string{makeClientAddr(currPods[0].Name)},
 		}
 		etcdcli, err := clientv3.New(cfg)
 		if err != nil {
@@ -253,8 +252,8 @@ func findDeletedOne(l1, l2 []*api.Pod) (*api.Pod, []*api.Pod) {
 	return nil, l2
 }
 
-func makeEtcdClientAddr(etcdName string) string {
-	return fmt.Sprintf("http://%s:2379", etcdName)
+func makeClientAddr(name string) string {
+	return fmt.Sprintf("http://%s:2379", name)
 }
 
 func makeEtcdPeerAddr(etcdName string) string {
@@ -316,7 +315,7 @@ func makeEtcdPod(etcdName, clusterName string, initialCluster []string, state st
 						"--listen-client-urls",
 						"http://0.0.0.0:2379",
 						"--advertise-client-urls",
-						makeEtcdClientAddr(etcdName),
+						makeClientAddr(etcdName),
 						"--initial-cluster",
 						strings.Join(initialCluster, ","),
 						"--initial-cluster-state",

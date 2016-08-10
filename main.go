@@ -75,7 +75,7 @@ func monitorEtcdCluster(httpClient *http.Client) (<-chan *Event, <-chan error) {
 			if err != nil {
 				errc <- err
 			}
-			log.Println("etcd cluster event:", ev.Type, ev.Object)
+			log.Printf("etcd cluster event: %v %#v\n", ev.Type, ev.Object)
 			events <- ev
 		}
 	}()
