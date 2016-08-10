@@ -9,6 +9,10 @@ Managed etcd clusters on Kubernetes:
 - backup
 - rolling upgrade
 
+## Requirements
+
+Kubernetes 1.4+
+
 ## Initialize the TPR 
 
 (TODO: auto create TPR when deploy the controller)
