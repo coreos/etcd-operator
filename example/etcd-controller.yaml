@@ -6,5 +6,6 @@ metadata:
     name: kubeetcdctrl
 spec:
   containers:
+  -
     name: kubeetcdctrl
     image: gcr.io/coreos-k8s-scale-testing/kubeetcdctrl:latest

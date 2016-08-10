@@ -43,14 +43,9 @@ func (c *etcdClusterController) Run() {
 			clusterName := event.Object.Metadata["name"]
 			switch event.Type {
 			case "ADDED":
-				clus := newCluster(c.kclient, clusterName)
-				c.clusters[clusterName] = clus
-				go clus.Run()
-				clus.Handle(event)
+				c.clusters[clusterName] = newCluster(c.kclient, clusterName, event.Object.Size)
 			case "DELETED":
-				clus := c.clusters[clusterName]
-				clus.Handle(event)
-				clus.Stop()
+				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)
 			}
 		case err := <-errCh:
@@ -80,7 +75,7 @@ func monitorEtcdCluster(httpClient *http.Client) (<-chan *Event, <-chan error) {
 			if err != nil {
 				errc <- err
 			}
-			log.Println("etcd cluster event:", ev.Type, ev.Object.Size, ev.Object.Metadata)
+			log.Println("etcd cluster event:", ev.Type, ev.Object)
 			events <- ev
 		}
 	}()
