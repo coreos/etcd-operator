@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"golang.org/x/net/context"
@@ -13,7 +12,6 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/util/intstr"
 )
 
 type clusterEventType string
@@ -103,15 +101,10 @@ func (c *Cluster) create(size int) {
 
 func (c *Cluster) launchMember(id int, initialCluster []string, state string) error {
 	etcdName := fmt.Sprintf("%s-%04d", c.name, id)
-	svc := makeEtcdService(etcdName, c.name)
-	if _, err := c.kclient.Services("default").Create(svc); err != nil {
+	if err := createEtcdService(c.kclient, etcdName, c.name); err != nil {
 		return err
 	}
-	pod := makeEtcdPod(etcdName, c.name, initialCluster, state)
-	if _, err := c.kclient.Pods("default").Create(pod); err != nil {
-		return err
-	}
-	return nil
+	return createEtcdPod(c.kclient, etcdName, c.name, initialCluster, state)
 }
 
 func (c *Cluster) delete() {
@@ -250,90 +243,4 @@ func findDeletedOne(l1, l2 []*api.Pod) (*api.Pod, []*api.Pod) {
 		}
 	}
 	return nil, l2
-}
-
-func makeClientAddr(name string) string {
-	return fmt.Sprintf("http://%s:2379", name)
-}
-
-func makeEtcdPeerAddr(etcdName string) string {
-	return fmt.Sprintf("http://%s:2380", etcdName)
-}
-
-func makeEtcdService(etcdName, clusterName string) *api.Service {
-	labels := map[string]string{
-		"etcd_node":    etcdName,
-		"etcd_cluster": clusterName,
-	}
-	svc := &api.Service{
-		ObjectMeta: api.ObjectMeta{
-			Name:   etcdName,
-			Labels: labels,
-		},
-		Spec: api.ServiceSpec{
-			Ports: []api.ServicePort{
-				{
-					Name:       "server",
-					Port:       2380,
-					TargetPort: intstr.FromInt(2380),
-					Protocol:   api.ProtocolTCP,
-				},
-				{
-					Name:       "client",
-					Port:       2379,
-					TargetPort: intstr.FromInt(2379),
-					Protocol:   api.ProtocolTCP,
-				},
-			},
-			Selector: labels,
-		},
-	}
-	return svc
-}
-
-func makeEtcdPod(etcdName, clusterName string, initialCluster []string, state string) *api.Pod {
-	pod := &api.Pod{
-		ObjectMeta: api.ObjectMeta{
-			Name: etcdName,
-			Labels: map[string]string{
-				"app":          "etcd",
-				"etcd_node":    etcdName,
-				"etcd_cluster": clusterName,
-			},
-		},
-		Spec: api.PodSpec{
-			Containers: []api.Container{
-				{
-					Command: []string{
-						"/usr/local/bin/etcd",
-						"--name",
-						etcdName,
-						"--initial-advertise-peer-urls",
-						makeEtcdPeerAddr(etcdName),
-						"--listen-peer-urls",
-						"http://0.0.0.0:2380",
-						"--listen-client-urls",
-						"http://0.0.0.0:2379",
-						"--advertise-client-urls",
-						makeClientAddr(etcdName),
-						"--initial-cluster",
-						strings.Join(initialCluster, ","),
-						"--initial-cluster-state",
-						state,
-					},
-					Name:  etcdName,
-					Image: "gcr.io/coreos-k8s-scale-testing/etcd-amd64:3.0.4",
-					Ports: []api.ContainerPort{
-						{
-							Name:          "server",
-							ContainerPort: int32(2380),
-							Protocol:      api.ProtocolTCP,
-						},
-					},
-				},
-			},
-			RestartPolicy: api.RestartPolicyNever,
-		},
-	}
-	return pod
 }
