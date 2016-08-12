@@ -4,17 +4,27 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
-var masterHost string
+var (
+	masterHost  string
+	tlsInsecure bool
+	tlsConfig   restclient.TLSClientConfig
+)
 
 func init() {
 	flag.StringVar(&masterHost, "master", "", "API Server addr, e.g. 'http://127.0.0.1:8080'")
+	flag.StringVar(&tlsConfig.CertFile, "cert-file", "", "Path to public TLS certificate file")
+	flag.StringVar(&tlsConfig.KeyFile, "key-file", "", "Path to private TLS certificate file")
+	flag.StringVar(&tlsConfig.CAFile, "ca-file", "", "Path to TLS CA file")
+	flag.BoolVar(&tlsInsecure, "tls-insecure", false, "Don't verify API server's CA certificate - TESTING ONLY -")
 	flag.Parse()
 }
 
@@ -106,10 +116,18 @@ func mustCreateClient(host string) *unversioned.Client {
 		return c
 	}
 
+	hostUrl, err := url.Parse(host)
+	if err != nil {
+		panic(fmt.Sprintf("error parsing host url %s : %v", host, err))
+	}
 	cfg := &restclient.Config{
 		Host:  host,
 		QPS:   100,
 		Burst: 100,
+	}
+	if hostUrl.Scheme == "https" {
+		cfg.TLSClientConfig = tlsConfig
+		cfg.Insecure = tlsInsecure
 	}
 	c, err := unversioned.New(cfg)
 	if err != nil {
