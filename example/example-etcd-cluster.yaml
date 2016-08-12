@@ -1,5 +1,5 @@
 apiVersion: "coreos.com/v1"
 kind: "EtcdCluster"
 metadata:
-  name: "example-etcd-cluster"
+  name: "etcd-cluster"
 size: 3
