@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"k8s.io/kubernetes/pkg/api"
+	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+
 	"k8s.io/kubernetes/pkg/util/intstr"
 )
 
@@ -17,8 +20,9 @@ func createEtcdService(kclient *unversioned.Client, etcdName, clusterName string
 	return nil
 }
 
-func createEtcdPod(kclient *unversioned.Client, etcdName, clusterName string, initialCluster []string, state string) error {
-	pod := makeEtcdPod(etcdName, clusterName, initialCluster, state)
+// todo: use a struct to replace the huge arg list.
+func createEtcdPod(kclient *unversioned.Client, etcdName, clusterName string, initialCluster []string, state string, antiAffinity bool) error {
+	pod := makeEtcdPod(etcdName, clusterName, initialCluster, state, antiAffinity)
 	if _, err := kclient.Pods("default").Create(pod); err != nil {
 		return err
 	}
@@ -64,7 +68,8 @@ func makeEtcdService(etcdName, clusterName string) *api.Service {
 	return svc
 }
 
-func makeEtcdPod(etcdName, clusterName string, initialCluster []string, state string) *api.Pod {
+// todo: use a struct to replace the huge arg list.
+func makeEtcdPod(etcdName, clusterName string, initialCluster []string, state string, antiAffinity bool) *api.Pod {
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
 			Name: etcdName,
@@ -108,5 +113,32 @@ func makeEtcdPod(etcdName, clusterName string, initialCluster []string, state st
 			RestartPolicy: api.RestartPolicyNever,
 		},
 	}
+
+	if !antiAffinity {
+		return pod
+	}
+
+	// set pod anti-affinity with the pods that belongs to the same etcd cluster
+	affinity := api.Affinity{
+		PodAntiAffinity: &api.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []api.PodAffinityTerm{
+				api.PodAffinityTerm{
+					LabelSelector: &unversionedAPI.LabelSelector{
+						MatchLabels: map[string]string{
+							"etcd_cluster": clusterName,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	affinityb, err := json.Marshal(affinity)
+	if err != nil {
+		panic("failed to marshal affinty struct")
+	}
+
+	pod.Annotations[api.AffinityAnnotationKey] = string(affinityb)
+
 	return pod
 }
