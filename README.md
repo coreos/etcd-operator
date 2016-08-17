@@ -11,7 +11,12 @@ Managed etcd clusters on Kubernetes:
 
 ## Requirements
 
-Kubernetes 1.4+
+- Kubernetes 1.4+
+- etcd 3.0+
+
+## Limitations
+
+- Backup only works for data in etcd3 storage, not etcd2 storage.
 
 ## Initialize the TPR 
 
