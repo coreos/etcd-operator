@@ -104,7 +104,7 @@ $ kubectl delete -f example/example-etcd-cluster.yaml
 $ kubectl get pods
 NAME                       READY     STATUS    RESTARTS   AGE
 ```
-## Try cluster reocvery
+## Try cluster recovery
 
 Simulate a pod failure by simply delete it
 
