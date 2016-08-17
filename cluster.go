@@ -20,19 +20,23 @@ const (
 )
 
 type clusterEvent struct {
-	typ  clusterEventType
-	size int
+	typ          clusterEventType
+	size         int
+	antiAffinity bool
 }
 
 type Cluster struct {
-	kclient   *unversioned.Client
+	kclient *unversioned.Client
+
+	antiAffinity bool
+
 	name      string
 	idCounter int
 	eventCh   chan *clusterEvent
 	stopCh    chan struct{}
 }
 
-func newCluster(kclient *unversioned.Client, name string, size int) *Cluster {
+func newCluster(kclient *unversioned.Client, name string, size int, antiAffinity bool) *Cluster {
 	c := &Cluster{
 		kclient: kclient,
 		name:    name,
@@ -41,8 +45,9 @@ func newCluster(kclient *unversioned.Client, name string, size int) *Cluster {
 	}
 	go c.run()
 	c.send(&clusterEvent{
-		typ:  eventNewCluster,
-		size: size,
+		typ:          eventNewCluster,
+		size:         size,
+		antiAffinity: antiAffinity,
 	})
 	return c
 }
@@ -68,7 +73,7 @@ func (c *Cluster) run() {
 		case event := <-c.eventCh:
 			switch event.typ {
 			case eventNewCluster:
-				c.create(event.size)
+				c.create(event.size, event.antiAffinity)
 			case eventDeleteCluster:
 				c.delete()
 				close(c.stopCh)
@@ -78,7 +83,9 @@ func (c *Cluster) run() {
 	}
 }
 
-func (c *Cluster) create(size int) {
+func (c *Cluster) create(size int, antiAffinity bool) {
+	c.antiAffinity = antiAffinity
+
 	initialCluster := []string{}
 	for i := 0; i < size; i++ {
 		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
@@ -94,12 +101,13 @@ func (c *Cluster) create(size int) {
 	}
 }
 
+// todo: use a struct to replace the huge arg list.
 func (c *Cluster) launchNewMember(id int, initialCluster []string, state string) error {
 	etcdName := fmt.Sprintf("%s-%04d", c.name, id)
 	if err := createEtcdService(c.kclient, etcdName, c.name); err != nil {
 		return err
 	}
-	return createEtcdPod(c.kclient, etcdName, c.name, initialCluster, state)
+	return createEtcdPod(c.kclient, etcdName, c.name, initialCluster, state, c.antiAffinity)
 }
 
 func (c *Cluster) delete() {
