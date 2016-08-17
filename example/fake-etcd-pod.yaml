@@ -1,0 +1,11 @@
+# Copy of pod.yaml without file extension for test
+apiVersion: v1
+kind: Pod
+metadata:
+  name: etcd-cluster-0008
+  labels:
+    etcd_cluster: etcd-cluster
+spec:
+  containers:
+  - name: pause
+    image: gcr.io/google-containers/pause:2.0

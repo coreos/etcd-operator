@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
@@ -19,7 +17,6 @@ type clusterEventType string
 const (
 	eventNewCluster    clusterEventType = "Add"
 	eventDeleteCluster clusterEventType = "Delete"
-	eventMemberDeleted clusterEventType = "MemberDeleted"
 )
 
 type clusterEvent struct {
@@ -72,8 +69,6 @@ func (c *Cluster) run() {
 			switch event.typ {
 			case eventNewCluster:
 				c.create(event.size)
-			case eventMemberDeleted:
-
 			case eventDeleteCluster:
 				c.delete()
 				close(c.stopCh)
@@ -91,15 +86,15 @@ func (c *Cluster) create(size int) {
 	}
 
 	for i := 0; i < size; i++ {
-		if err := c.launchMember(i, initialCluster, "new"); err != nil {
+		if err := c.launchNewMember(c.idCounter, initialCluster, "new"); err != nil {
 			// TODO: we need to clean up already created ones.
 			panic(err)
 		}
+		c.idCounter++
 	}
-	c.idCounter = size
 }
 
-func (c *Cluster) launchMember(id int, initialCluster []string, state string) error {
+func (c *Cluster) launchNewMember(id int, initialCluster []string, state string) error {
 	etcdName := fmt.Sprintf("%s-%04d", c.name, id)
 	if err := createEtcdService(c.kclient, etcdName, c.name); err != nil {
 		return err
@@ -145,42 +140,30 @@ func (c *Cluster) monitorMembers() {
 			"etcd_cluster": c.name,
 		}),
 	}
-	var prevPods []*api.Pod
-	var currPods []*api.Pod
 	// TODO: Select "etcd_node" to remove left service.
 	for {
 		select {
 		case <-c.stopCh:
 			return
-		case <-time.After(3 * time.Second):
+		case <-time.After(5 * time.Second):
 		}
 
 		podList, err := c.kclient.Pods("default").List(opts)
 		if err != nil {
 			panic(err)
 		}
-		currPods = nil
+		P := MemberSet{}
 		for i := range podList.Items {
-			currPods = append(currPods, &podList.Items[i])
+			P = append(P, Member{Name: podList.Items[i].Name})
 		}
 
-		// We are recovering one member at a time now.
-		deletedPod, remainingPods := findDeletedOne(prevPods, currPods)
-		if deletedPod == nil {
-			// This will change prevPods if it keeps adding initially.
-			prevPods = currPods
-			continue
-		}
-		// currPods could be less than remainingPods.
-		prevPods = remainingPods
-		// Only using currPods is safe
-		if len(currPods) == 0 {
-			panic("TODO: All removed. Impossible. Anyway, we can't use etcd client to change membership.")
+		if P.Size() == 0 {
+			panic("TODO: All pods removed. Impossible. Anyway, we can't create etcd client.")
 		}
 
 		// TODO: put this into central event handling
 		cfg := clientv3.Config{
-			Endpoints: []string{makeClientAddr(currPods[0].Name)},
+			Endpoints: []string{makeClientAddr(P[0].Name)},
 		}
 		etcdcli, err := clientv3.New(cfg)
 		if err != nil {
@@ -191,56 +174,16 @@ func (c *Cluster) monitorMembers() {
 			panic(err)
 		}
 
-		member := findLostMember(resp.Members, deletedPod.Name)
-		_, err = etcdcli.MemberRemove(context.TODO(), member.ID)
-		if err != nil {
+		M := MemberSet{}
+		for _, member := range resp.Members {
+			M = append(M, Member{
+				Name: member.Name,
+				ID:   member.ID,
+			})
+		}
+
+		if err := c.reconcile(P, M); err != nil {
 			panic(err)
 		}
-		log.Printf("removed member %v with ID %d\n", member.Name, member.ID)
-
-		etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
-		initialCluster := buildInitialCluster(resp.Members, member, etcdName)
-		_, err = etcdcli.MemberAdd(context.TODO(), []string{makeEtcdPeerAddr(etcdName)})
-		if err != nil {
-			panic(err)
-		}
-
-		log.Printf("added member, cluster: %s", initialCluster)
-		c.launchMember(c.idCounter, initialCluster, "existing")
-		c.idCounter++
 	}
-}
-
-func buildInitialCluster(members []*etcdserverpb.Member, removed *etcdserverpb.Member, newMember string) (res []string) {
-	for _, m := range members {
-		if m.Name == removed.Name {
-			continue
-		}
-		res = append(res, fmt.Sprintf("%s=%s", m.Name, makeEtcdPeerAddr(m.Name)))
-	}
-	res = append(res, fmt.Sprintf("%s=%s", newMember, makeEtcdPeerAddr(newMember)))
-	return res
-}
-
-func findLostMember(members []*etcdserverpb.Member, lostMemberName string) *etcdserverpb.Member {
-	for _, m := range members {
-		if m.Name == lostMemberName {
-			return m
-		}
-	}
-	return nil
-}
-
-// Find one deleted pod in l2 from l1. Return the deleted pod and the remaining pods.
-func findDeletedOne(l1, l2 []*api.Pod) (*api.Pod, []*api.Pod) {
-	exist := map[string]struct{}{}
-	for _, pod := range l2 {
-		exist[pod.Name] = struct{}{}
-	}
-	for i, pod := range l1 {
-		if _, ok := exist[pod.Name]; !ok {
-			return pod, append(l1[:i], l1[i+1:]...)
-		}
-	}
-	return nil, l2
 }
