@@ -18,4 +18,10 @@ For each reconciling cycle, we get P from k8s API. Comparing M and P, we have th
 
 ## Resize
 
-(TODO)
+Before resizing an etcd cluster, we need to ensure the running Pods set matches the membership knowledge. Or we need to do recovery first.
+
+Given a desired size S and membership size M:
+
+1. If S = M, then END.
+2. If S > M, add one member. END.
+3. If S < M, remove one member. END
