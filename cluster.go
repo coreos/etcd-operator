@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
 	"time"
 
 	"golang.org/x/net/context"
@@ -30,6 +34,8 @@ type Cluster struct {
 	idCounter int
 	eventCh   chan *clusterEvent
 	stopCh    chan struct{}
+
+	backupDir string
 }
 
 func newCluster(kclient *unversioned.Client, name string, size int) *Cluster {
@@ -132,6 +138,49 @@ func (c *Cluster) delete() {
 			panic(err)
 		}
 	}
+}
+
+func (c *Cluster) backup() error {
+	clientAddr := "todo"
+	nextSnapshotName := "todo"
+
+	cfg := clientv3.Config{
+		Endpoints: []string{clientAddr},
+	}
+	etcdcli, err := clientv3.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+
+	log.Println("saving snapshot from cluster", c.name)
+
+	rc, err := etcdcli.Maintenance.Snapshot(ctx)
+	cancel()
+	if err != nil {
+		return err
+	}
+
+	tmpfile, err := ioutil.TempFile(c.backupDir, "snapshot")
+	n, err := io.Copy(tmpfile, rc)
+	if err != nil {
+		tmpfile.Close()
+		os.Remove(tmpfile.Name())
+		log.Printf("saving snapshot from cluster %s error: %v\n", c.name, err)
+		return err
+	}
+
+	err = os.Rename(tmpfile.Name(), nextSnapshotName)
+	if err != nil {
+		os.Remove(tmpfile.Name())
+		log.Printf("renaming snapshot from cluster %s error: %v\n", c.name, err)
+		return err
+	}
+
+	log.Printf("saved snapshot %v (size: %d) from cluster %s", n, nextSnapshotName, c.name)
+
+	return nil
 }
 
 func (c *Cluster) monitorMembers() {
