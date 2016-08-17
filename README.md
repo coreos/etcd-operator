@@ -18,7 +18,7 @@ Managed etcd clusters on Kubernetes:
 
 - Backup only works for data in etcd3 storage, not etcd2 storage.
 
-## Initialize the TPR 
+## Initialize the TPR
 
 (TODO: auto create TPR when deploy the controller)
 
