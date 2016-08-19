@@ -211,7 +211,7 @@ func (c *Cluster) monitorMembers() {
 		}
 		P := MemberSet{}
 		for i := range podList.Items {
-			P = append(P, Member{Name: podList.Items[i].Name})
+			P[podList.Items[i].Name] = Member{Name: podList.Items[i].Name}
 		}
 
 		if P.Size() == 0 {
@@ -220,7 +220,7 @@ func (c *Cluster) monitorMembers() {
 
 		// TODO: put this into central event handling
 		cfg := clientv3.Config{
-			Endpoints: []string{makeClientAddr(P[0].Name)},
+			Endpoints: []string{makeClientAddr(P.PickOne().Name)},
 		}
 		etcdcli, err := clientv3.New(cfg)
 		if err != nil {
@@ -233,10 +233,7 @@ func (c *Cluster) monitorMembers() {
 
 		M := MemberSet{}
 		for _, member := range resp.Members {
-			M = append(M, Member{
-				Name: member.Name,
-				ID:   member.ID,
-			})
+			M[member.Name] = Member{Name: member.Name, ID: member.ID}
 		}
 
 		if err := c.reconcile(P, M); err != nil {

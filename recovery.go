@@ -3,57 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
 )
-
-type Member struct {
-	Name string
-	// Note: ID might not exist
-	ID uint64
-}
-
-type MemberSet []Member
-
-// the set of all members of s1 that are not members of s2
-func (s1 MemberSet) Diff(s2 MemberSet) MemberSet {
-	res := MemberSet{}
-	for _, m1 := range s1 {
-		if !s2.Has(m1) {
-			res = append(res, m1)
-		}
-	}
-	return res
-}
-
-func (ms MemberSet) Size() int {
-	return len(ms)
-}
-
-func (ms MemberSet) Has(check Member) bool {
-	for _, m := range ms {
-		// We use Name instead of ID because ID might not exist in Member struct
-		if check.Name == m.Name {
-			return true
-		}
-	}
-	return false
-}
-
-func (ms MemberSet) String() string {
-	var mstring []string
-
-	for _, m := range ms {
-		mstring = append(mstring, m.Name)
-	}
-	return strings.Join(mstring, ",")
-}
-
-func PickOne(ms MemberSet) Member {
-	return ms[0]
-}
 
 // Definitions:
 // - running pods P in k8s cluster
@@ -92,14 +45,14 @@ func (c *Cluster) reconcile(P, M MemberSet) error {
 	}
 
 	fmt.Println("Recovery one member")
-	toRecover := PickOne(M.Diff(L))
+	toRecover := M.Diff(L).PickOne()
 	return c.recoverOneMember(toRecover, M)
 }
 
 func (c *Cluster) recoverOneMember(toRecover Member, M MemberSet) error {
 	// Remove toRecover membership first since it's gone
 	cfg := clientv3.Config{
-		Endpoints: []string{makeClientAddr(M[0].Name)},
+		Endpoints: []string{makeClientAddr(M.PickOne().Name)},
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
