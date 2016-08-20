@@ -34,7 +34,13 @@ type Cluster struct {
 
 	antiAffinity bool
 
-	name      string
+	name string
+
+	// members repsersents the members in the etcd cluster.
+	// the name of the member is the the name of the pod the member
+	// process runs in.
+	members MemberSet
+
 	idCounter int
 	eventCh   chan *clusterEvent
 	stopCh    chan struct{}
@@ -99,21 +105,12 @@ func (c *Cluster) create(size int, antiAffinity bool) {
 	}
 
 	for i := 0; i < size; i++ {
-		if err := c.launchNewMember(c.idCounter, initialCluster, "new"); err != nil {
+		if err := c.createPodAndService(c.idCounter, initialCluster, "new"); err != nil {
 			// TODO: we need to clean up already created ones.
 			panic(err)
 		}
 		c.idCounter++
 	}
-}
-
-// todo: use a struct to replace the huge arg list.
-func (c *Cluster) launchNewMember(id int, initialCluster []string, state string) error {
-	etcdName := fmt.Sprintf("%s-%04d", c.name, id)
-	if err := createEtcdService(c.kclient, etcdName, c.name); err != nil {
-		return err
-	}
-	return createEtcdPod(c.kclient, etcdName, c.name, initialCluster, state, c.antiAffinity)
 }
 
 func (c *Cluster) delete() {
@@ -128,24 +125,29 @@ func (c *Cluster) delete() {
 		panic(err)
 	}
 	for i := range pods.Items {
-		pod := &pods.Items[i]
-		err = c.kclient.Pods("default").Delete(pod.Name, nil)
-		if err != nil {
-			panic(err)
-		}
+		c.removePodAndService(pods.Items[i].Name)
 	}
+}
 
-	services, err := c.kclient.Services("default").List(option)
+// todo: use a struct to replace the huge arg list.
+func (c *Cluster) createPodAndService(id int, initialCluster []string, state string) error {
+	etcdName := fmt.Sprintf("%s-%04d", c.name, id)
+	if err := createEtcdService(c.kclient, etcdName, c.name); err != nil {
+		return err
+	}
+	return createEtcdPod(c.kclient, etcdName, c.name, initialCluster, state, c.antiAffinity)
+}
+
+func (c *Cluster) removePodAndService(name string) error {
+	err := c.kclient.Pods("default").Delete(name, nil)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	for i := range services.Items {
-		service := &services.Items[i]
-		err = c.kclient.Services("default").Delete(service.Name)
-		if err != nil {
-			panic(err)
-		}
+	err = c.kclient.Services("default").Delete(name)
+	if err != nil {
+		return err
 	}
+	return nil
 }
 
 func (c *Cluster) backup() error {
@@ -218,26 +220,34 @@ func (c *Cluster) monitorMembers() {
 			panic("TODO: All pods removed. Impossible. Anyway, we can't create etcd client.")
 		}
 
-		// TODO: put this into central event handling
-		cfg := clientv3.Config{
-			Endpoints: []string{makeClientAddr(P.PickOne().Name)},
-		}
-		etcdcli, err := clientv3.New(cfg)
-		if err != nil {
-			panic(err)
-		}
-		resp, err := etcdcli.MemberList(context.TODO())
-		if err != nil {
-			panic(err)
-		}
+		c.updateMembers([]string{makeClientAddr(P.PickOne().Name)})
 
-		M := MemberSet{}
-		for _, member := range resp.Members {
-			M[member.Name] = Member{Name: member.Name, ID: member.ID}
-		}
-
-		if err := c.reconcile(P, M); err != nil {
+		if err := c.reconcile(P, c.members); err != nil {
 			panic(err)
 		}
 	}
+}
+
+func (c *Cluster) updateMembers(endpoints []string) {
+	// TODO: put this into central event handling
+	cfg := clientv3.Config{
+		Endpoints: endpoints,
+	}
+	etcdcli, err := clientv3.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := etcdcli.MemberList(context.TODO())
+	if err != nil {
+		panic(err)
+	}
+
+	ms := MemberSet{}
+	for _, member := range resp.Members {
+		ms[member.Name] = Member{Name: member.Name, ID: member.ID}
+	}
+
+	c.members = ms
+
+	log.Printf("updated members to %v\n", ms)
 }
