@@ -29,8 +29,10 @@ func (c *Cluster) reconcile(P, M MemberSet) error {
 	unknownMembers := P.Diff(M)
 	if unknownMembers.Size() > 0 {
 		log.Println("Removing unexpected pods:", unknownMembers)
-		if err := c.removePods(unknownMembers); err != nil {
-			return err
+		for _, m := range unknownMembers {
+			if err := c.removePodAndService(m.Name); err != nil {
+				return err
+			}
 		}
 	}
 	L := P.Diff(unknownMembers)
@@ -72,7 +74,7 @@ func (c *Cluster) recoverOneMember(toRecover Member, M MemberSet) error {
 		panic(err)
 	}
 	initialCluster := buildInitialCluster(M, toRecover.Name, newMember)
-	if err := c.launchNewMember(c.idCounter, initialCluster, "existing"); err != nil {
+	if err := c.createPodAndService(c.idCounter, initialCluster, "existing"); err != nil {
 		return err
 	}
 	c.idCounter++
@@ -89,16 +91,6 @@ func buildInitialCluster(ms MemberSet, removed, newMember string) (res []string)
 	}
 	res = append(res, fmt.Sprintf("%s=%s", newMember, makeEtcdPeerAddr(newMember)))
 	return res
-}
-
-func (c *Cluster) removePods(ms MemberSet) error {
-	for _, m := range ms {
-		err := c.kclient.Pods("default").Delete(m.Name, nil)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (c *Cluster) disasterRecovery() error {
