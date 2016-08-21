@@ -220,8 +220,7 @@ func (c *Cluster) monitorMembers() {
 			panic("TODO: All pods removed. Impossible. Anyway, we can't create etcd client.")
 		}
 
-		c.updateMembers([]string{makeClientAddr(running.PickOne().Name)})
-
+		c.updateMembers(running.ClientURLs())
 		if err := c.reconcile(running); err != nil {
 			panic(err)
 		}
@@ -231,7 +230,8 @@ func (c *Cluster) monitorMembers() {
 func (c *Cluster) updateMembers(endpoints []string) {
 	// TODO: put this into central event handling
 	cfg := clientv3.Config{
-		Endpoints: endpoints,
+		Endpoints:   endpoints,
+		DialTimeout: 5 * time.Second,
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {

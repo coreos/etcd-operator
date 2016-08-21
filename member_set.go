@@ -61,3 +61,13 @@ func (ms MemberSet) Add(m Member) {
 func (ms MemberSet) Remove(name string) {
 	delete(ms, name)
 }
+
+func (ms MemberSet) ClientURLs() []string {
+	endpoints := make([]string, len(ms))
+	i := 0
+	for _, m := range ms {
+		endpoints[i] = makeClientAddr(m.Name)
+		i++
+	}
+	return endpoints
+}
