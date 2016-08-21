@@ -211,18 +211,18 @@ func (c *Cluster) monitorMembers() {
 		if err != nil {
 			panic(err)
 		}
-		P := MemberSet{}
+		running := MemberSet{}
 		for i := range podList.Items {
-			P[podList.Items[i].Name] = Member{Name: podList.Items[i].Name}
+			running.Add(Member{Name: podList.Items[i].Name})
 		}
 
-		if P.Size() == 0 {
+		if running.Size() == 0 {
 			panic("TODO: All pods removed. Impossible. Anyway, we can't create etcd client.")
 		}
 
-		c.updateMembers([]string{makeClientAddr(P.PickOne().Name)})
+		c.updateMembers([]string{makeClientAddr(running.PickOne().Name)})
 
-		if err := c.reconcile(P, c.members); err != nil {
+		if err := c.reconcile(running); err != nil {
 			panic(err)
 		}
 	}

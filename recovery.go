@@ -8,29 +8,28 @@ import (
 	"golang.org/x/net/context"
 )
 
+// reconcile reconciles the members in the cluster view with running pods in
+// Kubernetes.
+//
 // Definitions:
-// - running pods P in k8s cluster
-// - membership M in controller knowledge
+// - running pods in k8s cluster
+// - members in controller knowledge
 // Steps:
-// 1. Remove all pods from set P that does not belong to set M
-// 2. P’ consist of remaining pods of P
-// 3. If P’ = M, the current state matches the membership state. END.
-// 4. If len(P’) < len(M)/2 + 1, quorum lost. Go to recovery process (TODO).
+// 1. Remove all pods from set running that does not belong to set members
+// 2. R’ consist of remaining pods of runnings
+// 3. If R’ = members the current state matches the membership state. END.
+// 4. If len(R’) < len(members)/2 + 1, quorum lost. Go to recovery process (TODO).
 // 5. Add one missing member. END.
-func (c *Cluster) reconcile(P, M MemberSet) error {
+func (c *Cluster) reconcile(running MemberSet) error {
 	log.Println("Reconciling:")
-	log.Println("Running pods:", P)
-	log.Println("Expected membership:", M)
+	log.Println("Running pods:", running)
+	log.Println("Expected membership:", c.members)
 
 	defer func() {
 		log.Println("Finish Reconciling\n")
 	}()
 
-	// update members
-	// TODO: move this out of reconcile
-	c.members = M
-
-	unknownMembers := P.Diff(c.members)
+	unknownMembers := running.Diff(c.members)
 	if unknownMembers.Size() > 0 {
 		log.Println("Removing unexpected pods:", unknownMembers)
 		for _, m := range unknownMembers {
@@ -39,7 +38,7 @@ func (c *Cluster) reconcile(P, M MemberSet) error {
 			}
 		}
 	}
-	L := P.Diff(unknownMembers)
+	L := running.Diff(unknownMembers)
 	if L.Size() == c.members.Size() {
 		fmt.Println("Match")
 		return nil
