@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type Member struct {
 	Name string
@@ -41,4 +44,20 @@ func (ms MemberSet) PickOne() Member {
 		return m
 	}
 	panic("empty")
+}
+
+func (ms MemberSet) PeerURLPairs() []string {
+	ps := make([]string, 0)
+	for _, m := range ms {
+		ps = append(ps, fmt.Sprintf("%s=%s", m.Name, makeEtcdPeerAddr(m.Name)))
+	}
+	return ps
+}
+
+func (ms MemberSet) Add(m Member) {
+	ms[m.Name] = m
+}
+
+func (ms MemberSet) Remove(name string) {
+	delete(ms, name)
 }
