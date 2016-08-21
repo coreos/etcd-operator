@@ -8,9 +8,8 @@ import (
 	"os"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/coreos/etcd/clientv3"
+	"golang.org/x/net/context"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
@@ -21,12 +20,14 @@ type clusterEventType string
 const (
 	eventNewCluster    clusterEventType = "Add"
 	eventDeleteCluster clusterEventType = "Delete"
+	eventReconcile     clusterEventType = "Reconcile"
 )
 
 type clusterEvent struct {
 	typ          clusterEventType
 	size         int
 	antiAffinity bool
+	running      MemberSet
 }
 
 type Cluster struct {
@@ -86,6 +87,10 @@ func (c *Cluster) run() {
 			switch event.typ {
 			case eventNewCluster:
 				c.create(event.size, event.antiAffinity)
+			case eventReconcile:
+				if err := c.reconcile(event.running); err != nil {
+					panic(err)
+				}
 			case eventDeleteCluster:
 				c.delete()
 				close(c.stopCh)
@@ -98,18 +103,35 @@ func (c *Cluster) run() {
 func (c *Cluster) create(size int, antiAffinity bool) {
 	c.antiAffinity = antiAffinity
 
-	initialCluster := []string{}
+	// we need this first in order to use PeerURLPairs as initialCluster parameter for etcd server.
 	for i := 0; i < size; i++ {
 		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
-		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", etcdName, makeEtcdPeerAddr(etcdName)))
+		c.members.Add(&Member{Name: etcdName})
 	}
 
 	for i := 0; i < size; i++ {
-		if err := c.createPodAndService(c.idCounter, initialCluster, "new"); err != nil {
-			// TODO: we need to clean up already created ones.
-			panic(err)
+		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
+		if err := c.createPodAndService(c.members[etcdName], "new"); err != nil {
+			panic(fmt.Sprintf("(TODO: we need to clean up already created ones.)\nError: %v", err))
 		}
 		c.idCounter++
+	}
+
+	// hacky ordering to update initial members' IDs
+	cfg := clientv3.Config{
+		Endpoints:   c.members.ClientURLs(),
+		DialTimeout: 5 * time.Second,
+	}
+	etcdcli, err := clientv3.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := etcdcli.MemberList(context.TODO())
+	if err != nil {
+		panic(err)
+	}
+	for _, m := range resp.Members {
+		c.members[m.Name].ID = m.ID
 	}
 }
 
@@ -130,12 +152,11 @@ func (c *Cluster) delete() {
 }
 
 // todo: use a struct to replace the huge arg list.
-func (c *Cluster) createPodAndService(id int, initialCluster []string, state string) error {
-	etcdName := fmt.Sprintf("%s-%04d", c.name, id)
-	if err := createEtcdService(c.kclient, etcdName, c.name); err != nil {
+func (c *Cluster) createPodAndService(m *Member, state string) error {
+	if err := createEtcdService(c.kclient, m.Name, c.name); err != nil {
 		return err
 	}
-	return createEtcdPod(c.kclient, etcdName, c.name, initialCluster, state, c.antiAffinity)
+	return createEtcdPod(c.kclient, c.members.PeerURLPairs(), m, c.name, state, c.antiAffinity)
 }
 
 func (c *Cluster) removePodAndService(name string) error {
@@ -213,41 +234,11 @@ func (c *Cluster) monitorMembers() {
 		}
 		running := MemberSet{}
 		for i := range podList.Items {
-			running.Add(Member{Name: podList.Items[i].Name})
+			running.Add(&Member{Name: podList.Items[i].Name})
 		}
-
-		if running.Size() == 0 {
-			panic("TODO: All pods removed. Impossible. Anyway, we can't create etcd client.")
-		}
-
-		c.updateMembers(running.ClientURLs())
-		if err := c.reconcile(running); err != nil {
-			panic(err)
-		}
+		c.send(&clusterEvent{
+			typ:     eventReconcile,
+			running: running,
+		})
 	}
-}
-
-func (c *Cluster) updateMembers(endpoints []string) {
-	// TODO: put this into central event handling
-	cfg := clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: 5 * time.Second,
-	}
-	etcdcli, err := clientv3.New(cfg)
-	if err != nil {
-		panic(err)
-	}
-	resp, err := etcdcli.MemberList(context.TODO())
-	if err != nil {
-		panic(err)
-	}
-
-	ms := MemberSet{}
-	for _, member := range resp.Members {
-		ms[member.Name] = Member{Name: member.Name, ID: member.ID}
-	}
-
-	c.members = ms
-
-	log.Printf("updated members to %v\n", ms)
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"k8s.io/kubernetes/pkg/api"
@@ -21,22 +20,15 @@ func createEtcdService(kclient *unversioned.Client, etcdName, clusterName string
 }
 
 // todo: use a struct to replace the huge arg list.
-func createEtcdPod(kclient *unversioned.Client, etcdName, clusterName string, initialCluster []string, state string, antiAffinity bool) error {
-	pod := makeEtcdPod(etcdName, clusterName, initialCluster, state, antiAffinity)
+func createEtcdPod(kclient *unversioned.Client, initialCluster []string, m *Member, clusterName, state string, antiAffinity bool) error {
+	pod := makeEtcdPod(m, initialCluster, clusterName, state, antiAffinity)
 	if _, err := kclient.Pods("default").Create(pod); err != nil {
 		return err
 	}
 	return nil
 }
 
-func makeClientAddr(name string) string {
-	return fmt.Sprintf("http://%s:2379", name)
-}
-
-func makeEtcdPeerAddr(etcdName string) string {
-	return fmt.Sprintf("http://%s:2380", etcdName)
-}
-
+// TODO: converge the port logic with member ClientAddr() and PeerAddr()
 func makeEtcdService(etcdName, clusterName string) *api.Service {
 	labels := map[string]string{
 		"etcd_node":    etcdName,
@@ -69,13 +61,13 @@ func makeEtcdService(etcdName, clusterName string) *api.Service {
 }
 
 // todo: use a struct to replace the huge arg list.
-func makeEtcdPod(etcdName, clusterName string, initialCluster []string, state string, antiAffinity bool) *api.Pod {
+func makeEtcdPod(m *Member, initialCluster []string, clusterName, state string, antiAffinity bool) *api.Pod {
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
-			Name: etcdName,
+			Name: m.Name,
 			Labels: map[string]string{
 				"app":          "etcd",
-				"etcd_node":    etcdName,
+				"etcd_node":    m.Name,
 				"etcd_cluster": clusterName,
 			},
 		},
@@ -85,21 +77,21 @@ func makeEtcdPod(etcdName, clusterName string, initialCluster []string, state st
 					Command: []string{
 						"/usr/local/bin/etcd",
 						"--name",
-						etcdName,
+						m.Name,
 						"--initial-advertise-peer-urls",
-						makeEtcdPeerAddr(etcdName),
+						m.PeerAddr(),
 						"--listen-peer-urls",
 						"http://0.0.0.0:2380",
 						"--listen-client-urls",
 						"http://0.0.0.0:2379",
 						"--advertise-client-urls",
-						makeClientAddr(etcdName),
+						m.ClientAddr(),
 						"--initial-cluster",
 						strings.Join(initialCluster, ","),
 						"--initial-cluster-state",
 						state,
 					},
-					Name:  etcdName,
+					Name:  m.Name,
 					Image: "gcr.io/coreos-k8s-scale-testing/etcd-amd64:3.0.4",
 					Ports: []api.ContainerPort{
 						{

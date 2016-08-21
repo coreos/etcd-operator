@@ -13,7 +13,15 @@ type Member struct {
 	ID uint64
 }
 
-type MemberSet map[string]Member
+func (m *Member) ClientAddr() string {
+	return fmt.Sprintf("http://%s:2379", m.Name)
+}
+
+func (m *Member) PeerAddr() string {
+	return fmt.Sprintf("http://%s:2380", m.Name)
+}
+
+type MemberSet map[string]*Member
 
 // the set of all members of s1 that are not members of s2
 func (ms MemberSet) Diff(other MemberSet) MemberSet {
@@ -49,12 +57,12 @@ func (ms MemberSet) PickOne() Member {
 func (ms MemberSet) PeerURLPairs() []string {
 	ps := make([]string, 0)
 	for _, m := range ms {
-		ps = append(ps, fmt.Sprintf("%s=%s", m.Name, makeEtcdPeerAddr(m.Name)))
+		ps = append(ps, fmt.Sprintf("%s=%s", m.Name, m.PeerAddr()))
 	}
 	return ps
 }
 
-func (ms MemberSet) Add(m Member) {
+func (ms MemberSet) Add(m *Member) {
 	ms[m.Name] = m
 }
 
