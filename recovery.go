@@ -66,9 +66,6 @@ func (c *Cluster) recoverOneMember(toRecover *Member) error {
 	}
 
 	clustercli := clientv3.NewCluster(etcdcli)
-	if _, err = clustercli.MemberRemove(context.TODO(), toRecover.ID); err != nil {
-		return err
-	}
 
 	// Remove toRecover membership first since it's gone
 	if _, err := clustercli.MemberRemove(context.TODO(), toRecover.ID); err != nil {

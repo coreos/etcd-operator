@@ -55,6 +55,7 @@ func newCluster(kclient *unversioned.Client, name string, spec Spec) *Cluster {
 		name:    name,
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
+		members: make(MemberSet),
 	}
 	go c.run()
 	c.send(&clusterEvent{
@@ -120,13 +121,15 @@ func (c *Cluster) create(size int, antiAffinity bool) {
 	// hacky ordering to update initial members' IDs
 	cfg := clientv3.Config{
 		Endpoints:   c.members.ClientURLs(),
-		DialTimeout: 5 * time.Second,
+		DialTimeout: 30 * time.Second,
 	}
+
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
 		panic(err)
 	}
-	resp, err := etcdcli.MemberList(context.TODO())
+	clustercli := clientv3.NewCluster(etcdcli)
+	resp, err := clustercli.MemberList(context.TODO())
 	if err != nil {
 		panic(err)
 	}
