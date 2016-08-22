@@ -47,7 +47,7 @@ func (ms MemberSet) String() string {
 	return strings.Join(mstring, ",")
 }
 
-func (ms MemberSet) PickOne() Member {
+func (ms MemberSet) PickOne() *Member {
 	for _, m := range ms {
 		return m
 	}
@@ -71,11 +71,9 @@ func (ms MemberSet) Remove(name string) {
 }
 
 func (ms MemberSet) ClientURLs() []string {
-	endpoints := make([]string, len(ms))
-	i := 0
+	endpoints := make([]string, 0, len(ms))
 	for _, m := range ms {
-		endpoints[i] = makeClientAddr(m.Name)
-		i++
+		endpoints = append(endpoints, m.ClientAddr())
 	}
 	return endpoints
 }
