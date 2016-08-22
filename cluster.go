@@ -20,6 +20,7 @@ type clusterEventType string
 const (
 	eventNewCluster    clusterEventType = "Add"
 	eventDeleteCluster clusterEventType = "Delete"
+	eventModifyCluster clusterEventType = "Modify"
 	eventReconcile     clusterEventType = "Reconcile"
 )
 
@@ -27,13 +28,13 @@ type clusterEvent struct {
 	typ          clusterEventType
 	size         int
 	antiAffinity bool
-	running      MemberSet
 }
 
 type Cluster struct {
 	kclient *unversioned.Client
 
 	antiAffinity bool
+	size         int
 
 	name string
 
@@ -89,9 +90,15 @@ func (c *Cluster) run() {
 			case eventNewCluster:
 				c.create(event.size, event.antiAffinity)
 			case eventReconcile:
-				if err := c.reconcile(event.running); err != nil {
-					panic(err)
+				if err := c.reconcile(); err != nil {
+					panic(fmt.Errorf("error reconciling cluster state: %v", err))
 				}
+			case eventModifyCluster:
+				fmt.Printf("Modify ev detected\n")
+				c.size = event.size
+				//TODO: when we're ready
+				//c.antiAffinity = event.antiAffinity
+				//... will probably want to rename reconcileClusterSize() to reconcileClusterSpec()
 			case eventDeleteCluster:
 				c.delete()
 				close(c.stopCh)
@@ -103,39 +110,74 @@ func (c *Cluster) run() {
 
 func (c *Cluster) create(size int, antiAffinity bool) {
 	c.antiAffinity = antiAffinity
+	c.size = size
+}
 
-	// we need this first in order to use PeerURLPairs as initialCluster parameter for etcd server.
-	for i := 0; i < size; i++ {
-		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
-		c.members.Add(&Member{Name: etcdName})
-	}
+//Both Inc/Dec node count do no locking, must be dispatched from event handler
 
-	for i := 0; i < size; i++ {
-		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
-		if err := c.createPodAndService(c.members[etcdName], "new"); err != nil {
-			panic(fmt.Sprintf("(TODO: we need to clean up already created ones.)\nError: %v", err))
+//TODO: make transactional
+func (c *Cluster) incrementNodeCount() error {
+	fmt.Printf(" > increment node count: %d / %d\n", len(c.members), c.size-1)
+	etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
+	newMember := &Member{Name: etcdName}
+
+	if len(c.members) == 0 {
+		c.members.Add(newMember)
+
+		if err := c.createPodAndService(newMember, "new"); err != nil {
+			return err
 		}
-		c.idCounter++
+		clustercli, err := getEtcdClusterClient(c.members.ClientURLs(), 60)
+		if err != nil {
+			return err
+		}
+
+		resp, err := clustercli.MemberList(context.TODO())
+		if err != nil {
+			return err
+		}
+
+		newMember.ID = resp.Members[0].ID
+	} else {
+		clustercli, err := getEtcdClusterClient(c.members.ClientURLs(), 15)
+		if err != nil {
+			return err
+		}
+
+		c.members.Add(newMember)
+
+		if err := c.createPodAndService(newMember, "existing"); err != nil {
+			return err
+		}
+		resp, err := clustercli.MemberAdd(context.TODO(), []string{newMember.PeerAddr()})
+		if err != nil {
+			return err
+		}
+		newMember.ID = resp.Member.ID
 	}
 
-	// hacky ordering to update initial members' IDs
-	cfg := clientv3.Config{
-		Endpoints:   c.members.ClientURLs(),
-		DialTimeout: 30 * time.Second,
+	c.idCounter++
+	return nil
+}
+
+//TODO: make transactional
+func (c *Cluster) decrementNodeCount() error {
+	fmt.Printf(" < decrement node count: %d / %d\n", len(c.members), c.size-1)
+	m := c.members.PickOne()
+	c.members.Remove(m.Name)
+
+	clustercli, err := getEtcdClusterClient(c.members.ClientURLs(), 5)
+	if err != nil {
+		return err
+	}
+	if _, err := clustercli.MemberRemove(context.TODO(), m.ID); err != nil {
+		return err
+	}
+	if err := c.removePodAndService(m.Name); err != nil {
+		return err
 	}
 
-	etcdcli, err := clientv3.New(cfg)
-	if err != nil {
-		panic(err)
-	}
-	clustercli := clientv3.NewCluster(etcdcli)
-	resp, err := clustercli.MemberList(context.TODO())
-	if err != nil {
-		panic(err)
-	}
-	for _, m := range resp.Members {
-		c.members[m.Name].ID = m.ID
-	}
+	return nil
 }
 
 func (c *Cluster) delete() {
@@ -218,11 +260,6 @@ func (c *Cluster) backup() error {
 }
 
 func (c *Cluster) monitorMembers() {
-	opts := api.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"etcd_cluster": c.name,
-		}),
-	}
 	// TODO: Select "etcd_node" to remove left service.
 	for {
 		select {
@@ -231,17 +268,26 @@ func (c *Cluster) monitorMembers() {
 		case <-time.After(5 * time.Second):
 		}
 
-		podList, err := c.kclient.Pods("default").List(opts)
-		if err != nil {
-			panic(err)
-		}
-		running := MemberSet{}
-		for i := range podList.Items {
-			running.Add(&Member{Name: podList.Items[i].Name})
-		}
 		c.send(&clusterEvent{
-			typ:     eventReconcile,
-			running: running,
+			typ: eventReconcile,
 		})
 	}
+}
+
+func (c *Cluster) getRunningEtcdPods() MemberSet {
+	opts := api.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			"etcd_cluster": c.name,
+		}),
+	}
+
+	podList, err := c.kclient.Pods("default").List(opts)
+	if err != nil {
+		panic(err)
+	}
+	running := MemberSet{}
+	for i := range podList.Items {
+		running.Add(&Member{Name: podList.Items[i].Name})
+	}
+	return running
 }

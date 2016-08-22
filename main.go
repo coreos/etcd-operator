@@ -29,10 +29,10 @@ func init() {
 }
 
 type EtcdCluster struct {
-	Kind       string            `json:"kind"`
-	ApiVersion string            `json:"apiVersion"`
-	Metadata   map[string]string `json:"metadata"`
-	Spec       Spec              `json: "spec"`
+	Kind       string                 `json:"kind"`
+	ApiVersion string                 `json:"apiVersion"`
+	Metadata   map[string]interface{} `json:"metadata"`
+	Spec       Spec                   `json: "spec"`
 }
 
 type Event struct {
@@ -50,13 +50,24 @@ func (c *etcdClusterController) Run() {
 	for {
 		select {
 		case event := <-eventCh:
-			clusterName := event.Object.Metadata["name"]
+			fmt.Printf("EVENT %+v\n", event)
+			var clusterName string
+			var ok bool
+			if clusterName, ok = event.Object.Metadata["name"].(string); !ok {
+				panic("Could not cast metadata.name as a string")
+			}
 			switch event.Type {
 			case "ADDED":
 				c.clusters[clusterName] = newCluster(c.kclient, clusterName, event.Object.Spec)
 			case "DELETED":
 				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)
+			case "MODIFIED":
+				c.clusters[clusterName].send(&clusterEvent{
+					typ:          eventModifyCluster,
+					size:         event.Object.Spec.Size,
+					antiAffinity: event.Object.Spec.AntiAffinity,
+				})
 			}
 		case err := <-errCh:
 			panic(err)
@@ -83,7 +94,7 @@ func monitorEtcdCluster(httpClient *http.Client) (<-chan *Event, <-chan error) {
 			ev := new(Event)
 			err = decoder.Decode(ev)
 			if err != nil {
-				errc <- err
+				errc <- fmt.Errorf("error decoding event json: %v", err)
 			}
 			log.Printf("etcd cluster event: %v %#v\n", ev.Type, ev.Object)
 			events <- ev

@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	"k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 
+	"github.com/coreos/etcd/clientv3"
 	"k8s.io/kubernetes/pkg/util/intstr"
 )
 
@@ -102,7 +104,7 @@ func makeEtcdPod(m *Member, initialCluster []string, clusterName, state string, 
 					},
 				},
 			},
-			RestartPolicy: api.RestartPolicyNever,
+			RestartPolicy: api.RestartPolicyOnFailure,
 		},
 	}
 
@@ -133,4 +135,19 @@ func makeEtcdPod(m *Member, initialCluster []string, clusterName, state string, 
 	pod.Annotations[api.AffinityAnnotationKey] = string(affinityb)
 
 	return pod
+}
+
+func getEtcdClusterClient(endpoints []string, timeoutSec int) (clientv3.Cluster, error) {
+	cfg := clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: time.Duration(timeoutSec) * time.Second,
+	}
+	etcdcli, err := clientv3.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	clustercli := clientv3.NewCluster(etcdcli)
+
+	return clustercli, nil
 }
