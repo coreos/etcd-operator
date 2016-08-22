@@ -48,7 +48,7 @@ type Cluster struct {
 	backupDir string
 }
 
-func newCluster(kclient *unversioned.Client, name string, size int, antiAffinity bool) *Cluster {
+func newCluster(kclient *unversioned.Client, name string, spec Spec) *Cluster {
 	c := &Cluster{
 		kclient: kclient,
 		name:    name,
@@ -58,8 +58,8 @@ func newCluster(kclient *unversioned.Client, name string, size int, antiAffinity
 	go c.run()
 	c.send(&clusterEvent{
 		typ:          eventNewCluster,
-		size:         size,
-		antiAffinity: antiAffinity,
+		size:         spec.Size,
+		antiAffinity: spec.AntiAffinity,
 	})
 	return c
 }
