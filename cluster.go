@@ -55,6 +55,7 @@ func newCluster(kclient *unversioned.Client, name string, spec Spec) *Cluster {
 		name:    name,
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
+		members: MemberSet{},
 	}
 	go c.run()
 	c.send(&clusterEvent{
