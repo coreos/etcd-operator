@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	"time"
 
-	"github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
 )
 
@@ -21,14 +19,37 @@ import (
 // 3. If R’ = members the current state matches the membership state. END.
 // 4. If len(R’) < len(members)/2 + 1, quorum lost. Go to recovery process (TODO).
 // 5. Add one missing member. END.
-func (c *Cluster) reconcile(running MemberSet) error {
-	log.Println("Reconciling:")
-	log.Println("Running pods:", running)
-	log.Println("Expected membership:", c.members)
-
+func (c *Cluster) reconcile() error {
 	defer func() {
 		log.Println("Finish Reconciling\n")
 	}()
+
+	fmt.Printf("cluster size: current = %d , desired = %d\n", len(c.members), c.size)
+
+	//If any resize operations take place, we want to bail after and let member reconcilation occur next time around
+	if len(c.members) < c.size {
+		//scale up
+		for i := len(c.members); i < c.size; i++ {
+			if err := c.incrementNodeCount(); err != nil {
+				return err
+			}
+		}
+		return nil
+	} else if len(c.members) > c.size {
+		//scale down
+		for i := len(c.members); i > c.size; i-- {
+			if err := c.decrementNodeCount(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	running := c.getRunningEtcdPods()
+
+	log.Println("Reconciling cluster state:")
+	log.Println("\tRunning pods:", running)
+	log.Println("\tExpected membership:", c.members)
 
 	unknownMembers := running.Diff(c.members)
 	if unknownMembers.Size() > 0 {
@@ -56,20 +77,10 @@ func (c *Cluster) reconcile(running MemberSet) error {
 }
 
 func (c *Cluster) recoverOneMember(toRecover *Member) error {
-	cfg := clientv3.Config{
-		Endpoints:   c.members.ClientURLs(),
-		DialTimeout: 5 * time.Second,
-	}
-	etcdcli, err := clientv3.New(cfg)
+	clustercli, err := getEtcdClusterClient(c.members.ClientURLs(), 15)
 	if err != nil {
 		return err
 	}
-
-	clustercli := clientv3.NewCluster(etcdcli)
-	if _, err = clustercli.MemberRemove(context.TODO(), toRecover.ID); err != nil {
-		return err
-	}
-
 	// Remove toRecover membership first since it's gone
 	if _, err := clustercli.MemberRemove(context.TODO(), toRecover.ID); err != nil {
 		return err
@@ -80,7 +91,7 @@ func (c *Cluster) recoverOneMember(toRecover *Member) error {
 	// Add a new member
 	newMemberName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
 	newMember := &Member{Name: newMemberName}
-	resp, err := etcdcli.MemberAdd(context.TODO(), []string{newMember.PeerAddr()})
+	resp, err := clustercli.MemberAdd(context.TODO(), []string{newMember.PeerAddr()})
 	if err != nil {
 		panic(err)
 	}
