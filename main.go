@@ -32,11 +32,7 @@ type EtcdCluster struct {
 	Kind       string            `json:"kind"`
 	ApiVersion string            `json:"apiVersion"`
 	Metadata   map[string]string `json:"metadata"`
-	// TODO: add Spec section
-	Size int `json:"size"`
-	// AntiAffinity determines if the controller tries to avoid putting the etcd members
-	// in the same cluster onto the same node.
-	AntiAffinity bool `json:"antiAffinity"`
+	Spec       Spec              `json: "spec"`
 }
 
 type Event struct {
@@ -57,7 +53,7 @@ func (c *etcdClusterController) Run() {
 			clusterName := event.Object.Metadata["name"]
 			switch event.Type {
 			case "ADDED":
-				c.clusters[clusterName] = newCluster(c.kclient, clusterName, event.Object.Size, event.Object.AntiAffinity)
+				c.clusters[clusterName] = newCluster(c.kclient, clusterName, event.Object.Spec)
 			case "DELETED":
 				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)
