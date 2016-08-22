@@ -55,7 +55,7 @@ func (c *Cluster) reconcile(running MemberSet) error {
 	return c.recoverOneMember(toRecover)
 }
 
-func (c *Cluster) recoverOneMember(toRecover Member) error {
+func (c *Cluster) recoverOneMember(toRecover *Member) error {
 	cfg := clientv3.Config{
 		Endpoints:   c.members.ClientURLs(),
 		DialTimeout: 5 * time.Second,
@@ -92,7 +92,7 @@ func (c *Cluster) recoverOneMember(toRecover Member) error {
 	}
 	c.idCounter++
 
-	log.Printf("added member, cluster: %s", initialCluster)
+	log.Printf("added member, cluster: %s", c.members.PeerURLPairs())
 	return nil
 }
 
