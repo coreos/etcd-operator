@@ -56,7 +56,6 @@ func (c *Cluster) reconcile(running MemberSet) error {
 }
 
 func (c *Cluster) recoverOneMember(toRecover Member) error {
-	// Remove toRecover membership first since it's gone
 	cfg := clientv3.Config{
 		Endpoints:   c.members.ClientURLs(),
 		DialTimeout: 5 * time.Second,
@@ -65,26 +64,30 @@ func (c *Cluster) recoverOneMember(toRecover Member) error {
 	if err != nil {
 		return err
 	}
+
 	clustercli := clientv3.NewCluster(etcdcli)
-	_, err = clustercli.MemberRemove(context.TODO(), toRecover.ID)
-	if err != nil {
+	if _, err = clustercli.MemberRemove(context.TODO(), toRecover.ID); err != nil {
 		return err
 	}
-	log.Printf("removed member (%v) with ID (%d)\n", toRecover.Name, toRecover.ID)
+
+	// Remove toRecover membership first since it's gone
+	if _, err := clustercli.MemberRemove(context.TODO(), toRecover.ID); err != nil {
+		return err
+	}
 	c.members.Remove(toRecover.Name)
+	log.Printf("removed member (%v) with ID (%d)\n", toRecover.Name, toRecover.ID)
 
 	// Add a new member
-	newMember := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
-
-	resp, err := clustercli.MemberAdd(context.TODO(), []string{makeEtcdPeerAddr(newMember)})
+	newMemberName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
+	newMember := &Member{Name: newMemberName}
+	resp, err := etcdcli.MemberAdd(context.TODO(), []string{newMember.PeerAddr()})
 	if err != nil {
 		panic(err)
 	}
+	newMember.ID = resp.Member.ID
+	c.members.Add(newMember)
 
-	c.members.Add(Member{Name: newMember, ID: resp.Member.ID})
-
-	initialCluster := c.members.PeerURLPairs()
-	if err := c.createPodAndService(c.idCounter, initialCluster, "existing"); err != nil {
+	if err := c.createPodAndService(newMember, "existing"); err != nil {
 		return err
 	}
 	c.idCounter++
