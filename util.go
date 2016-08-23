@@ -2,6 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -9,7 +12,9 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"golang.org/x/net/context"
 	"k8s.io/kubernetes/pkg/api"
+	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/watch"
@@ -34,10 +39,7 @@ func createEtcdPod(kclient *unversioned.Client, initialCluster []string, m *Memb
 		return err
 	}
 	_, err = watch.Until(100*time.Second, w, unversioned.PodRunningAndReady)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // TODO: converge the port logic with member ClientAddr() and PeerAddr()
@@ -145,6 +147,51 @@ func makeEtcdPod(m *Member, initialCluster []string, clusterName, state string, 
 	pod.Annotations[api.AffinityAnnotationKey] = string(affinityb)
 
 	return pod
+}
+
+func mustCreateClient(host string) *unversioned.Client {
+	if len(host) == 0 {
+		cfg, err := restclient.InClusterConfig()
+		if err != nil {
+			panic(err)
+		}
+		c, err := unversioned.NewInCluster()
+		if err != nil {
+			panic(err)
+		}
+		masterHost = cfg.Host
+		return c
+	}
+
+	hostUrl, err := url.Parse(host)
+	if err != nil {
+		panic(fmt.Sprintf("error parsing host url %s : %v", host, err))
+	}
+	cfg := &restclient.Config{
+		Host:  host,
+		QPS:   100,
+		Burst: 100,
+	}
+	if hostUrl.Scheme == "https" {
+		cfg.TLSClientConfig = tlsConfig
+		cfg.Insecure = tlsInsecure
+	}
+	c, err := unversioned.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func isKubernetesResourceAlreadyExistError(err error) bool {
+	se, ok := err.(*apierrors.StatusError)
+	if !ok {
+		return false
+	}
+	if se.Status().Code == http.StatusConflict && se.Status().Reason == unversionedAPI.StatusReasonAlreadyExists {
+		return true
+	}
+	return false
 }
 
 func waitMemberReady(cli *clientv3.Client) error {

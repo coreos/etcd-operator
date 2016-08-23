@@ -15,6 +15,13 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 )
 
+type EtcdCluster struct {
+	Kind       string            `json:"kind"`
+	ApiVersion string            `json:"apiVersion"`
+	Metadata   map[string]string `json:"metadata"`
+	Spec       Spec              `json: "spec"`
+}
+
 type clusterEventType string
 
 const (
