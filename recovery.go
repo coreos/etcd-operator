@@ -24,6 +24,19 @@ import (
 func (c *Cluster) reconcile(running MemberSet) error {
 	log.Println("Reconciling:")
 	log.Println("Running pods:", running)
+
+	if len(c.members) == 0 {
+		cfg := clientv3.Config{
+			Endpoints:   running.ClientURLs(),
+			DialTimeout: 5 * time.Second,
+		}
+		etcdcli, err := clientv3.New(cfg)
+		if err != nil {
+			return err
+		}
+		c.updateMembers(etcdcli)
+	}
+
 	log.Println("Expected membership:", c.members)
 
 	defer func() {
@@ -49,7 +62,7 @@ func (c *Cluster) reconcile(running MemberSet) error {
 		return c.disasterRecovery()
 	}
 
-	fmt.Println("Recovery one member")
+	fmt.Println("Recovering one member")
 	toRecover := c.members.Diff(L).PickOne()
 	return c.recoverOneMember(toRecover)
 }
@@ -69,6 +82,7 @@ func (c *Cluster) recoverOneMember(toRecover *Member) error {
 	if _, err := clustercli.MemberRemove(context.TODO(), toRecover.ID); err != nil {
 		return err
 	}
+	// TODO: remove left over service
 	c.members.Remove(toRecover.Name)
 	log.Printf("removed member (%v) with ID (%d)\n", toRecover.Name, toRecover.ID)
 
@@ -82,7 +96,7 @@ func (c *Cluster) recoverOneMember(toRecover *Member) error {
 	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)
 
-	if err := c.createPodAndService(newMember, "existing"); err != nil {
+	if err := c.createPodAndService(c.members, newMember, "existing"); err != nil {
 		return err
 	}
 	c.idCounter++

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -33,7 +32,7 @@ func (c *etcdClusterController) Run() {
 	if err := c.createTPR(); err != nil {
 		switch {
 		case isKubernetesResourceAlreadyExistError(err):
-			watchVersion, err = c.recoverAllClusters()
+			watchVersion, err = c.findAllClusters()
 			if err != nil {
 				panic(err)
 			}
@@ -50,7 +49,9 @@ func (c *etcdClusterController) Run() {
 			clusterName := event.Object.ObjectMeta.Name
 			switch event.Type {
 			case "ADDED":
-				c.clusters[clusterName] = newCluster(c.kclient, clusterName, event.Object.Spec)
+				nc := newCluster(c.kclient, clusterName)
+				nc.init(event.Object.Spec)
+				c.clusters[clusterName] = nc
 			case "DELETED":
 				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)
@@ -61,8 +62,8 @@ func (c *etcdClusterController) Run() {
 	}
 }
 
-func (c *etcdClusterController) recoverAllClusters() (string, error) {
-	log.Println("recovering clusters...")
+func (c *etcdClusterController) findAllClusters() (string, error) {
+	log.Println("finding existing clusters...")
 	resp, err := listETCDCluster(c.kclient.RESTClient.Client)
 	if err != nil {
 		return "", err
@@ -72,8 +73,9 @@ func (c *etcdClusterController) recoverAllClusters() (string, error) {
 	if err := d.Decode(list); err != nil {
 		return "", err
 	}
-	for _, cluster := range list.Items {
-		fmt.Println("cluster:", cluster.Name)
+	for _, item := range list.Items {
+		nc := newCluster(c.kclient, item.Name)
+		c.clusters[item.Name] = nc
 	}
 	return list.ListMeta.ResourceVersion, nil
 }

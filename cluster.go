@@ -27,7 +27,8 @@ type clusterEvent struct {
 	typ          clusterEventType
 	size         int
 	antiAffinity bool
-	running      MemberSet
+	// currently running pods in kubernetes
+	running MemberSet
 }
 
 type Cluster struct {
@@ -37,33 +38,36 @@ type Cluster struct {
 
 	name string
 
+	idCounter int
+	eventCh   chan *clusterEvent
+	stopCh    chan struct{}
+
 	// members repsersents the members in the etcd cluster.
 	// the name of the member is the the name of the pod the member
 	// process runs in.
 	members MemberSet
 
-	idCounter int
-	eventCh   chan *clusterEvent
-	stopCh    chan struct{}
-
 	backupDir string
 }
 
-func newCluster(kclient *unversioned.Client, name string, spec Spec) *Cluster {
+func newCluster(kclient *unversioned.Client, name string) *Cluster {
 	c := &Cluster{
 		kclient: kclient,
 		name:    name,
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
-		members: MemberSet{},
 	}
 	go c.run()
+
+	return c
+}
+
+func (c *Cluster) init(spec Spec) {
 	c.send(&clusterEvent{
 		typ:          eventNewCluster,
 		size:         spec.Size,
 		antiAffinity: spec.AntiAffinity,
 	})
-	return c
 }
 
 func (c *Cluster) Delete() {
@@ -81,7 +85,6 @@ func (c *Cluster) send(ev *clusterEvent) {
 
 func (c *Cluster) run() {
 	go c.monitorMembers()
-
 	for {
 		select {
 		case event := <-c.eventCh:
@@ -104,44 +107,48 @@ func (c *Cluster) run() {
 func (c *Cluster) create(size int, antiAffinity bool) {
 	c.antiAffinity = antiAffinity
 
-	// we need this first in order to use PeerURLPairs as initialCluster parameter for etcd server.
+	members := MemberSet{}
+	// we want to make use of member's utility methods.
 	for i := 0; i < size; i++ {
 		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
-		c.members.Add(&Member{Name: etcdName})
+		members.Add(&Member{Name: etcdName})
 	}
 
 	// TODO: parallelize it
 	for i := 0; i < size; i++ {
 		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
-		if err := c.createPodAndService(c.members[etcdName], "new"); err != nil {
+		if err := c.createPodAndService(members, members[etcdName], "new"); err != nil {
 			panic(fmt.Sprintf("(TODO: we need to clean up already created ones.)\nError: %v", err))
 		}
 		c.idCounter++
 	}
 
-	// hacky ordering to update initial members' IDs
-	cfg := clientv3.Config{
-		Endpoints:   c.members.ClientURLs(),
-		DialTimeout: 5 * time.Second,
-	}
-	etcdcli, err := clientv3.New(cfg)
-	if err != nil {
-		panic(err)
-	}
-	err = waitMemberReady(etcdcli)
-	if err != nil {
-		panic(err)
-	}
+	fmt.Println("created cluster:", members)
+}
+
+func (c *Cluster) updateMembers(etcdcli *clientv3.Client) {
 	resp, err := etcdcli.MemberList(context.TODO())
 	if err != nil {
 		panic(err)
 	}
+	c.members = MemberSet{}
 	for _, m := range resp.Members {
-		c.members[m.Name].ID = m.ID
-	}
-	fmt.Println("created cluster:", c.members)
-}
+		id := findID(m.Name)
+		if id+1 > c.idCounter {
+			c.idCounter = id + 1
+		}
 
+		c.members[m.Name] = &Member{
+			Name: m.Name,
+			ID:   m.ID,
+		}
+	}
+}
+func findID(name string) int {
+	var id int
+	fmt.Sscanf(name, "etcd-cluster-%d", &id)
+	return id
+}
 func (c *Cluster) delete() {
 	option := api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
@@ -159,11 +166,11 @@ func (c *Cluster) delete() {
 }
 
 // todo: use a struct to replace the huge arg list.
-func (c *Cluster) createPodAndService(m *Member, state string) error {
+func (c *Cluster) createPodAndService(members MemberSet, m *Member, state string) error {
 	if err := createEtcdService(c.kclient, m.Name, c.name); err != nil {
 		return err
 	}
-	return createEtcdPod(c.kclient, c.members.PeerURLPairs(), m, c.name, state, c.antiAffinity)
+	return createEtcdPod(c.kclient, members.PeerURLPairs(), m, c.name, state, c.antiAffinity)
 }
 
 func (c *Cluster) removePodAndService(name string) error {
@@ -243,6 +250,7 @@ func (c *Cluster) monitorMembers() {
 		for i := range podList.Items {
 			running.Add(&Member{Name: podList.Items[i].Name})
 		}
+
 		c.send(&clusterEvent{
 			typ:     eventReconcile,
 			running: running,
