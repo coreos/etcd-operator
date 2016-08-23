@@ -35,13 +35,12 @@ func (c *Cluster) reconcile(running MemberSet) error {
 		log.Println("Removing unexpected pods:", unknownMembers)
 		for _, m := range unknownMembers {
 			if err := c.removePodAndService(m.Name); err != nil {
-				return err
+				panic(err)
 			}
 		}
 	}
 	L := running.Diff(unknownMembers)
 	if L.Size() == c.members.Size() {
-		fmt.Println("Match")
 		return nil
 	}
 
@@ -66,10 +65,6 @@ func (c *Cluster) recoverOneMember(toRecover *Member) error {
 	}
 
 	clustercli := clientv3.NewCluster(etcdcli)
-	if _, err = clustercli.MemberRemove(context.TODO(), toRecover.ID); err != nil {
-		return err
-	}
-
 	// Remove toRecover membership first since it's gone
 	if _, err := clustercli.MemberRemove(context.TODO(), toRecover.ID); err != nil {
 		return err

@@ -110,6 +110,7 @@ func (c *Cluster) create(size int, antiAffinity bool) {
 		c.members.Add(&Member{Name: etcdName})
 	}
 
+	// TODO: parallelize it
 	for i := 0; i < size; i++ {
 		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
 		if err := c.createPodAndService(c.members[etcdName], "new"); err != nil {
@@ -127,6 +128,10 @@ func (c *Cluster) create(size int, antiAffinity bool) {
 	if err != nil {
 		panic(err)
 	}
+	err = waitMemberReady(etcdcli)
+	if err != nil {
+		panic(err)
+	}
 	resp, err := etcdcli.MemberList(context.TODO())
 	if err != nil {
 		panic(err)
@@ -134,6 +139,7 @@ func (c *Cluster) create(size int, antiAffinity bool) {
 	for _, m := range resp.Members {
 		c.members[m.Name].ID = m.ID
 	}
+	fmt.Println("created cluster:", c.members)
 }
 
 func (c *Cluster) delete() {
@@ -167,7 +173,7 @@ func (c *Cluster) removePodAndService(name string) error {
 	}
 	err = c.kclient.Services("default").Delete(name)
 	if err != nil {
-		return err
+		log.Printf("failed removing service (%s): %v", name, err)
 	}
 	return nil
 }

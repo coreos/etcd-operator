@@ -3,12 +3,16 @@ package main
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"golang.org/x/net/context"
 	"k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned"
-
 	"k8s.io/kubernetes/pkg/util/intstr"
+	"k8s.io/kubernetes/pkg/watch"
 )
 
 func createEtcdService(kclient *unversioned.Client, etcdName, clusterName string) error {
@@ -23,6 +27,14 @@ func createEtcdService(kclient *unversioned.Client, etcdName, clusterName string
 func createEtcdPod(kclient *unversioned.Client, initialCluster []string, m *Member, clusterName, state string, antiAffinity bool) error {
 	pod := makeEtcdPod(m, initialCluster, clusterName, state, antiAffinity)
 	if _, err := kclient.Pods("default").Create(pod); err != nil {
+		return err
+	}
+	w, err := kclient.Pods("default").Watch(api.SingleObject(api.ObjectMeta{Name: m.Name}))
+	if err != nil {
+		return err
+	}
+	_, err = watch.Until(100*time.Second, w, unversioned.PodRunningAndReady)
+	if err != nil {
 		return err
 	}
 	return nil
@@ -92,7 +104,7 @@ func makeEtcdPod(m *Member, initialCluster []string, clusterName, state string, 
 						state,
 					},
 					Name:  m.Name,
-					Image: "gcr.io/coreos-k8s-scale-testing/etcd-amd64:3.0.4",
+					Image: "gcr.io/coreos-k8s-scale-testing/etcd-amd64:3.0.6",
 					Ports: []api.ContainerPort{
 						{
 							Name:          "server",
@@ -133,4 +145,14 @@ func makeEtcdPod(m *Member, initialCluster []string, clusterName, state string, 
 	pod.Annotations[api.AffinityAnnotationKey] = string(affinityb)
 
 	return pod
+}
+
+func waitMemberReady(cli *clientv3.Client) error {
+	for {
+		_, err := cli.Get(context.TODO(), "/")
+		if err == rpctypes.ErrNotCapable {
+			continue
+		}
+		return err
+	}
 }
