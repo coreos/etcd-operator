@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -11,6 +12,10 @@ import (
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/wait"
+)
+
+const (
+	tprName = "etcd-cluster.coreos.com"
 )
 
 type Event struct {
@@ -24,16 +29,25 @@ type etcdClusterController struct {
 }
 
 func (c *etcdClusterController) Run() {
+	watchVersion := "0"
 	if err := c.createTPR(); err != nil {
-		panic(err)
+		switch {
+		case isKubernetesResourceAlreadyExistError(err):
+			watchVersion, err = c.recoverAllClusters()
+			if err != nil {
+				panic(err)
+			}
+		default:
+			panic(err)
+		}
 	}
 	log.Println("etcd cluster controller starts running...")
 
-	eventCh, errCh := monitorEtcdCluster(c.kclient.RESTClient.Client)
+	eventCh, errCh := monitorEtcdCluster(c.kclient.RESTClient.Client, watchVersion)
 	for {
 		select {
 		case event := <-eventCh:
-			clusterName := event.Object.Metadata["name"]
+			clusterName := event.Object.ObjectMeta.Name
 			switch event.Type {
 			case "ADDED":
 				c.clusters[clusterName] = newCluster(c.kclient, clusterName, event.Object.Spec)
@@ -47,10 +61,27 @@ func (c *etcdClusterController) Run() {
 	}
 }
 
+func (c *etcdClusterController) recoverAllClusters() (string, error) {
+	log.Println("recovering clusters...")
+	resp, err := listETCDCluster(c.kclient.RESTClient.Client)
+	if err != nil {
+		return "", err
+	}
+	d := json.NewDecoder(resp.Body)
+	list := &EtcdClusterList{}
+	if err := d.Decode(list); err != nil {
+		return "", err
+	}
+	for _, cluster := range list.Items {
+		fmt.Println("cluster:", cluster.Name)
+	}
+	return list.ListMeta.ResourceVersion, nil
+}
+
 func (c *etcdClusterController) createTPR() error {
 	tpr := &extensions.ThirdPartyResource{
 		ObjectMeta: api.ObjectMeta{
-			Name: "etcd-cluster.coreos.com",
+			Name: tprName,
 		},
 		Versions: []extensions.APIVersion{
 			{Name: "v1"},
@@ -59,15 +90,12 @@ func (c *etcdClusterController) createTPR() error {
 	}
 	_, err := c.kclient.ThirdPartyResources().Create(tpr)
 	if err != nil {
-		if isKubernetesResourceAlreadyExistError(err) {
-			return nil
-		}
 		return err
 	}
 
 	err = wait.Poll(5*time.Second, 100*time.Second,
 		func() (done bool, err error) {
-			resp, err := watchETCDCluster(c.kclient.RESTClient.Client)
+			resp, err := watchETCDCluster(c.kclient.RESTClient.Client, "0")
 			if err != nil {
 				return false, err
 			}
@@ -82,15 +110,11 @@ func (c *etcdClusterController) createTPR() error {
 	return err
 }
 
-func watchETCDCluster(httpClient *http.Client) (*http.Response, error) {
-	return httpClient.Get(masterHost + "/apis/coreos.com/v1/namespaces/default/etcdclusters?watch=true")
-}
-
-func monitorEtcdCluster(httpClient *http.Client) (<-chan *Event, <-chan error) {
+func monitorEtcdCluster(httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
 	events := make(chan *Event)
 	errc := make(chan error, 1)
 	go func() {
-		resp, err := watchETCDCluster(httpClient)
+		resp, err := watchETCDCluster(httpClient, watchVersion)
 		if err != nil {
 			errc <- err
 			return
