@@ -82,8 +82,11 @@ func (c *Cluster) recoverOneMember(toRecover *Member) error {
 	if _, err := clustercli.MemberRemove(context.TODO(), toRecover.ID); err != nil {
 		return err
 	}
-	// TODO: remove left over service
 	c.members.Remove(toRecover.Name)
+	if err := c.removePodAndService(toRecover.Name); err != nil {
+		return err
+	}
+
 	log.Printf("removed member (%v) with ID (%d)\n", toRecover.Name, toRecover.ID)
 
 	// Add a new member

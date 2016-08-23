@@ -194,6 +194,17 @@ func isKubernetesResourceAlreadyExistError(err error) bool {
 	return false
 }
 
+func isKubernetesResourceNotFoundError(err error) bool {
+	se, ok := err.(*apierrors.StatusError)
+	if !ok {
+		return false
+	}
+	if se.Status().Code == http.StatusNotFound && se.Status().Reason == unversionedAPI.StatusReasonNotFound {
+		return true
+	}
+	return false
+}
+
 func waitMemberReady(cli *clientv3.Client) error {
 	for {
 		_, err := cli.Get(context.TODO(), "/")
