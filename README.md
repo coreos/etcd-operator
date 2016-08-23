@@ -18,39 +18,19 @@ Managed etcd clusters on Kubernetes:
 
 - Backup only works for data in etcd3 storage, not etcd2 storage.
 
-## Initialize the TPR
-
-(TODO: auto create TPR when deploy the controller)
-
-```bash
-$ cat example/etcd-clusters-tpr.yaml
-```
-
-```yaml
-apiVersion: extensions/v1beta1
-kind: ThirdPartyResource
-description: "Managed etcd clusters"
-metadata:
-  name: "etcd-cluster.coreos.com"
-versions:
-  - name: v1
-  - name: v2
-```
-
-```bash
-$ kubectl create -f example/etcd-clusters-tpr.yaml
-
-$ kubectl get thirdpartyresources
-NAME                      DESCRIPTION             VERSION(S)
-etcd-cluster.coreos.com   Managed etcd clusters   v1,v2
-```
-
-
 ## Deploy kube-etcd-controller
 
 ```bash
 $ kubectl create -f example/etcd-controller.yaml
 pod "kubeetcdctrl" created
+```
+
+kube-etcd-controller will create a TPR automatically.
+
+```bash
+$ kubectl get thirdpartyresources
+NAME                      DESCRIPTION             VERSION(S)
+etcd-cluster.coreos.com   Managed etcd clusters   v1
 ```
 
 ## Create an etcd cluster
