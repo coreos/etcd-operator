@@ -203,3 +203,11 @@ func waitMemberReady(cli *clientv3.Client) error {
 		return err
 	}
 }
+
+func listETCDCluster(httpClient *http.Client) (*http.Response, error) {
+	return httpClient.Get(masterHost + "/apis/coreos.com/v1/namespaces/default/etcdclusters")
+}
+
+func watchETCDCluster(httpClient *http.Client, resourceVersion string) (*http.Response, error) {
+	return httpClient.Get(masterHost + "/apis/coreos.com/v1/namespaces/default/etcdclusters?watch=true&resourceVersion=" + resourceVersion)
+}
