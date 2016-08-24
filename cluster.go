@@ -161,7 +161,9 @@ func (c *Cluster) delete() {
 		panic(err)
 	}
 	for i := range pods.Items {
-		c.removePodAndService(pods.Items[i].Name)
+		if err := c.removePodAndService(pods.Items[i].Name); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -176,11 +178,15 @@ func (c *Cluster) createPodAndService(members MemberSet, m *Member, state string
 func (c *Cluster) removePodAndService(name string) error {
 	err := c.kclient.Pods("default").Delete(name, nil)
 	if err != nil {
-		return err
+		if !isKubernetesResourceNotFoundError(err) {
+			return err
+		}
 	}
 	err = c.kclient.Services("default").Delete(name)
 	if err != nil {
-		log.Printf("failed removing service (%s): %v", name, err)
+		if !isKubernetesResourceNotFoundError(err) {
+			return err
+		}
 	}
 	return nil
 }
