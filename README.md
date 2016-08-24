@@ -103,9 +103,10 @@ etcd-cluster-0002   1/1       Running   0          5s
 etcd-cluster-0003   1/1       Running   0          5s
 ```
 
-## Restart Controller
+## Try controller recovery
 
-etcd controller can recover itself from restart. Continued from above, you can try to simulate a crash:
+etcd controller can recover itself from restart or a crash. Continued from above, you can try to simulate a controller crash:
+
 ```bash
 $ kubectl delete -f example/etcd-controller.yaml
 pod "kubeetcdctrl" deleted
@@ -115,6 +116,7 @@ pod "etcd-cluster-0003" deleted
 ```
 
 Then restart etcd controller. It should automatically recover itself. It also recovers the etcd cluster!
+
 ```bash
 $ kubectl create -f example/example-etcd-cluster.yaml
 
