@@ -84,7 +84,7 @@ func (c *Cluster) send(ev *clusterEvent) {
 }
 
 func (c *Cluster) run() {
-	go c.monitorMembers()
+	go c.monitorPods()
 	for {
 		select {
 		case event := <-c.eventCh:
@@ -228,7 +228,7 @@ func (c *Cluster) backup() error {
 	return nil
 }
 
-func (c *Cluster) monitorMembers() {
+func (c *Cluster) monitorPods() {
 	opts := api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"etcd_cluster": c.name,
