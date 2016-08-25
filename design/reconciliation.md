@@ -18,9 +18,9 @@ For each reconciling cycle, we get P from k8s API. Comparing M and P, we have th
 
 ### Resize
 
-Given a desired size S and membership size M:
+Given a desired size S, membership M and current running pods P:
 
-1. If P' != M, then END.
-2. If S = M, then END.
-3. If S > M, add one member. END.
-4. If S < M, remove one member. END
+1. If len(P) != len(M), then END.
+2. If S = len(M), then END.
+3. If S > len(M), add one member. END.
+4. If S < len(M), remove one member. END
