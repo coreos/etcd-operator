@@ -129,7 +129,7 @@ func monitorEtcdCluster(httpClient *http.Client, watchVersion string) (<-chan *E
 				errc <- errors.New("Invalid status code: " + resp.Status)
 				return
 			}
-			log.Println("start watching...")
+			log.Printf("watching at %v\n", watchVersion)
 			for {
 				decoder := json.NewDecoder(resp.Body)
 				ev := new(Event)
@@ -141,6 +141,11 @@ func monitorEtcdCluster(httpClient *http.Client, watchVersion string) (<-chan *E
 					errc <- err
 				}
 				log.Printf("etcd cluster event: %v %#v\n", ev.Type, ev.Object)
+				// There might be cases of transient errors, e.g. network disconnection.
+				// We can backoff and rewatch in such cases.
+				if ev.Type == "ERROR" {
+					break
+				}
 				watchVersion = ev.Object.ObjectMeta.ResourceVersion
 				events <- ev
 			}
