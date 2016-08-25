@@ -98,7 +98,7 @@ func (c *Cluster) run() {
 					panic(err)
 				}
 			case eventModifyCluster:
-				log.Printf("update: from: %#v, to: %#v\n", c.spec, event.spec)
+				log.Printf("update: from: %#v, to: %#v", c.spec, event.spec)
 				c.spec.Size = event.spec.Size
 			case eventDeleteCluster:
 				c.delete()
@@ -230,14 +230,14 @@ func (c *Cluster) backup() error {
 	if err != nil {
 		tmpfile.Close()
 		os.Remove(tmpfile.Name())
-		log.Printf("saving snapshot from cluster %s error: %v\n", c.name, err)
+		log.Printf("saving snapshot from cluster %s error: %v", c.name, err)
 		return err
 	}
 
 	err = os.Rename(tmpfile.Name(), nextSnapshotName)
 	if err != nil {
 		os.Remove(tmpfile.Name())
-		log.Printf("renaming snapshot from cluster %s error: %v\n", c.name, err)
+		log.Printf("renaming snapshot from cluster %s error: %v", c.name, err)
 		return err
 	}
 
