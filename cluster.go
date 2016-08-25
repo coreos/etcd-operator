@@ -113,20 +113,12 @@ func (c *Cluster) create(spec *Spec) {
 	members := MemberSet{}
 	c.spec = spec
 	// we want to make use of member's utility methods.
-	for i := 0; i < c.spec.Size; i++ {
-		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
-		members.Add(&Member{Name: etcdName})
+	etcdName := fmt.Sprintf("%s-%04d", c.name, 0)
+	members.Add(&Member{Name: etcdName})
+	if err := c.createPodAndService(members, members[etcdName], "new"); err != nil {
+		panic(fmt.Sprintf("(TODO: we need to clean up already created ones.)\nError: %v", err))
 	}
-
-	// TODO: parallelize it
-	for i := 0; i < c.spec.Size; i++ {
-		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
-		if err := c.createPodAndService(members, members[etcdName], "new"); err != nil {
-			panic(fmt.Sprintf("(TODO: we need to clean up already created ones.)\nError: %v", err))
-		}
-		c.idCounter++
-	}
-
+	c.idCounter++
 	fmt.Println("created cluster:", members)
 }
 
