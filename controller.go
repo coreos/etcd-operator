@@ -52,6 +52,8 @@ func (c *etcdClusterController) Run() {
 				nc := newCluster(c.kclient, clusterName, &event.Object.Spec)
 				nc.init(&event.Object.Spec)
 				c.clusters[clusterName] = nc
+			case "MODIFIED":
+				c.clusters[clusterName].update(&event.Object.Spec)
 			case "DELETED":
 				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)

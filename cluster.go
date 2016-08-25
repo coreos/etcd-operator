@@ -21,6 +21,7 @@ const (
 	eventNewCluster    clusterEventType = "Add"
 	eventDeleteCluster clusterEventType = "Delete"
 	eventReconcile     clusterEventType = "Reconcile"
+	eventModifyCluster clusterEventType = "Modify"
 )
 
 type clusterEvent struct {
@@ -65,7 +66,7 @@ func newCluster(kclient *unversioned.Client, name string, spec *Spec) *Cluster {
 func (c *Cluster) init(spec *Spec) {
 	c.send(&clusterEvent{
 		typ:  eventNewCluster,
-		spec: spec,
+		spec: *spec,
 	})
 }
 
@@ -89,11 +90,14 @@ func (c *Cluster) run() {
 		case event := <-c.eventCh:
 			switch event.typ {
 			case eventNewCluster:
-				c.create(event.spec)
+				c.create(&event.spec)
 			case eventReconcile:
 				if err := c.reconcile(event.running); err != nil {
 					panic(err)
 				}
+			case eventModifyCluster:
+				log.Println("update: from: %#v, to: %#v", c.spec, event.spec)
+				c.spec.Size = event.spec.Size
 			case eventDeleteCluster:
 				c.delete()
 				close(c.stopCh)
@@ -122,6 +126,17 @@ func (c *Cluster) create(spec *Spec) {
 	}
 
 	fmt.Println("created cluster:", members)
+}
+
+func (c *Cluster) update(spec *Spec) {
+	// Only handles size change now. TODO: handle other updates.
+	if spec.Size == c.spec.Size {
+		return
+	}
+	c.send(&clusterEvent{
+		typ:  eventModifyCluster,
+		spec: *spec,
+	})
 }
 
 func (c *Cluster) updateMembers(etcdcli *clientv3.Client) {
