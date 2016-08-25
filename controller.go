@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -118,25 +119,30 @@ func monitorEtcdCluster(httpClient *http.Client, watchVersion string) (<-chan *E
 	events := make(chan *Event)
 	errc := make(chan error, 1)
 	go func() {
-		resp, err := watchETCDCluster(httpClient, watchVersion)
-		if err != nil {
-			errc <- err
-			return
-		}
-		if resp.StatusCode != 200 {
-			errc <- errors.New("Invalid status code: " + resp.Status)
-			return
-		}
-		log.Println("start watching...")
 		for {
-			decoder := json.NewDecoder(resp.Body)
-			ev := new(Event)
-			err = decoder.Decode(ev)
+			resp, err := watchETCDCluster(httpClient, watchVersion)
 			if err != nil {
 				errc <- err
+				return
 			}
-			log.Printf("etcd cluster event: %v %#v\n", ev.Type, ev.Object)
-			events <- ev
+			if resp.StatusCode != 200 {
+				errc <- errors.New("Invalid status code: " + resp.Status)
+				return
+			}
+			log.Println("start watching...")
+			for {
+				decoder := json.NewDecoder(resp.Body)
+				ev := new(Event)
+				err = decoder.Decode(ev)
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					errc <- err
+				}
+				log.Printf("etcd cluster event: %v %#v\n", ev.Type, ev.Object)
+				events <- ev
+			}
 		}
 	}()
 
