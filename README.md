@@ -75,7 +75,7 @@ $ kubectl log etcd-cluster-0000
 2016-08-05 00:33:32.454178 N | etcdmain: serving insecure client requests on 0.0.0.0:2379, this is strongly discouraged!
 ```
 
-## Resize etcd cluster
+## Resize an etcd cluster
 
 `kubectl apply` doesn't work for TPR at the moment. See [kubernetes/#29542](https://github.com/kubernetes/kubernetes/issues/29542).
 
