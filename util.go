@@ -10,6 +10,7 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
@@ -104,6 +105,8 @@ func makeEtcdPod(m *Member, initialCluster []string, clusterName, state string, 
 						strings.Join(initialCluster, ","),
 						"--initial-cluster-state",
 						state,
+						"--initial-cluster-token",
+						uuid.New(),
 					},
 					Name:  m.Name,
 					Image: "gcr.io/coreos-k8s-scale-testing/etcd-amd64:3.0.6",
