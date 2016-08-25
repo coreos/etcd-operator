@@ -1,5 +1,7 @@
 # kube-etcd-controller
 
+Project status: pre-alpha
+
 Managed etcd clusters on Kubernetes:
 
 - creation
