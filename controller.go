@@ -141,6 +141,7 @@ func monitorEtcdCluster(httpClient *http.Client, watchVersion string) (<-chan *E
 					errc <- err
 				}
 				log.Printf("etcd cluster event: %v %#v\n", ev.Type, ev.Object)
+				watchVersion = ev.Object.ObjectMeta.ResourceVersion
 				events <- ev
 			}
 		}
