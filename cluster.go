@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
@@ -96,7 +98,7 @@ func (c *Cluster) run() {
 					panic(err)
 				}
 			case eventModifyCluster:
-				log.Println("update: from: %#v, to: %#v", c.spec, event.spec)
+				log.Printf("update: from: %#v, to: %#v\n", c.spec, event.spec)
 				c.spec.Size = event.spec.Size
 			case eventDeleteCluster:
 				c.delete()
@@ -157,11 +159,16 @@ func (c *Cluster) updateMembers(etcdcli *clientv3.Client) {
 		}
 	}
 }
+
 func findID(name string) int {
-	var id int
-	fmt.Sscanf(name, "etcd-cluster-%d", &id)
+	i := strings.LastIndex(name, "-")
+	id, err := strconv.Atoi(name[i+1:])
+	if err != nil {
+		panic(err)
+	}
 	return id
 }
+
 func (c *Cluster) delete() {
 	option := api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
