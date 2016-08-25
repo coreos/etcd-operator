@@ -49,8 +49,8 @@ func (c *etcdClusterController) Run() {
 			clusterName := event.Object.ObjectMeta.Name
 			switch event.Type {
 			case "ADDED":
-				nc := newCluster(c.kclient, clusterName)
-				nc.init(event.Object.Spec)
+				nc := newCluster(c.kclient, clusterName, &event.Object.Spec)
+				nc.init(&event.Object.Spec)
 				c.clusters[clusterName] = nc
 			case "DELETED":
 				c.clusters[clusterName].Delete()
@@ -74,7 +74,7 @@ func (c *etcdClusterController) findAllClusters() (string, error) {
 		return "", err
 	}
 	for _, item := range list.Items {
-		nc := newCluster(c.kclient, item.Name)
+		nc := newCluster(c.kclient, item.Name, &item.Spec)
 		c.clusters[item.Name] = nc
 	}
 	return list.ListMeta.ResourceVersion, nil
