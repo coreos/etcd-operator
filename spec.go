@@ -29,4 +29,8 @@ type Spec struct {
 	// AntiAffinity determines if the controller tries to avoid putting
 	// the etcd members in the same cluster onto the same node.
 	AntiAffinity bool `json:"antiAffinity"`
+	// Version is the expected version of the etcd cluster.
+	// The controller will eventually make the etcd cluster version
+	// equal to the expected version.
+	Version string `json:"version"`
 }
