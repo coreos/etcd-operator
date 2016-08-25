@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net/http"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/unversioned"
@@ -129,7 +129,7 @@ func monitorEtcdCluster(httpClient *http.Client, watchVersion string) (<-chan *E
 				errc <- errors.New("Invalid status code: " + resp.Status)
 				return
 			}
-			log.Printf("watching at %v\n", watchVersion)
+			log.Printf("watching at %v", watchVersion)
 			for {
 				decoder := json.NewDecoder(resp.Body)
 				ev := new(Event)
@@ -140,7 +140,7 @@ func monitorEtcdCluster(httpClient *http.Client, watchVersion string) (<-chan *E
 					}
 					errc <- err
 				}
-				log.Printf("etcd cluster event: %v %#v\n", ev.Type, ev.Object)
+				log.Printf("etcd cluster event: %v %#v", ev.Type, ev.Object)
 				// There might be cases of transient errors, e.g. network disconnection.
 				// We can backoff and rewatch in such cases.
 				if ev.Type == "ERROR" {

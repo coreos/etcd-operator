@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
 )
@@ -25,7 +25,7 @@ import (
 func (c *Cluster) reconcile(running MemberSet) error {
 	log.Println("Reconciling:")
 	defer func() {
-		log.Println("Finish Reconciling\n")
+		log.Println("Finish Reconciling")
 	}()
 
 	if len(c.members) == 0 {
@@ -135,7 +135,7 @@ func (c *Cluster) removeMember(toRemove *Member) error {
 	if err := c.removePodAndService(toRemove.Name); err != nil {
 		return err
 	}
-	log.Printf("removed member (%v) with ID (%d)\n", toRemove.Name, toRemove.ID)
+	log.Printf("removed member (%v) with ID (%d)", toRemove.Name, toRemove.ID)
 	return nil
 }
 
