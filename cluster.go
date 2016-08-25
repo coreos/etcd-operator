@@ -24,9 +24,8 @@ const (
 )
 
 type clusterEvent struct {
-	typ          clusterEventType
-	size         int
-	antiAffinity bool
+	typ  clusterEventType
+	spec Spec
 	// currently running pods in kubernetes
 	running MemberSet
 }
@@ -34,7 +33,7 @@ type clusterEvent struct {
 type Cluster struct {
 	kclient *unversioned.Client
 
-	antiAffinity bool
+	spec *Spec
 
 	name string
 
@@ -50,23 +49,23 @@ type Cluster struct {
 	backupDir string
 }
 
-func newCluster(kclient *unversioned.Client, name string) *Cluster {
+func newCluster(kclient *unversioned.Client, name string, spec *Spec) *Cluster {
 	c := &Cluster{
 		kclient: kclient,
 		name:    name,
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
+		spec:    spec,
 	}
 	go c.run()
 
 	return c
 }
 
-func (c *Cluster) init(spec Spec) {
+func (c *Cluster) init(spec *Spec) {
 	c.send(&clusterEvent{
-		typ:          eventNewCluster,
-		size:         spec.Size,
-		antiAffinity: spec.AntiAffinity,
+		typ:  eventNewCluster,
+		spec: spec,
 	})
 }
 
@@ -90,7 +89,7 @@ func (c *Cluster) run() {
 		case event := <-c.eventCh:
 			switch event.typ {
 			case eventNewCluster:
-				c.create(event.size, event.antiAffinity)
+				c.create(event.spec)
 			case eventReconcile:
 				if err := c.reconcile(event.running); err != nil {
 					panic(err)
@@ -104,18 +103,17 @@ func (c *Cluster) run() {
 	}
 }
 
-func (c *Cluster) create(size int, antiAffinity bool) {
-	c.antiAffinity = antiAffinity
-
+func (c *Cluster) create(spec *Spec) {
 	members := MemberSet{}
+	c.spec = spec
 	// we want to make use of member's utility methods.
-	for i := 0; i < size; i++ {
+	for i := 0; i < c.spec.Size; i++ {
 		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
 		members.Add(&Member{Name: etcdName})
 	}
 
 	// TODO: parallelize it
-	for i := 0; i < size; i++ {
+	for i := 0; i < c.spec.Size; i++ {
 		etcdName := fmt.Sprintf("%s-%04d", c.name, i)
 		if err := c.createPodAndService(members, members[etcdName], "new"); err != nil {
 			panic(fmt.Sprintf("(TODO: we need to clean up already created ones.)\nError: %v", err))
@@ -172,7 +170,7 @@ func (c *Cluster) createPodAndService(members MemberSet, m *Member, state string
 	if err := createEtcdService(c.kclient, m.Name, c.name); err != nil {
 		return err
 	}
-	return createEtcdPod(c.kclient, members.PeerURLPairs(), m, c.name, state, c.antiAffinity)
+	return createEtcdPod(c.kclient, members.PeerURLPairs(), m, c.name, state, c.spec.AntiAffinity)
 }
 
 func (c *Cluster) removePodAndService(name string) error {
