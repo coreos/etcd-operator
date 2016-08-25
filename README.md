@@ -79,13 +79,17 @@ $ kubectl log etcd-cluster-0000
 
 `kubectl apply` doesn't work for TPR at the moment. See [kubernetes/#29542](https://github.com/kubernetes/kubernetes/issues/29542).
 
-Instead of kubectl, we use curl to update the entire object:
+In this example, we use cURL to update the cluster as a workaround.
+
+The following command changed the cluster size from 3 to 5. 
+
 ```
-$ curl -H 'Content-Type: application/json' -H 'Accept: application/json' -X PUT http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster -d '{"apiVersion":"coreos.com/v1", "kind": "EtcdCluster", "metadata": {"name": "etcd-cluster", "namespace": "default"}, "spec": {"size": 5}}'
+$ curl -H 'Content-Type: application/json'-X PUT http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster -d '{"apiVersion":"coreos.com/v1", "kind": "EtcdCluster", "metadata": {"name": "etcd-cluster", "namespace": "default"}, "spec": {"size": 5}}'
 {"apiVersion":"coreos.com/v1","kind":"EtcdCluster","metadata":{"name":"etcd-cluster","namespace":"default","selfLink":"/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster","uid":"e5828789-6b01-11e6-a730-42010af00002","resourceVersion":"32179","creationTimestamp":"2016-08-25T20:24:17Z"},"spec":{"size":5}}
 ```
 
-The above command changed the size in "spec" from 3 to 5. We should see
+We should see
+
 ```
 $ kubectl get pods
 NAME                READY     STATUS    RESTARTS   AGE
@@ -93,6 +97,23 @@ etcd-cluster-0000   1/1       Running   0          43m
 etcd-cluster-0001   1/1       Running   0          43m
 etcd-cluster-0002   1/1       Running   0          43m
 etcd-cluster-0003   1/1       Running   0          17s
+etcd-cluster-0004   1/1       Running   0          12s
+```
+
+Now we can decrease the size of cluster from 5 back to 3.
+
+```
+$ curl -H 'Content-Type: application/json'-X PUT http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster -d '{"apiVersion":"coreos.com/v1", "kind": "EtcdCluster", "metadata": {"name": "etcd-cluster", "namespace": "default"}, "spec": {"size": 3}}'
+{"apiVersion":"coreos.com/v1","kind":"EtcdCluster","metadata":{"name":"etcd-cluster","namespace":"default","selfLink":"/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster","uid":"e5828789-6b01-11e6-a730-42010af00002","resourceVersion":"32179","creationTimestamp":"2016-08-25T20:24:17Z"},"spec":{"size":3}}
+```
+
+We should see
+
+```
+$ kubectl get pods
+NAME                READY     STATUS    RESTARTS   AGE
+etcd-cluster-0000   1/1       Running   0          43m
+etcd-cluster-0002   1/1       Running   0          43m
 etcd-cluster-0004   1/1       Running   0          12s
 ```
 
