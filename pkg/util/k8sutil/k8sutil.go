@@ -1,4 +1,4 @@
-package main
+package k8sutil
 
 import (
 	"encoding/json"
@@ -8,10 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/pborman/uuid"
-	"golang.org/x/net/context"
+
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
@@ -21,7 +20,7 @@ import (
 	"k8s.io/kubernetes/pkg/watch"
 )
 
-func createEtcdService(kclient *unversioned.Client, etcdName, clusterName string) error {
+func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName string) error {
 	svc := makeEtcdService(etcdName, clusterName)
 	if _, err := kclient.Services("default").Create(svc); err != nil {
 		return err
@@ -29,8 +28,8 @@ func createEtcdService(kclient *unversioned.Client, etcdName, clusterName string
 	return nil
 }
 
-// todo: use a struct to replace the huge arg list.
-func createEtcdPod(kclient *unversioned.Client, initialCluster []string, m *Member, clusterName, state string, antiAffinity bool) error {
+// TODO: use a struct to replace the huge arg list.
+func CreateEtcdPod(kclient *unversioned.Client, initialCluster []string, m *etcdutil.Member, clusterName, state string, antiAffinity bool) error {
 	pod := makeEtcdPod(m, initialCluster, clusterName, state, antiAffinity)
 	if _, err := kclient.Pods("default").Create(pod); err != nil {
 		return err
@@ -76,7 +75,7 @@ func makeEtcdService(etcdName, clusterName string) *api.Service {
 }
 
 // todo: use a struct to replace the huge arg list.
-func makeEtcdPod(m *Member, initialCluster []string, clusterName, state string, antiAffinity bool) *api.Pod {
+func makeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state string, antiAffinity bool) *api.Pod {
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
 			Name: m.Name,
@@ -152,28 +151,15 @@ func makeEtcdPod(m *Member, initialCluster []string, clusterName, state string, 
 	return pod
 }
 
-func mustCreateClient(host string) *unversioned.Client {
-	if len(host) == 0 {
-		cfg, err := restclient.InClusterConfig()
-		if err != nil {
-			panic(err)
-		}
-		c, err := unversioned.NewInCluster()
-		if err != nil {
-			panic(err)
-		}
-		masterHost = cfg.Host
-		return c
-	}
-
-	hostUrl, err := url.Parse(host)
-	if err != nil {
-		panic(fmt.Sprintf("error parsing host url %s : %v", host, err))
-	}
+func MustCreateClient(host string, tlsInsecure bool, tlsConfig restclient.TLSClientConfig) *unversioned.Client {
 	cfg := &restclient.Config{
 		Host:  host,
 		QPS:   100,
 		Burst: 100,
+	}
+	hostUrl, err := url.Parse(host)
+	if err != nil {
+		panic(fmt.Sprintf("error parsing host url %s : %v", host, err))
 	}
 	if hostUrl.Scheme == "https" {
 		cfg.TLSClientConfig = tlsConfig
@@ -186,7 +172,7 @@ func mustCreateClient(host string) *unversioned.Client {
 	return c
 }
 
-func isKubernetesResourceAlreadyExistError(err error) bool {
+func IsKubernetesResourceAlreadyExistError(err error) bool {
 	se, ok := err.(*apierrors.StatusError)
 	if !ok {
 		return false
@@ -197,7 +183,7 @@ func isKubernetesResourceAlreadyExistError(err error) bool {
 	return false
 }
 
-func isKubernetesResourceNotFoundError(err error) bool {
+func IsKubernetesResourceNotFoundError(err error) bool {
 	se, ok := err.(*apierrors.StatusError)
 	if !ok {
 		return false
@@ -208,20 +194,10 @@ func isKubernetesResourceNotFoundError(err error) bool {
 	return false
 }
 
-func waitMemberReady(cli *clientv3.Client) error {
-	for {
-		_, err := cli.Get(context.TODO(), "/")
-		if err == rpctypes.ErrNotCapable {
-			continue
-		}
-		return err
-	}
+func ListETCDCluster(host string, httpClient *http.Client) (*http.Response, error) {
+	return httpClient.Get(host + "/apis/coreos.com/v1/namespaces/default/etcdclusters")
 }
 
-func listETCDCluster(httpClient *http.Client) (*http.Response, error) {
-	return httpClient.Get(masterHost + "/apis/coreos.com/v1/namespaces/default/etcdclusters")
-}
-
-func watchETCDCluster(httpClient *http.Client, resourceVersion string) (*http.Response, error) {
-	return httpClient.Get(masterHost + "/apis/coreos.com/v1/namespaces/default/etcdclusters?watch=true&resourceVersion=" + resourceVersion)
+func WatchETCDCluster(host string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
+	return httpClient.Get(host + "/apis/coreos.com/v1/namespaces/default/etcdclusters?watch=true&resourceVersion=" + resourceVersion)
 }

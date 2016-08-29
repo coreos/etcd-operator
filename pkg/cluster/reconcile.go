@@ -1,4 +1,4 @@
-package main
+package cluster
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"golang.org/x/net/context"
 )
 
@@ -22,7 +23,7 @@ import (
 // 3. If L = members, the current state matches the membership state. END.
 // 4. If len(L) < len(members)/2 + 1, quorum lost. Go to recovery process (TODO).
 // 5. Add one missing member. END.
-func (c *Cluster) reconcile(running MemberSet) error {
+func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 	log.Println("Reconciling:")
 	defer func() {
 		log.Println("Finish Reconciling")
@@ -37,7 +38,7 @@ func (c *Cluster) reconcile(running MemberSet) error {
 		if err != nil {
 			return err
 		}
-		if err := waitMemberReady(etcdcli); err != nil {
+		if err := etcdutil.WaitMemberReady(etcdcli); err != nil {
 			return err
 		}
 		c.updateMembers(etcdcli)
@@ -97,7 +98,7 @@ func (c *Cluster) addOneMember() error {
 		return err
 	}
 	newMemberName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
-	newMember := &Member{Name: newMemberName}
+	newMember := &etcdutil.Member{Name: newMemberName}
 	resp, err := etcdcli.MemberAdd(context.TODO(), []string{newMember.PeerAddr()})
 	if err != nil {
 		panic(err)
@@ -117,7 +118,7 @@ func (c *Cluster) removeOneMember() error {
 	return c.removeMember(c.members.PickOne())
 }
 
-func (c *Cluster) removeMember(toRemove *Member) error {
+func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	cfg := clientv3.Config{
 		Endpoints:   c.members.ClientURLs(),
 		DialTimeout: 5 * time.Second,

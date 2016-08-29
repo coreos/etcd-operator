@@ -1,4 +1,4 @@
-package main
+package controller
 
 import (
 	"encoding/json"
@@ -8,8 +8,11 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"k8s.io/kubernetes/pkg/api"
+	"github.com/coreos/kube-etcd-controller/pkg/cluster"
+	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
+	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/wait"
 )
@@ -20,19 +23,50 @@ const (
 
 type Event struct {
 	Type   string
-	Object EtcdCluster
+	Object cluster.EtcdCluster
 }
 
-type etcdClusterController struct {
-	kclient  *unversioned.Client
-	clusters map[string]*Cluster
+type Controller struct {
+	masterHost string
+	kclient    *unversioned.Client
+	clusters   map[string]*cluster.Cluster
 }
 
-func (c *etcdClusterController) Run() {
+type Config struct {
+	MasterHost  string
+	TLSInsecure bool
+	TLSConfig   restclient.TLSClientConfig
+}
+
+func New(cfg Config) *Controller {
+	host, c := getClient(cfg)
+	return &Controller{
+		masterHost: host,
+		kclient:    c,
+		clusters:   make(map[string]*cluster.Cluster),
+	}
+}
+
+func getClient(cfg Config) (string, *unversioned.Client) {
+	if len(cfg.MasterHost) == 0 {
+		inCfg, err := restclient.InClusterConfig()
+		if err != nil {
+			panic(err)
+		}
+		client, err := unversioned.NewInCluster()
+		if err != nil {
+			panic(err)
+		}
+		return inCfg.Host, client
+	}
+	return cfg.MasterHost, k8sutil.MustCreateClient(cfg.MasterHost, cfg.TLSInsecure, cfg.TLSConfig)
+}
+
+func (c *Controller) Run() {
 	watchVersion := "0"
 	if err := c.createTPR(); err != nil {
 		switch {
-		case isKubernetesResourceAlreadyExistError(err):
+		case k8sutil.IsKubernetesResourceAlreadyExistError(err):
 			watchVersion, err = c.findAllClusters()
 			if err != nil {
 				panic(err)
@@ -43,18 +77,19 @@ func (c *etcdClusterController) Run() {
 	}
 	log.Println("etcd cluster controller starts running...")
 
-	eventCh, errCh := monitorEtcdCluster(c.kclient.RESTClient.Client, watchVersion)
+	eventCh, errCh := monitorEtcdCluster(c.masterHost, c.kclient.RESTClient.Client, watchVersion)
 	for {
 		select {
 		case event := <-eventCh:
 			clusterName := event.Object.ObjectMeta.Name
 			switch event.Type {
 			case "ADDED":
-				nc := newCluster(c.kclient, clusterName, &event.Object.Spec)
-				nc.init(&event.Object.Spec)
+				nc := cluster.New(c.kclient, clusterName, &event.Object.Spec)
+				// TODO: combine init into New. Different fresh new and recovered new.
+				nc.Init(&event.Object.Spec)
 				c.clusters[clusterName] = nc
 			case "MODIFIED":
-				c.clusters[clusterName].update(&event.Object.Spec)
+				c.clusters[clusterName].Update(&event.Object.Spec)
 			case "DELETED":
 				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)
@@ -65,9 +100,9 @@ func (c *etcdClusterController) Run() {
 	}
 }
 
-func (c *etcdClusterController) findAllClusters() (string, error) {
+func (c *Controller) findAllClusters() (string, error) {
 	log.Println("finding existing clusters...")
-	resp, err := listETCDCluster(c.kclient.RESTClient.Client)
+	resp, err := k8sutil.ListETCDCluster(c.masterHost, c.kclient.RESTClient.Client)
 	if err != nil {
 		return "", err
 	}
@@ -77,15 +112,15 @@ func (c *etcdClusterController) findAllClusters() (string, error) {
 		return "", err
 	}
 	for _, item := range list.Items {
-		nc := newCluster(c.kclient, item.Name, &item.Spec)
+		nc := cluster.New(c.kclient, item.Name, &item.Spec)
 		c.clusters[item.Name] = nc
 	}
 	return list.ListMeta.ResourceVersion, nil
 }
 
-func (c *etcdClusterController) createTPR() error {
+func (c *Controller) createTPR() error {
 	tpr := &extensions.ThirdPartyResource{
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: k8sapi.ObjectMeta{
 			Name: tprName,
 		},
 		Versions: []extensions.APIVersion{
@@ -98,9 +133,9 @@ func (c *etcdClusterController) createTPR() error {
 		return err
 	}
 
-	err = wait.Poll(5*time.Second, 100*time.Second,
+	err = wait.Poll(3*time.Second, 100*time.Second,
 		func() (done bool, err error) {
-			resp, err := watchETCDCluster(c.kclient.RESTClient.Client, "0")
+			resp, err := k8sutil.WatchETCDCluster(c.masterHost, c.kclient.RESTClient.Client, "0")
 			if err != nil {
 				return false, err
 			}
@@ -115,12 +150,12 @@ func (c *etcdClusterController) createTPR() error {
 	return err
 }
 
-func monitorEtcdCluster(httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
+func monitorEtcdCluster(host string, httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
 	events := make(chan *Event)
 	errc := make(chan error, 1)
 	go func() {
 		for {
-			resp, err := watchETCDCluster(httpClient, watchVersion)
+			resp, err := k8sutil.WatchETCDCluster(host, httpClient, watchVersion)
 			if err != nil {
 				errc <- err
 				return
