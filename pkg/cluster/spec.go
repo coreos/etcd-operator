@@ -1,18 +1,9 @@
-package main
+package cluster
 
 import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 )
-
-type EtcdClusterList struct {
-	unversioned.TypeMeta `json:",inline"`
-	// Standard list metadata
-	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
-	unversioned.ListMeta `json:"metadata,omitempty"`
-	// Items is a list of third party objects
-	Items []EtcdCluster `json:"items"`
-}
 
 type EtcdCluster struct {
 	unversioned.TypeMeta `json:",inline"`

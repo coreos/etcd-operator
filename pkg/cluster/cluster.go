@@ -1,4 +1,4 @@
-package main
+package cluster
 
 import (
 	"fmt"
@@ -11,8 +11,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
+	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"golang.org/x/net/context"
-	"k8s.io/kubernetes/pkg/api"
+	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
 )
@@ -30,7 +32,7 @@ type clusterEvent struct {
 	typ  clusterEventType
 	spec Spec
 	// currently running pods in kubernetes
-	running MemberSet
+	running etcdutil.MemberSet
 }
 
 type Cluster struct {
@@ -47,12 +49,12 @@ type Cluster struct {
 	// members repsersents the members in the etcd cluster.
 	// the name of the member is the the name of the pod the member
 	// process runs in.
-	members MemberSet
+	members etcdutil.MemberSet
 
 	backupDir string
 }
 
-func newCluster(kclient *unversioned.Client, name string, spec *Spec) *Cluster {
+func New(kclient *unversioned.Client, name string, spec *Spec) *Cluster {
 	c := &Cluster{
 		kclient: kclient,
 		name:    name,
@@ -65,7 +67,7 @@ func newCluster(kclient *unversioned.Client, name string, spec *Spec) *Cluster {
 	return c
 }
 
-func (c *Cluster) init(spec *Spec) {
+func (c *Cluster) Init(spec *Spec) {
 	c.send(&clusterEvent{
 		typ:  eventNewCluster,
 		spec: *spec,
@@ -110,11 +112,11 @@ func (c *Cluster) run() {
 }
 
 func (c *Cluster) create(spec *Spec) {
-	members := MemberSet{}
+	members := etcdutil.MemberSet{}
 	c.spec = spec
 	// we want to make use of member's utility methods.
 	etcdName := fmt.Sprintf("%s-%04d", c.name, 0)
-	members.Add(&Member{Name: etcdName})
+	members.Add(&etcdutil.Member{Name: etcdName})
 	if err := c.createPodAndService(members, members[etcdName], "new"); err != nil {
 		panic(fmt.Sprintf("(TODO: we need to clean up already created ones.)\nError: %v", err))
 	}
@@ -122,7 +124,7 @@ func (c *Cluster) create(spec *Spec) {
 	fmt.Println("created cluster:", members)
 }
 
-func (c *Cluster) update(spec *Spec) {
+func (c *Cluster) Update(spec *Spec) {
 	// Only handles size change now. TODO: handle other updates.
 	if spec.Size == c.spec.Size {
 		return
@@ -138,14 +140,14 @@ func (c *Cluster) updateMembers(etcdcli *clientv3.Client) {
 	if err != nil {
 		panic(err)
 	}
-	c.members = MemberSet{}
+	c.members = etcdutil.MemberSet{}
 	for _, m := range resp.Members {
 		id := findID(m.Name)
 		if id+1 > c.idCounter {
 			c.idCounter = id + 1
 		}
 
-		c.members[m.Name] = &Member{
+		c.members[m.Name] = &etcdutil.Member{
 			Name: m.Name,
 			ID:   m.ID,
 		}
@@ -162,7 +164,7 @@ func findID(name string) int {
 }
 
 func (c *Cluster) delete() {
-	option := api.ListOptions{
+	option := k8sapi.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"etcd_cluster": c.name,
 		}),
@@ -180,23 +182,23 @@ func (c *Cluster) delete() {
 }
 
 // todo: use a struct to replace the huge arg list.
-func (c *Cluster) createPodAndService(members MemberSet, m *Member, state string) error {
-	if err := createEtcdService(c.kclient, m.Name, c.name); err != nil {
+func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string) error {
+	if err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name); err != nil {
 		return err
 	}
-	return createEtcdPod(c.kclient, members.PeerURLPairs(), m, c.name, state, c.spec.AntiAffinity)
+	return k8sutil.CreateEtcdPod(c.kclient, members.PeerURLPairs(), m, c.name, state, c.spec.AntiAffinity)
 }
 
 func (c *Cluster) removePodAndService(name string) error {
 	err := c.kclient.Pods("default").Delete(name, nil)
 	if err != nil {
-		if !isKubernetesResourceNotFoundError(err) {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
 	}
 	err = c.kclient.Services("default").Delete(name)
 	if err != nil {
-		if !isKubernetesResourceNotFoundError(err) {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
 	}
@@ -247,7 +249,7 @@ func (c *Cluster) backup() error {
 }
 
 func (c *Cluster) monitorPods() {
-	opts := api.ListOptions{
+	opts := k8sapi.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"etcd_cluster": c.name,
 		}),
@@ -264,9 +266,9 @@ func (c *Cluster) monitorPods() {
 		if err != nil {
 			panic(err)
 		}
-		running := MemberSet{}
+		running := etcdutil.MemberSet{}
 		for i := range podList.Items {
-			running.Add(&Member{Name: podList.Items[i].Name})
+			running.Add(&etcdutil.Member{Name: podList.Items[i].Name})
 		}
 
 		c.send(&clusterEvent{
