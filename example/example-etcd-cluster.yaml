@@ -4,3 +4,6 @@ metadata:
   name: "etcd-cluster"
 spec:
   size: 3
+  backup:
+    maxSnapshot: 5
+    volumeSizeInMB: 512

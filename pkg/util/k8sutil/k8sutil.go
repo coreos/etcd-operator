@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/kube-etcd-controller/pkg/backup"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/pborman/uuid"
 	"k8s.io/kubernetes/pkg/api"
@@ -20,7 +21,7 @@ import (
 	"k8s.io/kubernetes/pkg/watch"
 )
 
-func CreateBackupReplicaSet(kclient *unversioned.Client, clusterName string) {
+func CreateBackupReplicaSet(kclient *unversioned.Client, clusterName string, policy backup.Policy) {
 	_, err := kclient.ReplicaSets("default").Create(&extensions.ReplicaSet{
 		ObjectMeta: api.ObjectMeta{
 			Name: fmt.Sprintf("%s-backup-tool", clusterName),
@@ -43,7 +44,12 @@ func CreateBackupReplicaSet(kclient *unversioned.Client, clusterName string) {
 					Containers: []api.Container{
 						{
 							Name:  "backup",
-							Image: "gcr.io/coreos-k8s-scale-testing/test:latest",
+							Image: "gcr.io/coreos-k8s-scale-testing/kubeetcdbackup:latest",
+							Command: []string{
+								"backup",
+								"--etcd-cluster",
+								clusterName,
+							},
 						},
 					},
 				},
@@ -186,7 +192,22 @@ func makeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 	return pod
 }
 
-func MustCreateClient(host string, tlsInsecure bool, tlsConfig restclient.TLSClientConfig) *unversioned.Client {
+func MustGetInClusterMasterHost() string {
+	cfg, err := restclient.InClusterConfig()
+	if err != nil {
+		panic(err)
+	}
+	return cfg.Host
+}
+
+func MustCreateClient(host string, tlsInsecure bool, tlsConfig *restclient.TLSClientConfig) *unversioned.Client {
+	if len(host) == 0 {
+		c, err := unversioned.NewInCluster()
+		if err != nil {
+			panic(err)
+		}
+		return c
+	}
 	cfg := &restclient.Config{
 		Host:  host,
 		QPS:   100,
@@ -197,7 +218,7 @@ func MustCreateClient(host string, tlsInsecure bool, tlsConfig restclient.TLSCli
 		panic(fmt.Sprintf("error parsing host url %s : %v", host, err))
 	}
 	if hostUrl.Scheme == "https" {
-		cfg.TLSClientConfig = tlsConfig
+		cfg.TLSClientConfig = *tlsConfig
 		cfg.Insecure = tlsInsecure
 	}
 	c, err := unversioned.New(cfg)

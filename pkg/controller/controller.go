@@ -39,27 +39,16 @@ type Config struct {
 }
 
 func New(cfg Config) *Controller {
-	host, c := getClient(cfg)
+	kclient := k8sutil.MustCreateClient(cfg.MasterHost, cfg.TLSInsecure, &cfg.TLSConfig)
+	host := cfg.MasterHost
+	if len(host) == 0 {
+		host = k8sutil.MustGetInClusterMasterHost()
+	}
 	return &Controller{
 		masterHost: host,
-		kclient:    c,
+		kclient:    kclient,
 		clusters:   make(map[string]*cluster.Cluster),
 	}
-}
-
-func getClient(cfg Config) (string, *unversioned.Client) {
-	if len(cfg.MasterHost) == 0 {
-		inCfg, err := restclient.InClusterConfig()
-		if err != nil {
-			panic(err)
-		}
-		client, err := unversioned.NewInCluster()
-		if err != nil {
-			panic(err)
-		}
-		return inCfg.Host, client
-	}
-	return cfg.MasterHost, k8sutil.MustCreateClient(cfg.MasterHost, cfg.TLSInsecure, cfg.TLSConfig)
 }
 
 func (c *Controller) Run() {
@@ -88,6 +77,11 @@ func (c *Controller) Run() {
 				// TODO: combine init into New. Different fresh new and recovered new.
 				nc.Init(&event.Object.Spec)
 				c.clusters[clusterName] = nc
+
+				backup := event.Object.Spec.Backup
+				if backup != nil && backup.MaxSnapshot != 0 {
+					k8sutil.CreateBackupReplicaSet(c.kclient, clusterName, *backup)
+				}
 			case "MODIFIED":
 				c.clusters[clusterName].Update(&event.Object.Spec)
 			case "DELETED":
@@ -114,6 +108,11 @@ func (c *Controller) findAllClusters() (string, error) {
 	for _, item := range list.Items {
 		nc := cluster.New(c.kclient, item.Name, &item.Spec)
 		c.clusters[item.Name] = nc
+
+		backup := item.Spec.Backup
+		if backup != nil && backup.MaxSnapshot != 0 {
+			k8sutil.CreateBackupReplicaSet(c.kclient, item.Name, *backup)
+		}
 	}
 	return list.ListMeta.ResourceVersion, nil
 }
