@@ -10,15 +10,50 @@ import (
 
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/pborman/uuid"
-
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/watch"
 )
+
+func CreateBackupReplicaSet(kclient *unversioned.Client, clusterName string) {
+	_, err := kclient.ReplicaSets("default").Create(&extensions.ReplicaSet{
+		ObjectMeta: api.ObjectMeta{
+			Name: fmt.Sprintf("%s-backup-tool", clusterName),
+		},
+		Spec: extensions.ReplicaSetSpec{
+			Replicas: 1,
+			Selector: &unversionedAPI.LabelSelector{MatchLabels: map[string]string{
+				"app":          "etcd_backup_tool",
+				"etcd_cluster": clusterName,
+			}},
+			// TODO: we give backup tool a selector to know what etcd cluster to back up.
+			Template: api.PodTemplateSpec{
+				ObjectMeta: api.ObjectMeta{
+					Labels: map[string]string{
+						"app":          "etcd_backup_tool",
+						"etcd_cluster": clusterName,
+					},
+				},
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{
+							Name:  "backup",
+							Image: "gcr.io/coreos-k8s-scale-testing/test:latest",
+						},
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+}
 
 func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName string) error {
 	svc := makeEtcdService(etcdName, clusterName)
