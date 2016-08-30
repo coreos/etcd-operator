@@ -251,6 +251,7 @@ func (c *Cluster) backup() error {
 func (c *Cluster) monitorPods() {
 	opts := k8sapi.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
+			"app":          "etcd",
 			"etcd_cluster": c.name,
 		}),
 	}
