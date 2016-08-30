@@ -44,15 +44,15 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 		c.updateMembers(etcdcli)
 	}
 
-	log.Println("Running pods:", running)
-	log.Println("Expected membership:", c.members)
+	log.Println("Running pods:\t", running)
+	log.Println("Expected membership:\t", c.members)
 
 	unknownMembers := running.Diff(c.members)
 	if unknownMembers.Size() > 0 {
 		log.Println("Removing unexpected pods:", unknownMembers)
 		for _, m := range unknownMembers {
 			if err := c.removePodAndService(m.Name); err != nil {
-				panic(err)
+				return err
 			}
 		}
 	}
@@ -63,11 +63,11 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 	}
 
 	if L.Size() < c.members.Size()/2+1 {
-		fmt.Println("Disaster recovery")
+		log.Println("Disaster recovery")
 		return c.disasterRecovery()
 	}
 
-	fmt.Println("Recovering one member")
+	log.Println("Recovering one member")
 	toRecover := c.members.Diff(L).PickOne()
 
 	if err := c.removeMember(toRecover); err != nil {
@@ -101,7 +101,7 @@ func (c *Cluster) addOneMember() error {
 	newMember := &etcdutil.Member{Name: newMemberName}
 	resp, err := etcdcli.MemberAdd(context.TODO(), []string{newMember.PeerAddr()})
 	if err != nil {
-		panic(err)
+		return err
 	}
 	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)

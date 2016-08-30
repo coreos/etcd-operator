@@ -121,7 +121,7 @@ func (c *Cluster) create(spec *Spec) {
 		panic(fmt.Sprintf("(TODO: we need to clean up already created ones.)\nError: %v", err))
 	}
 	c.idCounter++
-	fmt.Println("created cluster:", members)
+	log.Println("created cluster:", members)
 }
 
 func (c *Cluster) Update(spec *Spec) {
