@@ -2,9 +2,6 @@ package cluster
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -202,49 +199,6 @@ func (c *Cluster) removePodAndService(name string) error {
 			return err
 		}
 	}
-	return nil
-}
-
-func (c *Cluster) backup() error {
-	clientAddr := "todo"
-	nextSnapshotName := "todo"
-
-	cfg := clientv3.Config{
-		Endpoints: []string{clientAddr},
-	}
-	etcdcli, err := clientv3.New(cfg)
-	if err != nil {
-		panic(err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-
-	log.Println("saving snapshot from cluster", c.name)
-
-	rc, err := etcdcli.Maintenance.Snapshot(ctx)
-	cancel()
-	if err != nil {
-		return err
-	}
-
-	tmpfile, err := ioutil.TempFile(c.backupDir, "snapshot")
-	n, err := io.Copy(tmpfile, rc)
-	if err != nil {
-		tmpfile.Close()
-		os.Remove(tmpfile.Name())
-		log.Printf("saving snapshot from cluster %s error: %v", c.name, err)
-		return err
-	}
-
-	err = os.Rename(tmpfile.Name(), nextSnapshotName)
-	if err != nil {
-		os.Remove(tmpfile.Name())
-		log.Printf("renaming snapshot from cluster %s error: %v", c.name, err)
-		return err
-	}
-
-	log.Printf("saved snapshot %v (size: %d) from cluster %s", n, nextSnapshotName, c.name)
-
 	return nil
 }
 
