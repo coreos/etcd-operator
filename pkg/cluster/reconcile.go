@@ -44,8 +44,8 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 		c.updateMembers(etcdcli)
 	}
 
-	log.Println("Running pods:\t", running)
-	log.Println("Expected membership:\t", c.members)
+	log.Println("Running pods:", running)
+	log.Println("Expected membership:", c.members)
 
 	unknownMembers := running.Diff(c.members)
 	if unknownMembers.Size() > 0 {
