@@ -189,6 +189,7 @@ func monitorEtcdCluster(host string, httpClient *http.Client, watchVersion strin
 				watchVersion = ev.Object.ObjectMeta.ResourceVersion
 				events <- ev
 			}
+			resp.Body.Close()
 		}
 	}()
 
