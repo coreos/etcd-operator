@@ -14,7 +14,7 @@ import (
 )
 
 func (b *Backup) startHTTP() {
-	http.HandleFunc("/backup/", b.serveSnap)
+	http.HandleFunc("/backup", b.serveSnap)
 	http.HandleFunc("/backupnow", b.serveBackupNow)
 
 	panic(http.ListenAndServe(b.listenAddr, nil))
