@@ -20,11 +20,14 @@ import (
 )
 
 type Backup struct {
-	kclient     *unversioned.Client
+	kclient *unversioned.Client
+
 	clusterName string
 	policy      Policy
 	listenAddr  string
 	backupDir   string
+
+	backupNow chan chan struct{}
 }
 
 func New(kclient *unversioned.Client, clusterName string, policy Policy, listenAddr string) *Backup {
@@ -34,6 +37,8 @@ func New(kclient *unversioned.Client, clusterName string, policy Policy, listenA
 		policy:      policy,
 		listenAddr:  listenAddr,
 		backupDir:   "/home/backup/",
+
+		backupNow: make(chan chan struct{}),
 	}
 }
 
@@ -51,9 +56,13 @@ func (b *Backup) Run() {
 		interval = time.Duration(b.policy.SnapshotIntervalInSecond) * time.Second
 	}
 	for {
+		// todo: make ackchan a chan of error
+		// so we can propogate error to the http handler
+		var ackchan chan struct{}
 		select {
 		case <-time.After(interval):
-			// todo: wait on backupNow chan
+		case ackchan = <-b.backupNow:
+			logrus.Info("received a backup request")
 		}
 		pods, err := b.kclient.Pods("default").List(api.ListOptions{
 			LabelSelector: labels.SelectorFromSet(map[string]string{
@@ -88,6 +97,10 @@ func (b *Backup) Run() {
 			continue
 		}
 		lastSnapRev = rev
+
+		if ackchan != nil {
+			close(ackchan)
+		}
 	}
 }
 

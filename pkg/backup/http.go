@@ -8,13 +8,33 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 )
 
 func (b *Backup) startHTTP() {
 	http.HandleFunc("/backup/", b.serveSnap)
+	http.HandleFunc("/backupnow", b.serveBackupNow)
+
 	panic(http.ListenAndServe(b.listenAddr, nil))
+}
+
+func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
+	ackchan := make(chan struct{}, 1)
+	select {
+	case b.backupNow <- ackchan:
+	case <-time.After(time.Minute):
+		http.Error(w, "timeout", http.StatusRequestTimeout)
+		return
+	}
+
+	select {
+	case <-ackchan:
+	case <-time.After(10 * time.Minute):
+		http.Error(w, "timeout", http.StatusRequestTimeout)
+		return
+	}
 }
 
 func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
