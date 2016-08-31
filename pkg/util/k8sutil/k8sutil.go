@@ -21,7 +21,7 @@ import (
 	"k8s.io/kubernetes/pkg/watch"
 )
 
-func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName string, policy backup.Policy) {
+func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName string, policy backup.Policy) error {
 	labels := map[string]string{
 		"app":          "etcd_backup_tool",
 		"etcd_cluster": clusterName,
@@ -56,7 +56,7 @@ func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName s
 		},
 	})
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	svc := &api.Service{
@@ -77,8 +77,9 @@ func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName s
 		},
 	}
 	if _, err := kclient.Services("default").Create(svc); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName string) error {
