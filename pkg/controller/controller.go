@@ -80,7 +80,7 @@ func (c *Controller) Run() {
 
 				backup := event.Object.Spec.Backup
 				if backup != nil && backup.MaxSnapshot != 0 {
-					k8sutil.CreateBackupReplicaSet(c.kclient, clusterName, *backup)
+					k8sutil.CreateBackupReplicaSetAndService(c.kclient, clusterName, *backup)
 				}
 			case "MODIFIED":
 				c.clusters[clusterName].Update(&event.Object.Spec)
@@ -111,7 +111,7 @@ func (c *Controller) findAllClusters() (string, error) {
 
 		backup := item.Spec.Backup
 		if backup != nil && backup.MaxSnapshot != 0 {
-			k8sutil.CreateBackupReplicaSet(c.kclient, item.Name, *backup)
+			k8sutil.CreateBackupReplicaSetAndService(c.kclient, item.Name, *backup)
 		}
 	}
 	return list.ListMeta.ResourceVersion, nil
