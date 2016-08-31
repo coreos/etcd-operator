@@ -80,7 +80,10 @@ func (c *Controller) Run() {
 
 				backup := event.Object.Spec.Backup
 				if backup != nil && backup.MaxSnapshot != 0 {
-					k8sutil.CreateBackupReplicaSetAndService(c.kclient, clusterName, *backup)
+					err := k8sutil.CreateBackupReplicaSetAndService(c.kclient, clusterName, *backup)
+					if err != nil {
+						panic(err)
+					}
 				}
 			case "MODIFIED":
 				c.clusters[clusterName].Update(&event.Object.Spec)
@@ -111,7 +114,10 @@ func (c *Controller) findAllClusters() (string, error) {
 
 		backup := item.Spec.Backup
 		if backup != nil && backup.MaxSnapshot != 0 {
-			k8sutil.CreateBackupReplicaSetAndService(c.kclient, item.Name, *backup)
+			err := k8sutil.CreateBackupReplicaSetAndService(c.kclient, item.Name, *backup)
+			if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+				panic(err)
+			}
 		}
 	}
 	return list.ListMeta.ResourceVersion, nil
