@@ -5,5 +5,7 @@ metadata:
 spec:
   size: 3
   backup:
+    # short snapshot interval for testing, do not use this in production!
+    snapshotIntervalInSecond: 30
     maxSnapshot: 5
     volumeSizeInMB: 512

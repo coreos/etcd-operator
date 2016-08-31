@@ -34,10 +34,15 @@ func New(kclient *unversioned.Client, clusterName string, policy Policy) *Backup
 
 func (b *Backup) Run() {
 	lastSnapRev := int64(0)
+	interval := defaultSnapshotInterval
+	if b.policy.SnapshotIntervalInSecond != 0 {
+		interval = time.Duration(b.policy.SnapshotIntervalInSecond) * time.Second
+	}
 	for {
-		// TODO: add interval to backup policy
-		time.Sleep(20 * time.Second)
-
+		select {
+		case <-time.After(interval):
+			// todo: wait on backupNow chan
+		}
 		pods, err := b.kclient.Pods("default").List(api.ListOptions{
 			LabelSelector: labels.SelectorFromSet(map[string]string{
 				"app":          "etcd",
