@@ -21,24 +21,23 @@ import (
 	"k8s.io/kubernetes/pkg/watch"
 )
 
-func CreateBackupReplicaSet(kclient *unversioned.Client, clusterName string, policy backup.Policy) {
+func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName string, policy backup.Policy) {
+	labels := map[string]string{
+		"app":          "etcd_backup_tool",
+		"etcd_cluster": clusterName,
+	}
+	name := fmt.Sprintf("%s-backup-tool", clusterName)
 	_, err := kclient.ReplicaSets("default").Create(&extensions.ReplicaSet{
 		ObjectMeta: api.ObjectMeta{
-			Name: fmt.Sprintf("%s-backup-tool", clusterName),
+			Name: name,
 		},
 		Spec: extensions.ReplicaSetSpec{
 			Replicas: 1,
-			Selector: &unversionedAPI.LabelSelector{MatchLabels: map[string]string{
-				"app":          "etcd_backup_tool",
-				"etcd_cluster": clusterName,
-			}},
+			Selector: &unversionedAPI.LabelSelector{MatchLabels: labels},
 			// TODO: we give backup tool a selector to know what etcd cluster to back up.
 			Template: api.PodTemplateSpec{
 				ObjectMeta: api.ObjectMeta{
-					Labels: map[string]string{
-						"app":          "etcd_backup_tool",
-						"etcd_cluster": clusterName,
-					},
+					Labels: labels,
 				},
 				Spec: api.PodSpec{
 					Containers: []api.Container{
@@ -57,6 +56,27 @@ func CreateBackupReplicaSet(kclient *unversioned.Client, clusterName string, pol
 		},
 	})
 	if err != nil {
+		panic(err)
+	}
+
+	svc := &api.Service{
+		ObjectMeta: api.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+		Spec: api.ServiceSpec{
+			Ports: []api.ServicePort{
+				{
+					Name:       "backup-service",
+					Port:       19999, // default port
+					TargetPort: intstr.FromInt(19999),
+					Protocol:   api.ProtocolTCP,
+				},
+			},
+			Selector: labels,
+		},
+	}
+	if _, err := kclient.Services("default").Create(svc); err != nil {
 		panic(err)
 	}
 }

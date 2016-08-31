@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"time"
 
 	"golang.org/x/net/context"
@@ -22,17 +23,28 @@ type Backup struct {
 	kclient     *unversioned.Client
 	clusterName string
 	policy      Policy
+	listenAddr  string
+	backupDir   string
 }
 
-func New(kclient *unversioned.Client, clusterName string, policy Policy) *Backup {
+func New(kclient *unversioned.Client, clusterName string, policy Policy, listenAddr string) *Backup {
 	return &Backup{
 		kclient:     kclient,
 		clusterName: clusterName,
 		policy:      policy,
+		listenAddr:  listenAddr,
+		backupDir:   "/home/backup/",
 	}
 }
 
 func (b *Backup) Run() {
+	// It will be no-op if backup dir existed.
+	if err := os.MkdirAll(b.backupDir, 0700); err != nil {
+		panic(err)
+	}
+
+	go b.startHTTP()
+
 	lastSnapRev := int64(0)
 	interval := defaultSnapshotInterval
 	if b.policy.SnapshotIntervalInSecond != 0 {
@@ -59,6 +71,7 @@ func (b *Backup) Run() {
 		member, rev, err := getMemberWithMaxRev(pods)
 		if err != nil {
 			logrus.Error(err)
+			continue
 		}
 		if member == nil {
 			logrus.Warning("no reachable member")
@@ -70,7 +83,7 @@ func (b *Backup) Run() {
 		}
 
 		log.Printf("saving backup for cluster (%s)", b.clusterName)
-		if err := writeSnap(member, rev); err != nil {
+		if err := writeSnap(member, b.backupDir, rev); err != nil {
 			logrus.Errorf("write snapshot failed: %v", err)
 			continue
 		}
@@ -78,7 +91,7 @@ func (b *Backup) Run() {
 	}
 }
 
-func writeSnap(m *etcdutil.Member, rev int64) error {
+func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.ClientAddr()},
 		DialTimeout: 5 * time.Second,
@@ -97,7 +110,7 @@ func writeSnap(m *etcdutil.Member, rev int64) error {
 	defer rc.Close()
 
 	// TODO: custom backup dir
-	tmpfile, err := ioutil.TempFile("", "snapshot")
+	tmpfile, err := ioutil.TempFile(backupDir, "snapshot")
 	n, err := io.Copy(tmpfile, rc)
 	if err != nil {
 		tmpfile.Close()
@@ -106,7 +119,7 @@ func writeSnap(m *etcdutil.Member, rev int64) error {
 	}
 	cancel()
 	tmpfile.Close()
-	nextSnapshotName := makeFilename(rev)
+	nextSnapshotName := path.Join(backupDir, makeFilename(rev))
 	err = os.Rename(tmpfile.Name(), nextSnapshotName)
 	if err != nil {
 		os.Remove(tmpfile.Name())
