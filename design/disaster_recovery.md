@@ -14,7 +14,7 @@ We have a backup pod as sidecar:
 - We use Kubernetes replication set to manage the backup pod to achieve highly availability.
 - It periodically pull snapshots from the etcd cluster.
 - It persists the pulled snapshot into attached stable storage like Persistent Volume or cloud storage like GCS/S3.
-- It severs latest snapshot to etcd members for disaster recovery.
+- It serves latest snapshot to etcd members for disaster recovery.
 
 ## Disaster recovery process
 
