@@ -138,6 +138,26 @@ func makeEtcdService(etcdName, clusterName string) *api.Service {
 
 // todo: use a struct to replace the huge arg list.
 func makeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state string, antiAffinity bool) *api.Pod {
+	commands := []string{
+		"/usr/local/bin/etcd",
+		"--name",
+		m.Name,
+		"--initial-advertise-peer-urls",
+		m.PeerAddr(),
+		"--listen-peer-urls",
+		"http://0.0.0.0:2380",
+		"--listen-client-urls",
+		"http://0.0.0.0:2379",
+		"--advertise-client-urls",
+		m.ClientAddr(),
+		"--initial-cluster",
+		strings.Join(initialCluster, ","),
+		"--initial-cluster-state",
+		state,
+	}
+	if state == "new" {
+		commands = append(commands, "--initial-cluster-token", uuid.New())
+	}
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
 			Name: m.Name,
@@ -150,27 +170,9 @@ func makeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{
-					Command: []string{
-						"/usr/local/bin/etcd",
-						"--name",
-						m.Name,
-						"--initial-advertise-peer-urls",
-						m.PeerAddr(),
-						"--listen-peer-urls",
-						"http://0.0.0.0:2380",
-						"--listen-client-urls",
-						"http://0.0.0.0:2379",
-						"--advertise-client-urls",
-						m.ClientAddr(),
-						"--initial-cluster",
-						strings.Join(initialCluster, ","),
-						"--initial-cluster-state",
-						state,
-						"--initial-cluster-token",
-						uuid.New(),
-					},
-					Name:  m.Name,
-					Image: "gcr.io/coreos-k8s-scale-testing/etcd-amd64:3.0.6",
+					Command: commands,
+					Name:    m.Name,
+					Image:   "gcr.io/coreos-k8s-scale-testing/etcd-amd64:3.0.6",
 					Ports: []api.ContainerPort{
 						{
 							Name:          "server",
