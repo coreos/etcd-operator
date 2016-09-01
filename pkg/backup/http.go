@@ -21,7 +21,7 @@ func (b *Backup) startHTTP() {
 }
 
 func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
-	ackchan := make(chan struct{}, 1)
+	ackchan := make(chan error, 1)
 	select {
 	case b.backupNow <- ackchan:
 	case <-time.After(time.Minute):
@@ -30,7 +30,10 @@ func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	select {
-	case <-ackchan:
+	case err := <-ackchan:
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	case <-time.After(10 * time.Minute):
 		http.Error(w, "timeout", http.StatusRequestTimeout)
 		return
