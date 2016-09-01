@@ -64,44 +64,48 @@ func (b *Backup) Run() {
 		case ackchan = <-b.backupNow:
 			logrus.Info("received a backup request")
 		}
-		pods, err := b.kclient.Pods("default").List(api.ListOptions{
-			LabelSelector: labels.SelectorFromSet(map[string]string{
-				"app":          "etcd",
-				"etcd_cluster": b.clusterName,
-			}),
-		})
-		if err != nil {
-			panic(err)
-		}
-		if len(pods.Items) == 0 {
-			logrus.Warning("no running pods found.")
-			continue
-		}
-		member, rev, err := getMemberWithMaxRev(pods)
-		if err != nil {
-			logrus.Error(err)
-			continue
-		}
-		if member == nil {
-			logrus.Warning("no reachable member")
-			continue
-		}
-		if rev == lastSnapRev {
-			logrus.Info("skipped creating new backup: no change since last time")
-			continue
-		}
 
-		log.Printf("saving backup for cluster (%s)", b.clusterName)
-		if err := writeSnap(member, b.backupDir, rev); err != nil {
-			logrus.Errorf("write snapshot failed: %v", err)
-			continue
-		}
-		lastSnapRev = rev
+		lastSnapRev = b.saveSnap(lastSnapRev)
 
 		if ackchan != nil {
 			close(ackchan)
 		}
 	}
+}
+func (b *Backup) saveSnap(lastSnapRev int64) int64 {
+	pods, err := b.kclient.Pods("default").List(api.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			"app":          "etcd",
+			"etcd_cluster": b.clusterName,
+		}),
+	})
+	if err != nil {
+		panic(err)
+	}
+	if len(pods.Items) == 0 {
+		logrus.Warning("no running pods found.")
+		return lastSnapRev
+	}
+	member, rev, err := getMemberWithMaxRev(pods)
+	if err != nil {
+		logrus.Error(err)
+		return lastSnapRev
+	}
+	if member == nil {
+		logrus.Warning("no reachable member")
+		return lastSnapRev
+	}
+	if rev == lastSnapRev {
+		logrus.Info("skipped creating new backup: no change since last time")
+		return lastSnapRev
+	}
+
+	log.Printf("saving backup for cluster (%s)", b.clusterName)
+	if err := writeSnap(member, b.backupDir, rev); err != nil {
+		logrus.Errorf("write snapshot failed: %v", err)
+		return lastSnapRev
+	}
+	return rev
 }
 
 func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
