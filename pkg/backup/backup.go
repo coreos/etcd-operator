@@ -38,7 +38,7 @@ func New(kclient *unversioned.Client, clusterName string, policy Policy, listenA
 		listenAddr:  listenAddr,
 		backupDir:   "/home/backup/",
 
-		backupNow: make(chan chan struct{}),
+		backupNow: make(chan chan error),
 	}
 }
 
@@ -56,20 +56,25 @@ func (b *Backup) Run() {
 		interval = time.Duration(b.policy.SnapshotIntervalInSecond) * time.Second
 	}
 	for {
-		var ackchan chan struct{}
+		var ackchan chan error
 		select {
 		case <-time.After(interval):
 		case ackchan = <-b.backupNow:
 			logrus.Info("received a backup request")
 		}
 
-		lastSnapRev, err = b.saveSnap(lastSnapRev)
+		rev, err := b.saveSnap(lastSnapRev)
+		if err != nil {
+			logrus.Errorf("failed to save snapshot: %v", err)
+		}
+		lastSnapRev = rev
 
 		if ackchan != nil {
 			ackchan <- err
 		}
 	}
 }
+
 func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 	pods, err := b.kclient.Pods("default").List(api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
@@ -100,7 +105,6 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 	log.Printf("saving backup for cluster (%s)", b.clusterName)
 	if err := writeSnap(member, b.backupDir, rev); err != nil {
 		err = fmt.Errorf("write snapshot failed: %v", err)
-		logrus.Error(err)
 		return lastSnapRev, err
 	}
 	return rev, nil
