@@ -86,8 +86,8 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 		return lastSnapRev, err
 	}
 	if len(pods.Items) == 0 {
-		logrus.Warning("no running pods found.")
-		return lastSnapRev, nil
+		logrus.Warning("no running pods found")
+		return lastSnapRev, fmt.Errorf("no running pods found")
 	}
 	member, rev, err := getMemberWithMaxRev(pods)
 	if err != nil {
@@ -95,7 +95,7 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 	}
 	if member == nil {
 		logrus.Warning("no reachable member")
-		return lastSnapRev, nil
+		return lastSnapRev, fmt.Errorf("no reachable member")
 	}
 	if rev == lastSnapRev {
 		logrus.Info("skipped creating new backup: no change since last time")
