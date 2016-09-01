@@ -27,7 +27,7 @@ type Backup struct {
 	listenAddr  string
 	backupDir   string
 
-	backupNow chan chan struct{}
+	backupNow chan chan error
 }
 
 func New(kclient *unversioned.Client, clusterName string, policy Policy, listenAddr string) *Backup {
@@ -56,8 +56,6 @@ func (b *Backup) Run() {
 		interval = time.Duration(b.policy.SnapshotIntervalInSecond) * time.Second
 	}
 	for {
-		// todo: make ackchan a chan of error
-		// so we can propogate error to the http handler
 		var ackchan chan struct{}
 		select {
 		case <-time.After(interval):
@@ -65,14 +63,14 @@ func (b *Backup) Run() {
 			logrus.Info("received a backup request")
 		}
 
-		lastSnapRev = b.saveSnap(lastSnapRev)
+		lastSnapRev, err = b.saveSnap(lastSnapRev)
 
 		if ackchan != nil {
-			close(ackchan)
+			ackchan <- err
 		}
 	}
 }
-func (b *Backup) saveSnap(lastSnapRev int64) int64 {
+func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 	pods, err := b.kclient.Pods("default").List(api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"app":          "etcd",
@@ -80,32 +78,32 @@ func (b *Backup) saveSnap(lastSnapRev int64) int64 {
 		}),
 	})
 	if err != nil {
-		panic(err)
+		return lastSnapRev, err
 	}
 	if len(pods.Items) == 0 {
 		logrus.Warning("no running pods found.")
-		return lastSnapRev
+		return lastSnapRev, nil
 	}
 	member, rev, err := getMemberWithMaxRev(pods)
 	if err != nil {
-		logrus.Error(err)
-		return lastSnapRev
+		return lastSnapRev, err
 	}
 	if member == nil {
 		logrus.Warning("no reachable member")
-		return lastSnapRev
+		return lastSnapRev, nil
 	}
 	if rev == lastSnapRev {
 		logrus.Info("skipped creating new backup: no change since last time")
-		return lastSnapRev
+		return lastSnapRev, nil
 	}
 
 	log.Printf("saving backup for cluster (%s)", b.clusterName)
 	if err := writeSnap(member, b.backupDir, rev); err != nil {
-		logrus.Errorf("write snapshot failed: %v", err)
-		return lastSnapRev
+		err = fmt.Errorf("write snapshot failed: %v", err)
+		logrus.Error(err)
+		return lastSnapRev, err
 	}
-	return rev
+	return rev, nil
 }
 
 func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
