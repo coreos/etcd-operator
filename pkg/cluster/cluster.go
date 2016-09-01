@@ -19,7 +19,6 @@ import (
 type clusterEventType string
 
 const (
-	eventNewCluster    clusterEventType = "Add"
 	eventDeleteCluster clusterEventType = "Delete"
 	eventReconcile     clusterEventType = "Reconcile"
 	eventModifyCluster clusterEventType = "Modify"
@@ -51,7 +50,15 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(kclient *unversioned.Client, name string, spec *Spec) *Cluster {
+func New(c *unversioned.Client, name string, spec *Spec) *Cluster {
+	return new(c, name, spec, true)
+}
+
+func Restore(c *unversioned.Client, name string, spec *Spec) *Cluster {
+	return new(c, name, spec, false)
+}
+
+func new(kclient *unversioned.Client, name string, spec *Spec, isNewCluster bool) *Cluster {
 	c := &Cluster{
 		kclient: kclient,
 		name:    name,
@@ -61,14 +68,13 @@ func New(kclient *unversioned.Client, name string, spec *Spec) *Cluster {
 	}
 	go c.run()
 
-	return c
-}
+	if isNewCluster {
+		if err := c.startSeedMember(spec); err != nil {
+			panic(err)
+		}
+	}
 
-func (c *Cluster) Init(spec *Spec) {
-	c.send(&clusterEvent{
-		typ:  eventNewCluster,
-		spec: *spec,
-	})
+	return c
 }
 
 func (c *Cluster) Delete() {
@@ -90,10 +96,6 @@ func (c *Cluster) run() {
 		select {
 		case event := <-c.eventCh:
 			switch event.typ {
-			case eventNewCluster:
-				if err := c.startSeedMember(&event.spec); err != nil {
-					panic(err)
-				}
 			case eventReconcile:
 				if err := c.reconcile(event.running); err != nil {
 					panic(err)
