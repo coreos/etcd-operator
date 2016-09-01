@@ -64,7 +64,7 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 
 	if L.Size() < c.members.Size()/2+1 {
 		log.Println("Disaster recovery")
-		return c.disasterRecovery()
+		return c.disasterRecovery(L)
 	}
 
 	log.Println("Recovering one member")
@@ -140,6 +140,23 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	return nil
 }
 
-func (c *Cluster) disasterRecovery() error {
-	panic("unimplemented disaster recovery")
+func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
+	httpClient := c.kclient.RESTClient.Client
+	name := fmt.Sprintf("%s-backup-tool", c.name)
+	_, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", name))
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	log.Info("Made a latest backup successfully")
+
+	for _, m := range left {
+		err := c.removePodAndService(m.Name)
+		if err != nil {
+			return err
+		}
+	}
+	c.members = nil
+	// TODO: config the seed member to get backup first
+	return c.startSeedMember(c.spec)
 }

@@ -91,7 +91,9 @@ func (c *Cluster) run() {
 		case event := <-c.eventCh:
 			switch event.typ {
 			case eventNewCluster:
-				c.create(&event.spec)
+				if err := c.startSeedMember(&event.spec); err != nil {
+					panic(err)
+				}
 			case eventReconcile:
 				if err := c.reconcile(event.running); err != nil {
 					panic(err)
@@ -108,17 +110,18 @@ func (c *Cluster) run() {
 	}
 }
 
-func (c *Cluster) create(spec *Spec) {
+func (c *Cluster) startSeedMember(spec *Spec) error {
 	members := etcdutil.MemberSet{}
 	c.spec = spec
 	// we want to make use of member's utility methods.
 	etcdName := fmt.Sprintf("%s-%04d", c.name, 0)
 	members.Add(&etcdutil.Member{Name: etcdName})
 	if err := c.createPodAndService(members, members[etcdName], "new"); err != nil {
-		panic(fmt.Sprintf("(TODO: we need to clean up already created ones.)\nError: %v", err))
+		return fmt.Errorf("failed to create seed member: %v", err)
 	}
 	c.idCounter++
 	log.Println("created cluster:", members)
+	return nil
 }
 
 func (c *Cluster) Update(spec *Spec) {
