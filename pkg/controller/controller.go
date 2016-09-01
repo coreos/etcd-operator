@@ -74,8 +74,6 @@ func (c *Controller) Run() {
 			switch event.Type {
 			case "ADDED":
 				nc := cluster.New(c.kclient, clusterName, &event.Object.Spec)
-				// TODO: combine init into New. Different fresh new and recovered new.
-				nc.Init(&event.Object.Spec)
 				c.clusters[clusterName] = nc
 
 				backup := event.Object.Spec.Backup
@@ -109,7 +107,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		return "", err
 	}
 	for _, item := range list.Items {
-		nc := cluster.New(c.kclient, item.Name, &item.Spec)
+		nc := cluster.Restore(c.kclient, item.Name, &item.Spec)
 		c.clusters[item.Name] = nc
 
 		backup := item.Spec.Backup
