@@ -214,7 +214,6 @@ func (c *Cluster) monitorPods() {
 			"etcd_cluster": c.name,
 		}),
 	}
-	// TODO: Select "etcd_node" to remove left service.
 	for {
 		select {
 		case <-c.stopCh:
@@ -228,7 +227,17 @@ func (c *Cluster) monitorPods() {
 		}
 		running := etcdutil.MemberSet{}
 		for i := range podList.Items {
-			running.Add(&etcdutil.Member{Name: podList.Items[i].Name})
+			pod := podList.Items[i]
+			// TODO: use liveness probe to do checking
+			if pod.Status.Phase != k8sapi.PodRunning {
+				log.Debugf("skipping non-running pod: %s", pod.Name)
+				continue
+			}
+			running.Add(&etcdutil.Member{Name: pod.Name})
+		}
+		if running.Size() == 0 {
+			log.Infof("cluster (%s) not ready yet", c.name)
+			continue
 		}
 
 		c.send(&clusterEvent{
