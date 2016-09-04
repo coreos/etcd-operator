@@ -1,3 +1,3 @@
-FROM tutum/curl:latest
+FROM alpine:latest
+
 ADD ./backup /usr/local/bin
-ENTRYPOINT ["backup"]

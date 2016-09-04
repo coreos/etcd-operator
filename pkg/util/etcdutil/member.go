@@ -23,6 +23,14 @@ func (m *Member) PeerAddr() string {
 
 type MemberSet map[string]*Member
 
+func NewMemberSet(ms ...*Member) MemberSet {
+	res := MemberSet{}
+	for _, m := range ms {
+		res[m.Name] = m
+	}
+	return res
+}
+
 // the set of all members of s1 that are not members of s2
 func (ms MemberSet) Diff(other MemberSet) MemberSet {
 	diff := MemberSet{}

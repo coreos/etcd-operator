@@ -16,6 +16,8 @@ fi
 
 mkdir -p _output/bin || true
 
-go build -o _output/bin/kube-etcd-controller cmd/controller/main.go
+# Static compilation is useful when etcd is run in a container
+CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o _output/bin/kube-etcd-controller cmd/controller/main.go
+
 docker build --tag gcr.io/coreos-k8s-scale-testing/kubeetcdctrl:latest .
 gcloud docker push gcr.io/coreos-k8s-scale-testing/kubeetcdctrl:latest

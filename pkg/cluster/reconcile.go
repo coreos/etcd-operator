@@ -2,13 +2,17 @@ package cluster
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
+	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"golang.org/x/net/context"
 )
+
+const waitMemberReadyTimeout = 10 * time.Second
 
 // reconcile reconciles
 // - the members in the cluster view with running pods in Kubernetes.
@@ -38,7 +42,7 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 		if err != nil {
 			return err
 		}
-		if err := etcdutil.WaitMemberReady(etcdcli); err != nil {
+		if err := etcdutil.WaitMemberReady(etcdcli, waitMemberReadyTimeout); err != nil {
 			return err
 		}
 		c.updateMembers(etcdcli)
@@ -106,7 +110,7 @@ func (c *Cluster) addOneMember() error {
 	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)
 
-	if err := c.createPodAndService(c.members, newMember, "existing"); err != nil {
+	if err := c.createPodAndService(c.members, newMember, "existing", false); err != nil {
 		return err
 	}
 	c.idCounter++
@@ -142,11 +146,13 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 
 func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	httpClient := c.kclient.RESTClient.Client
-	name := fmt.Sprintf("%s-backup-tool", c.name)
-	_, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", name))
+	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", k8sutil.MakeBackupHostPort(c.name)))
 	if err != nil {
-		log.Error(err)
+		log.Errorf("requesting backupnow failed: %v", err)
 		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		panic("TODO: handle failure of backupnow request")
 	}
 	log.Info("Made a latest backup successfully")
 
@@ -157,6 +163,5 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 		}
 	}
 	c.members = nil
-	// TODO: config the seed member to get backup first
-	return c.startSeedMember(c.spec)
+	return c.restoreSeedMember()
 }
