@@ -34,7 +34,6 @@ func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName s
 		Spec: extensions.ReplicaSetSpec{
 			Replicas: 1,
 			Selector: &unversionedAPI.LabelSelector{MatchLabels: labels},
-			// TODO: we give backup tool a selector to know what etcd cluster to back up.
 			Template: api.PodTemplateSpec{
 				ObjectMeta: api.ObjectMeta{
 					Labels: labels,
