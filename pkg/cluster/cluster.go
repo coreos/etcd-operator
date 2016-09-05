@@ -66,13 +66,12 @@ func new(kclient *unversioned.Client, name string, spec *Spec, isNewCluster bool
 		stopCh:  make(chan struct{}),
 		spec:    spec,
 	}
-	go c.run()
-
 	if isNewCluster {
 		if err := c.startSeedMember(spec); err != nil {
 			panic(err)
 		}
 	}
+	go c.run()
 
 	return c
 }
