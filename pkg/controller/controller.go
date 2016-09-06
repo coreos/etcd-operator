@@ -176,14 +176,14 @@ func monitorEtcdCluster(host string, httpClient *http.Client, watchVersion strin
 					if err == io.EOF {
 						break
 					}
+					log.Errorf("failed to get event from apiserver: %v", err)
 					errc <- err
+					break
 				}
-				log.Printf("etcd cluster event: %v %#v", ev.Type, ev.Object)
-				// There might be cases of transient errors, e.g. network disconnection.
-				// We can backoff and rewatch in such cases.
 				if ev.Type == "ERROR" {
 					break
 				}
+				log.Printf("etcd cluster event: %v %#v", ev.Type, ev.Object)
 				watchVersion = ev.Object.ObjectMeta.ResourceVersion
 				events <- ev
 			}
