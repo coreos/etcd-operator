@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
+	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
@@ -67,7 +68,7 @@ func new(kclient *unversioned.Client, name string, spec *Spec, isNewCluster bool
 		spec:    spec,
 	}
 	if isNewCluster {
-		if err := c.startSeedMember(spec); err != nil {
+		if err := c.newSeedMember(); err != nil {
 			panic(err)
 		}
 	}
@@ -111,18 +112,27 @@ func (c *Cluster) run() {
 	}
 }
 
-func (c *Cluster) startSeedMember(spec *Spec) error {
-	members := etcdutil.MemberSet{}
-	c.spec = spec
-	// we want to make use of member's utility methods.
-	etcdName := fmt.Sprintf("%s-%04d", c.name, 0)
-	members.Add(&etcdutil.Member{Name: etcdName})
-	if err := c.createPodAndService(members, members[etcdName], "new"); err != nil {
-		return fmt.Errorf("failed to create seed member: %v", err)
+func (c *Cluster) makeSeedMember() *etcdutil.Member {
+	etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
+	return &etcdutil.Member{Name: etcdName}
+}
+
+func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
+	m := c.makeSeedMember()
+	if err := c.createPodAndService(etcdutil.NewMemberSet(m), m, "new", recoverFromBackup); err != nil {
+		return fmt.Errorf("failed to create seed member (%s): %v", m.Name, err)
 	}
 	c.idCounter++
-	log.Println("created cluster:", members)
+	log.Infof("created cluster (%s) with seed member (%s)", c.name, m.Name)
 	return nil
+}
+
+func (c *Cluster) newSeedMember() error {
+	return c.startSeedMember(false)
+}
+
+func (c *Cluster) restoreSeedMember() error {
+	return c.startSeedMember(true)
 }
 
 func (c *Cluster) Update(spec *Spec) {
@@ -137,7 +147,8 @@ func (c *Cluster) Update(spec *Spec) {
 }
 
 func (c *Cluster) updateMembers(etcdcli *clientv3.Client) {
-	resp, err := etcdcli.MemberList(context.TODO())
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	resp, err := etcdcli.MemberList(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -182,12 +193,19 @@ func (c *Cluster) delete() {
 	}
 }
 
-// todo: use a struct to replace the huge arg list.
-func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string) error {
+func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
 	if err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name); err != nil {
 		return err
 	}
-	return k8sutil.CreateEtcdPod(c.kclient, members.PeerURLPairs(), m, c.name, state, c.spec.AntiAffinity)
+	token := ""
+	if state == "new" {
+		token = uuid.New()
+	}
+	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.name, state, token, c.spec.AntiAffinity)
+	if needRecovery {
+		k8sutil.AddRecoveryToPod(pod, c.name, m.Name, token)
+	}
+	return k8sutil.CreateAndWaitPod(c.kclient, pod, m)
 }
 
 func (c *Cluster) removePodAndService(name string) error {

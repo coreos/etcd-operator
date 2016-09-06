@@ -10,10 +10,10 @@ import (
 
 	"github.com/coreos/kube-etcd-controller/pkg/backup"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
-	"github.com/pborman/uuid"
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
+	k8sv1api "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
@@ -21,12 +21,56 @@ import (
 	"k8s.io/kubernetes/pkg/watch"
 )
 
+const (
+	// TODO: This is constant for current purpose. We might make it configurable later.
+	etcdDir    = "/var/etcd"
+	dataDir    = etcdDir + "/data"
+	backupFile = "/var/etcd/latest.backup"
+)
+
+func makeRestoreInitContainerSpec(backupAddr, name, token string) string {
+	spec := []api.Container{
+		{
+			Name:  "fetch-backup",
+			Image: "tutum/curl",
+			Command: []string{
+				"/bin/sh", "-c",
+				fmt.Sprintf("curl -o %s http://%s/backup", backupFile, backupAddr),
+			},
+			VolumeMounts: []api.VolumeMount{
+				{Name: "etcd-data", MountPath: etcdDir},
+			},
+		},
+		{
+			Name:  "restore-datadir",
+			Image: "quay.io/coreos/etcd",
+			Command: []string{
+				"/bin/sh", "-c",
+				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
+					" --name %[2]s"+
+					" --initial-cluster %[2]s=http://%[2]s:2380"+
+					" --initial-cluster-token %[3]s"+
+					" --initial-advertise-peer-urls http://%[2]s:2380"+
+					" --data-dir %[4]s", backupFile, name, token, dataDir),
+			},
+			VolumeMounts: []api.VolumeMount{
+				{Name: "etcd-data", MountPath: etcdDir},
+			},
+		},
+	}
+	b, err := json.Marshal(spec)
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
+
 func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName string, policy backup.Policy) error {
 	labels := map[string]string{
 		"app":          "etcd_backup_tool",
 		"etcd_cluster": clusterName,
 	}
-	name := fmt.Sprintf("%s-backup-tool", clusterName)
+	name := makeBackupName(clusterName)
 	_, err := kclient.ReplicaSets("default").Create(&extensions.ReplicaSet{
 		ObjectMeta: api.ObjectMeta{
 			Name: name,
@@ -81,6 +125,14 @@ func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName s
 	return nil
 }
 
+func MakeBackupHostPort(clusterName string) string {
+	return fmt.Sprintf("%s:19999", makeBackupName(clusterName))
+}
+
+func makeBackupName(clusterName string) string {
+	return fmt.Sprintf("%s-backup-tool", clusterName)
+}
+
 func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName string) error {
 	svc := makeEtcdService(etcdName, clusterName)
 	if _, err := kclient.Services("default").Create(svc); err != nil {
@@ -90,8 +142,7 @@ func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName string
 }
 
 // TODO: use a struct to replace the huge arg list.
-func CreateEtcdPod(kclient *unversioned.Client, initialCluster []string, m *etcdutil.Member, clusterName, state string, antiAffinity bool) error {
-	pod := makeEtcdPod(m, initialCluster, clusterName, state, antiAffinity)
+func CreateAndWaitPod(kclient *unversioned.Client, pod *api.Pod, m *etcdutil.Member) error {
 	if _, err := kclient.Pods("default").Create(pod); err != nil {
 		return err
 	}
@@ -135,10 +186,19 @@ func makeEtcdService(etcdName, clusterName string) *api.Service {
 	return svc
 }
 
+func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string) {
+	if pod.Annotations == nil {
+		pod.Annotations = map[string]string{}
+	}
+	pod.Annotations[k8sv1api.PodInitContainersAnnotationKey] = makeRestoreInitContainerSpec(MakeBackupHostPort(clusterName), name, token)
+}
+
 // todo: use a struct to replace the huge arg list.
-func makeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state string, antiAffinity bool) *api.Pod {
+func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, antiAffinity bool) *api.Pod {
 	commands := []string{
 		"/usr/local/bin/etcd",
+		"--data-dir",
+		dataDir,
 		"--name",
 		m.Name,
 		"--initial-advertise-peer-urls",
@@ -155,7 +215,7 @@ func makeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 		state,
 	}
 	if state == "new" {
-		commands = append(commands, "--initial-cluster-token", uuid.New())
+		commands = append(commands, "--initial-cluster-token", token)
 	}
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
@@ -179,9 +239,15 @@ func makeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 							Protocol:      api.ProtocolTCP,
 						},
 					},
+					VolumeMounts: []api.VolumeMount{
+						{Name: "etcd-data", MountPath: etcdDir},
+					},
 				},
 			},
 			RestartPolicy: api.RestartPolicyNever,
+			Volumes: []api.Volume{
+				{Name: "etcd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
+			},
 		},
 	}
 
@@ -193,7 +259,7 @@ func makeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 	affinity := api.Affinity{
 		PodAntiAffinity: &api.PodAntiAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: []api.PodAffinityTerm{
-				api.PodAffinityTerm{
+				{
 					LabelSelector: &unversionedAPI.LabelSelector{
 						MatchLabels: map[string]string{
 							"etcd_cluster": clusterName,

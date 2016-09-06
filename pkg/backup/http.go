@@ -17,6 +17,7 @@ func (b *Backup) startHTTP() {
 	http.HandleFunc("/backup", b.serveSnap)
 	http.HandleFunc("/backupnow", b.serveBackupNow)
 
+	logrus.Infof("listening on %v", b.listenAddr)
 	panic(http.ListenAndServe(b.listenAddr, nil))
 }
 
