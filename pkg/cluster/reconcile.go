@@ -89,6 +89,11 @@ func (c *Cluster) resize() error {
 }
 
 func (c *Cluster) addOneMember() error {
+	if err := c.createPodAndService(c.members, newMember, "existing"); err != nil {
+		return err
+	}
+	c.idCounter++
+
 	cfg := clientv3.Config{
 		Endpoints:   c.members.ClientURLs(),
 		DialTimeout: 5 * time.Second,
@@ -106,10 +111,6 @@ func (c *Cluster) addOneMember() error {
 	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)
 
-	if err := c.createPodAndService(c.members, newMember, "existing"); err != nil {
-		return err
-	}
-	c.idCounter++
 	log.Printf("added member, cluster: %s", c.members.PeerURLPairs())
 	return nil
 }
