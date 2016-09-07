@@ -8,6 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"github.com/pborman/uuid"
@@ -147,7 +148,7 @@ func (c *Cluster) Update(spec *Spec) {
 }
 
 func (c *Cluster) updateMembers(etcdcli *clientv3.Client) {
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberList(ctx)
 	if err != nil {
 		panic(err)

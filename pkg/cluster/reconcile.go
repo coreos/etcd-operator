@@ -7,6 +7,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"golang.org/x/net/context"
@@ -36,7 +37,7 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 	if len(c.members) == 0 {
 		cfg := clientv3.Config{
 			Endpoints:   running.ClientURLs(),
-			DialTimeout: 5 * time.Second,
+			DialTimeout: constants.DefaultDialTimeout,
 		}
 		etcdcli, err := clientv3.New(cfg)
 		if err != nil {
@@ -95,7 +96,7 @@ func (c *Cluster) resize() error {
 func (c *Cluster) addOneMember() error {
 	cfg := clientv3.Config{
 		Endpoints:   c.members.ClientURLs(),
-		DialTimeout: 5 * time.Second,
+		DialTimeout: constants.DefaultDialTimeout,
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
@@ -103,7 +104,8 @@ func (c *Cluster) addOneMember() error {
 	}
 	newMemberName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
 	newMember := &etcdutil.Member{Name: newMemberName}
-	resp, err := etcdcli.MemberAdd(context.TODO(), []string{newMember.PeerAddr()})
+	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
 	if err != nil {
 		return err
 	}
@@ -125,7 +127,7 @@ func (c *Cluster) removeOneMember() error {
 func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	cfg := clientv3.Config{
 		Endpoints:   c.members.ClientURLs(),
-		DialTimeout: 5 * time.Second,
+		DialTimeout: constants.DefaultDialTimeout,
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
@@ -133,7 +135,8 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	}
 
 	clustercli := clientv3.NewCluster(etcdcli)
-	if _, err := clustercli.MemberRemove(context.TODO(), toRemove.ID); err != nil {
+	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	if _, err := clustercli.MemberRemove(ctx, toRemove.ID); err != nil {
 		return err
 	}
 	c.members.Remove(toRemove.Name)
