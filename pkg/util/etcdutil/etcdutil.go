@@ -12,6 +12,7 @@ import (
 
 func WaitMemberReady(cli *clientv3.Client, timeout time.Duration) error {
 	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	for {
 		select {
 		case <-timer.C:
@@ -24,7 +25,6 @@ func WaitMemberReady(cli *clientv3.Client, timeout time.Duration) error {
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		timer.Stop()
 		return err
 	}
 }
