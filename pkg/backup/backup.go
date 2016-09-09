@@ -13,6 +13,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
@@ -113,14 +114,14 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.ClientAddr()},
-		DialTimeout: 5 * time.Second,
+		DialTimeout: constants.DefaultDialTimeout,
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create etcd client (%v)", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 
 	rc, err := etcdcli.Maintenance.Snapshot(ctx)
 	if err != nil {
@@ -159,13 +160,14 @@ func getMemberWithMaxRev(pods *api.PodList) (*etcdutil.Member, int64, error) {
 		m := &etcdutil.Member{Name: pods.Items[i].Name}
 		cfg := clientv3.Config{
 			Endpoints:   []string{m.ClientAddr()},
-			DialTimeout: 5 * time.Second,
+			DialTimeout: constants.DefaultDialTimeout,
 		}
 		etcdcli, err := clientv3.New(cfg)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to create etcd client (%v)", err)
 		}
-		resp, err := etcdcli.Get(context.TODO(), "/", clientv3.WithSerializable())
+		ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
 		if err != nil {
 			return nil, 0, fmt.Errorf("etcdcli.Get failed: %v", err)
 		}
