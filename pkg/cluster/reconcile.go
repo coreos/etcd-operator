@@ -7,10 +7,12 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"golang.org/x/net/context"
+	"k8s.io/kubernetes/pkg/util/wait"
 )
 
 const waitMemberReadyTimeout = 10 * time.Second
@@ -34,6 +36,7 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 		log.Println("Finish Reconciling")
 	}()
 
+	log.Println("Running pods:", running)
 	if len(c.members) == 0 {
 		cfg := clientv3.Config{
 			Endpoints:   running.ClientURLs(),
@@ -49,7 +52,6 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 		c.updateMembers(etcdcli)
 	}
 
-	log.Println("Running pods:", running)
 	log.Println("Expected membership:", c.members)
 
 	unknownMembers := running.Diff(c.members)
@@ -104,12 +106,24 @@ func (c *Cluster) addOneMember() error {
 	}
 	newMemberName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
 	newMember := &etcdutil.Member{Name: newMemberName}
-	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
+	var id uint64
+	// Could have "unhealthy cluster" due to 5 second strict check. Retry.
+	err = wait.Poll(1*time.Second, 20*time.Second, func() (done bool, err error) {
+		ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+		resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
+		if err != nil {
+			if err == rpctypes.ErrUnhealthy {
+				return false, nil
+			}
+			return false, fmt.Errorf("etcdcli failed to add one member: %v", err)
+		}
+		id = resp.Member.ID
+		return true, nil
+	})
 	if err != nil {
 		return err
 	}
-	newMember.ID = resp.Member.ID
+	newMember.ID = id
 	c.members.Add(newMember)
 
 	if err := c.createPodAndService(c.members, newMember, "existing", false); err != nil {
@@ -137,7 +151,7 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	clustercli := clientv3.NewCluster(etcdcli)
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	if _, err := clustercli.MemberRemove(ctx, toRemove.ID); err != nil {
-		return err
+		return fmt.Errorf("etcdcli failed to remove one member: %v", err)
 	}
 	c.members.Remove(toRemove.Name)
 	if err := c.removePodAndService(toRemove.Name); err != nil {
