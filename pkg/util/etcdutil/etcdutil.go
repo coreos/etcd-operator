@@ -21,7 +21,7 @@ func WaitMemberReady(cli *clientv3.Client, timeout time.Duration) error {
 		}
 		ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 		_, err := cli.Get(ctx, "/")
-		if err == rpctypes.ErrNotCapable {
+		if err == rpctypes.ErrNotCapable || err == context.DeadlineExceeded {
 			time.Sleep(1 * time.Second)
 			continue
 		}
