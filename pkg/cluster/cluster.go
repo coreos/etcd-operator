@@ -22,15 +22,12 @@ type clusterEventType string
 
 const (
 	eventDeleteCluster clusterEventType = "Delete"
-	eventReconcile     clusterEventType = "Reconcile"
 	eventModifyCluster clusterEventType = "Modify"
 )
 
 type clusterEvent struct {
 	typ  clusterEventType
 	spec Spec
-	// currently running pods in kubernetes
-	running etcdutil.MemberSet
 }
 
 type Cluster struct {
@@ -92,15 +89,10 @@ func (c *Cluster) send(ev *clusterEvent) {
 }
 
 func (c *Cluster) run() {
-	go c.monitorPods()
 	for {
 		select {
 		case event := <-c.eventCh:
 			switch event.typ {
-			case eventReconcile:
-				if err := c.reconcile(event.running); err != nil {
-					panic(err)
-				}
 			case eventModifyCluster:
 				log.Printf("update: from: %#v, to: %#v", c.spec, event.spec)
 				c.spec.Size = event.spec.Size
@@ -108,6 +100,19 @@ func (c *Cluster) run() {
 				c.delete()
 				close(c.stopCh)
 				return
+			}
+		case <-time.After(5 * time.Second):
+			// currently running pods in kubernets mapped to member set
+			running, err := c.getRunning()
+			if err != nil {
+				panic(err)
+			}
+			if running.Size() == 0 {
+				log.Infof("cluster (%s) not ready yet", c.name)
+				continue
+			}
+			if err := c.reconcile(running); err != nil {
+				panic(err)
 			}
 		}
 	}
@@ -225,42 +230,27 @@ func (c *Cluster) removePodAndService(name string) error {
 	return nil
 }
 
-func (c *Cluster) monitorPods() {
+func (c *Cluster) getRunning() (etcdutil.MemberSet, error) {
 	opts := k8sapi.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"app":          "etcd",
 			"etcd_cluster": c.name,
 		}),
 	}
-	for {
-		select {
-		case <-c.stopCh:
-			return
-		case <-time.After(5 * time.Second):
-		}
 
-		podList, err := c.kclient.Pods("default").List(opts)
-		if err != nil {
-			panic(err)
-		}
-		running := etcdutil.MemberSet{}
-		for i := range podList.Items {
-			pod := podList.Items[i]
-			// TODO: use liveness probe to do checking
-			if pod.Status.Phase != k8sapi.PodRunning {
-				log.Debugf("skipping non-running pod: %s", pod.Name)
-				continue
-			}
-			running.Add(&etcdutil.Member{Name: pod.Name})
-		}
-		if running.Size() == 0 {
-			log.Infof("cluster (%s) not ready yet", c.name)
+	podList, err := c.kclient.Pods("default").List(opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list running pods: %v", err)
+	}
+	running := etcdutil.MemberSet{}
+	for i := range podList.Items {
+		pod := podList.Items[i]
+		// TODO: use liveness probe to do checking
+		if pod.Status.Phase != k8sapi.PodRunning {
+			log.Debugf("skipping non-running pod: %s", pod.Name)
 			continue
 		}
-
-		c.send(&clusterEvent{
-			typ:     eventReconcile,
-			running: running,
-		})
+		running.Add(&etcdutil.Member{Name: pod.Name})
 	}
+	return running, nil
 }
