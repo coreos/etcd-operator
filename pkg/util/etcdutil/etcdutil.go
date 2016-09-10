@@ -20,7 +20,7 @@ func WaitMemberReady(cli *clientv3.Client, timeout time.Duration) error {
 		default:
 		}
 		ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-		_, err := cli.Get(ctx, "/")
+		_, err := cli.Get(ctx, "/", clientv3.WithSerializable())
 		if err == rpctypes.ErrNotCapable {
 			time.Sleep(1 * time.Second)
 			continue
