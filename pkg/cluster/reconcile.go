@@ -3,7 +3,6 @@ package cluster
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
@@ -12,8 +11,6 @@ import (
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"golang.org/x/net/context"
 )
-
-const waitMemberReadyTimeout = 10 * time.Second
 
 // reconcile reconciles
 // - the members in the cluster view with running pods in Kubernetes.
@@ -43,7 +40,7 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 		if err != nil {
 			return err
 		}
-		if err := etcdutil.WaitMemberReady(etcdcli, waitMemberReadyTimeout); err != nil {
+		if err := etcdutil.WaitMemberReady(etcdcli, constants.DefaultDialTimeout); err != nil {
 			return err
 		}
 		c.updateMembers(etcdcli)
