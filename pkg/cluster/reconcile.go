@@ -36,6 +36,7 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 		log.Println("Finish Reconciling")
 	}()
 
+	log.Infof("Running pods: %s", running)
 	if len(c.members) == 0 {
 		cfg := clientv3.Config{
 			Endpoints:   running.ClientURLs(),
@@ -51,7 +52,6 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 		c.updateMembers(etcdcli)
 	}
 
-	log.Println("Running pods:", running)
 	log.Println("Expected membership:", c.members)
 
 	unknownMembers := running.Diff(c.members)
