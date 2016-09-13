@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
