@@ -28,4 +28,7 @@ type Spec struct {
 	// Backup is the backup policy for the etcd cluster.
 	// There is no backup by default.
 	Backup *backup.Policy `json:"backup,omitempty"`
+	// HostNetwork determines if the etcd pods should be run
+	// in the host network namespace.
+	HostNetwork bool `json:"hostNetwork,omitempty"`
 }

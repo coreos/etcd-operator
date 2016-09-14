@@ -194,7 +194,7 @@ func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string) {
 }
 
 // todo: use a struct to replace the huge arg list.
-func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, antiAffinity bool) *api.Pod {
+func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, antiAffinity bool, hostNet bool) *api.Pod {
 	commands := []string{
 		"/usr/local/bin/etcd",
 		"--data-dir",
@@ -245,6 +245,9 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 				},
 			},
 			RestartPolicy: api.RestartPolicyNever,
+			SecurityContext: &api.PodSecurityContext{
+				HostNetwork: hostNet,
+			},
 			Volumes: []api.Volume{
 				{Name: "etcd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
 			},
