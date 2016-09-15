@@ -10,7 +10,7 @@ Prerequisites:
 
 As first step, we need to setup environment for testing:
 ```
-$ ./hack/e2e-setup.sh
+$ ./hack/e2e.sh setup
 ```
 This will do all preparation work such as creating etcd controller.
 
@@ -21,4 +21,7 @@ $ cd ./test/e2e/
 $ go test -v
 ```
 
-TODO: Teardown
+Finally, we need to tear down the things we setup before:
+```
+$ ./hack/e2e.sh teardown
+```
