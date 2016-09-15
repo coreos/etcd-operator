@@ -21,13 +21,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err := SetupEtcdController(f); err != nil {
+	if err := setupEtcdController(f); err != nil {
 		panic(err)
 	}
 	logrus.Info("setup finished successfully")
 }
 
-func SetupEtcdController(f *framework.Framework) error {
+func setupEtcdController(f *framework.Framework) error {
 	// TODO: unify this and the yaml file in example/
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
