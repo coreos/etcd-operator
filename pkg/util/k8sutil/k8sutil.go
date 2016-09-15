@@ -43,7 +43,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token string) string {
 		},
 		{
 			Name:  "restore-datadir",
-			Image: "quay.io/coreos/etcd:latest",
+			Image: "gcr.io/coreos-k8s-scale-testing/etcd-amd64:latest",
 			Command: []string{
 				"/bin/sh", "-c",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
@@ -231,7 +231,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 				{
 					Command: commands,
 					Name:    m.Name,
-					Image:   "quay.io/coreos/etcd:latest",
+					Image:   "gcr.io/coreos-k8s-scale-testing/etcd-amd64:latest",
 					Ports: []api.ContainerPort{
 						{
 							Name:          "server",
