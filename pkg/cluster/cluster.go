@@ -102,7 +102,7 @@ func (c *Cluster) run() {
 				return
 			}
 		case <-time.After(5 * time.Second):
-			// currently running pods in kubernets mapped to member set
+			// currently running pods in kubernetes mapped to member set
 			running, err := c.getRunning()
 			if err != nil {
 				panic(err)
@@ -120,7 +120,7 @@ func (c *Cluster) run() {
 
 func (c *Cluster) makeSeedMember() *etcdutil.Member {
 	etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
-	return &etcdutil.Member{Name: etcdName}
+	return &etcdutil.Member{Name: etcdName, HostNetwork: c.spec.HostNetwork}
 }
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
@@ -165,9 +165,19 @@ func (c *Cluster) updateMembers(etcdcli *clientv3.Client) {
 			c.idCounter = id + 1
 		}
 
+		// Determine the clusterIP for the Service for this pod.
+		// TODO: We shouldn't have to query the API all the time to get this.
+		// Let's just store the information somewhere.  Just hacked together for now.
+		svc, err := c.kclient.Services("default").Get(m.Name)
+		if err != nil {
+			panic(err)
+		}
+
 		c.members[m.Name] = &etcdutil.Member{
-			Name: m.Name,
-			ID:   m.ID,
+			Name:        m.Name,
+			ID:          m.ID,
+			HostNetwork: c.spec.HostNetwork,
+			ClusterIP:   svc.Spec.ClusterIP,
 		}
 	}
 }
@@ -200,9 +210,11 @@ func (c *Cluster) delete() {
 }
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
-	if err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name); err != nil {
+	svcIP, err := c.ensureService(m.Name)
+	if err != nil {
 		return err
 	}
+	m.ClusterIP = svcIP
 	token := ""
 	if state == "new" {
 		token = uuid.New()
@@ -212,6 +224,23 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 		k8sutil.AddRecoveryToPod(pod, c.name, m.Name, token)
 	}
 	return k8sutil.CreateAndWaitPod(c.kclient, pod, m)
+}
+
+// ensureService ensures that the given Service exists, and returns
+// its ClusterIP.
+func (c *Cluster) ensureService(memberName string) (string, error) {
+	// See if the desired Service exists.
+	svc, err := c.kclient.Services("default").Get(memberName)
+	if err != nil {
+		// Service did not exist - create it.
+		svcIP, createErr := k8sutil.CreateEtcdService(c.kclient, memberName, c.name)
+		if createErr != nil {
+			// Failed to create - return error.
+			return "", err
+		}
+		return svcIP, nil
+	}
+	return svc.Spec.ClusterIP, nil
 }
 
 func (c *Cluster) removePodAndService(name string) error {
@@ -250,7 +279,19 @@ func (c *Cluster) getRunning() (etcdutil.MemberSet, error) {
 			log.Debugf("skipping non-running pod: %s", pod.Name)
 			continue
 		}
-		running.Add(&etcdutil.Member{Name: pod.Name})
+
+		// Determine the clusterIP for the Service for this pod.
+		// TODO: This is only used for hostNetwork: true - should we limit?
+		svc, err := c.kclient.Services("default").Get(pod.Name)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get svc for pod %s", pod.Name)
+		}
+
+		running.Add(&etcdutil.Member{
+			Name:        pod.Name,
+			HostNetwork: c.spec.HostNetwork,
+			ClusterIP:   svc.Spec.ClusterIP,
+		})
 	}
 	return running, nil
 }

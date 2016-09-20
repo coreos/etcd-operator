@@ -103,7 +103,15 @@ func (c *Cluster) addOneMember() error {
 		return err
 	}
 	newMemberName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
-	newMember := &etcdutil.Member{Name: newMemberName}
+
+	// Ensure a Service exists for the new member.  We need to do this first
+	// so that we can reference the clusterIP in the etcd params.
+	clusterIP, err := c.ensureService(newMemberName)
+	if err != nil {
+		panic(err)
+	}
+	newMember := &etcdutil.Member{Name: newMemberName, HostNetwork: c.spec.HostNetwork, ClusterIP: clusterIP}
+
 	var id uint64
 	// Could have "unhealthy cluster" due to 5 second strict check. Retry.
 	err = wait.Poll(1*time.Second, 20*time.Second, func() (done bool, err error) {

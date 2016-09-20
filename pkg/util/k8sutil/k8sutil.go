@@ -133,12 +133,17 @@ func makeBackupName(clusterName string) string {
 	return fmt.Sprintf("%s-backup-tool", clusterName)
 }
 
-func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName string) error {
+func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName string) (string, error) {
 	svc := makeEtcdService(etcdName, clusterName)
 	if _, err := kclient.Services("default").Create(svc); err != nil {
-		return err
+		return "", err
 	}
-	return nil
+
+	if svc, err := kclient.Services("default").Get(etcdName); err != nil {
+		return "", err
+	} else {
+		return svc.Spec.ClusterIP, nil
+	}
 }
 
 // TODO: use a struct to replace the huge arg list.
