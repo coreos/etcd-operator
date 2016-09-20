@@ -102,7 +102,7 @@ func (c *Cluster) run() {
 				return
 			}
 		case <-time.After(5 * time.Second):
-			// currently running pods in kubernets mapped to member set
+			// currently running pods in kubernetes mapped to member set
 			running, err := c.getRunning()
 			if err != nil {
 				panic(err)
@@ -120,7 +120,7 @@ func (c *Cluster) run() {
 
 func (c *Cluster) makeSeedMember() *etcdutil.Member {
 	etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
-	return &etcdutil.Member{Name: etcdName}
+	return &etcdutil.Member{Name: etcdName, HostNetwork: c.spec.HostNetwork}
 }
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
@@ -166,8 +166,9 @@ func (c *Cluster) updateMembers(etcdcli *clientv3.Client) {
 		}
 
 		c.members[m.Name] = &etcdutil.Member{
-			Name: m.Name,
-			ID:   m.ID,
+			Name:        m.Name,
+			ID:          m.ID,
+			HostNetwork: c.spec.HostNetwork,
 		}
 	}
 }
@@ -200,9 +201,11 @@ func (c *Cluster) delete() {
 }
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
-	if err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name); err != nil {
+	svcIP, err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name)
+	if err != nil {
 		return err
 	}
+	m.ClusterIP = svcIP
 	token := ""
 	if state == "new" {
 		token = uuid.New()
@@ -250,7 +253,7 @@ func (c *Cluster) getRunning() (etcdutil.MemberSet, error) {
 			log.Debugf("skipping non-running pod: %s", pod.Name)
 			continue
 		}
-		running.Add(&etcdutil.Member{Name: pod.Name})
+		running.Add(&etcdutil.Member{Name: pod.Name, HostNetwork: c.spec.HostNetwork})
 	}
 	return running, nil
 }

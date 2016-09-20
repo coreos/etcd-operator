@@ -11,6 +11,12 @@ type Member struct {
 	// We know the ID of a member when we get the member information from etcd,
 	// but not from Kubernetes pod list.
 	ID uint64
+
+	// The member's Service clusterIP.
+	ClusterIP string
+
+	// Whether this member is running in host network.
+	HostNetwork bool
 }
 
 func (m *Member) ClientAddr() string {

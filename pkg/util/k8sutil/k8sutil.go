@@ -133,12 +133,17 @@ func makeBackupName(clusterName string) string {
 	return fmt.Sprintf("%s-backup-tool", clusterName)
 }
 
-func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName string) error {
+func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName string) (string, error) {
 	svc := makeEtcdService(etcdName, clusterName)
 	if _, err := kclient.Services("default").Create(svc); err != nil {
-		return err
+		return "", err
 	}
-	return nil
+
+	if svc, err := kclient.Services("default").Get(etcdName); err != nil {
+		return "", err
+	} else {
+		return svc.Spec.ClusterIP, nil
+	}
 }
 
 // TODO: use a struct to replace the huge arg list.
@@ -195,6 +200,19 @@ func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string) {
 
 // todo: use a struct to replace the huge arg list.
 func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, antiAffinity bool, hostNet bool) *api.Pod {
+	// Extract stuff we want to manipulate.
+	peerAddr := m.PeerAddr()
+	clientAddr := m.ClientAddr()
+	initClus := strings.Join(initialCluster, ",")
+
+	// Replace hostnames with service VIPs.
+	peerAddr = fmt.Sprintf("http://%s:2380", m.ClusterIP)
+	clientAddr = fmt.Sprintf("http://%s:2379", m.ClusterIP)
+	initClus = strings.Replace(initClus,
+		fmt.Sprintf("http://%s", m.Name),
+		fmt.Sprintf("http://%s", m.ClusterIP),
+		-1)
+
 	commands := []string{
 		"/usr/local/bin/etcd",
 		"--data-dir",
@@ -202,15 +220,15 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 		"--name",
 		m.Name,
 		"--initial-advertise-peer-urls",
-		m.PeerAddr(),
+		peerAddr,
 		"--listen-peer-urls",
 		"http://0.0.0.0:2380",
 		"--listen-client-urls",
 		"http://0.0.0.0:2379",
 		"--advertise-client-urls",
-		m.ClientAddr(),
+		clientAddr,
 		"--initial-cluster",
-		strings.Join(initialCluster, ","),
+		initClus,
 		"--initial-cluster-state",
 		state,
 	}

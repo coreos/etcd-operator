@@ -4,6 +4,7 @@ metadata:
   name: "etcd-cluster"
 spec:
   size: 3
+  hostNetwork: true
   backup:
     # short snapshot interval for testing, do not use this in production!
     snapshotIntervalInSecond: 30
