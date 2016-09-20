@@ -200,19 +200,6 @@ func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string) {
 
 // todo: use a struct to replace the huge arg list.
 func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, antiAffinity bool, hostNet bool) *api.Pod {
-	// Extract stuff we want to manipulate.
-	peerAddr := m.PeerAddr()
-	clientAddr := m.ClientAddr()
-	initClus := strings.Join(initialCluster, ",")
-
-	// Replace hostnames with service VIPs.
-	peerAddr = fmt.Sprintf("http://%s:2380", m.ClusterIP)
-	clientAddr = fmt.Sprintf("http://%s:2379", m.ClusterIP)
-	initClus = strings.Replace(initClus,
-		fmt.Sprintf("http://%s", m.Name),
-		fmt.Sprintf("http://%s", m.ClusterIP),
-		-1)
-
 	commands := []string{
 		"/usr/local/bin/etcd",
 		"--data-dir",
@@ -220,15 +207,15 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 		"--name",
 		m.Name,
 		"--initial-advertise-peer-urls",
-		peerAddr,
+		m.PeerAddr(),
 		"--listen-peer-urls",
 		"http://0.0.0.0:2380",
 		"--listen-client-urls",
 		"http://0.0.0.0:2379",
 		"--advertise-client-urls",
-		clientAddr,
+		m.ClientAddr(),
 		"--initial-cluster",
-		initClus,
+		strings.Join(initialCluster, ","),
 		"--initial-cluster-state",
 		state,
 	}

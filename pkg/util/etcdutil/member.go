@@ -14,16 +14,23 @@ type Member struct {
 
 	// The member's Service clusterIP.
 	ClusterIP string
-
-	// Whether this member is running in host network.
-	HostNetwork bool
 }
 
 func (m *Member) ClientAddr() string {
+	if m.HostNetwork {
+		// If running in with host networking, don't rely
+		// on DNS - use the cluster IP.
+		return fmt.Sprintf("http://%s:2379", m.ClusterIP)
+	}
 	return fmt.Sprintf("http://%s:2379", m.Name)
 }
 
 func (m *Member) PeerAddr() string {
+	if m.HostNetwork {
+		// If running in with host networking, don't rely
+		// on DNS - use the cluster IP.
+		return fmt.Sprintf("http://%s:2380", m.ClusterIP)
+	}
 	return fmt.Sprintf("http://%s:2380", m.Name)
 }
 
