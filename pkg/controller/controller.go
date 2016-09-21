@@ -164,6 +164,7 @@ func monitorEtcdCluster(host string, httpClient *http.Client, watchVersion strin
 				return
 			}
 			if resp.StatusCode != 200 {
+				resp.Body.Close()
 				errc <- errors.New("Invalid status code: " + resp.Status)
 				return
 			}
