@@ -35,7 +35,8 @@ type Cluster struct {
 
 	spec *Spec
 
-	name string
+	name      string
+	namespace string
 
 	idCounter int
 	eventCh   chan *clusterEvent
@@ -49,21 +50,22 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(c *unversioned.Client, name string, spec *Spec) *Cluster {
-	return new(c, name, spec, true)
+func New(c *unversioned.Client, name, ns string, spec *Spec) *Cluster {
+	return new(c, name, ns, spec, true)
 }
 
-func Restore(c *unversioned.Client, name string, spec *Spec) *Cluster {
-	return new(c, name, spec, false)
+func Restore(c *unversioned.Client, name, ns string, spec *Spec) *Cluster {
+	return new(c, name, ns, spec, false)
 }
 
-func new(kclient *unversioned.Client, name string, spec *Spec, isNewCluster bool) *Cluster {
+func new(kclient *unversioned.Client, name, ns string, spec *Spec, isNewCluster bool) *Cluster {
 	c := &Cluster{
-		kclient: kclient,
-		name:    name,
-		eventCh: make(chan *clusterEvent, 100),
-		stopCh:  make(chan struct{}),
-		spec:    spec,
+		kclient:   kclient,
+		name:      name,
+		namespace: ns,
+		eventCh:   make(chan *clusterEvent, 100),
+		stopCh:    make(chan struct{}),
+		spec:      spec,
 	}
 	if isNewCluster {
 		if err := c.newSeedMember(); err != nil {
@@ -188,7 +190,7 @@ func (c *Cluster) delete() {
 		}),
 	}
 
-	pods, err := c.kclient.Pods("default").List(option)
+	pods, err := c.kclient.Pods(c.namespace).List(option)
 	if err != nil {
 		panic(err)
 	}
@@ -200,7 +202,7 @@ func (c *Cluster) delete() {
 }
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
-	if err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name); err != nil {
+	if err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace); err != nil {
 		return err
 	}
 	token := ""
@@ -211,17 +213,17 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	if needRecovery {
 		k8sutil.AddRecoveryToPod(pod, c.name, m.Name, token)
 	}
-	return k8sutil.CreateAndWaitPod(c.kclient, pod, m)
+	return k8sutil.CreateAndWaitPod(c.kclient, pod, m, c.namespace)
 }
 
 func (c *Cluster) removePodAndService(name string) error {
-	err := c.kclient.Pods("default").Delete(name, nil)
+	err := c.kclient.Pods(c.namespace).Delete(name, nil)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
 	}
-	err = c.kclient.Services("default").Delete(name)
+	err = c.kclient.Services(c.namespace).Delete(name)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
@@ -238,7 +240,7 @@ func (c *Cluster) getRunning() (etcdutil.MemberSet, error) {
 		}),
 	}
 
-	podList, err := c.kclient.Pods("default").List(opts)
+	podList, err := c.kclient.Pods(c.namespace).List(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list running pods: %v", err)
 	}

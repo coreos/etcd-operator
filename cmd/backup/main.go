@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	"github.com/coreos/kube-etcd-controller/pkg/backup"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
@@ -11,6 +12,7 @@ var (
 	masterHost  string
 	clusterName string
 	listenAddr  string
+	namespace   string
 )
 
 func init() {
@@ -19,6 +21,11 @@ func init() {
 	flag.StringVar(&listenAddr, "listen", "0.0.0.0:19999", "")
 	// TODO: parse policy
 	flag.Parse()
+
+	namespace = os.Getenv("MY_POD_NAMESPACE")
+	if len(namespace) == 0 {
+		namespace = "default"
+	}
 }
 
 func main() {
@@ -26,5 +33,5 @@ func main() {
 		panic("clusterName not set")
 	}
 	kclient := k8sutil.MustCreateClient(masterHost, false, nil)
-	backup.New(kclient, clusterName, backup.Policy{}, listenAddr).Run()
+	backup.New(kclient, clusterName, namespace, backup.Policy{}, listenAddr).Run()
 }

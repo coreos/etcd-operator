@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	"github.com/coreos/kube-etcd-controller/pkg/controller"
 )
@@ -17,6 +18,11 @@ func init() {
 	flag.StringVar(&cfg.TLSConfig.CAFile, "ca-file", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to TLS CA file.")
 	flag.BoolVar(&cfg.TLSInsecure, "tls-insecure", false, "- NOT RECOMMENDED FOR PRODUCTION - Don't verify API server's CA certificate.")
 	flag.Parse()
+
+	cfg.Namespace = os.Getenv("MY_POD_NAMESPACE")
+	if len(cfg.Namespace) == 0 {
+		cfg.Namespace = "default"
+	}
 }
 
 func main() {

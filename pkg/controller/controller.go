@@ -28,11 +28,13 @@ type Event struct {
 
 type Controller struct {
 	masterHost string
+	namespace  string
 	kclient    *unversioned.Client
 	clusters   map[string]*cluster.Cluster
 }
 
 type Config struct {
+	Namespace   string
 	MasterHost  string
 	TLSInsecure bool
 	TLSConfig   restclient.TLSClientConfig
@@ -48,6 +50,7 @@ func New(cfg Config) *Controller {
 		masterHost: host,
 		kclient:    kclient,
 		clusters:   make(map[string]*cluster.Cluster),
+		namespace:  cfg.Namespace,
 	}
 }
 
@@ -66,19 +69,19 @@ func (c *Controller) Run() {
 	}
 	log.Println("etcd cluster controller starts running...")
 
-	eventCh, errCh := monitorEtcdCluster(c.masterHost, c.kclient.RESTClient.Client, watchVersion)
+	eventCh, errCh := monitorEtcdCluster(c.masterHost, c.namespace, c.kclient.RESTClient.Client, watchVersion)
 	for {
 		select {
 		case event := <-eventCh:
 			clusterName := event.Object.ObjectMeta.Name
 			switch event.Type {
 			case "ADDED":
-				nc := cluster.New(c.kclient, clusterName, &event.Object.Spec)
+				nc := cluster.New(c.kclient, clusterName, c.namespace, &event.Object.Spec)
 				c.clusters[clusterName] = nc
 
 				backup := event.Object.Spec.Backup
 				if backup != nil && backup.MaxSnapshot != 0 {
-					err := k8sutil.CreateBackupReplicaSetAndService(c.kclient, clusterName, *backup)
+					err := k8sutil.CreateBackupReplicaSetAndService(c.kclient, clusterName, c.namespace, *backup)
 					if err != nil {
 						panic(err)
 					}
@@ -97,7 +100,7 @@ func (c *Controller) Run() {
 
 func (c *Controller) findAllClusters() (string, error) {
 	log.Println("finding existing clusters...")
-	resp, err := k8sutil.ListETCDCluster(c.masterHost, c.kclient.RESTClient.Client)
+	resp, err := k8sutil.ListETCDCluster(c.masterHost, c.namespace, c.kclient.RESTClient.Client)
 	if err != nil {
 		return "", err
 	}
@@ -107,12 +110,12 @@ func (c *Controller) findAllClusters() (string, error) {
 		return "", err
 	}
 	for _, item := range list.Items {
-		nc := cluster.Restore(c.kclient, item.Name, &item.Spec)
+		nc := cluster.Restore(c.kclient, item.Name, c.namespace, &item.Spec)
 		c.clusters[item.Name] = nc
 
 		backup := item.Spec.Backup
 		if backup != nil && backup.MaxSnapshot != 0 {
-			err := k8sutil.CreateBackupReplicaSetAndService(c.kclient, item.Name, *backup)
+			err := k8sutil.CreateBackupReplicaSetAndService(c.kclient, item.Name, c.namespace, *backup)
 			if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 				panic(err)
 			}
@@ -138,7 +141,7 @@ func (c *Controller) createTPR() error {
 
 	err = wait.Poll(3*time.Second, 100*time.Second,
 		func() (done bool, err error) {
-			resp, err := k8sutil.WatchETCDCluster(c.masterHost, c.kclient.RESTClient.Client, "0")
+			resp, err := k8sutil.WatchETCDCluster(c.masterHost, c.namespace, c.kclient.RESTClient.Client, "0")
 			if err != nil {
 				return false, err
 			}
@@ -153,12 +156,12 @@ func (c *Controller) createTPR() error {
 	return err
 }
 
-func monitorEtcdCluster(host string, httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
+func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
 	events := make(chan *Event)
 	errc := make(chan error, 1)
 	go func() {
 		for {
-			resp, err := k8sutil.WatchETCDCluster(host, httpClient, watchVersion)
+			resp, err := k8sutil.WatchETCDCluster(host, ns, httpClient, watchVersion)
 			if err != nil {
 				errc <- err
 				return
