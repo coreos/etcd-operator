@@ -24,6 +24,7 @@ type Backup struct {
 	kclient *unversioned.Client
 
 	clusterName string
+	namespace   string
 	policy      Policy
 	listenAddr  string
 	backupDir   string
@@ -31,10 +32,11 @@ type Backup struct {
 	backupNow chan chan error
 }
 
-func New(kclient *unversioned.Client, clusterName string, policy Policy, listenAddr string) *Backup {
+func New(kclient *unversioned.Client, clusterName, ns string, policy Policy, listenAddr string) *Backup {
 	return &Backup{
 		kclient:     kclient,
 		clusterName: clusterName,
+		namespace:   ns,
 		policy:      policy,
 		listenAddr:  listenAddr,
 		backupDir:   "/home/backup/",
@@ -77,7 +79,7 @@ func (b *Backup) Run() {
 }
 
 func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
-	pods, err := b.kclient.Pods("default").List(api.ListOptions{
+	pods, err := b.kclient.Pods(b.namespace).List(api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"app":          "etcd",
 			"etcd_cluster": b.clusterName,

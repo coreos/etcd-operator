@@ -65,13 +65,13 @@ func makeRestoreInitContainerSpec(backupAddr, name, token string) string {
 	return string(b)
 }
 
-func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName string, policy backup.Policy) error {
+func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName, ns string, policy backup.Policy) error {
 	labels := map[string]string{
 		"app":          "etcd_backup_tool",
 		"etcd_cluster": clusterName,
 	}
 	name := makeBackupName(clusterName)
-	_, err := kclient.ReplicaSets("default").Create(&extensions.ReplicaSet{
+	_, err := kclient.ReplicaSets(ns).Create(&extensions.ReplicaSet{
 		ObjectMeta: api.ObjectMeta{
 			Name: name,
 		},
@@ -119,7 +119,7 @@ func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName s
 			Selector: labels,
 		},
 	}
-	if _, err := kclient.Services("default").Create(svc); err != nil {
+	if _, err := kclient.Services(ns).Create(svc); err != nil {
 		return err
 	}
 	return nil
@@ -133,20 +133,20 @@ func makeBackupName(clusterName string) string {
 	return fmt.Sprintf("%s-backup-tool", clusterName)
 }
 
-func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName string) error {
+func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName, ns string) error {
 	svc := makeEtcdService(etcdName, clusterName)
-	if _, err := kclient.Services("default").Create(svc); err != nil {
+	if _, err := kclient.Services(ns).Create(svc); err != nil {
 		return err
 	}
 	return nil
 }
 
 // TODO: use a struct to replace the huge arg list.
-func CreateAndWaitPod(kclient *unversioned.Client, pod *api.Pod, m *etcdutil.Member) error {
-	if _, err := kclient.Pods("default").Create(pod); err != nil {
+func CreateAndWaitPod(kclient *unversioned.Client, pod *api.Pod, m *etcdutil.Member, ns string) error {
+	if _, err := kclient.Pods(ns).Create(pod); err != nil {
 		return err
 	}
-	w, err := kclient.Pods("default").Watch(api.SingleObject(api.ObjectMeta{Name: m.Name}))
+	w, err := kclient.Pods(ns).Watch(api.SingleObject(api.ObjectMeta{Name: m.Name}))
 	if err != nil {
 		return err
 	}
@@ -341,10 +341,12 @@ func IsKubernetesResourceNotFoundError(err error) bool {
 	return false
 }
 
-func ListETCDCluster(host string, httpClient *http.Client) (*http.Response, error) {
-	return httpClient.Get(host + "/apis/coreos.com/v1/namespaces/default/etcdclusters")
+func ListETCDCluster(host, ns string, httpClient *http.Client) (*http.Response, error) {
+	return httpClient.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters",
+		host, ns))
 }
 
-func WatchETCDCluster(host string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
-	return httpClient.Get(host + "/apis/coreos.com/v1/namespaces/default/etcdclusters?watch=true&resourceVersion=" + resourceVersion)
+func WatchETCDCluster(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
+	return httpClient.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters?watch=true&resourceVersion=%s",
+		host, ns, resourceVersion))
 }
