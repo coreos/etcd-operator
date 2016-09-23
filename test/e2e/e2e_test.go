@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -19,10 +18,7 @@ import (
 )
 
 func TestCreateCluster(t *testing.T) {
-	f, err := framework.New(os.Getenv("KUBERNETES_KUBECONFIG_PATH"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := framework.Global
 	myetcd := &cluster.EtcdCluster{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "EtcdCluster",
@@ -51,7 +47,7 @@ func TestCreateCluster(t *testing.T) {
 	}()
 
 	err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
-		pods, err := f.KubeClient.Pods("default").List(api.ListOptions{
+		pods, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
 			LabelSelector: labels.SelectorFromSet(map[string]string{
 				"etcd_cluster": "my-etcd",
 			}),
@@ -81,7 +77,7 @@ func getPodNames(pods []api.Pod) []string {
 
 func postEtcdCluster(f *framework.Framework, body []byte) error {
 	resp, err := f.KubeClient.Client.Post(
-		f.MasterHost+"/apis/coreos.com/v1/namespaces/default/etcdclusters",
+		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters", f.MasterHost, f.Namespace.Name),
 		"application/json", bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -94,7 +90,7 @@ func postEtcdCluster(f *framework.Framework, body []byte) error {
 
 func deleteEtcdCluster(f *framework.Framework) error {
 	req, err := http.NewRequest("DELETE",
-		f.MasterHost+"/apis/coreos.com/v1/namespaces/default/etcdclusters/my-etcd", nil)
+		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/my-etcd", f.MasterHost, f.Namespace.Name), nil)
 	if err != nil {
 		return err
 	}

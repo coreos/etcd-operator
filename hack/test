@@ -50,11 +50,7 @@ function build_pass {
 }
 
 function e2e_pass {
-	hack/e2e setup $CONTROLLER_IMAGE
-	test_pass="0"
-	go test -v ${TEST_PKGS} || test_pass="1"
-	hack/e2e teardown
-	return $test_pass
+	go test -v ${TEST_PKGS} --kubeconfig $KUBERNETES_KUBECONFIG_PATH --controller-image $CONTROLLER_IMAGE
 }
 
 for p in $PASSES; do

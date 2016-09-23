@@ -14,7 +14,6 @@ import (
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/util/wait"
 )
 
 const (
@@ -139,21 +138,7 @@ func (c *Controller) createTPR() error {
 		return err
 	}
 
-	err = wait.Poll(3*time.Second, 100*time.Second,
-		func() (done bool, err error) {
-			resp, err := k8sutil.WatchETCDCluster(c.masterHost, c.namespace, c.kclient.RESTClient.Client, "0")
-			if err != nil {
-				return false, err
-			}
-			if resp.StatusCode == 200 {
-				return true, nil
-			}
-			if resp.StatusCode == 404 {
-				return false, nil
-			}
-			return false, errors.New("Invalid status code: " + resp.Status)
-		})
-	return err
+	return k8sutil.WaitEtcdTPRReady(c.kclient.Client, 3*time.Second, 90*time.Second, c.masterHost, c.namespace)
 }
 
 func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
