@@ -1,15 +1,19 @@
 package: github.com/coreos/kube-etcd-controller
 import:
 - package: github.com/Sirupsen/logrus
+  version: ^0.10.0
 - package: github.com/coreos/etcd
+  version: ^3.1.0-alpha.0
   subpackages:
   - clientv3
   - etcdserver/api/v3rpc/rpctypes
 - package: github.com/pborman/uuid
+  version: ^1.0.0
 - package: golang.org/x/net
   subpackages:
   - context
 - package: k8s.io/kubernetes
+  version: ^1.5.0-alpha.0
   subpackages:
   - pkg/api
   - pkg/api/errors
