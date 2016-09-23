@@ -38,7 +38,7 @@ func setupEtcdController(f *framework.Framework) error {
 			Containers: []api.Container{
 				{
 					Name:  "kube-etcd-controller",
-					Image: "gcr.io/coreos-k8s-scale-testing/kubeetcdctrl:latest",
+					Image: "gcr.io/coreos-k8s-scale-testing/kube-etcd-controller:latest",
 				},
 			},
 		},

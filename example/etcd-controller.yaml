@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: kubeetcdctrl
+  name: kube-etcd-controller
   labels:
-    name: kubeetcdctrl
+    name: kube-etcd-controller
 spec:
   containers:
   -
-    name: kubeetcdctrl
-    image: gcr.io/coreos-k8s-scale-testing/kubeetcdctrl:latest
+    name: kube-etcd-controller
+    image: gcr.io/coreos-k8s-scale-testing/kube-etcd-controller
