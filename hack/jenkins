@@ -12,6 +12,13 @@ mkdir -p $GOPATH/src/github.com/coreos
 ln -s "${origpwd}" $GOPATH/src/github.com/coreos/kube-etcd-controller
 cd $GOPATH/src/github.com/coreos/kube-etcd-controller
 
+cleanup() {
+	cd $origpwd
+	rm -rf $GOPATH
+}
+
+trap cleanup EXIT
+
 glide install
 
 if "hack/test"; then
