@@ -18,6 +18,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/intstr"
+	"k8s.io/kubernetes/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/watch"
 )
 
@@ -349,4 +350,22 @@ func ListETCDCluster(host, ns string, httpClient *http.Client) (*http.Response, 
 func WatchETCDCluster(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
 	return httpClient.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters?watch=true&resourceVersion=%s",
 		host, ns, resourceVersion))
+}
+
+func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, host, ns string) error {
+	return wait.Poll(interval, timeout, func() (bool, error) {
+		resp, err := WatchETCDCluster(host, ns, httpClient, "0")
+		if err != nil {
+			return false, err
+		}
+
+		switch resp.StatusCode {
+		case http.StatusOK:
+			return true, nil
+		case http.StatusNotFound: // not set up yet. wait.
+			return false, nil
+		default:
+			return false, fmt.Errorf("invalid status code: %v", resp.Status)
+		}
+	})
 }
