@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+: ${BACKUP_IMAGE:?"Need to set BACKUP_IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/kube-etcd-backup"}
+
+mkdir -p _output/bin || true
+
+CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o _output/bin/backup cmd/backup/main.go
+
+docker build --tag "${BACKUP_IMAGE}" -f hack/build/backup/Dockerfile .
+gcloud docker push "${BACKUP_IMAGE}"
