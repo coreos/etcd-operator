@@ -10,7 +10,7 @@ option="${1}"
 case ${option} in
    "setup")
 		go build -o _output/bin/e2e-setup ./test/e2e/framework/setup/main.go
-		_output/bin/e2e-setup --kubeconfig ${KUBERNETES_KUBECONFIG_PATH}
+		_output/bin/e2e-setup --kubeconfig ${KUBERNETES_KUBECONFIG_PATH} --controller-image "${2}"
 		;;
    "teardown")
 		go build -o _output/bin/e2e-teardown ./test/e2e/framework/teardown/main.go

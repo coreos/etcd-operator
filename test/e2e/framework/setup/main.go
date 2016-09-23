@@ -16,18 +16,19 @@ const etcdTPRURL = "/apis/coreos.com/v1/etcdclusters"
 
 func main() {
 	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
+	ctrlImage := flag.String("controller-image", "", "controller image, e.g. gcr.io/coreos-k8s-scale-testing/kube-etcd-controller")
 	flag.Parse()
 	f, err := framework.New(*kubeconfig)
 	if err != nil {
 		panic(err)
 	}
-	if err := setupEtcdController(f); err != nil {
+	if err := setupEtcdController(f, *ctrlImage); err != nil {
 		panic(err)
 	}
 	logrus.Info("setup finished successfully")
 }
 
-func setupEtcdController(f *framework.Framework) error {
+func setupEtcdController(f *framework.Framework, ctrlImage string) error {
 	// TODO: unify this and the yaml file in example/
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
@@ -38,7 +39,7 @@ func setupEtcdController(f *framework.Framework) error {
 			Containers: []api.Container{
 				{
 					Name:  "kube-etcd-controller",
-					Image: "gcr.io/coreos-k8s-scale-testing/kube-etcd-controller:latest",
+					Image: ctrlImage,
 				},
 			},
 		},
