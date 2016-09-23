@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+origpwd=$(pwd)
+GOPATH="${origpwd}/../build-${BUILD_ID}/gopath/"
+rm -rf $GOPATH
+mkdir -p $GOPATH
+cd $GOPATH
+export GOPATH=`pwd`
+echo "GOPATH: ${GOPATH}"
+
+mkdir -p $GOPATH/src/github.com/coreos
+ln -s "${origpwd}" $GOPATH/src/github.com/coreos/kube-etcd-controller
+cd $GOPATH/src/github.com/coreos/kube-etcd-controller
+
+glide install
+
+if "hack/test"; then
+	echo "Success!"
+else
+	echo "Fail!"
+	exit 1
+fi
