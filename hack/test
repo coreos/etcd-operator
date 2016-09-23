@@ -10,6 +10,8 @@ fi
 
 GIT_VERSION=$(git rev-parse HEAD)
 TEST_PKGS=`go list ./test/... | grep -v framework`
+CONTROLLER_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-controller:${GIT_VERSION}"
+BACKUP_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-backup:${GIT_VERSION}"
 
 find_files() {
   find . -not \( \
@@ -43,12 +45,12 @@ function fmt_pass {
 }
 
 function build_pass {
-	CONTROLLER_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-controller:${GIT_VERSION}" hack/build/controller/build
-	BACKUP_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-backup:${GIT_VERSION}" hack/build/backup/build
+	CONTROLLER_IMAGE=$CONTROLLER_IMAGE hack/build/controller/build
+	BACKUP_IMAGE=$BACKUP_IMAGE hack/build/backup/build
 }
 
 function e2e_pass {
-	hack/e2e setup
+	hack/e2e setup $CONTROLLER_IMAGE
 	test_pass="0"
 	go test -v ${TEST_PKGS} || test_pass="1"
 	hack/e2e teardown
