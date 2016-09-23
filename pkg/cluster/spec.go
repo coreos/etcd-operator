@@ -9,7 +9,7 @@ import (
 type EtcdCluster struct {
 	unversioned.TypeMeta `json:",inline"`
 	api.ObjectMeta       `json:"metadata,omitempty"`
-	Spec                 Spec `json: "spec"`
+	Spec                 `json:"spec"`
 }
 
 type Spec struct {
