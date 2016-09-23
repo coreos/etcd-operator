@@ -8,6 +8,7 @@ if [ -z "${PASSES-}" ]; then
 	PASSES="fmt build e2e"
 fi
 
+GIT_VERSION=$(git rev-parse HEAD)
 TEST_PKGS=`go list ./test/... | grep -v framework`
 
 find_files() {
@@ -42,8 +43,8 @@ function fmt_pass {
 }
 
 function build_pass {
-	CONTROLLER_IMAGE=gcr.io/coreos-k8s-scale-testing/kube-etcd-controller hack/build/controller/build
-	BACKUP_IMAGE=gcr.io/coreos-k8s-scale-testing/kube-etcd-backup hack/build/backup/build
+	CONTROLLER_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-controller:${GIT_VERSION}" hack/build/controller/build
+	BACKUP_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-backup:${GIT_VERSION}" hack/build/backup/build
 }
 
 function e2e_pass {
