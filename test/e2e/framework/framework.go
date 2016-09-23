@@ -70,6 +70,12 @@ func (f *Framework) setupEtcdController(ctrlImage string) error {
 				{
 					Name:  "kube-etcd-controller",
 					Image: ctrlImage,
+					Env: []api.EnvVar{
+						{
+							Name:      "MY_POD_NAMESPACE",
+							ValueFrom: &api.EnvVarSource{FieldRef: &api.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+						},
+					},
 				},
 			},
 		},

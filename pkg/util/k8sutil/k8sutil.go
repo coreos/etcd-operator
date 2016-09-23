@@ -93,6 +93,12 @@ func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName, 
 								"--etcd-cluster",
 								clusterName,
 							},
+							Env: []api.EnvVar{
+								{
+									Name:      "MY_POD_NAMESPACE",
+									ValueFrom: &api.EnvVarSource{FieldRef: &api.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+								},
+							},
 						},
 					},
 				},
