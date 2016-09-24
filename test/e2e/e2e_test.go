@@ -19,124 +19,66 @@ import (
 
 func TestCreateCluster(t *testing.T) {
 	f := framework.Global
-	myetcd := &cluster.EtcdCluster{
-		TypeMeta: unversioned.TypeMeta{
-			Kind:       "EtcdCluster",
-			APIVersion: "coreos.com/v1",
-		},
-		ObjectMeta: api.ObjectMeta{
-			Name: "my-etcd",
-		},
-		Spec: cluster.Spec{
-			Size: 3,
-		},
-	}
-	body, err := json.Marshal(myetcd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	name := "my-etcd"
+	myetcd := makeEtcdCluster(name, 3)
 
-	if err := postEtcdCluster(f, body); err != nil {
+	if err := createEtcdCluster(f, myetcd); err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := deleteEtcdCluster(f); err != nil {
+		if err := deleteEtcdCluster(f, name); err != nil {
 			t.Fatal(err)
 		}
 	}()
 
-	err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
-		pods, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
-			LabelSelector: labels.SelectorFromSet(map[string]string{
-				"etcd_cluster": "my-etcd",
-			}),
-		})
-		if err != nil {
-			return false, err
-		}
-		logrus.Infof("Currently running pods: %v", getPodNames(pods.Items))
-		if len(pods.Items) != 3 {
-			// TODO: check etcd commands.
-			return false, nil
-		}
-		return true, nil
-	})
-	if err != nil {
-		t.Error("failed to create 3 members etcd cluster")
+	if err := waitUntilSizeReached(f, name, 3); err != nil {
+		t.Errorf("failed to create 3 members etcd cluster: %v", err)
 	}
 }
 
 func TestResizeCluster3to5(t *testing.T) {
 	f := framework.Global
-	myetcd := &cluster.EtcdCluster{
-		TypeMeta: unversioned.TypeMeta{
-			Kind:       "EtcdCluster",
-			APIVersion: "coreos.com/v1",
-		},
-		ObjectMeta: api.ObjectMeta{
-			Name: "my-etcd",
-		},
-		Spec: cluster.Spec{
-			Size: 3,
-		},
-	}
-	body, err := json.Marshal(myetcd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	name := "my-etcd"
+	myetcd := makeEtcdCluster(name, 3)
 
-	if err := postEtcdCluster(f, body); err != nil {
+	if err := createEtcdCluster(f, myetcd); err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := deleteEtcdCluster(f); err != nil {
+		if err := deleteEtcdCluster(f, name); err != nil {
 			t.Fatal(err)
 		}
 	}()
 
-	err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
-		pods, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
-			LabelSelector: labels.SelectorFromSet(map[string]string{
-				"etcd_cluster": "my-etcd",
-			}),
-		})
-		if err != nil {
-			return false, err
-		}
-		logrus.Infof("Currently running pods: %v", getPodNames(pods.Items))
-		if len(pods.Items) != 3 {
-			// TODO: check etcd commands.
-			return false, nil
-		}
-		return true, nil
-	})
-	if err != nil {
-		t.Error("failed to create 3 members etcd cluster")
+	if err := waitUntilSizeReached(f, name, 3); err != nil {
+		t.Errorf("failed to create 3 members etcd cluster: %v", err)
 	}
+	t.Log("reached to size 3")
 
 	myetcd.Spec.Size = 5
-	body, err = json.Marshal(myetcd)
-	if err != nil {
+	if err := updateEtcdCluster(f, name, myetcd); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := updateEtcdCluster(f, "my-etcd", body); err != nil {
-		t.Fatal(err)
+	if err := waitUntilSizeReached(f, name, 5); err != nil {
+		t.Errorf("failed to create 5 members etcd cluster: %v", err)
 	}
+}
 
-	err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+func waitUntilSizeReached(f *framework.Framework, name string, size int) error {
+	return wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
 		pods, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
 			LabelSelector: labels.SelectorFromSet(map[string]string{
-				"etcd_cluster": "my-etcd",
+				"etcd_cluster": name,
 			}),
 		})
 		if err != nil {
 			return false, err
 		}
 		logrus.Infof("Currently running pods: %v", getPodNames(pods.Items))
-		if len(pods.Items) != 5 {
+		if len(pods.Items) != size {
 			// TODO: check etcd commands.
 			return false, nil
 		}
@@ -152,23 +94,47 @@ func getPodNames(pods []api.Pod) []string {
 	return res
 }
 
-func postEtcdCluster(f *framework.Framework, body []byte) error {
-	resp, err := f.KubeClient.Client.Post(
-		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters", f.MasterHost, f.Namespace.Name),
-		"application/json", bytes.NewReader(body))
+func makeEtcdCluster(name string, size int) *cluster.EtcdCluster {
+	return &cluster.EtcdCluster{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "EtcdCluster",
+			APIVersion: "coreos.com/v1",
+		},
+		ObjectMeta: api.ObjectMeta{
+			Name: name,
+		},
+		Spec: cluster.Spec{
+			Size: size,
+		},
+	}
+}
+
+func createEtcdCluster(f *framework.Framework, e *cluster.EtcdCluster) error {
+	b, err := json.Marshal(e)
 	if err != nil {
 		return err
 	}
+	resp, err := f.KubeClient.Client.Post(
+		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters", f.MasterHost, f.Namespace.Name),
+		"application/json", bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
 		return fmt.Errorf("unexpected status: %v", resp.Status)
 	}
 	return nil
 }
 
-func updateEtcdCluster(f *framework.Framework, name string, body []byte) error {
+func updateEtcdCluster(f *framework.Framework, name string, e *cluster.EtcdCluster) error {
+	b, err := json.Marshal(e)
+	if err != nil {
+		return err
+	}
 	req, err := http.NewRequest("PUT",
 		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace.Name, name),
-		bytes.NewReader(body))
+		bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -184,9 +150,9 @@ func updateEtcdCluster(f *framework.Framework, name string, body []byte) error {
 	return nil
 }
 
-func deleteEtcdCluster(f *framework.Framework) error {
+func deleteEtcdCluster(f *framework.Framework, name string) error {
 	req, err := http.NewRequest("DELETE",
-		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/my-etcd", f.MasterHost, f.Namespace.Name), nil)
+		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace.Name, name), nil)
 	if err != nil {
 		return err
 	}
@@ -194,6 +160,7 @@ func deleteEtcdCluster(f *framework.Framework) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status: %v", resp.Status)
 	}
