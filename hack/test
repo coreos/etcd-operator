@@ -11,7 +11,6 @@ fi
 GIT_VERSION=$(git rev-parse HEAD)
 TEST_PKGS=`go list ./test/... | grep -v framework`
 CONTROLLER_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-controller:${GIT_VERSION}"
-BACKUP_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-backup:${GIT_VERSION}"
 
 find_files() {
   find . -not \( \
@@ -46,7 +45,6 @@ function fmt_pass {
 
 function build_pass {
 	CONTROLLER_IMAGE=$CONTROLLER_IMAGE hack/build/controller/build
-	BACKUP_IMAGE=$BACKUP_IMAGE hack/build/backup/build
 }
 
 function e2e_pass {
