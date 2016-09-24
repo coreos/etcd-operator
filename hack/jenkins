@@ -14,7 +14,7 @@ cd $GOPATH/src/github.com/coreos/kube-etcd-controller
 
 cleanup() {
 	cd $origpwd
-	rm -rf $GOPATH
+	rm -rf "${origpwd}/../build-${BUILD_ID}"
 }
 
 trap cleanup EXIT
