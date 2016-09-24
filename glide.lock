@@ -1,10 +1,10 @@
 hash: 932d4dcc1dd978103d489be90d1f8e4c30e8ed5b8e58aa6047180acdbab8d3a6
-updated: 2016-09-22T21:58:00.949069434-07:00
+updated: 2016-09-24T10:31:31.064842073-07:00
 imports:
 - name: github.com/blang/semver
   version: 31b736133b98f26d5e078ec9eb591666edfd091f
 - name: github.com/coreos/etcd
-  version: 5c2053109bfbb195cb61d597c2538686289d0774
+  version: 2469a9568548b3f8abc22f5a2462c3443823334a
   subpackages:
   - clientv3
   - etcdserver/api/v3rpc/rpctypes
@@ -182,7 +182,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
 - name: k8s.io/client-go
-  version: 93fcd402979cfad8a7151f96e016416947c6a3cb
+  version: 0b62e254fe853d89b1d8d3445bbdab11bcc11bc3
   subpackages:
   - 1.4/rest
   - 1.4/pkg/api
