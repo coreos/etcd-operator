@@ -67,6 +67,83 @@ func TestCreateCluster(t *testing.T) {
 	}
 }
 
+func TestResizeCluster3to5(t *testing.T) {
+	f := framework.Global
+	myetcd := &cluster.EtcdCluster{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "EtcdCluster",
+			APIVersion: "coreos.com/v1",
+		},
+		ObjectMeta: api.ObjectMeta{
+			Name: "my-etcd",
+		},
+		Spec: cluster.Spec{
+			Size: 3,
+		},
+	}
+	body, err := json.Marshal(myetcd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := postEtcdCluster(f, body); err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		if err := deleteEtcdCluster(f); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+		pods, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
+			LabelSelector: labels.SelectorFromSet(map[string]string{
+				"etcd_cluster": "my-etcd",
+			}),
+		})
+		if err != nil {
+			return false, err
+		}
+		logrus.Infof("Currently running pods: %v", getPodNames(pods.Items))
+		if len(pods.Items) != 3 {
+			// TODO: check etcd commands.
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		t.Error("failed to create 3 members etcd cluster")
+	}
+
+	myetcd.Spec.Size = 5
+	body, err = json.Marshal(myetcd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := updateEtcdCluster(f, "my-etcd", body); err != nil {
+		t.Fatal(err)
+	}
+
+	err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+		pods, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
+			LabelSelector: labels.SelectorFromSet(map[string]string{
+				"etcd_cluster": "my-etcd",
+			}),
+		})
+		if err != nil {
+			return false, err
+		}
+		logrus.Infof("Currently running pods: %v", getPodNames(pods.Items))
+		if len(pods.Items) != 5 {
+			// TODO: check etcd commands.
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
 func getPodNames(pods []api.Pod) []string {
 	res := []string{}
 	for _, p := range pods {
@@ -83,6 +160,25 @@ func postEtcdCluster(f *framework.Framework, body []byte) error {
 		return err
 	}
 	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("unexpected status: %v", resp.Status)
+	}
+	return nil
+}
+
+func updateEtcdCluster(f *framework.Framework, name string, body []byte) error {
+	req, err := http.NewRequest("PUT",
+		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace.Name, name),
+		bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := f.KubeClient.Client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status: %v", resp.Status)
 	}
 	return nil
