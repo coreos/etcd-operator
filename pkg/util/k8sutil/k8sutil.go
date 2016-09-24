@@ -360,10 +360,11 @@ func WatchETCDCluster(host, ns string, httpClient *http.Client, resourceVersion 
 
 func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, host, ns string) error {
 	return wait.Poll(interval, timeout, func() (bool, error) {
-		resp, err := WatchETCDCluster(host, ns, httpClient, "0")
+		resp, err := ListETCDCluster(host, ns, httpClient)
 		if err != nil {
 			return false, err
 		}
+		defer resp.Body.Close()
 
 		switch resp.StatusCode {
 		case http.StatusOK:
