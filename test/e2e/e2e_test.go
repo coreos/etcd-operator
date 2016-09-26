@@ -30,7 +30,7 @@ func TestCreateCluster(t *testing.T) {
 		}
 	}()
 
-	if err := waitUntilSizeReached(f, testEtcd.Name, 3); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3); err != nil {
 		t.Errorf("failed to create 3 members etcd cluster: %v", err)
 	}
 }
@@ -48,8 +48,9 @@ func TestResizeCluster3to5(t *testing.T) {
 		}
 	}()
 
-	if err := waitUntilSizeReached(f, testEtcd.Name, 3); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3); err != nil {
 		t.Errorf("failed to create 3 members etcd cluster: %v", err)
+		return
 	}
 	t.Log("reached to 3 members cluster")
 
@@ -58,7 +59,7 @@ func TestResizeCluster3to5(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := waitUntilSizeReached(f, testEtcd.Name, 5); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 5); err != nil {
 		t.Errorf("failed to resize to 5 members etcd cluster: %v", err)
 	}
 }
@@ -76,8 +77,9 @@ func TestResizeCluster5to3(t *testing.T) {
 		}
 	}()
 
-	if err := waitUntilSizeReached(f, testEtcd.Name, 5); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 5); err != nil {
 		t.Errorf("failed to create 5 members etcd cluster: %v", err)
+		return
 	}
 	t.Log("reached to 5 members cluster")
 
@@ -86,28 +88,61 @@ func TestResizeCluster5to3(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := waitUntilSizeReached(f, testEtcd.Name, 3); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3); err != nil {
 		t.Errorf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }
 
-func waitUntilSizeReached(f *framework.Framework, name string, size int) error {
-	return wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+func TestOneMemberRecovery(t *testing.T) {
+	f := framework.Global
+	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	names, err := waitUntilSizeReached(f, testEtcd.Name, 3)
+	if err != nil {
+		t.Errorf("failed to create 3 members etcd cluster: %v", err)
+		return
+	}
+	t.Log("reached to 3 members cluster")
+
+	if err := f.KubeClient.Pods(f.Namespace.Name).Delete(names[0], nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3); err != nil {
+		t.Errorf("failed to resize to 3 members etcd cluster: %v", err)
+	}
+}
+
+func waitUntilSizeReached(f *framework.Framework, clusterName string, size int) ([]string, error) {
+	var names []string
+	err := wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
 		pods, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
 			LabelSelector: labels.SelectorFromSet(map[string]string{
-				"etcd_cluster": name,
+				"etcd_cluster": clusterName,
 			}),
 		})
 		if err != nil {
 			return false, err
 		}
-		logrus.Infof("Currently running pods: %v", getPodNames(pods.Items))
+		names = getPodNames(pods.Items)
+		logrus.Infof("Currently running pods: %v", names)
 		if len(pods.Items) != size {
 			// TODO: check etcd commands.
 			return false, nil
 		}
 		return true, nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	return names, nil
 }
 
 func getPodNames(pods []api.Pod) []string {
