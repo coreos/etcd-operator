@@ -49,13 +49,17 @@ func (f *Framework) Setup(ctrlImage string) error {
 		logrus.Errorf("fail to setup etcd controller: %v", err)
 		return err
 	}
-	logrus.Info("setup finished successfully")
+	logrus.Info("e2e setup successfully")
 	return nil
 }
 
 func (f *Framework) Teardown() error {
 	// TODO: delete TPR
-	return f.KubeClient.Namespaces().Delete(f.Namespace.Name)
+	if err := f.KubeClient.Namespaces().Delete(f.Namespace.Name); err != nil {
+		return err
+	}
+	logrus.Info("e2e teardown successfully")
+	return nil
 }
 
 func (f *Framework) setupEtcdController(ctrlImage string) error {
