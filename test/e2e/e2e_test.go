@@ -53,7 +53,7 @@ func TestResizeCluster3to5(t *testing.T) {
 		t.Errorf("failed to create 3 members etcd cluster: %v", err)
 		return
 	}
-	t.Log("reached to 3 members cluster")
+	fmt.Println("reached to 3 members cluster")
 
 	testEtcd.Spec.Size = 5
 	if err := updateEtcdCluster(f, testEtcd); err != nil {
@@ -82,7 +82,7 @@ func TestResizeCluster5to3(t *testing.T) {
 		t.Errorf("failed to create 5 members etcd cluster: %v", err)
 		return
 	}
-	t.Log("reached to 5 members cluster")
+	fmt.Println("reached to 5 members cluster")
 
 	testEtcd.Spec.Size = 3
 	if err := updateEtcdCluster(f, testEtcd); err != nil {
@@ -111,7 +111,7 @@ func TestOneMemberRecovery(t *testing.T) {
 		t.Errorf("failed to create 3 members etcd cluster: %v", err)
 		return
 	}
-	t.Log("reached to 3 members cluster")
+	fmt.Println("reached to 3 members cluster")
 
 	if err := killMembers(f, names[0]); err != nil {
 		t.Fatal(err)
@@ -144,7 +144,7 @@ func TestDisasterRecovery(t *testing.T) {
 		t.Errorf("failed to create 3 members etcd cluster: %v", err)
 		return
 	}
-	t.Log("reached to 3 members cluster")
+	fmt.Println("reached to 3 members cluster")
 	if err := killMembers(f, names[0], names[1]); err != nil {
 		t.Fatal(err)
 	}
