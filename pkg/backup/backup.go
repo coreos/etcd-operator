@@ -20,6 +20,8 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 )
 
+const BackupDir = "/home/backup/"
+
 type Backup struct {
 	kclient *unversioned.Client
 
@@ -27,7 +29,6 @@ type Backup struct {
 	namespace   string
 	policy      Policy
 	listenAddr  string
-	backupDir   string
 
 	backupNow chan chan error
 }
@@ -39,7 +40,6 @@ func New(kclient *unversioned.Client, clusterName, ns string, policy Policy, lis
 		namespace:   ns,
 		policy:      policy,
 		listenAddr:  listenAddr,
-		backupDir:   "/home/backup/",
 
 		backupNow: make(chan chan error),
 	}
@@ -47,7 +47,7 @@ func New(kclient *unversioned.Client, clusterName, ns string, policy Policy, lis
 
 func (b *Backup) Run() {
 	// It will be no-op if backup dir existed.
-	if err := os.MkdirAll(b.backupDir, 0700); err != nil {
+	if err := os.MkdirAll(BackupDir, 0700); err != nil {
 		panic(err)
 	}
 
@@ -106,7 +106,7 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 	}
 
 	log.Printf("saving backup for cluster (%s)", b.clusterName)
-	if err := writeSnap(member, b.backupDir, rev); err != nil {
+	if err := writeSnap(member, BackupDir, rev); err != nil {
 		err = fmt.Errorf("write snapshot failed: %v", err)
 		return lastSnapRev, err
 	}

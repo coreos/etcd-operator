@@ -42,9 +42,9 @@ func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
-	files, err := ioutil.ReadDir(b.backupDir)
+	files, err := ioutil.ReadDir(BackupDir)
 	if err != nil {
-		logrus.Errorf("failed to list dir (%s): error (%v)", b.backupDir, err)
+		logrus.Errorf("failed to list dir (%s): error (%v)", BackupDir, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -54,7 +54,7 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	http.ServeFile(w, r, path.Join(b.backupDir, fname))
+	http.ServeFile(w, r, path.Join(BackupDir, fname))
 }
 
 func getLatestSnapshotName(files []os.FileInfo) string {

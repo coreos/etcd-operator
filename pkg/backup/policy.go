@@ -6,6 +6,13 @@ var (
 	defaultSnapshotInterval = 1800 * time.Second
 )
 
+// TODO: supports object store like s3
+type StorageType string
+
+const (
+	StorageTypePersistentVolume = "PersistentVolume"
+)
+
 type Policy struct {
 	// SnapshotIntervalInSecond specifies the interval between two snapshots.
 	// The default interval is 1800 seconds.
@@ -20,4 +27,6 @@ type Policy struct {
 	// purpose.
 	// If the snapshot size is larger than the size specified, backup fails.
 	VolumeSizeInMB int `json:"volumeSizeInMB"`
+	// StorageType specifies the type of storage device to store backup files.
+	StorageType StorageType `json:"storageType,omitempty"`
 }

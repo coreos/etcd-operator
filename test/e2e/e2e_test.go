@@ -127,6 +127,7 @@ func TestDisasterRecovery(t *testing.T) {
 		SnapshotIntervalInSecond: 120,
 		MaxSnapshot:              5,
 		VolumeSizeInMB:           512,
+		StorageType:              backup.StorageTypePersistentVolume,
 	}
 	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3, backupPolicy))
 	if err != nil {
