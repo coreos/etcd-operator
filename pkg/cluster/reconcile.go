@@ -44,6 +44,7 @@ func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
 		if err != nil {
 			return err
 		}
+		defer etcdcli.Close()
 		if err := etcdutil.WaitMemberReady(etcdcli, constants.DefaultDialTimeout); err != nil {
 			return err
 		}
@@ -102,6 +103,7 @@ func (c *Cluster) addOneMember() error {
 	if err != nil {
 		return err
 	}
+	defer etcdcli.Close()
 	newMemberName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
 	newMember := &etcdutil.Member{Name: newMemberName}
 	var id uint64
@@ -145,10 +147,10 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	if err != nil {
 		return err
 	}
+	defer etcdcli.Close()
 
-	clustercli := clientv3.NewCluster(etcdcli)
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	if _, err := clustercli.MemberRemove(ctx, toRemove.ID); err != nil {
+	if _, err := etcdcli.Cluster.MemberRemove(ctx, toRemove.ID); err != nil {
 		return fmt.Errorf("etcdcli failed to remove one member: %v", err)
 	}
 	c.members.Remove(toRemove.Name)
