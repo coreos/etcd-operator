@@ -21,6 +21,9 @@ trap cleanup EXIT
 
 glide install
 
+GIT_VERSION=$(git rev-parse HEAD)
+export CONTROLLER_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-controller:${GIT_VERSION}"
+
 if "hack/test"; then
 	echo "Success!"
 else
