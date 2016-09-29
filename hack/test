@@ -8,10 +8,6 @@ if [ -z "${PASSES-}" ]; then
 	PASSES="fmt build e2e"
 fi
 
-GIT_VERSION=$(git rev-parse HEAD)
-TEST_PKGS=`go list ./test/... | grep -v framework`
-CONTROLLER_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-controller:${GIT_VERSION}"
-
 find_files() {
   find . -not \( \
       \( \
@@ -48,6 +44,7 @@ function build_pass {
 }
 
 function e2e_pass {
+	TEST_PKGS=`go list ./test/... | grep -v framework`
 	go test -v ${TEST_PKGS} --kubeconfig $KUBERNETES_KUBECONFIG_PATH --controller-image $CONTROLLER_IMAGE
 }
 
