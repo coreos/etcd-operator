@@ -122,6 +122,7 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	if err != nil {
 		return fmt.Errorf("failed to create etcd client (%v)", err)
 	}
+	defer etcdcli.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 
@@ -168,6 +169,7 @@ func getMemberWithMaxRev(pods *api.PodList) (*etcdutil.Member, int64, error) {
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to create etcd client (%v)", err)
 		}
+		defer etcdcli.Close()
 		ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
 		if err != nil {
