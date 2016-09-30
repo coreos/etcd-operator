@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+set -o errexit
+set -o nounset
+set -o pipefail
+
 origpwd=$(pwd)
 GOPATH="${origpwd}/../build-${BUILD_ID}/gopath/"
 rm -rf $GOPATH
@@ -13,6 +17,7 @@ ln -s "${origpwd}" $GOPATH/src/github.com/coreos/kube-etcd-controller
 cd $GOPATH/src/github.com/coreos/kube-etcd-controller
 
 cleanup() {
+	echo "cleaning up ==="
 	cd $origpwd
 	rm -rf "${origpwd}/../build-${BUILD_ID}"
 }
@@ -25,8 +30,8 @@ GIT_VERSION=$(git rev-parse HEAD)
 export CONTROLLER_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-controller:${GIT_VERSION}"
 
 if "hack/test"; then
-	echo "Success!"
+	echo "Success! ==="
 else
-	echo "Fail!"
+	echo "Fail! ==="
 	exit 1
 fi
