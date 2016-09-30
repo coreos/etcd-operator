@@ -54,17 +54,9 @@ func New(cfg Config) *Controller {
 }
 
 func (c *Controller) Run() {
-	watchVersion := "0"
-	if err := c.createTPR(); err != nil {
-		switch {
-		case k8sutil.IsKubernetesResourceAlreadyExistError(err):
-			watchVersion, err = c.findAllClusters()
-			if err != nil {
-				panic(err)
-			}
-		default:
-			panic(err)
-		}
+	watchVersion, err := c.initResource()
+	if err != nil {
+		panic(err)
 	}
 	log.Println("etcd cluster controller starts running...")
 
@@ -75,10 +67,11 @@ func (c *Controller) Run() {
 			clusterName := event.Object.ObjectMeta.Name
 			switch event.Type {
 			case "ADDED":
-				nc := cluster.New(c.kclient, clusterName, c.namespace, &event.Object.Spec)
+				clusterSpec := &event.Object.Spec
+				nc := cluster.New(c.kclient, clusterName, c.namespace, clusterSpec)
 				c.clusters[clusterName] = nc
 
-				backup := event.Object.Spec.Backup
+				backup := clusterSpec.Backup
 				if backup != nil && backup.MaxSnapshot != 0 {
 					err := k8sutil.CreateBackupReplicaSetAndService(c.kclient, clusterName, c.namespace, *backup)
 					if err != nil {
@@ -121,6 +114,31 @@ func (c *Controller) findAllClusters() (string, error) {
 		}
 	}
 	return list.ListMeta.ResourceVersion, nil
+}
+
+func (c *Controller) initResource() (string, error) {
+	err := c.createTPR()
+	if err != nil {
+		switch {
+		// etcd controller has been initialized before. We don't need to
+		// repeat the init process but recover cluster.
+		case k8sutil.IsKubernetesResourceAlreadyExistError(err):
+			watchVersion, err := c.findAllClusters()
+			if err != nil {
+				return "", err
+			}
+			return watchVersion, nil
+		default:
+			log.Errorf("fail to create TPR: %v", err)
+			return "", err
+		}
+	}
+	err = k8sutil.CreateStorageClass(c.kclient)
+	if err != nil {
+		log.Errorf("fail to create storage class: %v", err)
+		return "", err
+	}
+	return "0", nil
 }
 
 func (c *Controller) createTPR() error {

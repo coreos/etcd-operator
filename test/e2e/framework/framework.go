@@ -1,6 +1,7 @@
 package framework
 
 import (
+	"flag"
 	"fmt"
 	"time"
 
@@ -19,46 +20,54 @@ type Framework struct {
 	Namespace  *api.Namespace
 }
 
-func New(kubeconfig string, baseName string) (*Framework, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+// Setup setups a test framework and points "Global" to it.
+func Setup() error {
+	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
+	ctrlImage := flag.String("controller-image", "", "controller image, e.g. gcr.io/coreos-k8s-scale-testing/kube-etcd-controller")
+	flag.Parse()
+
+	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	cli, err := unversioned.New(config)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	namespace, err := cli.Namespaces().Create(&api.Namespace{
 		ObjectMeta: api.ObjectMeta{
-			GenerateName: fmt.Sprintf("e2e-test-%v-", baseName),
+			GenerateName: fmt.Sprintf("e2e-test-"),
 		},
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &Framework{
+	Global = &Framework{
 		MasterHost: config.Host,
 		KubeClient: cli,
 		Namespace:  namespace,
-	}, nil
+	}
+	return Global.setup(*ctrlImage)
 }
 
-func (f *Framework) Setup(ctrlImage string) error {
+func Teardown() error {
+	// TODO: delete TPR
+	if err := Global.KubeClient.Namespaces().Delete(Global.Namespace.Name); err != nil {
+		return err
+	}
+	// TODO: check all deleted and wait
+	Global = nil
+	logrus.Info("e2e teardown successfully")
+	return nil
+}
+
+func (f *Framework) setup(ctrlImage string) error {
 	if err := f.setupEtcdController(ctrlImage); err != nil {
 		logrus.Errorf("fail to setup etcd controller: %v", err)
 		return err
 	}
 	logrus.Info("e2e setup successfully")
-	return nil
-}
-
-func (f *Framework) Teardown() error {
-	// TODO: delete TPR
-	if err := f.KubeClient.Namespaces().Delete(f.Namespace.Name); err != nil {
-		return err
-	}
-	logrus.Info("e2e teardown successfully")
 	return nil
 }
 
@@ -82,6 +91,7 @@ func (f *Framework) setupEtcdController(ctrlImage string) error {
 					},
 				},
 			},
+			RestartPolicy: api.RestartPolicyNever,
 		},
 	}
 
