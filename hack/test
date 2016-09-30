@@ -40,7 +40,7 @@ function fmt_pass {
 }
 
 function build_pass {
-	CONTROLLER_IMAGE=$CONTROLLER_IMAGE hack/build/controller/build
+	hack/build/controller/build
 }
 
 function e2e_pass {
@@ -52,4 +52,4 @@ for p in $PASSES; do
 	${p}_pass
 done
 
-echo "test success"
+echo "test success ==="
