@@ -9,3 +9,4 @@ spec:
     snapshotIntervalInSecond: 30
     maxSnapshot: 5
     volumeSizeInMB: 512
+    storageType: "PersistentVolume"
