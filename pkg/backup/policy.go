@@ -28,5 +28,6 @@ type Policy struct {
 	// If the snapshot size is larger than the size specified, backup fails.
 	VolumeSizeInMB int `json:"volumeSizeInMB"`
 	// StorageType specifies the type of storage device to store backup files.
+	// If it's not set by user, the default is "PersistentVolume".
 	StorageType StorageType `json:"storageType,omitempty"`
 }
