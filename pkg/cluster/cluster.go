@@ -68,7 +68,13 @@ func new(kclient *unversioned.Client, name, ns string, spec *Spec, isNewCluster 
 		spec:      spec,
 	}
 	if isNewCluster {
-		if err := c.newSeedMember(); err != nil {
+		var err error
+		if spec.Seed == nil {
+			err = c.newSeedMember()
+		} else {
+			err = c.migrateSeedMember()
+		}
+		if err != nil {
 			panic(err)
 		}
 	}
@@ -141,6 +147,21 @@ func (c *Cluster) newSeedMember() error {
 
 func (c *Cluster) restoreSeedMember() error {
 	return c.startSeedMember(true)
+}
+
+func (c *Cluster) migrateSeedMember() error {
+	// add a new member into the existing seed cluster
+
+	// wait for the delay
+	delay := time.Duration(c.spec.Seed.RemoveDelay) * time.Second
+	log.Infof("wait %v before remove the original seed member", delay)
+	time.Sleep(delay)
+
+	// delete the original seed member from the etcd cluster.
+	// now we have migrate the seed member into kubernetes.
+	// our controller not takes control over it.
+
+	return nil
 }
 
 func (c *Cluster) Update(spec *Spec) {

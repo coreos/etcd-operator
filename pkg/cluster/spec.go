@@ -31,4 +31,17 @@ type Spec struct {
 	// HostNetwork determines if the etcd pods should be run
 	// in the host network namespace.
 	HostNetwork bool `json:"hostNetwork,omitempty"`
+	// Seed specifies a seed member for the cluster.
+	// If there is no seed member, a completely new cluster will be created.
+	// There is no seed member by default.
+	Seed *SeedPolicy `json:"seed,omitempty"`
+}
+
+type SeedPolicy struct {
+	// The client endpoints of the seed member.
+	MemberClientEndpoints []string
+	// RemoveDelay specifies the delay to remove the original seed member from the
+	// cluster in seconds.
+	// The seed member will be removed in 30s by default.
+	RemoveDelay int
 }
