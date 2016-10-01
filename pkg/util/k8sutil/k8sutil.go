@@ -26,6 +26,8 @@ import (
 )
 
 const (
+	etcdImage = "quay.io/coreos/etcd:v3.1.0-alpha.1"
+
 	// TODO: This is constant for current purpose. We might make it configurable later.
 	etcdDir    = "/var/etcd"
 	dataDir    = etcdDir + "/data"
@@ -49,7 +51,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token string) string {
 		},
 		{
 			Name:  "restore-datadir",
-			Image: "quay.io/coreos/etcd:latest",
+			Image: etcdImage,
 			Command: []string{
 				"/bin/sh", "-c",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
@@ -152,6 +154,10 @@ func CreateBackupReplicaSetAndService(kclient *unversioned.Client, clusterName, 
 	return nil
 }
 
+func GetNodePortString(srv *api.Service) string {
+	return fmt.Sprint(srv.Spec.Ports[0].NodePort)
+}
+
 func CreateStorageClass(kubecli *unversioned.Client) error {
 	class := &storage.StorageClass{
 		ObjectMeta: api.ObjectMeta{
@@ -227,6 +233,11 @@ func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName, ns st
 	return nil
 }
 
+func CreateEtcdNodePortService(kclient *unversioned.Client, etcdName, clusterName, ns string) (*api.Service, error) {
+	svc := makeEtcdNodePortService(etcdName, clusterName)
+	return kclient.Services(ns).Create(svc)
+}
+
 // TODO: use a struct to replace the huge arg list.
 func CreateAndWaitPod(kclient *unversioned.Client, pod *api.Pod, m *etcdutil.Member, ns string) error {
 	if _, err := kclient.Pods(ns).Create(pod); err != nil {
@@ -267,6 +278,32 @@ func makeEtcdService(etcdName, clusterName string) *api.Service {
 					Protocol:   api.ProtocolTCP,
 				},
 			},
+			Selector: labels,
+		},
+	}
+	return svc
+}
+
+func makeEtcdNodePortService(etcdName, clusterName string) *api.Service {
+	labels := map[string]string{
+		"etcd_node":    etcdName,
+		"etcd_cluster": clusterName,
+	}
+	svc := &api.Service{
+		ObjectMeta: api.ObjectMeta{
+			Name:   etcdName + "-nodeport",
+			Labels: labels,
+		},
+		Spec: api.ServiceSpec{
+			Ports: []api.ServicePort{
+				{
+					Name:       "server",
+					Port:       2380,
+					TargetPort: intstr.FromInt(2380),
+					Protocol:   api.ProtocolTCP,
+				},
+			},
+			Type:     api.ServiceTypeNodePort,
 			Selector: labels,
 		},
 	}
@@ -318,7 +355,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 				{
 					Command: commands,
 					Name:    m.Name,
-					Image:   "quay.io/coreos/etcd:latest",
+					Image:   etcdImage,
 					Ports: []api.ContainerPort{
 						{
 							Name:          "server",
