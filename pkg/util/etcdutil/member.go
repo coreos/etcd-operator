@@ -11,6 +11,9 @@ type Member struct {
 	// We know the ID of a member when we get the member information from etcd,
 	// but not from Kubernetes pod list.
 	ID uint64
+
+	// AdditionalPeerURL is only used for bootstrapping a member for seed cluster migration.
+	AdditionalPeerURL string
 }
 
 func (m *Member) ClientAddr() string {
@@ -18,7 +21,11 @@ func (m *Member) ClientAddr() string {
 }
 
 func (m *Member) PeerAddr() string {
-	return fmt.Sprintf("http://%s:2380", m.Name)
+	pa := fmt.Sprintf("http://%s:2380", m.Name)
+	if len(m.AdditionalPeerURL) == 0 {
+		return pa
+	}
+	return strings.Join([]string{pa, m.AdditionalPeerURL}, ",")
 }
 
 type MemberSet map[string]*Member

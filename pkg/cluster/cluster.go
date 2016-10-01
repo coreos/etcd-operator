@@ -8,6 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
@@ -16,6 +17,7 @@ import (
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/util/wait"
 )
 
 type clusterEventType string
@@ -150,16 +152,136 @@ func (c *Cluster) restoreSeedMember() error {
 }
 
 func (c *Cluster) migrateSeedMember() error {
-	// add a new member into the existing seed cluster
+	log.Infof("migrating seed member (%s)", c.spec.Seed.MemberClientEndpoints)
+
+	cfg := clientv3.Config{
+		Endpoints:   c.spec.Seed.MemberClientEndpoints,
+		DialTimeout: constants.DefaultDialTimeout,
+	}
+	etcdcli, err := clientv3.New(cfg)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	resp, err := etcdcli.MemberList(ctx)
+	cancel()
+	if err != nil {
+		return err
+	}
+	if len(resp.Members) != 1 {
+		return fmt.Errorf("seed cluster contains more than one member")
+	}
+	seedMember := resp.Members[0]
+	seedID := resp.Members[0].ID
+
+	log.Infof("adding a new member")
+
+	// create service with node port on peer port
+	// the seed member outside the Kubernetes cluster then can access the service
+	etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
+	npsrv, nperr := k8sutil.CreateEtcdNodePortService(c.kclient, etcdName, c.name, c.namespace)
+	if nperr != nil {
+		return nperr
+	}
+
+	// create the first member inside Kubernetes for migration
+	m := &etcdutil.Member{Name: etcdName, AdditionalPeerURL: "http://127.0.0.1:" + k8sutil.GetNodePortString(npsrv)}
+	mpurls := []string{fmt.Sprintf("http://%s:2380", m.Name), m.AdditionalPeerURL}
+	err = wait.Poll(1*time.Second, 20*time.Second, func() (done bool, err error) {
+		ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+		_, err = etcdcli.MemberAdd(ctx, mpurls)
+		if err != nil {
+			if err == rpctypes.ErrUnhealthy {
+				return false, nil
+			}
+			return false, fmt.Errorf("etcdcli failed to add member: %v", err)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace); err != nil {
+		return err
+	}
+	initialCluster := make([]string, 0)
+	for _, purl := range seedMember.PeerURLs {
+		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", seedMember.Name, purl))
+	}
+	for _, purl := range mpurls {
+		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", m.Name, purl))
+	}
+	pod := k8sutil.MakeEtcdPod(m, initialCluster, c.name, "existing", "", c.spec.AntiAffinity, c.spec.HostNetwork)
+	if err := k8sutil.CreateAndWaitPod(c.kclient, pod, m, c.namespace); err != nil {
+		return err
+	}
+	c.idCounter++
+	etcdcli.Close()
+	log.Infof("added the new member")
 
 	// wait for the delay
 	delay := time.Duration(c.spec.Seed.RemoveDelay) * time.Second
-	log.Infof("wait %v before remove the original seed member", delay)
+	log.Infof("wait %v before remove the seed member", delay)
 	time.Sleep(delay)
+
+	log.Infof("removing the seed member")
+
+	cfg = clientv3.Config{
+		Endpoints:   []string{m.ClientAddr()},
+		DialTimeout: constants.DefaultDialTimeout,
+	}
+	etcdcli, err = clientv3.New(cfg)
+	if err != nil {
+		return err
+	}
 
 	// delete the original seed member from the etcd cluster.
 	// now we have migrate the seed member into kubernetes.
 	// our controller not takes control over it.
+	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	_, err = etcdcli.Cluster.MemberRemove(ctx, seedID)
+	cancel()
+	if err != nil {
+		return fmt.Errorf("etcdcli failed to remove seed member: %v", err)
+	}
+
+	log.Infof("removed the seed member")
+
+	// remove the external nodeport service and change the peerURL that only
+	// contains the internal service
+	err = c.kclient.Services(c.namespace).Delete(npsrv.ObjectMeta.Name)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	resp, err = etcdcli.MemberList(ctx)
+	cancel()
+	if err != nil {
+		return err
+	}
+
+	log.Infof("updating the peer urls (%v) for the member %x", resp.Members[0].PeerURLs, resp.Members[0].ID)
+
+	m.AdditionalPeerURL = ""
+	for {
+		ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+		_, err = etcdcli.MemberUpdate(ctx, resp.Members[0].ID, []string{m.PeerAddr()})
+		cancel()
+		if err == nil {
+			break
+		}
+		if err != context.DeadlineExceeded {
+			return err
+		}
+	}
+
+	etcdcli.Close()
+	log.Infof("finished the member migration")
 
 	return nil
 }
