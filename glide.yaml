@@ -8,12 +8,12 @@ import:
   - clientv3
   - etcdserver/api/v3rpc/rpctypes
 - package: github.com/pborman/uuid
-  version: v1.0
+  version: v1.0.0
 - package: golang.org/x/net
   subpackages:
   - context
 - package: k8s.io/kubernetes
-  version: v1.4.0
+  version: 347d4481808f62e26149bb1f89dcce76367f2aac
   subpackages:
   - pkg/api
   - pkg/api/errors
