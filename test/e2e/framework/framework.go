@@ -26,6 +26,7 @@ type Framework struct {
 func Setup() error {
 	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
 	ctrlImage := flag.String("controller-image", "", "controller image, e.g. gcr.io/coreos-k8s-scale-testing/kube-etcd-controller")
+	ns := flag.String("namespace", "default", "e2e test namespace")
 	flag.Parse()
 
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -38,7 +39,7 @@ func Setup() error {
 	}
 	namespace, err := cli.Namespaces().Create(&api.Namespace{
 		ObjectMeta: api.ObjectMeta{
-			GenerateName: fmt.Sprintf("e2e-test-"),
+			Name: *ns,
 		},
 	})
 	if err != nil {
@@ -60,10 +61,12 @@ func Teardown() error {
 	}
 	fmt.Println("kube-etcd-controller logs ===")
 	fmt.Println(buf.String())
-	// TODO: delete TPR
-	if err := Global.KubeClient.Namespaces().Delete(Global.Namespace.Name); err != nil {
-		return err
+	if Global.Namespace.Name != "default" {
+		if err := Global.KubeClient.Namespaces().Delete(Global.Namespace.Name); err != nil {
+			return err
+		}
 	}
+	// TODO: delete TPR
 	// TODO: check all deleted and wait
 	Global = nil
 	logrus.Info("e2e teardown successfully")
