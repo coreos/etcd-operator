@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/kube-etcd-controller/pkg/backup"
 	"github.com/coreos/kube-etcd-controller/pkg/cluster"
+	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/test/e2e/framework"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -165,6 +167,7 @@ func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, 
 			}),
 		})
 		if err != nil {
+			logrus.Errorf("fail to list pods in cluster (%s): %v", clusterName, err)
 			return false, err
 		}
 		names = getPodNames(pods.Items)
@@ -177,6 +180,18 @@ func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, 
 	})
 	if err != nil {
 		return nil, err
+	}
+	// check all members are ready
+	for _, name := range names {
+		cfg := clientv3.Config{
+			Endpoints:   []string{fmt.Sprintf("http://%s:2379", name)},
+			DialTimeout: constants.DefaultDialTimeout,
+		}
+		etcdcli, err := clientv3.New(cfg)
+		if err != nil {
+			logrus.Errorf("fail to create etcdcli (%s): %v", name, err)
+			return nil, err
+		}
 	}
 	return names, nil
 }
