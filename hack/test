@@ -45,7 +45,7 @@ function build_pass {
 
 function e2e_pass {
 	TEST_PKGS=`go list ./test/... | grep -v framework`
-	go test -v ${TEST_PKGS} --kubeconfig $KUBERNETES_KUBECONFIG_PATH --controller-image $CONTROLLER_IMAGE
+	go test -v ${TEST_PKGS} --kubeconfig $KUBERNETES_KUBECONFIG_PATH --controller-image $CONTROLLER_IMAGE --namespace ${TEST_NAMESPACE}
 }
 
 for p in $PASSES; do

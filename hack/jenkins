@@ -28,6 +28,10 @@ glide install
 
 GIT_VERSION=$(git rev-parse HEAD)
 export CONTROLLER_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-controller:${GIT_VERSION}"
+export TEST_NAMESPACE="e2e-test-${BUILD_ID}"
+
+echo "controller image: ${CONTROLLER_IMAGE}"
+echo "test namespace: ${TEST_NAMESPACE}"
 
 if "hack/test"; then
 	echo "Success! ==="
