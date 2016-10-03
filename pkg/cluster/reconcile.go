@@ -162,6 +162,10 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 }
 
 func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
+	if c.spec.Backup == nil {
+		return fmt.Errorf("fail to do disaster recovery for cluster (%s): no backup policy has been defined."+
+			" (TODO: Mark cluster as dead)", c.name)
+	}
 	httpClient := c.kclient.RESTClient.Client
 	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", k8sutil.MakeBackupHostPort(c.name)))
 	if err != nil {
