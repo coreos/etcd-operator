@@ -9,6 +9,8 @@ Managed etcd clusters on Kubernetes:
 - resize
 - recovery
 - backup
+- cluster migration
+ - migrate the non managed etcd cluster into the controller's manage
 - rolling upgrade
 
 ## Requirements
@@ -19,6 +21,7 @@ Managed etcd clusters on Kubernetes:
 ## Limitations
 
 - Backup only works for data in etcd3 storage, not etcd2 storage.
+- Migration only supports single member cluster with all nodes running in the same Kuberentes cluster.
 
 ## Deploy kube-etcd-controller
 
