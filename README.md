@@ -151,17 +151,17 @@ NAME                       READY     STATUS    RESTARTS   AGE
 
 ## Try member recovery
 
-If the minority of etcd members crash, etcd controller will automatically recover member failure.
+If the minority of etcd members crash, the etcd controller will automatically recover the failure.
 Let's walk through in the following steps.
 
 Redo "create" process to have initial 3 members cluster.
 
-Simulate a member failure by simply deleting a pod:
+Simulate a member failure by deleting a pod:
 ```bash
 $ kubectl delete pod etcd-cluster-0000
 ```
 
-etcd controller will recover the failure by creating a new pod `etcd-cluster-0003`
+The etcd controller will recover the failure by creating a new pod `etcd-cluster-0003`
 
 ```bash
 $ kubectl get pods
@@ -173,7 +173,7 @@ etcd-cluster-0003   1/1       Running   0          5s
 
 ## Try controller recovery
 
-If etcd controller restarts, it will recover its state.
+If the etcd controller restarts, it can recover its previous state.
 
 Continued from above, you can try to simulate a controller crash and a member crash:
 
@@ -185,7 +185,7 @@ $ kubectl delete etcd-cluster-0001
 pod "etcd-cluster-0001" deleted
 ```
 
-Then restart etcd controller. It should automatically recover itself. It also recovers the etcd cluster!
+Then restart the etcd controller. It should automatically recover itself. It also recovers the etcd cluster!
 
 ```bash
 $ kubectl create -f example/etcd-cluster.yaml
@@ -199,25 +199,29 @@ etcd-cluster-0004   1/1       Running   0          6s
 
 ## Try disaster recovery
 
-If the majority of etcd members crash and some backup exists for the cluster, etcd controller can restore
-entire cluster from backup.
+If the majority of etcd members crash and at least one backup exists for the cluster, the etcd controller can restore
+entire cluster from the backup.
 
-By default, etcd controller creates a storage class:
+By default, the etcd controller creates a storage class on initialization:
+
 ```
 $ kubectl get storageclass
 NAME                     TYPE
 etcd-controller-backup   kubernetes.io/gce-pd
 ```
-This is used to request persistent storage to store backup data. (We are planning to support AWS EBS soon.)
 
-Continued from last example, there is a persistent volume claim for the backup pod:
+This is used to request the persistent volume to store the backup data. (We are planning to support AWS EBS soon.)
+
+Continued from last example, a persistent volume is claimed for the backup pod:
+
 ```
 $ kubectl get pvc
 NAME               STATUS    VOLUME                                     CAPACITY   ACCESSMODES   AGE
 pvc-etcd-cluster   Bound     pvc-164d18fe-8797-11e6-a8b4-42010af00002   1Gi        RWO           14m
 ```
 
-Let's try to write some data into etcd for verification purpose:
+Let's try to write some data into etcd:
+
 ```
 $ kubectl run --rm -i --tty fun --image quay.io/coreos/etcd --restart=Never -- /bin/sh
 / # ETCDCTL_API=3 etcdctl --endpoints http://etcd-cluster-0002:2379 put foo bar
@@ -225,18 +229,20 @@ OK
 (ctrl-D to exit)
 ```
 
-Now let's kill two pods:
+Now let's kill two pods to simulate a disaster failure:
+
 ```
 $ kubectl delete pod etcd-cluster-000 etcd-cluster-0003
 pod "etcd-cluster-0002" deleted
 pod "etcd-cluster-0003" deleted
 ```
 
-We should see that:
-- all pods from previous quorum are removed
-- a new seed member will go through "Init" process to recover from backup
-- cluster will restore in full shortly
+Now quorum is lost. The etcd controller will start ti recover the cluster by:
+- create a new seed member to recover from the backup
+- add enough members into the seed cluster
+
 ```
+
 $ kubectl get pods
 NAME                             READY     STATUS     RESTARTS   AGE
 etcd-cluster-0005                0/1       Init:0/2   0          11s
@@ -249,4 +255,5 @@ etcd-cluster-0006                1/1       Running   0          3m
 etcd-cluster-0007                1/1       Running   0          3m
 etcd-cluster-backup-tool-e9gkv   1/1       Running   0          22m
 ```
+
 Note that there might be race that it falls to member recovery because the second pod hasn't been deleted yet.
