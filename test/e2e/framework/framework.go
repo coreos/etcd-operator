@@ -37,11 +37,16 @@ func Setup() error {
 	if err != nil {
 		return err
 	}
-	namespace, err := cli.Namespaces().Create(&api.Namespace{
-		ObjectMeta: api.ObjectMeta{
-			Name: *ns,
-		},
-	})
+	var namespace *api.Namespace
+	if *ns != "default" {
+		namespace, err = cli.Namespaces().Create(&api.Namespace{
+			ObjectMeta: api.ObjectMeta{
+				Name: *ns,
+			},
+		})
+	} else {
+		namespace, err = cli.Namespaces().Get("default")
+	}
 	if err != nil {
 		return err
 	}
