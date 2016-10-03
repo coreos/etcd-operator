@@ -240,7 +240,7 @@ pod "etcd-cluster-0002" deleted
 pod "etcd-cluster-0003" deleted
 ```
 
-Now quorum is lost. The etcd controller will start ti recover the cluster by:
+Now quorum is lost. The etcd controller will start to recover the cluster by:
 - create a new seed member to recover from the backup
 - add enough members into the seed cluster
 
