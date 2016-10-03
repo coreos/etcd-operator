@@ -99,6 +99,7 @@ func (c *Cluster) send(ev *clusterEvent) {
 }
 
 func (c *Cluster) run() {
+	retry := 0
 	for {
 		select {
 		case event := <-c.eventCh:
@@ -122,8 +123,17 @@ func (c *Cluster) run() {
 				continue
 			}
 			if err := c.reconcile(running); err != nil {
-				panic(err)
+				// reconcile() is a critical path.
+				// If we failed to do something, e.g. requesting backupnow, creating pod/service,
+				// we should be a little tolerant.
+				if retry >= 3 {
+					log.Fatalf("retried reconcile %d times, still failing: %v", 3, err)
+				}
+				log.Errorf("reconcile failed: %v", err)
+				retry++
+				break
 			}
+			retry = 0
 		}
 	}
 }
