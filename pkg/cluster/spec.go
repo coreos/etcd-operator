@@ -42,6 +42,6 @@ type SeedPolicy struct {
 	MemberClientEndpoints []string
 	// RemoveDelay specifies the delay to remove the original seed member from the
 	// cluster in seconds.
-	// The seed member will be removed in 30s by default.
+	// The seed member will be removed in 30 second by default. Minimum delay is 10 seconds.
 	RemoveDelay int
 }
