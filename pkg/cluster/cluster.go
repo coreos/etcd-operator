@@ -8,7 +8,6 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
@@ -17,7 +16,6 @@ import (
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/util/wait"
 )
 
 type clusterEventType string
@@ -191,20 +189,6 @@ func (c *Cluster) migrateSeedMember() error {
 	// create the first member inside Kubernetes for migration
 	m := &etcdutil.Member{Name: etcdName, AdditionalPeerURL: "http://127.0.0.1:" + k8sutil.GetNodePortString(npsrv)}
 	mpurls := []string{fmt.Sprintf("http://%s:2380", m.Name), m.AdditionalPeerURL}
-	err = wait.Poll(1*time.Second, 20*time.Second, func() (done bool, err error) {
-		ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-		_, err = etcdcli.MemberAdd(ctx, mpurls)
-		if err != nil {
-			if err == rpctypes.ErrUnhealthy {
-				return false, nil
-			}
-			return false, fmt.Errorf("etcdcli failed to add member: %v", err)
-		}
-		return true, nil
-	})
-	if err != nil {
-		return err
-	}
 
 	if err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace); err != nil {
 		return err
@@ -216,7 +200,10 @@ func (c *Cluster) migrateSeedMember() error {
 	for _, purl := range mpurls {
 		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", m.Name, purl))
 	}
+
 	pod := k8sutil.MakeEtcdPod(m, initialCluster, c.name, "existing", "", c.spec.AntiAffinity, c.spec.HostNetwork)
+	pod = k8sutil.WithAddMemberInitContainer(pod, c.spec.Seed.MemberClientEndpoints, m.Name, mpurls)
+
 	if err := k8sutil.CreateAndWaitPod(c.kclient, pod, m, c.namespace); err != nil {
 		return err
 	}
