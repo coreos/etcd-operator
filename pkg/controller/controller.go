@@ -14,6 +14,7 @@ import (
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/watch"
 )
 
 const (
@@ -21,8 +22,8 @@ const (
 )
 
 type Event struct {
-	Type   string
-	Object cluster.EtcdCluster
+	Type   watch.EventType
+	Object *cluster.EtcdCluster
 }
 
 type Controller struct {
@@ -66,7 +67,7 @@ func (c *Controller) Run() {
 		case event := <-eventCh:
 			clusterName := event.Object.ObjectMeta.Name
 			switch event.Type {
-			case "ADDED":
+			case watch.Added:
 				clusterSpec := &event.Object.Spec
 				nc := cluster.New(c.kclient, clusterName, c.namespace, clusterSpec)
 				c.clusters[clusterName] = nc
@@ -78,9 +79,9 @@ func (c *Controller) Run() {
 						panic(err)
 					}
 				}
-			case "MODIFIED":
+			case watch.Modified:
 				c.clusters[clusterName].Update(&event.Object.Spec)
-			case "DELETED":
+			case watch.Deleted:
 				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)
 			}
@@ -160,8 +161,8 @@ func (c *Controller) createTPR() error {
 }
 
 func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
-	events := make(chan *Event)
 	// On unexpected error case, controller should exit
+	eventCh := make(chan *Event)
 	errc := make(chan error, 1)
 	go func() {
 		for {
@@ -178,8 +179,8 @@ func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion s
 			log.Printf("watching at %v", watchVersion)
 			for {
 				decoder := json.NewDecoder(resp.Body)
-				ev := new(Event)
-				err = decoder.Decode(ev)
+				rawEv := &watch.Event{}
+				err = decoder.Decode(rawEv)
 				if err != nil {
 					if err == io.EOF {
 						break
@@ -188,16 +189,21 @@ func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion s
 					errc <- err
 					return
 				}
-				if ev.Type == "ERROR" {
+				if rawEv.Type == watch.Error {
+					log.Errorf("watch failed, event: %v", rawEv.Object)
 					break
 				}
-				log.Printf("etcd cluster event: %v %#v", ev.Type, ev.Object)
+				ev := &Event{
+					Type:   rawEv.Type,
+					Object: rawEv.Object.(*cluster.EtcdCluster),
+				}
+				log.Infof("etcd cluster event: %v %v", ev.Type, ev.Object)
 				watchVersion = ev.Object.ObjectMeta.ResourceVersion
-				events <- ev
+				eventCh <- ev
 			}
 			resp.Body.Close()
 		}
 	}()
 
-	return events, errc
+	return eventCh, errc
 }
