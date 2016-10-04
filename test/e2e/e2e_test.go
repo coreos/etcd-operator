@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/coreos/kube-etcd-controller/pkg/backup"
 	"github.com/coreos/kube-etcd-controller/pkg/cluster"
+	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"github.com/coreos/kube-etcd-controller/test/e2e/framework"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -167,26 +167,17 @@ func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, 
 		if err != nil {
 			return false, err
 		}
-		names = getPodNames(pods.Items)
-		logrus.Infof("Currently running pods: %v", names)
-		if len(pods.Items) != size {
-			// TODO: check etcd commands.
+		ready, _ := k8sutil.SliceReadyAndUnreadyPods(pods)
+		if len(ready) != size {
 			return false, nil
 		}
+		names = ready
 		return true, nil
 	})
 	if err != nil {
 		return nil, err
 	}
 	return names, nil
-}
-
-func getPodNames(pods []api.Pod) []string {
-	res := []string{}
-	for _, p := range pods {
-		res = append(res, p.Name)
-	}
-	return res
 }
 
 func killMembers(f *framework.Framework, names ...string) error {

@@ -363,6 +363,16 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 							Protocol:      api.ProtocolTCP,
 						},
 					},
+					ReadinessProbe: &api.Probe{
+						Handler: api.Handler{
+							Exec: &api.ExecAction{
+								Command: []string{"/bin/sh", "-c",
+									"ETCDCTL_API=3 etcdctl get foo"},
+							},
+						},
+						InitialDelaySeconds: 1,
+						TimeoutSeconds:      10,
+					},
 					VolumeMounts: []api.VolumeMount{
 						{Name: "etcd-data", MountPath: etcdDir},
 					},
@@ -492,4 +502,16 @@ func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, 
 			return false, fmt.Errorf("invalid status code: %v", resp.Status)
 		}
 	})
+}
+
+func SliceReadyAndUnreadyPods(podList *api.PodList) (ready, unready []string) {
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if pod.Status.Phase == api.PodRunning && api.IsPodReady(pod) {
+			ready = append(ready, pod.Name)
+			continue
+		}
+		unready = append(unready, pod.Name)
+	}
+	return
 }
