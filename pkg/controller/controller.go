@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -20,36 +21,59 @@ const (
 	tprName = "etcd-cluster.coreos.com"
 )
 
+var (
+	supportedPVProvisioners = map[string]struct{}{
+		"kubernetes.io/gce-pd":  {},
+		"kubernetes.io/aws-ebs": {},
+	}
+)
+
 type Event struct {
 	Type   string
 	Object cluster.EtcdCluster
 }
 
 type Controller struct {
-	masterHost string
-	namespace  string
-	kclient    *unversioned.Client
-	clusters   map[string]*cluster.Cluster
+	masterHost    string
+	namespace     string
+	kclient       *unversioned.Client
+	clusters      map[string]*cluster.Cluster
+	pvProvisioner string
 }
 
 type Config struct {
-	Namespace   string
-	MasterHost  string
-	TLSInsecure bool
-	TLSConfig   restclient.TLSClientConfig
+	Namespace     string
+	MasterHost    string
+	TLSInsecure   bool
+	TLSConfig     restclient.TLSClientConfig
+	PVProvisioner string
+}
+
+func (c *Config) validate() error {
+	if _, ok := supportedPVProvisioners[c.PVProvisioner]; !ok {
+		return fmt.Errorf(
+			"persistent volume provisioner %s is not supported: options = %v",
+			c.PVProvisioner, supportedPVProvisioners,
+		)
+	}
+	return nil
 }
 
 func New(cfg Config) *Controller {
+	if err := cfg.validate(); err != nil {
+		panic(err)
+	}
 	kclient := k8sutil.MustCreateClient(cfg.MasterHost, cfg.TLSInsecure, &cfg.TLSConfig)
 	host := cfg.MasterHost
 	if len(host) == 0 {
 		host = k8sutil.MustGetInClusterMasterHost()
 	}
 	return &Controller{
-		masterHost: host,
-		kclient:    kclient,
-		clusters:   make(map[string]*cluster.Cluster),
-		namespace:  cfg.Namespace,
+		masterHost:    host,
+		kclient:       kclient,
+		clusters:      make(map[string]*cluster.Cluster),
+		namespace:     cfg.Namespace,
+		pvProvisioner: cfg.PVProvisioner,
 	}
 }
 
@@ -133,7 +157,7 @@ func (c *Controller) initResource() (string, error) {
 			return "", err
 		}
 	}
-	err = k8sutil.CreateStorageClass(c.kclient)
+	err = k8sutil.CreateStorageClass(c.kclient, c.pvProvisioner)
 	if err != nil {
 		log.Errorf("fail to create storage class: %v", err)
 		return "", err

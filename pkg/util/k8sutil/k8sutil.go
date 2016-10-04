@@ -158,13 +158,12 @@ func GetNodePortString(srv *api.Service) string {
 	return fmt.Sprint(srv.Spec.Ports[0].NodePort)
 }
 
-func CreateStorageClass(kubecli *unversioned.Client) error {
+func CreateStorageClass(kubecli *unversioned.Client, pvProvisioner string) error {
 	class := &storage.StorageClass{
 		ObjectMeta: api.ObjectMeta{
 			Name: storageClassName,
 		},
-		// TODO: add aws
-		Provisioner: "kubernetes.io/gce-pd",
+		Provisioner: pvProvisioner,
 	}
 	_, err := kubecli.StorageClasses().Create(class)
 	return err
