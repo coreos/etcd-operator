@@ -222,6 +222,13 @@ func (c *Cluster) migrateSeedMember() error {
 	log.Infof("added the new member")
 
 	// wait for the delay
+	if c.spec.Seed.RemoveDelay == 0 {
+		c.spec.Seed.RemoveDelay = 30
+	}
+	if c.spec.Seed.RemoveDelay < 10 {
+		c.spec.Seed.RemoveDelay = 10
+	}
+
 	delay := time.Duration(c.spec.Seed.RemoveDelay) * time.Second
 	log.Infof("wait %v before remove the seed member", delay)
 	time.Sleep(delay)
