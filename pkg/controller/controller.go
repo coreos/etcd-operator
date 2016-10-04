@@ -161,6 +161,7 @@ func (c *Controller) createTPR() error {
 
 func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
 	events := make(chan *Event)
+	// On unexpected error case, controller should exit
 	errc := make(chan error, 1)
 	go func() {
 		for {
@@ -185,7 +186,7 @@ func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion s
 					}
 					log.Errorf("failed to get event from apiserver: %v", err)
 					errc <- err
-					break
+					return
 				}
 				if ev.Type == "ERROR" {
 					break
