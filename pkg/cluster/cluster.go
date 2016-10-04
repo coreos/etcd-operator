@@ -112,14 +112,17 @@ func (c *Cluster) run() {
 				return
 			}
 		case <-time.After(5 * time.Second):
-			// currently running pods in kubernets mapped to member set
-			running, err := c.getRunning()
+			ready, unready, err := c.pollPods()
 			if err != nil {
 				panic(err)
 			}
-			if running.Size() == 0 {
-				log.Infof("cluster (%s) not ready yet", c.name)
+			if len(ready) == 0 || len(unready) > 0 {
+				log.Infof("skip reconciliation: cluster (%s), ready (%v), unready (%v)", c.name, ready, unready)
 				continue
+			}
+			running := etcdutil.MemberSet{}
+			for _, name := range ready {
+				running.Add(&etcdutil.Member{Name: name})
 			}
 			if err := c.reconcile(running); err != nil {
 				panic(err)
@@ -375,7 +378,7 @@ func (c *Cluster) removePodAndService(name string) error {
 	return nil
 }
 
-func (c *Cluster) getRunning() (etcdutil.MemberSet, error) {
+func (c *Cluster) pollPods() ([]string, []string, error) {
 	opts := k8sapi.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"app":          "etcd",
@@ -385,17 +388,8 @@ func (c *Cluster) getRunning() (etcdutil.MemberSet, error) {
 
 	podList, err := c.kclient.Pods(c.namespace).List(opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list running pods: %v", err)
+		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)
 	}
-	running := etcdutil.MemberSet{}
-	for i := range podList.Items {
-		pod := podList.Items[i]
-		// TODO: use liveness probe to do checking
-		if pod.Status.Phase != k8sapi.PodRunning {
-			log.Debugf("skipping non-running pod: %s", pod.Name)
-			continue
-		}
-		running.Add(&etcdutil.Member{Name: pod.Name})
-	}
-	return running, nil
+	ready, unready := k8sutil.SliceReadyAndUnreadyPods(podList)
+	return ready, unready, nil
 }

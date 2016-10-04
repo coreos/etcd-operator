@@ -65,7 +65,7 @@ func TestCreateClusterWithSeedMember(t *testing.T) {
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 120); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 }
