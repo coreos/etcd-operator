@@ -123,7 +123,10 @@ func (c *Cluster) run() {
 				running.Add(&etcdutil.Member{Name: name})
 			}
 			if err := c.reconcile(running); err != nil {
-				panic(err)
+				log.Errorf("fail to reconcile: %v", err)
+				if !isErrTransient(err) {
+					log.Fatalf("unexpected error from reconciling: %v", err)
+				}
 			}
 		}
 	}
@@ -386,4 +389,13 @@ func (c *Cluster) pollPods() ([]string, []string, error) {
 	}
 	ready, unready := k8sutil.SliceReadyAndUnreadyPods(podList)
 	return ready, unready, nil
+}
+
+func isErrTransient(err error) bool {
+	switch err {
+	case errTimeoutAddMember:
+		return true
+	default:
+		return false
+	}
 }

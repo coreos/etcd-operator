@@ -197,7 +197,7 @@ func CreateAndWaitPVC(kubecli *unversioned.Client, clusterName, ns string, volum
 		return nil, err
 	}
 
-	err = wait.Poll(2*time.Second, 20*time.Second, func() (bool, error) {
+	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
 		claim, err := kubecli.PersistentVolumeClaims(ns).Get(retClaim.Name)
 		if err != nil {
 			return false, err
