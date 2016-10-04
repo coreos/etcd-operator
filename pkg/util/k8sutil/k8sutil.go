@@ -385,6 +385,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 							Protocol:      api.ProtocolTCP,
 						},
 					},
+					// set pod to ready when a get succeeds
 					ReadinessProbe: &api.Probe{
 						Handler: api.Handler{
 							Exec: &api.ExecAction{
@@ -394,6 +395,22 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 						},
 						InitialDelaySeconds: 1,
 						TimeoutSeconds:      10,
+					},
+					// a pod is alive only if a get succeeds
+					// the etcd pod should die if liveness probing fails.
+					LivenessProbe: &api.Probe{
+						Handler: api.Handler{
+							Exec: &api.ExecAction{
+								Command: []string{"/bin/sh", "-c",
+									"ETCDCTL_API=3 etcdctl get foo"},
+							},
+						},
+						InitialDelaySeconds: 10,
+						TimeoutSeconds:      10,
+						// probe every 60 seconds
+						PeriodSeconds: 60,
+						// failed for 3 minutes
+						FailureThreshold: 3,
 					},
 					VolumeMounts: []api.VolumeMount{
 						{Name: "etcd-data", MountPath: etcdDir},
