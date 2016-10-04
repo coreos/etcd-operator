@@ -189,7 +189,10 @@ func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion s
 					return
 				}
 				if ev.Type == "ERROR" {
-					break
+					// TODO: We couldn't decode error status from watch stream on apiserver.
+					//       Working around by restart and go through recover path.
+					//       We strive to fix it in k8s upstream.
+					log.Fatal("unkown watch error from apiserver")
 				}
 				log.Printf("etcd cluster event: %v %#v", ev.Type, ev.Object)
 				watchVersion = ev.Object.ObjectMeta.ResourceVersion
