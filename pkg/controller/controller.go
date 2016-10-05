@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -203,7 +204,11 @@ func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion s
 					if err == io.EOF {
 						break
 					}
-					log.Errorf("failed to get event from apiserver: %v", err)
+					b, readErr := ioutil.ReadAll(decoder.Buffered())
+					if readErr != nil {
+						log.Errorf("fail to read from json decoder buffer: %v", readErr)
+					}
+					log.Errorf("failed to decode event (%s) from apiserver: %v", b, err)
 					errc <- err
 					return
 				}
