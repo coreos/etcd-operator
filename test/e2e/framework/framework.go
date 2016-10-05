@@ -1,10 +1,7 @@
 package framework
 
 import (
-	"bytes"
 	"flag"
-	"fmt"
-	"io"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -60,12 +57,6 @@ func Setup() error {
 }
 
 func Teardown() error {
-	buf := bytes.NewBuffer(nil)
-	if err := getLogs(Global.KubeClient, Global.Namespace.Name, "kube-etcd-controller", buf); err != nil {
-		return err
-	}
-	fmt.Println("kube-etcd-controller logs ===")
-	fmt.Println(buf.String())
 	if Global.Namespace.Name != "default" {
 		if err := Global.KubeClient.Namespaces().Delete(Global.Namespace.Name); err != nil {
 			return err
@@ -121,22 +112,4 @@ func (f *Framework) setupEtcdController(ctrlImage string) error {
 	}
 	logrus.Info("etcd controller created successfully")
 	return nil
-}
-
-func getLogs(kubecli *unversioned.Client, ns, podID string, out io.Writer) error {
-	req := kubecli.RESTClient.Get().
-		Namespace(ns).
-		Name(podID).
-		Resource("pods").
-		SubResource("log").
-		Param("tailLines", "50")
-
-	readCloser, err := req.Stream()
-	if err != nil {
-		return err
-	}
-	defer readCloser.Close()
-
-	_, err = io.Copy(out, readCloser)
-	return err
 }
