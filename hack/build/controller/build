@@ -22,4 +22,4 @@ mkdir -p _output/bin || true
 CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o _output/bin/kube-etcd-controller cmd/controller/main.go
 
 docker build --tag "${CONTROLLER_IMAGE}" -f hack/build/controller/Dockerfile .
-gcloud docker push "${CONTROLLER_IMAGE}"
+gcloud docker -- push "${CONTROLLER_IMAGE}"
