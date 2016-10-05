@@ -17,7 +17,8 @@ import (
 )
 
 var (
-	errTimeoutAddMember = errors.New("timeout to add etcd member")
+	errTimeoutAddMember    = errors.New("timeout to add etcd member")
+	errTimeoutRemoveMember = errors.New("timeout to remove etcd member")
 )
 
 // reconcile reconciles
@@ -160,6 +161,9 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	if _, err := etcdcli.Cluster.MemberRemove(ctx, toRemove.ID); err != nil {
+		if err == rpctypes.ErrUnhealthy || err == context.DeadlineExceeded {
+			return errTimeoutRemoveMember
+		}
 		return fmt.Errorf("etcdcli failed to remove one member: %v", err)
 	}
 	c.members.Remove(toRemove.Name)
