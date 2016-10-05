@@ -27,6 +27,6 @@ func init() {
 }
 
 func main() {
-	c := controller.New(cfg)
+	c := controller.New(&cfg)
 	c.Run()
 }
