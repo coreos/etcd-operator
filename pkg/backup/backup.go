@@ -16,9 +16,9 @@ import (
 	"github.com/coreos/kube-etcd-controller/pkg/spec"
 	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
+	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/labels"
 )
 
 type Backup struct {
@@ -78,12 +78,7 @@ func (b *Backup) Run() {
 }
 
 func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
-	pods, err := b.kclient.Pods(b.namespace).List(api.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"app":          "etcd",
-			"etcd_cluster": b.clusterName,
-		}),
-	})
+	pods, err := b.kclient.Pods(b.namespace).List(k8sutil.EtcdPodListOpt(b.clusterName))
 	if err != nil {
 		return lastSnapRev, err
 	}
