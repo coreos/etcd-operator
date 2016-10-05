@@ -11,4 +11,4 @@ mkdir -p _output/bin || true
 CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o _output/bin/backup cmd/backup/main.go
 
 docker build --tag "${BACKUP_IMAGE}" -f hack/build/backup/Dockerfile .
-gcloud docker push "${BACKUP_IMAGE}"
+gcloud docker -- push "${BACKUP_IMAGE}"
