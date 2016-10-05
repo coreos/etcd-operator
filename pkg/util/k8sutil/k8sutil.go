@@ -247,8 +247,12 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 									"ETCDCTL_API=3 etcdctl get foo"},
 							},
 						},
-						InitialDelaySeconds: 1,
+						// if an etcd member tries to join quorum, it has 5s strict check
+						// before it can serve any client request
+						InitialDelaySeconds: 7,
 						TimeoutSeconds:      10,
+						PeriodSeconds:       10,
+						FailureThreshold:    3,
 					},
 					// a pod is alive only if a get succeeds
 					// the etcd pod should die if liveness probing fails.
