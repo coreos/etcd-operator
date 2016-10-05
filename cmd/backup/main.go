@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/coreos/kube-etcd-controller/pkg/backup"
+	"github.com/coreos/kube-etcd-controller/pkg/spec"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 )
 
@@ -33,5 +34,5 @@ func main() {
 		panic("clusterName not set")
 	}
 	kclient := k8sutil.MustCreateClient(masterHost, false, nil)
-	backup.New(kclient, clusterName, namespace, backup.Policy{}, listenAddr).Run()
+	backup.New(kclient, clusterName, namespace, spec.BackupPolicy{}, listenAddr).Run()
 }

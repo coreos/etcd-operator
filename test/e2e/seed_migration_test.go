@@ -11,7 +11,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 
 	"github.com/coreos/etcd/embed"
-	"github.com/coreos/kube-etcd-controller/pkg/cluster"
+	"github.com/coreos/kube-etcd-controller/pkg/spec"
 	"github.com/coreos/kube-etcd-controller/test/e2e/framework"
 )
 
@@ -37,7 +37,7 @@ func TestCreateClusterWithSeedMember(t *testing.T) {
 
 	f := framework.Global
 
-	c := &cluster.EtcdCluster{
+	c := &spec.EtcdCluster{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "EtcdCluster",
 			APIVersion: "coreos.com/v1",
@@ -45,9 +45,9 @@ func TestCreateClusterWithSeedMember(t *testing.T) {
 		ObjectMeta: api.ObjectMeta{
 			GenerateName: "etcd-test-seed-",
 		},
-		Spec: cluster.Spec{
+		Spec: spec.ClusterSpec{
 			Size: 3,
-			Seed: &cluster.SeedPolicy{
+			Seed: &spec.SeedPolicy{
 				MemberClientEndpoints: []string{embedCfg.ACUrls[0].String()},
 				RemoveDelay:           30,
 			},

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 )
 
 func (b *Backup) startHTTP() {
@@ -42,9 +43,9 @@ func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
-	files, err := ioutil.ReadDir(BackupDir)
+	files, err := ioutil.ReadDir(constants.BackupDir)
 	if err != nil {
-		logrus.Errorf("failed to list dir (%s): error (%v)", BackupDir, err)
+		logrus.Errorf("failed to list dir (%s): error (%v)", constants.BackupDir, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -54,7 +55,7 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	http.ServeFile(w, r, path.Join(BackupDir, fname))
+	http.ServeFile(w, r, path.Join(constants.BackupDir, fname))
 }
 
 func getLatestSnapshotName(files []os.FileInfo) string {

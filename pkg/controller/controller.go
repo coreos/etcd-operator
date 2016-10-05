@@ -11,6 +11,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/kube-etcd-controller/pkg/cluster"
+	"github.com/coreos/kube-etcd-controller/pkg/spec"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -31,7 +32,7 @@ var (
 
 type Event struct {
 	Type   string
-	Object cluster.EtcdCluster
+	Object spec.EtcdCluster
 }
 
 type Controller struct {

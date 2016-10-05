@@ -9,8 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/kube-etcd-controller/pkg/backup"
-	"github.com/coreos/kube-etcd-controller/pkg/cluster"
+	"github.com/coreos/kube-etcd-controller/pkg/spec"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"github.com/coreos/kube-etcd-controller/test/e2e/framework"
 	"k8s.io/kubernetes/pkg/api"
@@ -124,11 +123,11 @@ func TestOneMemberRecovery(t *testing.T) {
 
 func TestDisasterRecovery(t *testing.T) {
 	f := framework.Global
-	backupPolicy := &backup.Policy{
+	backupPolicy := &spec.BackupPolicy{
 		SnapshotIntervalInSecond: 120,
 		MaxSnapshot:              5,
 		VolumeSizeInMB:           512,
-		StorageType:              backup.StorageTypePersistentVolume,
+		StorageType:              spec.BackupStorageTypePersistentVolume,
 	}
 	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3, backupPolicy))
 	if err != nil {
@@ -186,8 +185,8 @@ func killMembers(f *framework.Framework, names ...string) error {
 	return nil
 }
 
-func makeEtcdCluster(genName string, size int, backupPolicy *backup.Policy) *cluster.EtcdCluster {
-	return &cluster.EtcdCluster{
+func makeEtcdCluster(genName string, size int, backupPolicy *spec.BackupPolicy) *spec.EtcdCluster {
+	return &spec.EtcdCluster{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "EtcdCluster",
 			APIVersion: "coreos.com/v1",
@@ -195,14 +194,14 @@ func makeEtcdCluster(genName string, size int, backupPolicy *backup.Policy) *clu
 		ObjectMeta: api.ObjectMeta{
 			GenerateName: genName,
 		},
-		Spec: cluster.Spec{
+		Spec: spec.ClusterSpec{
 			Size:   size,
 			Backup: backupPolicy,
 		},
 	}
 }
 
-func createEtcdCluster(f *framework.Framework, e *cluster.EtcdCluster) (*cluster.EtcdCluster, error) {
+func createEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
 	b, err := json.Marshal(e)
 	if err != nil {
 		return nil, err
@@ -218,7 +217,7 @@ func createEtcdCluster(f *framework.Framework, e *cluster.EtcdCluster) (*cluster
 		return nil, fmt.Errorf("unexpected status: %v", resp.Status)
 	}
 	decoder := json.NewDecoder(resp.Body)
-	res := &cluster.EtcdCluster{}
+	res := &spec.EtcdCluster{}
 	if err := decoder.Decode(res); err != nil {
 		return nil, err
 	}
@@ -226,7 +225,7 @@ func createEtcdCluster(f *framework.Framework, e *cluster.EtcdCluster) (*cluster
 	return res, nil
 }
 
-func updateEtcdCluster(f *framework.Framework, e *cluster.EtcdCluster) error {
+func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) error {
 	b, err := json.Marshal(e)
 	if err != nil {
 		return err
