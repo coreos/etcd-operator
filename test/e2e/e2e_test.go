@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -14,7 +15,7 @@ import (
 	"github.com/coreos/kube-etcd-controller/test/e2e/framework"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/labels"
+	k8sclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/wait"
 )
 
@@ -158,12 +159,7 @@ func TestDisasterRecovery(t *testing.T) {
 func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, timeout int) ([]string, error) {
 	var names []string
 	err := wait.Poll(5*time.Second, time.Duration(timeout)*time.Second, func() (done bool, err error) {
-		pods, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
-			LabelSelector: labels.SelectorFromSet(map[string]string{
-				"etcd_cluster": clusterName,
-				"app":          "etcd",
-			}),
-		})
+		pods, err := f.KubeClient.Pods(f.Namespace.Name).List(k8sutil.EtcdPodListOpt(clusterName))
 		if err != nil {
 			return false, err
 		}
@@ -226,6 +222,7 @@ func createEtcdCluster(f *framework.Framework, e *cluster.EtcdCluster) (*cluster
 	if err := decoder.Decode(res); err != nil {
 		return nil, err
 	}
+	fmt.Printf("created etcd cluster: %v\n", res.Name)
 	return res, nil
 }
 
@@ -254,6 +251,22 @@ func updateEtcdCluster(f *framework.Framework, e *cluster.EtcdCluster) error {
 
 func deleteEtcdCluster(f *framework.Framework, name string) error {
 	// TODO: save etcd logs.
+	fmt.Printf("deleting etcd cluster: %v\n", name)
+	pods, err := f.KubeClient.Pods(f.Namespace.Name).List(k8sutil.EtcdPodListOpt(name))
+	if err != nil {
+		return err
+	}
+	ready, unready := k8sutil.SliceReadyAndUnreadyPods(pods)
+	fmt.Printf("ready: %v, unready: %v\n", ready, unready)
+
+	buf := bytes.NewBuffer(nil)
+	if err := getLogs(f.KubeClient, f.Namespace.Name, "kube-etcd-controller", buf); err != nil {
+		return err
+	}
+	fmt.Println("kube-etcd-controller logs ===")
+	fmt.Println(buf.String())
+	fmt.Println("kube-etcd-controller logs END ===")
+
 	req, err := http.NewRequest("DELETE",
 		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace.Name, name), nil)
 	if err != nil {
@@ -268,4 +281,22 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 		return fmt.Errorf("unexpected status: %v", resp.Status)
 	}
 	return nil
+}
+
+func getLogs(kubecli *k8sclient.Client, ns, podID string, out io.Writer) error {
+	req := kubecli.RESTClient.Get().
+		Namespace(ns).
+		Name(podID).
+		Resource("pods").
+		SubResource("log").
+		Param("tailLines", "20")
+
+	readCloser, err := req.Stream()
+	if err != nil {
+		return err
+	}
+	defer readCloser.Close()
+
+	_, err = io.Copy(out, readCloser)
+	return err
 }

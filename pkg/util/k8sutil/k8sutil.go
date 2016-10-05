@@ -20,6 +20,7 @@ import (
 	"k8s.io/kubernetes/pkg/apis/storage"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/watch"
@@ -552,4 +553,13 @@ func SliceReadyAndUnreadyPods(podList *api.PodList) (ready, unready []string) {
 		unready = append(unready, pod.Name)
 	}
 	return
+}
+
+func EtcdPodListOpt(clusterName string) api.ListOptions {
+	return api.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			"etcd_cluster": clusterName,
+			"app":          "etcd",
+		}),
+	}
 }

@@ -376,14 +376,7 @@ func (c *Cluster) removePodAndService(name string) error {
 }
 
 func (c *Cluster) pollPods() ([]string, []string, error) {
-	opts := k8sapi.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"app":          "etcd",
-			"etcd_cluster": c.name,
-		}),
-	}
-
-	podList, err := c.kclient.Pods(c.namespace).List(opts)
+	podList, err := c.kclient.Pods(c.namespace).List(k8sutil.EtcdPodListOpt(c.name))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)
 	}
