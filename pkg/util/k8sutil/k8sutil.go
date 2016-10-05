@@ -265,7 +265,7 @@ func CreateAndWaitPod(kclient *unversioned.Client, pod *api.Pod, m *etcdutil.Mem
 	if _, err := kclient.Pods(ns).Create(pod); err != nil {
 		return err
 	}
-	w, err := kclient.Pods(ns).Watch(api.SingleObject(api.ObjectMeta{Name: m.Name}))
+	w, err := kclient.Pods(ns).Watch(api.SingleObject(api.ObjectMeta{Name: m.Name, ResourceVersion: "0"}))
 	if err != nil {
 		return err
 	}
