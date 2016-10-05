@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -13,6 +14,10 @@ import (
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"golang.org/x/net/context"
 	"k8s.io/kubernetes/pkg/util/wait"
+)
+
+var (
+	errTimeoutAddMember = errors.New("timeout to add etcd member")
 )
 
 // reconcile reconciles
@@ -108,11 +113,11 @@ func (c *Cluster) addOneMember() error {
 	newMember := &etcdutil.Member{Name: newMemberName}
 	var id uint64
 	// Could have "unhealthy cluster" due to 5 second strict check. Retry.
-	err = wait.Poll(1*time.Second, 20*time.Second, func() (done bool, err error) {
+	err = wait.Poll(2*time.Second, 20*time.Second, func() (done bool, err error) {
 		ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 		resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
 		if err != nil {
-			if err == rpctypes.ErrUnhealthy {
+			if err == rpctypes.ErrUnhealthy || err == context.DeadlineExceeded {
 				return false, nil
 			}
 			return false, fmt.Errorf("etcdcli failed to add one member: %v", err)
@@ -121,6 +126,10 @@ func (c *Cluster) addOneMember() error {
 		return true, nil
 	})
 	if err != nil {
+		if err == wait.ErrWaitTimeout {
+			err = errTimeoutAddMember
+		}
+		log.Errorf("fail to add new member (%s): %v", newMember.Name, err)
 		return err
 	}
 	newMember.ID = id
