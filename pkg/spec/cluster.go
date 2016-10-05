@@ -17,6 +17,12 @@ type ClusterSpec struct {
 	// cluster equal to the expected size.
 	// The vaild range of the size is from 1 to 7.
 	Size int `json:"size"`
+
+	// NodeSelector specifies a map of key-value pairs. For the pod to be eligible
+	// to run on a node, the node must have each of the indicated key-value pairs as
+	// labels.
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
 	// AntiAffinity determines if the controller tries to avoid putting
 	// the etcd members in the same cluster onto the same node.
 	AntiAffinity bool `json:"antiAffinity"`

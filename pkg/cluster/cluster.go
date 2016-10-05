@@ -205,8 +205,8 @@ func (c *Cluster) migrateSeedMember() error {
 		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", m.Name, purl))
 	}
 
-	pod := k8sutil.MakeEtcdPod(m, initialCluster, c.name, "existing", "", c.spec.AntiAffinity, c.spec.HostNetwork)
-	pod = k8sutil.WithAddMemberInitContainer(pod, c.spec.Seed.MemberClientEndpoints, m.Name, mpurls)
+	pod := k8sutil.MakeEtcdPod(m, initialCluster, c.name, "existing", "", c.spec)
+	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.spec.Seed.MemberClientEndpoints, m.Name, mpurls)
 
 	if err := k8sutil.CreateAndWaitPod(c.kclient, pod, m, c.namespace); err != nil {
 		return err
@@ -353,7 +353,7 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	if state == "new" {
 		token = uuid.New()
 	}
-	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.name, state, token, c.spec.AntiAffinity, c.spec.HostNetwork)
+	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.name, state, token, c.spec)
 	if needRecovery {
 		k8sutil.AddRecoveryToPod(pod, c.name, m.Name, token)
 	}
