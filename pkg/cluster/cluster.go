@@ -8,6 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/kube-etcd-controller/pkg/spec"
 	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
@@ -27,13 +28,13 @@ const (
 
 type clusterEvent struct {
 	typ  clusterEventType
-	spec Spec
+	spec spec.ClusterSpec
 }
 
 type Cluster struct {
 	kclient *unversioned.Client
 
-	spec *Spec
+	spec *spec.ClusterSpec
 
 	name      string
 	namespace string
@@ -50,15 +51,15 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(c *unversioned.Client, name, ns string, spec *Spec) *Cluster {
+func New(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec) *Cluster {
 	return new(c, name, ns, spec, true)
 }
 
-func Restore(c *unversioned.Client, name, ns string, spec *Spec) *Cluster {
+func Restore(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec) *Cluster {
 	return new(c, name, ns, spec, false)
 }
 
-func new(kclient *unversioned.Client, name, ns string, spec *Spec, isNewCluster bool) *Cluster {
+func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, isNewCluster bool) *Cluster {
 	c := &Cluster{
 		kclient:   kclient,
 		name:      name,
@@ -286,7 +287,7 @@ func (c *Cluster) migrateSeedMember() error {
 	return nil
 }
 
-func (c *Cluster) Update(spec *Spec) {
+func (c *Cluster) Update(spec *spec.ClusterSpec) {
 	// Only handles size change now. TODO: handle other updates.
 	if spec.Size == c.spec.Size {
 		return

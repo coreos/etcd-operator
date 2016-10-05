@@ -1,19 +1,13 @@
-package backup
-
-import "time"
-
-var (
-	defaultSnapshotInterval = 1800 * time.Second
-)
+package spec
 
 // TODO: supports object store like s3
-type StorageType string
+type BackupStorageType string
 
 const (
-	StorageTypePersistentVolume = "PersistentVolume"
+	BackupStorageTypePersistentVolume = "PersistentVolume"
 )
 
-type Policy struct {
+type BackupPolicy struct {
 	// SnapshotIntervalInSecond specifies the interval between two snapshots.
 	// The default interval is 1800 seconds.
 	SnapshotIntervalInSecond int `json:"snapshotIntervalInSecond"`
@@ -29,5 +23,5 @@ type Policy struct {
 	VolumeSizeInMB int `json:"volumeSizeInMB"`
 	// StorageType specifies the type of storage device to store backup files.
 	// If it's not set by user, the default is "PersistentVolume".
-	StorageType StorageType `json:"storageType,omitempty"`
+	StorageType BackupStorageType `json:"storageType,omitempty"`
 }

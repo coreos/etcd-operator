@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/coreos/kube-etcd-controller/pkg/backup"
+	"github.com/coreos/kube-etcd-controller/pkg/spec"
+	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
@@ -78,7 +79,7 @@ func createAndWaitPVC(kubecli *unversioned.Client, clusterName, ns string, volum
 	return retClaim, nil
 }
 
-func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, policy backup.Policy) error {
+func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, policy spec.BackupPolicy) error {
 	claim, err := createAndWaitPVC(kubecli, clusterName, ns, policy.VolumeSizeInMB)
 	if err != nil {
 		return err
@@ -116,7 +117,7 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 							}},
 							VolumeMounts: []api.VolumeMount{{
 								Name:      "etcd-backup-storage",
-								MountPath: backup.BackupDir,
+								MountPath: constants.BackupDir,
 							}},
 						},
 					},

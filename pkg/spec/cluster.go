@@ -1,7 +1,6 @@
-package cluster
+package spec
 
 import (
-	"github.com/coreos/kube-etcd-controller/pkg/backup"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 )
@@ -9,10 +8,10 @@ import (
 type EtcdCluster struct {
 	unversioned.TypeMeta `json:",inline"`
 	api.ObjectMeta       `json:"metadata,omitempty"`
-	Spec                 `json:"spec"`
+	Spec                 ClusterSpec `json:"spec"`
 }
 
-type Spec struct {
+type ClusterSpec struct {
 	// Size is the expected size of the etcd cluster.
 	// The controller will eventually make the size of the running
 	// cluster equal to the expected size.
@@ -27,7 +26,7 @@ type Spec struct {
 	Version string `json:"version"`
 	// Backup is the backup policy for the etcd cluster.
 	// There is no backup by default.
-	Backup *backup.Policy `json:"backup,omitempty"`
+	Backup *BackupPolicy `json:"backup,omitempty"`
 	// HostNetwork determines if the etcd pods should be run
 	// in the host network namespace.
 	HostNetwork bool `json:"hostNetwork,omitempty"`

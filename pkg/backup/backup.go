@@ -13,6 +13,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/kube-etcd-controller/pkg/spec"
 	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"k8s.io/kubernetes/pkg/api"
@@ -20,20 +21,18 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 )
 
-const BackupDir = "/home/backup/"
-
 type Backup struct {
 	kclient *unversioned.Client
 
 	clusterName string
 	namespace   string
-	policy      Policy
+	policy      spec.BackupPolicy
 	listenAddr  string
 
 	backupNow chan chan error
 }
 
-func New(kclient *unversioned.Client, clusterName, ns string, policy Policy, listenAddr string) *Backup {
+func New(kclient *unversioned.Client, clusterName, ns string, policy spec.BackupPolicy, listenAddr string) *Backup {
 	return &Backup{
 		kclient:     kclient,
 		clusterName: clusterName,
@@ -47,14 +46,14 @@ func New(kclient *unversioned.Client, clusterName, ns string, policy Policy, lis
 
 func (b *Backup) Run() {
 	// It will be no-op if backup dir existed.
-	if err := os.MkdirAll(BackupDir, 0700); err != nil {
+	if err := os.MkdirAll(constants.BackupDir, 0700); err != nil {
 		panic(err)
 	}
 
 	go b.startHTTP()
 
 	lastSnapRev := int64(0)
-	interval := defaultSnapshotInterval
+	interval := constants.DefaultSnapshotInterval
 	if b.policy.SnapshotIntervalInSecond != 0 {
 		interval = time.Duration(b.policy.SnapshotIntervalInSecond) * time.Second
 	}
@@ -106,7 +105,7 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 	}
 
 	log.Printf("saving backup for cluster (%s)", b.clusterName)
-	if err := writeSnap(member, BackupDir, rev); err != nil {
+	if err := writeSnap(member, constants.BackupDir, rev); err != nil {
 		err = fmt.Errorf("write snapshot failed: %v", err)
 		return lastSnapRev, err
 	}
