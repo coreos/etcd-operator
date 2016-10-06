@@ -98,6 +98,11 @@ func (c *Cluster) send(ev *clusterEvent) {
 }
 
 func (c *Cluster) run() {
+	defer func() {
+		log.Warningf("kiling cluster (%v)", c.name)
+		c.delete()
+		close(c.stopCh)
+	}()
 	for {
 		select {
 		case event := <-c.eventCh:
@@ -106,8 +111,6 @@ func (c *Cluster) run() {
 				log.Printf("update: from: %#v, to: %#v", c.spec, event.spec)
 				c.spec.Size = event.spec.Size
 			case eventDeleteCluster:
-				c.delete()
-				close(c.stopCh)
 				return
 			}
 		case <-time.After(5 * time.Second):
@@ -124,12 +127,22 @@ func (c *Cluster) run() {
 				running.Add(&etcdutil.Member{Name: name})
 			}
 			if err := c.reconcile(running); err != nil {
-				log.Errorf("fail to reconcile: %v", err)
-				if !isErrTransient(err) {
-					log.Fatalf("unexpected error from reconciling: %v", err)
+				log.Errorf("cluster (%v) fail to reconcile: %v", c.name, err)
+				if isFatalError(err) {
+					log.Errorf("cluster (%v) had fatal error: %v", c.name, err)
+					return
 				}
 			}
 		}
+	}
+}
+
+func isFatalError(err error) bool {
+	switch err {
+	case errNoBackupExist:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -141,7 +154,8 @@ func (c *Cluster) makeSeedMember() *etcdutil.Member {
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	m := c.makeSeedMember()
 	if err := c.createPodAndService(etcdutil.NewMemberSet(m), m, "new", recoverFromBackup); err != nil {
-		return fmt.Errorf("failed to create seed member (%s): %v", m.Name, err)
+		log.Errorf("failed to create seed member (%s): %v", m.Name, err)
+		return err
 	}
 	c.idCounter++
 	log.Infof("created cluster (%s) with seed member (%s)", c.name, m.Name)
@@ -346,8 +360,11 @@ func (c *Cluster) delete() {
 }
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
+	// TODO: remove garbage service. Because we will fail after service created before pods created.
 	if err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace); err != nil {
-		return err
+		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+			return err
+		}
 	}
 	token := ""
 	if state == "new" {
@@ -361,13 +378,13 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 }
 
 func (c *Cluster) removePodAndService(name string) error {
-	err := c.kclient.Pods(c.namespace).Delete(name, nil)
+	err := c.kclient.Services(c.namespace).Delete(name)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
 	}
-	err = c.kclient.Services(c.namespace).Delete(name)
+	err = c.kclient.Pods(c.namespace).Delete(name, nil)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
@@ -383,13 +400,4 @@ func (c *Cluster) pollPods() ([]string, []string, error) {
 	}
 	ready, unready := k8sutil.SliceReadyAndUnreadyPods(podList)
 	return ready, unready, nil
-}
-
-func isErrTransient(err error) bool {
-	switch err {
-	case errTimeoutAddMember, errTimeoutRemoveMember:
-		return true
-	default:
-		return false
-	}
 }
