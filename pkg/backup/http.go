@@ -55,8 +55,7 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	checkOnly := r.FormValue("checkonly")
-	if len(checkOnly) > 0 {
+	if r.Method == http.MethodHead {
 		return
 	}
 	http.ServeFile(w, r, path.Join(constants.BackupDir, fname))

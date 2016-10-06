@@ -188,24 +188,25 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 func requestBackupNow(httpClient *http.Client, addr string) bool {
 	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", addr))
 	if err != nil {
-		log.Errorf("requesting backupnow (%s) failed: %v", addr, err)
+		log.Errorf("backupnow (%s) request failed: %v", addr, err)
 		return false
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		log.Errorf("backupnow: unexpected status code (%v)", resp.Status)
+		log.Errorf("backupnow (%s): unexpected status code (%v)", addr, resp.Status)
 		return false
 	}
 	return true
 }
 
 func checkBackupExist(httpClient *http.Client, addr string) (bool, error) {
-	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow?checkonly=true", addr))
+	resp, err := httpClient.Head(fmt.Sprintf("http://%s/backupnow", addr))
 	if err != nil {
-		log.Errorf("check existing backup (%s) failed: %v", addr, err)
+		log.Errorf("check backup (%s) failed: %v", addr, err)
 		return false, err
 	}
 	if resp.StatusCode != http.StatusOK {
+		log.Errorf("check backup (%s): unexpected status code (%v)", addr, resp.Status)
 		return false, nil
 	}
 	return true, nil
