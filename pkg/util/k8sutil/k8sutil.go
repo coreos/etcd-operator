@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/kube-etcd-controller/pkg/spec"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
@@ -75,7 +76,7 @@ func MakeBackupHostPort(clusterName string) string {
 	return fmt.Sprintf("%s:19999", makeBackupName(clusterName))
 }
 
-func WithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, peerURLs []string) *api.Pod {
+func PodWithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, peerURLs []string) *api.Pod {
 	spec := []api.Container{
 		{
 			Name:  "add-member",
@@ -94,6 +95,11 @@ func WithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, pee
 		p.Annotations = map[string]string{}
 	}
 	p.Annotations[k8sv1api.PodInitContainersAnnotationKey] = string(b)
+	return p
+}
+
+func PodWithNodeSelector(p *api.Pod, ns map[string]string) *api.Pod {
+	p.Spec.NodeSelector = ns
 	return p
 }
 
@@ -193,8 +199,7 @@ func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string) {
 	pod.Annotations[k8sv1api.PodInitContainersAnnotationKey] = makeRestoreInitContainerSpec(MakeBackupHostPort(clusterName), name, token)
 }
 
-// todo: use a struct to replace the huge arg list.
-func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, antiAffinity bool, hostNet bool) *api.Pod {
+func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cspec *spec.ClusterSpec) *api.Pod {
 	commands := []string{
 		"/usr/local/bin/etcd",
 		"--data-dir",
@@ -277,7 +282,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 			},
 			RestartPolicy: api.RestartPolicyNever,
 			SecurityContext: &api.PodSecurityContext{
-				HostNetwork: hostNet,
+				HostNetwork: cspec.HostNetwork,
 			},
 			Volumes: []api.Volume{
 				{Name: "etcd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
@@ -285,7 +290,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 		},
 	}
 
-	if !antiAffinity {
+	if !cspec.AntiAffinity {
 		return pod
 	}
 
@@ -310,6 +315,10 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 	}
 
 	pod.Annotations[api.AffinityAnnotationKey] = string(affinityb)
+
+	if len(cspec.NodeSelector) != 0 {
+		pod = PodWithNodeSelector(pod, cspec.NodeSelector)
+	}
 
 	return pod
 }
