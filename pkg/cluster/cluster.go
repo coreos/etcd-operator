@@ -387,7 +387,7 @@ func (c *Cluster) pollPods() ([]string, []string, error) {
 
 func isErrTransient(err error) bool {
 	switch err {
-	case errTimeoutAddMember:
+	case errTimeoutAddMember, errTimeoutRemoveMember:
 		return true
 	default:
 		return false
