@@ -129,7 +129,7 @@ func CreateAndWaitPod(kclient *unversioned.Client, pod *api.Pod, m *etcdutil.Mem
 	if err != nil {
 		return err
 	}
-	_, err = watch.Until(100*time.Second, w, unversioned.PodRunningAndReady)
+	_, err = watch.Until(10*time.Second, w, unversioned.PodRunning)
 	// TODO: cleanup pod on failure
 	return err
 }
@@ -252,9 +252,9 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 									"ETCDCTL_API=3 etcdctl get foo"},
 							},
 						},
-						// if an etcd member tries to join quorum, it has 5s strict check
-						// before it can serve any client request
-						InitialDelaySeconds: 7,
+						// If an etcd member tries to join quorum, it has 5s strict check
+						// It can still serve client request.
+						InitialDelaySeconds: 5,
 						TimeoutSeconds:      10,
 						PeriodSeconds:       10,
 						FailureThreshold:    3,

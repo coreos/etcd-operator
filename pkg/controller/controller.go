@@ -181,7 +181,7 @@ func (c *Controller) createTPR() error {
 		return err
 	}
 
-	return k8sutil.WaitEtcdTPRReady(c.kclient.Client, 3*time.Second, 90*time.Second, c.MasterHost, c.Namespace)
+	return k8sutil.WaitEtcdTPRReady(c.kclient.Client, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
 }
 
 func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
