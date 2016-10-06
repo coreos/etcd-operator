@@ -160,18 +160,20 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 		log.Errorf("fail to do disaster recovery for cluster (%s): no backup policy has been defined.", c.name)
 		return errNoBackupExist
 	}
-	// TODO: We shouldn't return error in backupnow. If backupnow failed, we should ask if it has any backup before.
-	//       If so, we can still continue. Otherwise, it's fatal error.
-	httpClient := c.kclient.RESTClient.Client
-	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", k8sutil.MakeBackupHostPort(c.name)))
-	if err != nil {
-		log.Errorf("requesting backupnow failed: %v", err)
-		return err
+	ok := requestBackupNow(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
+	if ok {
+		log.Info("Made a latest backup successfully")
+	} else {
+		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
+		// If so, we can still continue. Otherwise, it's fatal error.
+		exist, err := checkBackupExist(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
+		if err != nil {
+			return err
+		}
+		if !exist {
+			return errNoBackupExist
+		}
 	}
-	if resp.StatusCode != http.StatusOK {
-		panic("TODO: handle failure of backupnow request")
-	}
-	log.Info("Made a latest backup successfully")
 
 	for _, m := range left {
 		err := c.removePodAndService(m.Name)
@@ -181,4 +183,30 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	}
 	c.members = nil
 	return c.restoreSeedMember()
+}
+
+func requestBackupNow(httpClient *http.Client, addr string) bool {
+	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", addr))
+	if err != nil {
+		log.Errorf("requesting backupnow (%s) failed: %v", addr, err)
+		return false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Errorf("backupnow: unexpected status code (%v)", resp.Status)
+		return false
+	}
+	return true
+}
+
+func checkBackupExist(httpClient *http.Client, addr string) (bool, error) {
+	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow?checkonly=true", addr))
+	if err != nil {
+		log.Errorf("check existing backup (%s) failed: %v", addr, err)
+		return false, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return false, nil
+	}
+	return true, nil
 }
