@@ -4,21 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"golang.org/x/net/context"
-	"k8s.io/kubernetes/pkg/util/wait"
 )
 
 var (
-	errTimeoutAddMember    = errors.New("timeout to add etcd member")
-	errTimeoutRemoveMember = errors.New("timeout to remove etcd member")
+	errNoBackupExist = errors.New("No backup exist for a disaster recovery")
 )
 
 // reconcile reconciles
@@ -110,37 +106,24 @@ func (c *Cluster) addOneMember() error {
 		return err
 	}
 	defer etcdcli.Close()
+
 	newMemberName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
 	newMember := &etcdutil.Member{Name: newMemberName}
-	var id uint64
-	// Could have "unhealthy cluster" due to 5 second strict check. Retry.
-	err = wait.Poll(2*time.Second, 20*time.Second, func() (done bool, err error) {
-		ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-		resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
-		if err != nil {
-			if err == rpctypes.ErrUnhealthy || err == context.DeadlineExceeded {
-				return false, nil
-			}
-			return false, fmt.Errorf("etcdcli failed to add one member: %v", err)
-		}
-		id = resp.Member.ID
-		return true, nil
-	})
+	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
 	if err != nil {
-		if err == wait.ErrWaitTimeout {
-			err = errTimeoutAddMember
-		}
 		log.Errorf("fail to add new member (%s): %v", newMember.Name, err)
 		return err
 	}
-	newMember.ID = id
+	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)
 
 	if err := c.createPodAndService(c.members, newMember, "existing", false); err != nil {
+		log.Errorf("fail to create member (%s): %v", newMember.Name, err)
 		return err
 	}
 	c.idCounter++
-	log.Printf("added member, cluster: %s", c.members.PeerURLPairs())
+	log.Printf("added member (%s), cluster (%s)", newMember.Name, c.members.PeerURLPairs())
 	return nil
 }
 
@@ -161,10 +144,8 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	if _, err := etcdcli.Cluster.MemberRemove(ctx, toRemove.ID); err != nil {
-		if err == rpctypes.ErrUnhealthy || err == context.DeadlineExceeded {
-			return errTimeoutRemoveMember
-		}
-		return fmt.Errorf("etcdcli failed to remove one member: %v", err)
+		log.Errorf("etcdcli failed to remove one member: %v", err)
+		return err
 	}
 	c.members.Remove(toRemove.Name)
 	if err := c.removePodAndService(toRemove.Name); err != nil {
@@ -176,9 +157,11 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 
 func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	if c.spec.Backup == nil {
-		return fmt.Errorf("fail to do disaster recovery for cluster (%s): no backup policy has been defined."+
-			" (TODO: Mark cluster as dead)", c.name)
+		log.Errorf("fail to do disaster recovery for cluster (%s): no backup policy has been defined.", c.name)
+		return errNoBackupExist
 	}
+	// TODO: We shouldn't return error in backupnow. If backupnow failed, we should ask if it has any backup before.
+	//       If so, we can still continue. Otherwise, it's fatal error.
 	httpClient := c.kclient.RESTClient.Client
 	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", k8sutil.MakeBackupHostPort(c.name)))
 	if err != nil {
