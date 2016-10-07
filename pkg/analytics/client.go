@@ -55,3 +55,7 @@ func ClusterCreated() {
 func ClusterDeleted() {
 	send(ga.NewEvent(category, "cluster_deleted"))
 }
+
+func ControllerStarted() {
+	send(ga.NewEvent(category, "controller_started"))
+}
