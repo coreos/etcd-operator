@@ -29,3 +29,4 @@ import:
   - pkg/util/intstr
   - pkg/util/wait
   - pkg/watch
+- package: github.com/jpillora/go-ogle-analytics
