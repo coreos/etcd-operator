@@ -10,6 +10,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/coreos/kube-etcd-controller/pkg/analytics"
 	"github.com/coreos/kube-etcd-controller/pkg/cluster"
 	"github.com/coreos/kube-etcd-controller/pkg/spec"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
@@ -91,6 +92,7 @@ func (c *Controller) Run() {
 				clusterSpec := &event.Object.Spec
 				nc := cluster.New(c.kclient, clusterName, c.Namespace, clusterSpec)
 				c.clusters[clusterName] = nc
+				analytics.ClusterCreated()
 
 				backup := clusterSpec.Backup
 				if backup != nil && backup.MaxSnapshot != 0 {
@@ -104,6 +106,7 @@ func (c *Controller) Run() {
 			case "DELETED":
 				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)
+				analytics.ClusterDeleted()
 			}
 		case err := <-errCh:
 			panic(err)
