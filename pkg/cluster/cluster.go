@@ -357,6 +357,9 @@ func (c *Cluster) delete() {
 			panic(err)
 		}
 	}
+	if c.spec.Backup != nil {
+		k8sutil.DeleteBackupReplicaSetAndService(c.kclient, c.name, c.namespace, c.spec.Backup.CleanupBackupIfDeleted)
+	}
 }
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {

@@ -128,6 +128,7 @@ func TestDisasterRecovery(t *testing.T) {
 		MaxSnapshot:              5,
 		VolumeSizeInMB:           512,
 		StorageType:              spec.BackupStorageTypePersistentVolume,
+		CleanupBackupIfDeleted:   true,
 	}
 	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3, backupPolicy))
 	if err != nil {

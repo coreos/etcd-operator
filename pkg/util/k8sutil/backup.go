@@ -35,7 +35,7 @@ func CreateStorageClass(kubecli *unversioned.Client, pvProvisioner string) error
 func createAndWaitPVC(kubecli *unversioned.Client, clusterName, ns string, volumeSizeInMB int) (*api.PersistentVolumeClaim, error) {
 	claim := &api.PersistentVolumeClaim{
 		ObjectMeta: api.ObjectMeta{
-			Name: fmt.Sprintf("pvc-%s", clusterName),
+			Name: makePVCName(clusterName),
 			Labels: map[string]string{
 				"etcd_cluster": clusterName,
 			},
@@ -158,4 +158,24 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 		return err
 	}
 	return nil
+}
+
+func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, cleanup bool) error {
+	name := makeBackupName(clusterName)
+	err := kubecli.Services(ns).Delete(name)
+	if err != nil {
+		return err
+	}
+	err = kubecli.ReplicaSets(ns).Delete(name, nil)
+	if err != nil {
+		return err
+	}
+	if cleanup {
+		kubecli.PersistentVolumeClaims(ns).Delete(makePVCName(clusterName))
+	}
+	return nil
+}
+
+func makePVCName(clusterName string) string {
+	return fmt.Sprintf("%s-pvc", clusterName)
 }
