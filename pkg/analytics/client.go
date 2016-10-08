@@ -41,7 +41,7 @@ func send(e *ga.Event) {
 }
 
 func mustNewClient() *ga.Client {
-	client, err := ga.NewClient("UA-42684979-8")
+	client, err := ga.NewClient(id)
 	if err != nil {
 		panic(err)
 	}
@@ -54,4 +54,8 @@ func ClusterCreated() {
 
 func ClusterDeleted() {
 	send(ga.NewEvent(category, "cluster_deleted"))
+}
+
+func ControllerStarted() {
+	send(ga.NewEvent(category, "controller_started"))
 }

@@ -35,5 +35,6 @@ func main() {
 	}
 
 	c := controller.New(&cfg)
+	analytics.ControllerStarted()
 	c.Run()
 }
