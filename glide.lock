@@ -1,5 +1,5 @@
 hash: ee1e911292529be83883d931f11e029e47ca01d92e85b1eeb69344b433bd652c
-updated: 2016-10-07T16:05:17.433475012-07:00
+updated: 2016-10-07T16:47:51.089069856-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -135,7 +135,7 @@ imports:
   - jsonpb
   - proto
 - name: github.com/google/btree
-  version: 7364763242911ab6d418d2722e237194938ebad0
+  version: 7d79101e329e5a3adf994758c578dab82b90c017
 - name: github.com/google/cadvisor
   version: d7a44cb1a2c66e1688ccdc5d09e56069eecb659a
   subpackages:
@@ -263,7 +263,7 @@ imports:
   - jws
   - jwt
 - name: golang.org/x/sys
-  version: 8d1157a435470616f975ff9bb013bea8d0962067
+  version: 9c60d1c508f5134d1ca726b4641db998f2523357
   subpackages:
   - unix
 - name: golang.org/x/text
