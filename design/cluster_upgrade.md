@@ -8,7 +8,7 @@
   - otherwise, rejects it in admission control; We will write an admission plug-in to verify EtcdCluster object.
 
 ## Diagram
-![](./upgrade_diagram.jpg)
+![](./upgrade.jpg)
 
 ## Rolling upgrade
 
