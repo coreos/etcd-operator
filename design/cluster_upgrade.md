@@ -14,11 +14,8 @@
 
 - We have an annotation key for the version of etcd cluster
 - During upgrade, we will list pods of this cluster, and differentiate them by two versions. Then do
-  - if num(old) + num(new) == total, we will try to scale down old by 1, scale up new by 1;
-    Note that some ops might fail and lead to situation num(old) + num(new) != total
-  - if num(old) + num(new) < total, we will try to scale up new by 1
-  - if num(old) + num(new) > total, we will try to scale down old by 1
-- Repeat until num(old) == 0 && num(new) >= total; if num(new) > total, it falls to normal reconcile path.
+  - if num(old) + num(new) == total, try to update "old" pod to new version.
+  - otherwise, falls to normal reconcile path.
 
 ## Support notes
 

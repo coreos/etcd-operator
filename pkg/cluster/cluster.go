@@ -24,6 +24,8 @@ type clusterEventType string
 const (
 	eventDeleteCluster clusterEventType = "Delete"
 	eventModifyCluster clusterEventType = "Modify"
+
+	defaultVersion = "v3.1.0-alpha.1"
 )
 
 type clusterEvent struct {
@@ -60,6 +62,10 @@ func Restore(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec) *Cl
 }
 
 func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, isNewCluster bool) *Cluster {
+	if len(spec.Version) == 0 {
+		// TODO: set version in spec in apiserver
+		spec.Version = defaultVersion
+	}
 	c := &Cluster{
 		kclient:   kclient,
 		name:      name,
@@ -103,13 +109,15 @@ func (c *Cluster) run() {
 		c.delete()
 		close(c.stopCh)
 	}()
+
 	for {
 		select {
 		case event := <-c.eventCh:
 			switch event.typ {
 			case eventModifyCluster:
-				log.Printf("update: from: %#v, to: %#v", c.spec, event.spec)
-				c.spec.Size = event.spec.Size
+				// TODO: we can't handle another upgrade while an upgrade is in progress
+				log.Printf("spec update: from: %v, to: %v", c.spec, event.spec)
+				c.spec = &event.spec
 			case eventDeleteCluster:
 				return
 			}
@@ -119,14 +127,11 @@ func (c *Cluster) run() {
 				panic(err)
 			}
 			if len(ready) == 0 || len(unready) > 0 {
-				log.Infof("skip reconciliation: cluster (%s), ready (%v), unready (%v)", c.name, ready, unready)
+				log.Infof("skip reconciliation: cluster (%s), ready (%v), unready (%v)", c.name, k8sutil.GetPodNames(ready), k8sutil.GetPodNames(unready))
 				continue
 			}
-			running := etcdutil.MemberSet{}
-			for _, name := range ready {
-				running.Add(&etcdutil.Member{Name: name})
-			}
-			if err := c.reconcile(running); err != nil {
+
+			if err := c.reconcile(ready); err != nil {
 				log.Errorf("cluster (%v) fail to reconcile: %v", c.name, err)
 				if isFatalError(err) {
 					log.Errorf("cluster (%v) had fatal error: %v", c.name, err)
@@ -220,7 +225,7 @@ func (c *Cluster) migrateSeedMember() error {
 	}
 
 	pod := k8sutil.MakeEtcdPod(m, initialCluster, c.name, "existing", "", c.spec)
-	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.spec.Seed.MemberClientEndpoints, m.Name, mpurls)
+	pod = k8sutil.PodWithAddMemberInitContainer(pod, m.Name, mpurls, c.spec)
 
 	if err := k8sutil.CreateAndWaitPod(c.kclient, pod, m, c.namespace); err != nil {
 		return err
@@ -302,14 +307,22 @@ func (c *Cluster) migrateSeedMember() error {
 }
 
 func (c *Cluster) Update(spec *spec.ClusterSpec) {
-	// Only handles size change now. TODO: handle other updates.
-	if spec.Size == c.spec.Size {
-		return
+	anyInterestedChange := false
+	if spec.Size != c.spec.Size {
+		anyInterestedChange = true
 	}
-	c.send(&clusterEvent{
-		typ:  eventModifyCluster,
-		spec: *spec,
-	})
+	if len(spec.Version) == 0 {
+		spec.Version = defaultVersion
+	}
+	if spec.Version != c.spec.Version {
+		anyInterestedChange = true
+	}
+	if anyInterestedChange {
+		c.send(&clusterEvent{
+			typ:  eventModifyCluster,
+			spec: *spec,
+		})
+	}
 }
 
 func (c *Cluster) updateMembers(etcdcli *clientv3.Client) {
@@ -375,7 +388,7 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	}
 	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.name, state, token, c.spec)
 	if needRecovery {
-		k8sutil.AddRecoveryToPod(pod, c.name, m.Name, token)
+		k8sutil.AddRecoveryToPod(pod, c.name, m.Name, token, c.spec)
 	}
 	return k8sutil.CreateAndWaitPod(c.kclient, pod, m, c.namespace)
 }
@@ -396,7 +409,7 @@ func (c *Cluster) removePodAndService(name string) error {
 	return nil
 }
 
-func (c *Cluster) pollPods() ([]string, []string, error) {
+func (c *Cluster) pollPods() ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
 	podList, err := c.kclient.Pods(c.namespace).List(k8sutil.EtcdPodListOpt(c.name))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)

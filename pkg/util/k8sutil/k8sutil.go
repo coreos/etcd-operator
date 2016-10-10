@@ -23,15 +23,31 @@ import (
 )
 
 const (
-	etcdImage = "quay.io/coreos/etcd:v3.1.0-alpha.1"
-
 	// TODO: This is constant for current purpose. We might make it configurable later.
 	etcdDir    = "/var/etcd"
 	dataDir    = etcdDir + "/data"
 	backupFile = "/var/etcd/latest.backup"
+
+	etcdVersionAnnotationKey = "etcd.version"
 )
 
-func makeRestoreInitContainerSpec(backupAddr, name, token string) string {
+func GetEtcdVersion(pod *api.Pod) string {
+	return pod.Annotations[etcdVersionAnnotationKey]
+}
+
+func SetEtcdVersion(pod *api.Pod, version string) {
+	pod.Annotations[etcdVersionAnnotationKey] = version
+}
+
+func GetPodNames(pods []*api.Pod) []string {
+	res := []string{}
+	for _, p := range pods {
+		res = append(res, p.Name)
+	}
+	return res
+}
+
+func makeRestoreInitContainerSpec(backupAddr, name, token, version string) string {
 	spec := []api.Container{
 		{
 			Name:  "fetch-backup",
@@ -46,7 +62,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token string) string {
 		},
 		{
 			Name:  "restore-datadir",
-			Image: etcdImage,
+			Image: MakeEtcdImage(version),
 			Command: []string{
 				"/bin/sh", "-c",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
@@ -68,6 +84,10 @@ func makeRestoreInitContainerSpec(backupAddr, name, token string) string {
 	return string(b)
 }
 
+func MakeEtcdImage(version string) string {
+	return fmt.Sprintf("quay.io/coreos/etcd:%v", version)
+}
+
 func GetNodePortString(srv *api.Service) string {
 	return fmt.Sprint(srv.Spec.Ports[0].NodePort)
 }
@@ -76,23 +96,21 @@ func MakeBackupHostPort(clusterName string) string {
 	return fmt.Sprintf("%s:19999", makeBackupName(clusterName))
 }
 
-func PodWithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, peerURLs []string) *api.Pod {
-	spec := []api.Container{
+func PodWithAddMemberInitContainer(p *api.Pod, name string, peerURLs []string, cs *spec.ClusterSpec) *api.Pod {
+	endpoints := cs.Seed.MemberClientEndpoints
+	containerSpec := []api.Container{
 		{
 			Name:  "add-member",
-			Image: etcdImage,
+			Image: MakeEtcdImage(cs.Version),
 			Command: []string{
 				"/bin/sh", "-c",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), name, strings.Join(peerURLs, ",")),
 			},
 		},
 	}
-	b, err := json.Marshal(spec)
+	b, err := json.Marshal(containerSpec)
 	if err != nil {
 		panic(err)
-	}
-	if p.Annotations == nil {
-		p.Annotations = map[string]string{}
 	}
 	p.Annotations[k8sv1api.PodInitContainersAnnotationKey] = string(b)
 	return p
@@ -192,14 +210,12 @@ func makeEtcdNodePortService(etcdName, clusterName string) *api.Service {
 	return svc
 }
 
-func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string) {
-	if pod.Annotations == nil {
-		pod.Annotations = map[string]string{}
-	}
-	pod.Annotations[k8sv1api.PodInitContainersAnnotationKey] = makeRestoreInitContainerSpec(MakeBackupHostPort(clusterName), name, token)
+func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string, cs *spec.ClusterSpec) {
+	pod.Annotations[k8sv1api.PodInitContainersAnnotationKey] =
+		makeRestoreInitContainerSpec(MakeBackupHostPort(clusterName), name, token, cs.Version)
 }
 
-func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cspec *spec.ClusterSpec) *api.Pod {
+func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec) *api.Pod {
 	commands := []string{
 		"/usr/local/bin/etcd",
 		"--data-dir",
@@ -230,13 +246,14 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 				"etcd_node":    m.Name,
 				"etcd_cluster": clusterName,
 			},
+			Annotations: map[string]string{},
 		},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{
 					Command: commands,
 					Name:    m.Name,
-					Image:   etcdImage,
+					Image:   MakeEtcdImage(cs.Version),
 					Ports: []api.ContainerPort{
 						{
 							Name:          "server",
@@ -282,7 +299,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 			},
 			RestartPolicy: api.RestartPolicyNever,
 			SecurityContext: &api.PodSecurityContext{
-				HostNetwork: cspec.HostNetwork,
+				HostNetwork: cs.HostNetwork,
 			},
 			Volumes: []api.Volume{
 				{Name: "etcd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
@@ -290,7 +307,9 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 		},
 	}
 
-	if !cspec.AntiAffinity {
+	SetEtcdVersion(pod, cs.Version)
+
+	if !cs.AntiAffinity {
 		return pod
 	}
 
@@ -316,8 +335,8 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 
 	pod.Annotations[api.AffinityAnnotationKey] = string(affinityb)
 
-	if len(cspec.NodeSelector) != 0 {
-		pod = PodWithNodeSelector(pod, cspec.NodeSelector)
+	if len(cs.NodeSelector) != 0 {
+		pod = PodWithNodeSelector(pod, cs.NodeSelector)
 	}
 
 	return pod
@@ -410,14 +429,14 @@ func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, 
 	})
 }
 
-func SliceReadyAndUnreadyPods(podList *api.PodList) (ready, unready []string) {
+func SliceReadyAndUnreadyPods(podList *api.PodList) (ready, unready []*api.Pod) {
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 		if pod.Status.Phase == api.PodRunning && api.IsPodReady(pod) {
-			ready = append(ready, pod.Name)
+			ready = append(ready, pod)
 			continue
 		}
-		unready = append(unready, pod.Name)
+		unready = append(unready, pod)
 	}
 	return
 }

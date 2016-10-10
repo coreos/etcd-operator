@@ -156,7 +156,11 @@ func TestDisasterRecovery(t *testing.T) {
 	// TODO: add checking of data in etcd
 }
 
-func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, timeout int) ([]string, error) {
+func waitUntilSizeReached(f *framework.Framework, clusterName string, size, timeout int) ([]string, error) {
+	return waitSizeReachedWithFilter(f, clusterName, size, timeout, func(*api.Pod) bool { return true })
+}
+
+func waitSizeReachedWithFilter(f *framework.Framework, clusterName string, size, timeout int, filterPod func(*api.Pod) bool) ([]string, error) {
 	var names []string
 	err := wait.Poll(5*time.Second, time.Duration(timeout)*time.Second, func() (done bool, err error) {
 		pods, err := f.KubeClient.Pods(f.Namespace.Name).List(k8sutil.EtcdPodListOpt(clusterName))
@@ -164,10 +168,17 @@ func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, 
 			return false, err
 		}
 		ready, _ := k8sutil.SliceReadyAndUnreadyPods(pods)
-		if len(ready) != size {
+		names = []string{}
+		for _, pod := range ready {
+			if !filterPod(pod) {
+				continue
+			}
+			names = append(names, pod.Name)
+		}
+		fmt.Printf("waiting size (%d), etcd pods: %v\n", size, names)
+		if len(names) != size {
 			return false, nil
 		}
-		names = ready
 		return true, nil
 	})
 	if err != nil {
@@ -200,6 +211,11 @@ func makeEtcdCluster(genName string, size int, backupPolicy *spec.BackupPolicy) 
 			Backup: backupPolicy,
 		},
 	}
+}
+
+func etcdClusterWithVersion(ec *spec.EtcdCluster, version string) *spec.EtcdCluster {
+	ec.Spec.Version = version
+	return ec
 }
 
 func createEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
@@ -257,7 +273,7 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 		return err
 	}
 	ready, unready := k8sutil.SliceReadyAndUnreadyPods(pods)
-	fmt.Printf("ready: %v, unready: %v\n", ready, unready)
+	fmt.Printf("ready: %v, unready: %v\n", k8sutil.GetPodNames(ready), k8sutil.GetPodNames(unready))
 
 	buf := bytes.NewBuffer(nil)
 	if err := getLogs(f.KubeClient, f.Namespace.Name, "kube-etcd-controller", buf); err != nil {

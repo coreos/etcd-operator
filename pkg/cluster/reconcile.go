@@ -8,17 +8,41 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"github.com/coreos/kube-etcd-controller/pkg/spec"
 	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"golang.org/x/net/context"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 var (
 	errNoBackupExist = errors.New("No backup exist for a disaster recovery")
 )
 
-// reconcile reconciles
+// reconcile reconciles cluster current state to desired state specified by spec.
+// - it tries to reconcile the cluster to desired size.
+// - if the cluster needs for upgrade, it tries to upgrade old member one by one.
+func (c *Cluster) reconcile(pods []*api.Pod) error {
+	log.Println("Reconciling:")
+	defer log.Println("Finish reconciling")
+
+	switch {
+	case len(pods) != c.spec.Size:
+		running := etcdutil.MemberSet{}
+		for _, pod := range pods {
+			running.Add(&etcdutil.Member{Name: pod.Name})
+		}
+		return c.reconcileSize(running)
+	case needUpgrade(pods, c.spec):
+		m := pickOneOldMember(pods, c.spec.Version)
+		return c.upgradeOneMember(m)
+	default:
+		return nil
+	}
+}
+
+// reconcileSize reconciles
 // - the members in the cluster view with running pods in Kubernetes.
 // - the members and expect size of cluster.
 //
@@ -29,15 +53,10 @@ var (
 // 1. Remove all pods from running set that does not belong to member set.
 // 2. L consist of remaining pods of runnings
 // 3. If L = members, the current state matches the membership state. END.
-// 4. If len(L) < len(members)/2 + 1, quorum lost. Go to recovery process (TODO).
+// 4. If len(L) < len(members)/2 + 1, quorum lost. Go to recovery process.
 // 5. Add one missing member. END.
-func (c *Cluster) reconcile(running etcdutil.MemberSet) error {
-	log.Println("Reconciling:")
-	defer func() {
-		log.Println("Finish Reconciling")
-	}()
-
-	log.Infof("Running pods: %s", running)
+func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
+	log.Infof("Running members: %s", running)
 	if len(c.members) == 0 {
 		cfg := clientv3.Config{
 			Endpoints:   running.ClientURLs(),
@@ -224,4 +243,18 @@ func checkBackupExist(httpClient *http.Client, addr string) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+func needUpgrade(pods []*api.Pod, cs *spec.ClusterSpec) bool {
+	return len(pods) == cs.Size && pickOneOldMember(pods, cs.Version) != nil
+}
+
+func pickOneOldMember(pods []*api.Pod, newVersion string) *etcdutil.Member {
+	for _, pod := range pods {
+		if k8sutil.GetEtcdVersion(pod) == newVersion {
+			continue
+		}
+		return &etcdutil.Member{Name: pod.Name}
+	}
+	return nil
 }
