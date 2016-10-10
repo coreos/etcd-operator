@@ -7,6 +7,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
@@ -132,8 +133,27 @@ func (c *Cluster) removeOneMember() error {
 }
 
 func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
+	err := removeMember(c.members.ClientURLs(), toRemove.ID)
+	if err != nil {
+		switch err {
+		case rpctypes.ErrGRPCMemberNotFound:
+			log.Infof("etcd member (%v) has been removed", toRemove.Name)
+		default:
+			log.Errorf("fail to remove etcd member (%v): %v", toRemove.Name, err)
+			return err
+		}
+	}
+	c.members.Remove(toRemove.Name)
+	if err := c.removePodAndService(toRemove.Name); err != nil {
+		return err
+	}
+	log.Printf("removed member (%v) with ID (%d)", toRemove.Name, toRemove.ID)
+	return nil
+}
+
+func removeMember(clientURLs []string, id uint64) error {
 	cfg := clientv3.Config{
-		Endpoints:   c.members.ClientURLs(),
+		Endpoints:   clientURLs,
 		DialTimeout: constants.DefaultDialTimeout,
 	}
 	etcdcli, err := clientv3.New(cfg)
@@ -143,15 +163,9 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	defer etcdcli.Close()
 
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	if _, err := etcdcli.Cluster.MemberRemove(ctx, toRemove.ID); err != nil {
-		log.Errorf("etcdcli failed to remove one member: %v", err)
+	if _, err = etcdcli.Cluster.MemberRemove(ctx, id); err != nil {
 		return err
 	}
-	c.members.Remove(toRemove.Name)
-	if err := c.removePodAndService(toRemove.Name); err != nil {
-		return err
-	}
-	log.Printf("removed member (%v) with ID (%d)", toRemove.Name, toRemove.ID)
 	return nil
 }
 
