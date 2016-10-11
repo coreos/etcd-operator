@@ -4,14 +4,14 @@ Project status: pre-alpha
 
 Managed etcd clusters on Kubernetes:
 
-- creation
-- destroy
-- resize
-- recovery
-- backup
+- [creation](#create-an-etcd-cluster)
+- [destroy](#destroy-an-existing-etcd-cluster)
+- [resize](#resize-an-etcd-cluster)
+- [recovery](#try-member-recovery)
+- [backup](#try-disaster-recovery)
 - cluster migration
  - migrate the non managed etcd cluster into the controller's manage
-- rolling upgrade
+- [rolling upgrade](#try-upgrade-etcd-cluster)
 
 ## Requirements
 
@@ -113,7 +113,6 @@ We should see
 
 ```
 $ kubectl get pods
-NAME                READY     STATUS    RESTARTS   AGE
 NAME                             READY     STATUS              RESTARTS   AGE
 etcd-cluster-0000                1/1       Running             0          3m
 etcd-cluster-0001                1/1       Running             0          2m
