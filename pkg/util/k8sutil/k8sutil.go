@@ -280,7 +280,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 					},
 				},
 			},
-			RestartPolicy: api.RestartPolicyNever,
+			RestartPolicy: api.RestartPolicyOnFailure,
 			SecurityContext: &api.PodSecurityContext{
 				HostNetwork: cspec.HostNetwork,
 			},
