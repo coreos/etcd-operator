@@ -259,4 +259,75 @@ etcd-cluster-0007                1/1       Running   0          3m
 etcd-cluster-backup-tool-e9gkv   1/1       Running   0          22m
 ```
 
-Note that there might be race that it falls to member recovery because the second pod hasn't been deleted yet.
+Note that there might be race that it falls to member recovery because of delay in deleting the second pod.
+
+## Try upgrade etcd cluster
+
+Cleanup any existing etcd cluster but keeps etcd controller running.
+
+Have following yaml file ready:
+```
+$ cat 3.0-etcd-cluster.yaml
+apiVersion: "coreos.com/v1"
+kind: "EtcdCluster"
+metadata:
+  name: "etcd-cluster"
+spec:
+  size: 3
+  version: "v3.0.12"
+```
+
+Create an etcd cluster with the version (3.0.12) specified in the yaml file:
+```
+$ kubectl create -f 3.0-etcd-cluster.yaml
+$ kubectl get pods
+NAME                   READY     STATUS    RESTARTS   AGE
+etcd-cluster-0000      1/1       Running   0          37s
+etcd-cluster-0001      1/1       Running   0          25s
+etcd-cluster-0002      1/1       Running   0          14s
+```
+
+The container image version should be 3.0.12:
+```
+$ kubectl get pod etcd-cluster-0000 -o yaml | grep "image:" | uniq
+    image: quay.io/coreos/etcd:v3.0.12
+```
+
+`kubectl apply` doesn't work for TPR at the moment. See [kubernetes/#29542](https://github.com/kubernetes/kubernetes/issues/29542).
+We use cURL to update the cluster as a workaround.
+
+Use kubectl to create a reverse proxy:
+```
+$ kubectl proxy --port=8080
+Starting to serve on 127.0.0.1:8080
+```
+
+Have following json file ready:
+(Note that the version field is changed from v3.0.12 to v3.1.0-alpha.1)
+```
+$ cat body.json
+{
+  "apiVersion": "coreos.com/v1",
+  "kind": "EtcdCluster",
+  "metadata": {
+    "name": "etcd-cluster"
+  },
+  "spec": {
+    "size": 3,
+    "version": "v3.1.0-alpha.1"
+  }
+}
+```
+
+Then we update the version in spec.
+```
+$ curl -H 'Content-Type: application/json' -X PUT --data @body.json \
+    http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
+```
+
+Wait 30 seconds. The container image version should be updated to v3.1.0-alpha.1:
+```
+$ kubectl get pod etcd-cluster-0000 -o yaml | grep "image:" | uniq
+    image: quay.io/coreos/etcd:v3.1.0-alpha.1
+```
+Check other two pods and you should see the same result.
