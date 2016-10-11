@@ -10,7 +10,7 @@ import (
 
 func TestEtcdUpgrade(t *testing.T) {
 	f := framework.Global
-	origEtcd := makeEtcdCluster("test-etcd-", 3, nil)
+	origEtcd := makeEtcdCluster("test-etcd-", 3)
 	origEtcd = etcdClusterWithVersion(origEtcd, "v3.0.12")
 	testEtcd, err := createEtcdCluster(f, origEtcd)
 	if err != nil {
