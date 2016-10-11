@@ -20,7 +20,7 @@ import (
 
 func TestCreateCluster(t *testing.T) {
 	f := framework.Global
-	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3, nil))
+	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestCreateCluster(t *testing.T) {
 
 func TestResizeCluster3to5(t *testing.T) {
 	f := framework.Global
-	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3, nil))
+	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestResizeCluster3to5(t *testing.T) {
 
 func TestResizeCluster5to3(t *testing.T) {
 	f := framework.Global
-	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 5, nil))
+	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 5))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestResizeCluster5to3(t *testing.T) {
 
 func TestOneMemberRecovery(t *testing.T) {
 	f := framework.Global
-	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3, nil))
+	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,9 @@ func TestDisasterRecovery(t *testing.T) {
 		StorageType:              spec.BackupStorageTypePersistentVolume,
 		CleanupBackupIfDeleted:   true,
 	}
-	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3, backupPolicy))
+	origEtcd := makeEtcdCluster("test-etcd-", 3)
+	origEtcd = etcdClusterWithBackup(origEtcd, backupPolicy)
+	testEtcd, err := createEtcdCluster(f, origEtcd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +199,7 @@ func killMembers(f *framework.Framework, names ...string) error {
 	return nil
 }
 
-func makeEtcdCluster(genName string, size int, backupPolicy *spec.BackupPolicy) *spec.EtcdCluster {
+func makeEtcdCluster(genName string, size int) *spec.EtcdCluster {
 	return &spec.EtcdCluster{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "EtcdCluster",
@@ -207,12 +209,15 @@ func makeEtcdCluster(genName string, size int, backupPolicy *spec.BackupPolicy) 
 			GenerateName: genName,
 		},
 		Spec: spec.ClusterSpec{
-			Size:   size,
-			Backup: backupPolicy,
+			Size: size,
 		},
 	}
 }
 
+func etcdClusterWithBackup(ec *spec.EtcdCluster, backupPolicy *spec.BackupPolicy) *spec.EtcdCluster {
+	ec.Spec.Backup = backupPolicy
+	return ec
+}
 func etcdClusterWithVersion(ec *spec.EtcdCluster, version string) *spec.EtcdCluster {
 	ec.Spec.Version = version
 	return ec
