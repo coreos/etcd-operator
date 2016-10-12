@@ -9,3 +9,8 @@ spec:
   -
     name: kube-etcd-controller
     image: gcr.io/coreos-k8s-scale-testing/kube-etcd-controller
+    env:
+      - name: MY_POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
