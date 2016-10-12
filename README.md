@@ -1,5 +1,7 @@
 # kube-etcd-controller
 
+[![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-controller)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-controller/)
+
 Project status: pre-alpha
 
 Managed etcd clusters on Kubernetes:
