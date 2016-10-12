@@ -124,13 +124,33 @@ etcd-cluster-backup-tool-e9gkv   1/1       Running             0          2m
 
 Now we can decrease the size of cluster from 5 back to 3.
 
+Have json file ready: (note the size change to 3)
 ```
-$ curl -H 'Content-Type: application/json'-X PUT http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster -d '{"apiVersion":"coreos.com/v1", "kind": "EtcdCluster", "metadata": {"name": "etcd-cluster", "namespace": "default"}, "spec": {"size": 3}}'
-{"apiVersion":"coreos.com/v1","kind":"EtcdCluster","metadata":{"name":"etcd-cluster","namespace":"default","selfLink":"/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster","uid":"e5828789-6b01-11e6-a730-42010af00002","resourceVersion":"32179","creationTimestamp":"2016-08-25T20:24:17Z"},"spec":{"size":3}}
+$ cat body.json
+{
+  "apiVersion": "coreos.com/v1",
+  "kind": "EtcdCluster",
+  "metadata": {
+    "name": "etcd-cluster",
+    "namespace": "default"
+  },
+  "spec": {
+    "backup": {
+      "maxSnapshot": 5,
+      "snapshotIntervalInSecond": 30,
+      "volumeSizeInMB": 512
+    },
+    "size": 3
+  }
+}
 ```
 
-We should see
+Apply it to API Server:
+```
+$ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
+```
 
+We should see that etcd cluster would eventually reduce to 3 pods:
 ```
 $ kubectl get pods
 NAME                             READY     STATUS    RESTARTS   AGE
