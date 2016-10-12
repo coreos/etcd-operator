@@ -106,7 +106,27 @@ $ cat body.json
 In another terminal, use the following command changed the cluster size from 3 to 5.
 ```
 $ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
-{"apiVersion":"coreos.com/v1","kind":"EtcdCluster","metadata":{"name":"etcd-cluster","namespace":"default","selfLink":"/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster","uid":"4773679d-86cf-11e6-9086-42010af00002","resourceVersion":"438492","creationTimestamp":"2016-09-30T05:32:29Z"},"spec":{"backup":{"maxSnapshot":5,"snapshotIntervalInSecond":30,"volumeSizeInMB":512},"size":5}}
+
+{  
+   "apiVersion":"coreos.com/v1",
+   "kind":"EtcdCluster",
+   "metadata":{  
+      "name":"etcd-cluster",
+      "namespace":"default",
+      "selfLink":"/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster",
+      "uid":"4773679d-86cf-11e6-9086-42010af00002",
+      "resourceVersion":"438492",
+      "creationTimestamp":"2016-09-30T05:32:29Z"
+   },
+   "spec":{  
+      "backup":{  
+         "maxSnapshot":5,
+         "snapshotIntervalInSecond":30,
+         "volumeSizeInMB":512
+      },
+      "size":5
+   }
+}
 ```
 
 We should see
