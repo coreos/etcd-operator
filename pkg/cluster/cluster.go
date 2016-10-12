@@ -1,6 +1,8 @@
 package cluster
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"fmt"
 	"strconv"
 	"strings"
@@ -34,16 +36,14 @@ type clusterEvent struct {
 }
 
 type Cluster struct {
-	kclient *unversioned.Client
-
-	spec *spec.ClusterSpec
-
-	name      string
-	namespace string
-
-	idCounter int
-	eventCh   chan *clusterEvent
-	stopCh    chan struct{}
+	kclient         *unversioned.Client
+	name, namespace string
+	spec            *spec.ClusterSpec
+	caKey           *rsa.PrivateKey
+	caCert          *x509.Certificate
+	idCounter       int
+	eventCh         chan *clusterEvent
+	stopCh          chan struct{}
 
 	// members repsersents the members in the etcd cluster.
 	// the name of the member is the the name of the pod the member
@@ -53,30 +53,40 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec) *Cluster {
-	return new(c, name, ns, spec, true)
+type Config struct {
+	KClient         *unversioned.Client
+	Name, Namespace string
+	Spec            *spec.ClusterSpec
+	CAKey           *rsa.PrivateKey
+	CACert          *x509.Certificate
 }
 
-func Restore(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec) *Cluster {
-	return new(c, name, ns, spec, false)
+func New(cfg *Config) *Cluster {
+	return new(cfg, true)
 }
 
-func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, isNewCluster bool) *Cluster {
-	if len(spec.Version) == 0 {
+func Restore(cfg *Config) *Cluster {
+	return new(cfg, false)
+}
+
+func new(cfg *Config, isNewCluster bool) *Cluster {
+	if len(cfg.Spec.Version) == 0 {
 		// TODO: set version in spec in apiserver
-		spec.Version = defaultVersion
+		cfg.Spec.Version = defaultVersion
 	}
 	c := &Cluster{
-		kclient:   kclient,
-		name:      name,
-		namespace: ns,
+		kclient:   cfg.KClient,
+		name:      cfg.Name,
+		namespace: cfg.Namespace,
+		spec:      cfg.Spec,
+		caKey:     cfg.CAKey,
+		caCert:    cfg.CACert,
 		eventCh:   make(chan *clusterEvent, 100),
 		stopCh:    make(chan struct{}),
-		spec:      spec,
 	}
 	if isNewCluster {
 		var err error
-		if spec.Seed == nil {
+		if cfg.Spec.Seed == nil {
 			err = c.newSeedMember()
 		} else {
 			err = c.migrateSeedMember()

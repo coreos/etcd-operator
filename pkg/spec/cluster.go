@@ -1,6 +1,8 @@
 package spec
 
 import (
+	"time"
+
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 )
@@ -40,6 +42,16 @@ type ClusterSpec struct {
 	// If there is no seed member, a completely new cluster will be created.
 	// There is no seed member by default.
 	Seed *SeedPolicy `json:"seed,omitempty"`
+	// Common name for the cluster CA
+	// Defaults to the cluster name
+	CACommonName string `json:"caCommonName,omitempty"`
+	// Organizatio for the cluster CA
+	// Defaults to the configured controller CA organization
+	CAOrganization string `json:"caOrganization,omitempty"`
+	// How long the cluster CA is valid for
+	// Must be less than or equal to the configured controller CA duration
+	// Defaults to configured controller CA duration
+	CADuration time.Duration `json:"caDuration,omitempty"`
 }
 
 type SeedPolicy struct {
