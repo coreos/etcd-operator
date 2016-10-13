@@ -67,19 +67,30 @@ func main() {
 
 	analytics.ControllerStarted()
 
-	cfg := newControllerConfig()
-	c := controller.New(cfg)
+	for {
+		ctx, cancel := context.WithCancel(context.Background())
 
-	switch chaosLevel {
-	case 1:
-		logrus.Infof("chaos level = 1: randomly kill one etcd pod every 10 seconds")
-		m := chaos.NewMonkeys(cfg.KubeCli)
-		ls := labels.SelectorFromSet(map[string]string{"app": "etcd"})
-		go m.CrushPods(context.TODO(), cfg.Namespace, ls, 0.1)
-	default:
+		cfg := newControllerConfig()
+
+		switch chaosLevel {
+		case 1:
+			logrus.Infof("chaos level = 1: randomly kill one etcd pod every 10 seconds")
+			m := chaos.NewMonkeys(cfg.KubeCli)
+			ls := labels.SelectorFromSet(map[string]string{"app": "etcd"})
+			go m.CrushPods(ctx, cfg.Namespace, ls, 0.1)
+		default:
+		}
+
+		c := controller.New(cfg)
+		err := c.Run()
+		switch err {
+		case controller.ErrVersionOutdated:
+		default:
+			logrus.Fatalf("controller Run() ended with failure: %v", err)
+		}
+
+		cancel()
 	}
-
-	c.Run()
 }
 
 func newControllerConfig() controller.Config {
