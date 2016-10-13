@@ -1,0 +1,2 @@
+Hongchao Deng <hongchao.deng@coreos.com> (@hongchaodeng)
+Xiang Li <xiang.li@coreos.com> (@xiang90)
