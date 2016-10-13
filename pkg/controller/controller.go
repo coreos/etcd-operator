@@ -1,11 +1,14 @@
 package controller
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -13,6 +16,8 @@ import (
 	"github.com/coreos/kube-etcd-controller/pkg/cluster"
 	"github.com/coreos/kube-etcd-controller/pkg/spec"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
+	"github.com/coreos/kube-etcd-controller/pkg/util/tlsutil"
+
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/restclient"
@@ -21,6 +26,13 @@ import (
 
 const (
 	tprName = "etcd-cluster.coreos.com"
+
+	//Etcd controller tls file names
+	controllerCACertName = "controller-ca-cert.pem"
+	controllerCAKeyName  = "controller-ca-key.pem"
+	//Etcd cluster tls file name templates
+	clusterCACertTemplate = "%s-cluster-ca-cert.pem"
+	clusterCAKeyTemplate  = "%s-cluster-ca-key.pem"
 )
 
 var (
@@ -44,6 +56,8 @@ type Controller struct {
 	*Config
 	kclient  *unversioned.Client
 	clusters map[string]*cluster.Cluster
+	caKey    *rsa.PrivateKey
+	caCert   *x509.Certificate
 }
 
 type Config struct {
@@ -52,6 +66,13 @@ type Config struct {
 	TLSInsecure   bool
 	TLSConfig     restclient.TLSClientConfig
 	PVProvisioner string
+	EtcdTLSConfig struct {
+		//parameters for generated controller CA
+		tlsutil.CACertConfig
+		//where the tls assets are stored
+		Dir                    string
+		SelfSignedControllerCA bool
+	}
 }
 
 func (c *Config) validate() error {
@@ -61,24 +82,91 @@ func (c *Config) validate() error {
 			c.PVProvisioner, supportedPVProvisioners,
 		)
 	}
+
 	return nil
+}
+
+//TOOD: Implement this
+func (c *Config) remoteSignedControllerCACert(caKey *rsa.PrivateKey) (*x509.Certificate, error) {
+	return nil, fmt.Errorf("NOT IMPLEMENTED YET!")
+}
+
+func (c *Config) selfSignedControllerCACert(caKey *rsa.PrivateKey) (*x509.Certificate, error) {
+	return tlsutil.NewCACertificate(c.EtcdTLSConfig.CACertConfig, caKey, nil, nil)
 }
 
 func New(cfg *Config) *Controller {
 	if err := cfg.validate(); err != nil {
 		panic(err)
 	}
+
+	keyPath := filepath.Join(cfg.EtcdTLSConfig.Dir, controllerCAKeyName)
+	caKey, err := tlsutil.InitializePrivateKeyFile(keyPath)
+	if err != nil {
+		panic(err)
+	}
+
+	var caCertFunc tlsutil.NewCertificateFunc
+	if cfg.EtcdTLSConfig.SelfSignedControllerCA {
+		caCertFunc = cfg.selfSignedControllerCACert
+	} else {
+		caCertFunc = cfg.remoteSignedControllerCACert
+	}
+
+	certPath := filepath.Join(cfg.EtcdTLSConfig.Dir, controllerCACertName)
+	caCert, err := tlsutil.InitializeCertificateFile(certPath, caKey, caCertFunc)
+	if err != nil {
+		panic(err)
+	}
+
 	kclient := k8sutil.MustCreateClient(cfg.MasterHost, cfg.TLSInsecure, &cfg.TLSConfig)
 	if len(cfg.MasterHost) == 0 {
 		cfg.MasterHost = k8sutil.MustGetInClusterMasterHost()
 	}
+
 	return &Controller{
 		Config:   cfg,
 		kclient:  kclient,
 		clusters: make(map[string]*cluster.Cluster),
+		caKey:    caKey,
+		caCert:   caCert,
 	}
 }
 
+func (c *Controller) initializeClusterTLS(clusterName string, clusterSpec *spec.ClusterSpec) (*rsa.PrivateKey, *x509.Certificate, error) {
+	// set defaults
+	if len(clusterSpec.CACommonName) == 0 {
+		clusterSpec.CACommonName = clusterName
+	}
+	if len(clusterSpec.CAOrganization) == 0 {
+		clusterSpec.CAOrganization = c.EtcdTLSConfig.Organization
+	}
+	if clusterSpec.CADuration == 0 {
+		clusterSpec.CADuration = c.EtcdTLSConfig.Duration
+	}
+
+	keyPath := filepath.Join(c.EtcdTLSConfig.Dir, fmt.Sprintf(clusterCAKeyTemplate, clusterName))
+	caKey, err := tlsutil.InitializePrivateKeyFile(keyPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	// sign the new cluster certificate with the controller ca key
+	clusterCertFunc := func(key *rsa.PrivateKey) (*x509.Certificate, error) {
+		certCfg := tlsutil.CACertConfig{
+			CommonName:   clusterSpec.CACommonName,
+			Organization: clusterSpec.CAOrganization,
+			Duration:     clusterSpec.CADuration,
+		}
+
+		return tlsutil.NewCACertificate(certCfg, key, c.caKey, c.caCert)
+	}
+	certPath := filepath.Join(c.EtcdTLSConfig.Dir, fmt.Sprintf(clusterCACertTemplate, clusterName))
+	caCert, err := tlsutil.InitializeCertificateFile(certPath, caKey, clusterCertFunc)
+	if err != nil {
+		return nil, nil, err
+	}
+	return caKey, caCert, nil
+}
 func (c *Controller) Run() {
 	watchVersion, err := c.initResource()
 	if err != nil {
@@ -94,7 +182,20 @@ func (c *Controller) Run() {
 			switch event.Type {
 			case "ADDED":
 				clusterSpec := &event.Object.Spec
-				nc := cluster.New(c.kclient, clusterName, c.Namespace, clusterSpec)
+				caKey, caCert, err := c.initializeClusterTLS(clusterName, clusterSpec)
+				if err != nil {
+					panic(fmt.Errorf("error adding cluster %s: %v", clusterName, err))
+				}
+
+				clusterCfg := &cluster.Config{
+					KClient:   c.kclient,
+					Name:      clusterName,
+					Namespace: c.Namespace,
+					Spec:      clusterSpec,
+					CAKey:     caKey,
+					CACert:    caCert,
+				}
+				nc := cluster.New(clusterCfg)
 				c.clusters[clusterName] = nc
 				analytics.ClusterCreated()
 
@@ -130,7 +231,12 @@ func (c *Controller) findAllClusters() (string, error) {
 		return "", err
 	}
 	for _, item := range list.Items {
-		nc := cluster.Restore(c.kclient, item.Name, c.Namespace, &item.Spec)
+		nc := cluster.Restore(&cluster.Config{
+			KClient:   c.kclient,
+			Name:      item.Name,
+			Namespace: c.Namespace,
+			Spec:      &item.Spec,
+		})
 		c.clusters[item.Name] = nc
 
 		backup := item.Spec.Backup

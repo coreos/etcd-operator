@@ -1,6 +1,8 @@
 package cluster
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"fmt"
 	"strconv"
 	"strings"
@@ -34,16 +36,14 @@ type clusterEvent struct {
 }
 
 type Cluster struct {
-	kclient *unversioned.Client
-
-	spec *spec.ClusterSpec
-
-	name      string
-	namespace string
-
-	idCounter int
-	eventCh   chan *clusterEvent
-	stopCh    chan struct{}
+	kclient         *unversioned.Client
+	name, namespace string
+	spec            *spec.ClusterSpec
+	caKey           *rsa.PrivateKey
+	caCert          *x509.Certificate
+	idCounter       int
+	eventCh         chan *clusterEvent
+	stopCh          chan struct{}
 
 	// members repsersents the members in the etcd cluster.
 	// the name of the member is the the name of the pod the member
@@ -53,30 +53,40 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec) *Cluster {
-	return new(c, name, ns, spec, true)
+type Config struct {
+	KClient         *unversioned.Client
+	Name, Namespace string
+	Spec            *spec.ClusterSpec
+	CAKey           *rsa.PrivateKey
+	CACert          *x509.Certificate
 }
 
-func Restore(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec) *Cluster {
-	return new(c, name, ns, spec, false)
+func New(cfg *Config) *Cluster {
+	return new(cfg, true)
 }
 
-func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, isNewCluster bool) *Cluster {
-	if len(spec.Version) == 0 {
+func Restore(cfg *Config) *Cluster {
+	return new(cfg, false)
+}
+
+func new(cfg *Config, isNewCluster bool) *Cluster {
+	if len(cfg.Spec.Version) == 0 {
 		// TODO: set version in spec in apiserver
-		spec.Version = defaultVersion
+		cfg.Spec.Version = defaultVersion
 	}
 	c := &Cluster{
-		kclient:   kclient,
-		name:      name,
-		namespace: ns,
+		kclient:   cfg.KClient,
+		name:      cfg.Name,
+		namespace: cfg.Namespace,
+		spec:      cfg.Spec,
+		caKey:     cfg.CAKey,
+		caCert:    cfg.CACert,
 		eventCh:   make(chan *clusterEvent, 100),
 		stopCh:    make(chan struct{}),
-		spec:      spec,
 	}
 	if isNewCluster {
 		var err error
-		if spec.Seed == nil {
+		if cfg.Spec.Seed == nil {
 			err = c.newSeedMember()
 		} else {
 			err = c.migrateSeedMember()
@@ -355,6 +365,10 @@ func findID(name string) int {
 }
 
 func (c *Cluster) delete() {
+	if c.spec.Backup != nil {
+		k8sutil.DeleteBackupReplicaSetAndService(c.kclient, c.name, c.namespace, c.spec.Backup.CleanupBackupIfDeleted)
+	}
+
 	option := k8sapi.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"etcd_cluster": c.name,
@@ -365,13 +379,19 @@ func (c *Cluster) delete() {
 	if err != nil {
 		panic(err)
 	}
-	for i := range pods.Items {
-		if err := c.removePodAndService(pods.Items[i].Name); err != nil {
+	for _, item := range pods.Items {
+		if err := c.removePodAndService(item.Name); err != nil {
 			panic(err)
 		}
 	}
-	if c.spec.Backup != nil {
-		k8sutil.DeleteBackupReplicaSetAndService(c.kclient, c.name, c.namespace, c.spec.Backup.CleanupBackupIfDeleted)
+	pvc, err := c.kclient.PersistentVolumeClaims(c.namespace).List(option)
+	if err != nil {
+		panic(err)
+	}
+	for _, item := range pvc.Items {
+		if err := c.removePVC(item.Name); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -401,6 +421,16 @@ func (c *Cluster) removePodAndService(name string) error {
 		}
 	}
 	err = c.kclient.Pods(c.namespace).Delete(name, nil)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Cluster) removePVC(name string) error {
+	err := c.kclient.PersistentVolumeClaims(c.namespace).Delete(name)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
