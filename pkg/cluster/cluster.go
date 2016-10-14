@@ -241,7 +241,7 @@ func (c *Cluster) migrateSeedMember() error {
 	pod := k8sutil.MakeEtcdPod(m, initialCluster, c.name, "existing", "", c.spec)
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, m.Name, mpurls, c.spec)
 
-	if err := k8sutil.CreateAndWaitPod(c.kclient, pod, m, c.namespace); err != nil {
+	if err := k8sutil.CreateAndWaitPod(c.kclient, c.namespace, pod); err != nil {
 		return err
 	}
 	c.idCounter++
@@ -404,7 +404,7 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	if needRecovery {
 		k8sutil.AddRecoveryToPod(pod, c.name, m.Name, token, c.spec)
 	}
-	return k8sutil.CreateAndWaitPod(c.kclient, pod, m, c.namespace)
+	return k8sutil.CreateAndWaitPod(c.kclient, c.namespace, pod)
 }
 
 func (c *Cluster) removePodAndService(name string) error {

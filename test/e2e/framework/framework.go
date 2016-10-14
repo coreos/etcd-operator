@@ -116,14 +116,15 @@ func (f *Framework) setupEtcdController(ctrlImage string) error {
 		},
 	}
 
-	_, err := f.KubeClient.Pods(f.Namespace.Name).Create(pod)
+	err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace.Name, pod)
 	if err != nil {
 		return err
 	}
-	err = k8sutil.WaitEtcdTPRReady(f.KubeClient.Client, 5*time.Second, 90*time.Second, f.MasterHost, f.Namespace.Name)
+	err = k8sutil.WaitEtcdTPRReady(f.KubeClient.Client, 5*time.Second, 60*time.Second, f.MasterHost, f.Namespace.Name)
 	if err != nil {
 		return err
 	}
+
 	logrus.Info("etcd controller created successfully")
 	return nil
 }
