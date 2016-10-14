@@ -295,7 +295,7 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 	fmt.Printf("ready: %v, unready: %v\n", k8sutil.GetPodNames(ready), k8sutil.GetPodNames(unready))
 
 	buf := bytes.NewBuffer(nil)
-	if err := getLogs(f.KubeClient, f.Namespace.Name, "kube-etcd-controller", buf); err != nil {
+	if err := getLogs(f.KubeClient, f.Namespace.Name, "kube-etcd-controller", "kube-etcd-controller", buf); err != nil {
 		return err
 	}
 	fmt.Println("kube-etcd-controller logs ===")
@@ -318,12 +318,13 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 	return nil
 }
 
-func getLogs(kubecli *k8sclient.Client, ns, podID string, out io.Writer) error {
+func getLogs(kubecli *k8sclient.Client, ns, podID, container string, out io.Writer) error {
 	req := kubecli.RESTClient.Get().
 		Namespace(ns).
 		Name(podID).
 		Resource("pods").
 		SubResource("log").
+		Param("container", container).
 		Param("tailLines", "20")
 
 	readCloser, err := req.Stream()
