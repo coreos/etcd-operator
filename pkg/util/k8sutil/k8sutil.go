@@ -152,7 +152,7 @@ func CreateEtcdNodePortService(kclient *unversioned.Client, etcdName, clusterNam
 	return kclient.Services(ns).Create(svc)
 }
 
-func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod) error {
+func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod, timeout time.Duration) error {
 	if _, err := kclient.Pods(ns).Create(pod); err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod) erro
 	if err != nil {
 		return err
 	}
-	_, err = watch.Until(10*time.Second, w, unversioned.PodRunning)
+	_, err = watch.Until(timeout, w, unversioned.PodRunning)
 	// TODO: cleanup pod on failure
 	return err
 }

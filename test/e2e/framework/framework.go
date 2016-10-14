@@ -116,7 +116,7 @@ func (f *Framework) setupEtcdController(ctrlImage string) error {
 		},
 	}
 
-	err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace.Name, pod)
+	err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace.Name, pod, 60*time.Second)
 	if err != nil {
 		return err
 	}
