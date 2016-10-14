@@ -23,7 +23,7 @@ You should see "vendor/".
 
 Build docker image
 ```
-$ docker build --tag quay.io/coreos/kube-etcd-controller:${TAG} -f hack/release/Dockerfile .
+$ docker build --tag quay.io/coreos/kube-etcd-controller:${TAG} -f hack/build/controller/Dockerfile .
 ```
 `${TAG}` is the release tag. For example, "v0.0.1", "latest".
 We also need to create a corresponding release on github with release note.
