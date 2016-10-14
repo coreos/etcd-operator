@@ -368,6 +368,8 @@ func MustGetInClusterMasterHost() string {
 	return cfg.Host
 }
 
+// tlsConfig isn't modified inside this function.
+// The reason it's a pointer is that it's not necessary to have tlsconfig to create a client.
 func MustCreateClient(host string, tlsInsecure bool, tlsConfig *restclient.TLSClientConfig) *unversioned.Client {
 	if len(host) == 0 {
 		c, err := unversioned.NewInCluster()

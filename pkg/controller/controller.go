@@ -29,7 +29,6 @@ import (
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
@@ -55,16 +54,14 @@ type Event struct {
 }
 
 type Controller struct {
-	*Config
-	kclient  *unversioned.Client
+	Config
 	clusters map[string]*cluster.Cluster
 }
 
 type Config struct {
 	Namespace     string
 	MasterHost    string
-	TLSInsecure   bool
-	TLSConfig     restclient.TLSClientConfig
+	KubeCli       *unversioned.Client
 	PVProvisioner string
 }
 
@@ -78,17 +75,12 @@ func (c *Config) validate() error {
 	return nil
 }
 
-func New(cfg *Config) *Controller {
+func New(cfg Config) *Controller {
 	if err := cfg.validate(); err != nil {
 		panic(err)
 	}
-	kclient := k8sutil.MustCreateClient(cfg.MasterHost, cfg.TLSInsecure, &cfg.TLSConfig)
-	if len(cfg.MasterHost) == 0 {
-		cfg.MasterHost = k8sutil.MustGetInClusterMasterHost()
-	}
 	return &Controller{
 		Config:   cfg,
-		kclient:  kclient,
 		clusters: make(map[string]*cluster.Cluster),
 	}
 }
@@ -100,7 +92,7 @@ func (c *Controller) Run() {
 	}
 	log.Println("etcd cluster controller starts running...")
 
-	eventCh, errCh := monitorEtcdCluster(c.MasterHost, c.Namespace, c.kclient.RESTClient.Client, watchVersion)
+	eventCh, errCh := monitorEtcdCluster(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client, watchVersion)
 	for {
 		select {
 		case event := <-eventCh:
@@ -108,13 +100,13 @@ func (c *Controller) Run() {
 			switch event.Type {
 			case "ADDED":
 				clusterSpec := &event.Object.Spec
-				nc := cluster.New(c.kclient, clusterName, c.Namespace, clusterSpec)
+				nc := cluster.New(c.KubeCli, clusterName, c.Namespace, clusterSpec)
 				c.clusters[clusterName] = nc
 				analytics.ClusterCreated()
 
 				backup := clusterSpec.Backup
 				if backup != nil && backup.MaxSnapshot != 0 {
-					err := k8sutil.CreateBackupReplicaSetAndService(c.kclient, clusterName, c.Namespace, *backup)
+					err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, *backup)
 					if err != nil {
 						panic(err)
 					}
@@ -134,7 +126,7 @@ func (c *Controller) Run() {
 
 func (c *Controller) findAllClusters() (string, error) {
 	log.Println("finding existing clusters...")
-	resp, err := k8sutil.ListETCDCluster(c.MasterHost, c.Namespace, c.kclient.RESTClient.Client)
+	resp, err := k8sutil.ListETCDCluster(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client)
 	if err != nil {
 		return "", err
 	}
@@ -144,12 +136,12 @@ func (c *Controller) findAllClusters() (string, error) {
 		return "", err
 	}
 	for _, item := range list.Items {
-		nc := cluster.Restore(c.kclient, item.Name, c.Namespace, &item.Spec)
+		nc := cluster.Restore(c.KubeCli, item.Name, c.Namespace, &item.Spec)
 		c.clusters[item.Name] = nc
 
 		backup := item.Spec.Backup
 		if backup != nil && backup.MaxSnapshot != 0 {
-			err := k8sutil.CreateBackupReplicaSetAndService(c.kclient, item.Name, c.Namespace, *backup)
+			err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, item.Name, c.Namespace, *backup)
 			if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 				panic(err)
 			}
@@ -175,7 +167,7 @@ func (c *Controller) initResource() (string, error) {
 			return "", err
 		}
 	}
-	err = k8sutil.CreateStorageClass(c.kclient, c.PVProvisioner)
+	err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
 	if err != nil {
 		log.Errorf("fail to create storage class: %v", err)
 		return "", err
@@ -193,12 +185,12 @@ func (c *Controller) createTPR() error {
 		},
 		Description: "Managed etcd clusters",
 	}
-	_, err := c.kclient.ThirdPartyResources().Create(tpr)
+	_, err := c.KubeCli.ThirdPartyResources().Create(tpr)
 	if err != nil {
 		return err
 	}
 
-	return k8sutil.WaitEtcdTPRReady(c.kclient.Client, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
+	return k8sutil.WaitEtcdTPRReady(c.KubeCli.Client, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
 }
 
 func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
