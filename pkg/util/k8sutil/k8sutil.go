@@ -152,12 +152,11 @@ func CreateEtcdNodePortService(kclient *unversioned.Client, etcdName, clusterNam
 	return kclient.Services(ns).Create(svc)
 }
 
-// TODO: use a struct to replace the huge arg list.
-func CreateAndWaitPod(kclient *unversioned.Client, pod *api.Pod, m *etcdutil.Member, ns string) error {
+func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod) error {
 	if _, err := kclient.Pods(ns).Create(pod); err != nil {
 		return err
 	}
-	w, err := kclient.Pods(ns).Watch(api.SingleObject(api.ObjectMeta{Name: m.Name}))
+	w, err := kclient.Pods(ns).Watch(api.SingleObject(api.ObjectMeta{Name: pod.Name}))
 	if err != nil {
 		return err
 	}
