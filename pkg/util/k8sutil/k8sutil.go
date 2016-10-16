@@ -38,11 +38,12 @@ import (
 
 const (
 	// TODO: This is constant for current purpose. We might make it configurable later.
-	etcdDir    = "/var/etcd"
-	dataDir    = etcdDir + "/data"
-	backupFile = "/var/etcd/latest.backup"
-
-	etcdVersionAnnotationKey = "etcd.version"
+	etcdDir                    = "/var/etcd"
+	dataDir                    = etcdDir + "/data"
+	backupFile                 = "/var/etcd/latest.backup"
+	etcdVersionAnnotationKey   = "etcd.version"
+	annotationPrometheusScrape = "prometheus.io/scrape"
+	annotationPrometheusPort   = "prometheus.io/port"
 )
 
 func GetEtcdVersion(pod *api.Pod) string {
@@ -175,6 +176,10 @@ func makeEtcdService(etcdName, clusterName string) *api.Service {
 		ObjectMeta: api.ObjectMeta{
 			Name:   etcdName,
 			Labels: labels,
+			Annotations: map[string]string{
+				annotationPrometheusScrape: "true",
+				annotationPrometheusPort:   "2379",
+			},
 		},
 		Spec: api.ServiceSpec{
 			Ports: []api.ServicePort{
