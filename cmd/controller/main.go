@@ -15,14 +15,17 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/kube-etcd-controller/pkg/analytics"
+	"github.com/coreos/kube-etcd-controller/pkg/chaos"
 	"github.com/coreos/kube-etcd-controller/pkg/controller"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"k8s.io/kubernetes/pkg/client/restclient"
+	"k8s.io/kubernetes/pkg/labels"
 )
 
 var (
@@ -34,6 +37,8 @@ var (
 	keyFile          string
 	caFile           string
 	namespace        string
+
+	chaosLevel int
 )
 
 func init() {
@@ -45,6 +50,8 @@ func init() {
 	flag.StringVar(&keyFile, "key-file", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to private TLS certificate file.")
 	flag.StringVar(&caFile, "ca-file", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to TLS CA file.")
 	flag.BoolVar(&tlsInsecure, "tls-insecure", false, "- NOT RECOMMENDED FOR PRODUCTION - Don't verify API server's CA certificate.")
+	// chaos level will be removed once we have a formal tool to inject failures.
+	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the controller.")
 	flag.Parse()
 
 	namespace = os.Getenv("MY_POD_NAMESPACE")
@@ -62,6 +69,16 @@ func main() {
 
 	cfg := newControllerConfig()
 	c := controller.New(cfg)
+
+	switch chaosLevel {
+	case 1:
+		logrus.Infof("chaos level = 1: randomly kill one etcd pod every 10 seconds")
+		m := chaos.NewMonkeys(cfg.KubeCli)
+		ls := labels.SelectorFromSet(map[string]string{"app": "etcd"})
+		go m.CrushPods(context.TODO(), cfg.Namespace, ls, 0.1)
+	default:
+	}
+
 	c.Run()
 }
 

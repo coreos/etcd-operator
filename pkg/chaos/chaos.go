@@ -30,9 +30,13 @@ type Monkeys struct {
 	k8s *unversioned.Client
 }
 
+func NewMonkeys(k8s *unversioned.Client) *Monkeys {
+	return &Monkeys{k8s: k8s}
+}
+
 // TODO: respect context in k8s operations.
-func (m *Monkeys) CrushPods(ctx context.Context, ns string, ls labels.Selector, killRate int) {
-	limiter := rate.NewLimiter(rate.Limit(killRate), killRate)
+func (m *Monkeys) CrushPods(ctx context.Context, ns string, ls labels.Selector, killRate float64) {
+	limiter := rate.NewLimiter(rate.Limit(killRate), int(killRate))
 	for {
 		err := limiter.Wait(ctx)
 		if err != nil { // user cancellation
