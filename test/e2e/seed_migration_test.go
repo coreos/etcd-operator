@@ -44,6 +44,7 @@ func TestCreateClusterWithSeedMember(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer e.Close()
 
 	<-e.Server.ReadyNotify()
 	fmt.Println("etcdserver is ready")
