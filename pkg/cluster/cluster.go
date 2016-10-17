@@ -369,6 +369,10 @@ func findID(name string) int {
 }
 
 func (c *Cluster) delete() {
+	if c.spec.Backup != nil {
+		k8sutil.DeleteBackupReplicaSetAndService(c.kclient, c.name, c.namespace, c.spec.Backup.CleanupBackupIfDeleted)
+	}
+
 	option := k8sapi.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"etcd_cluster": c.name,
@@ -379,13 +383,19 @@ func (c *Cluster) delete() {
 	if err != nil {
 		panic(err)
 	}
-	for i := range pods.Items {
-		if err := c.removePodAndService(pods.Items[i].Name); err != nil {
+	for _, item := range pods.Items {
+		if err := c.removePodAndService(item.Name); err != nil {
 			panic(err)
 		}
 	}
-	if c.spec.Backup != nil {
-		k8sutil.DeleteBackupReplicaSetAndService(c.kclient, c.name, c.namespace, c.spec.Backup.CleanupBackupIfDeleted)
+	pvc, err := c.kclient.PersistentVolumeClaims(c.namespace).List(option)
+	if err != nil {
+		panic(err)
+	}
+	for _, item := range pvc.Items {
+		if err := c.removePVC(item.Name); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -415,6 +425,16 @@ func (c *Cluster) removePodAndService(name string) error {
 		}
 	}
 	err = c.kclient.Pods(c.namespace).Delete(name, nil)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Cluster) removePVC(name string) error {
+	err := c.kclient.PersistentVolumeClaims(c.namespace).Delete(name)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
