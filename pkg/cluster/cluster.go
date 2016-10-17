@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -67,15 +68,15 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec) *Cluster {
-	return new(c, name, ns, spec, true)
+func New(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
+	return new(c, name, ns, spec, stopC, wg, true)
 }
 
-func Restore(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec) *Cluster {
-	return new(c, name, ns, spec, false)
+func Restore(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
+	return new(c, name, ns, spec, stopC, wg, false)
 }
 
-func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, isNewCluster bool) *Cluster {
+func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) *Cluster {
 	if len(spec.Version) == 0 {
 		// TODO: set version in spec in apiserver
 		spec.Version = defaultVersion
@@ -99,7 +100,8 @@ func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, i
 			panic(err)
 		}
 	}
-	go c.run()
+	wg.Add(1)
+	go c.run(stopC, wg)
 
 	return c
 }
@@ -117,15 +119,23 @@ func (c *Cluster) send(ev *clusterEvent) {
 	}
 }
 
-func (c *Cluster) run() {
+func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
+	needDeleteCluster := true
+
 	defer func() {
 		log.Warningf("kiling cluster (%v)", c.name)
-		c.delete()
+		if needDeleteCluster {
+			c.delete()
+		}
 		close(c.stopCh)
+		wg.Done()
 	}()
 
 	for {
 		select {
+		case <-stopC:
+			needDeleteCluster = false
+			return
 		case event := <-c.eventCh:
 			switch event.typ {
 			case eventModifyCluster:
