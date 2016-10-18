@@ -71,6 +71,15 @@ $ kubectl logs etcd-cluster-0000
 2016-08-05 00:33:32.454178 N | etcdmain: serving insecure client requests on 0.0.0.0:2379, this is strongly discouraged!
 ```
 
+If you are working with [minikube locally](https://github.com/kubernetes/minikube#minikube) create a nodePort service and test out that etcd is responding:
+
+```bash
+kubectl create -f example/example-etcd-cluster-nodeport-service.json
+export ETCDCTL_API=3
+export ETCDCTL_ENDPOINTS=$(minikube service etcd-cluster-client-service --url)
+etcdctl put foo bar
+```
+
 ## Resize an etcd cluster
 
 `kubectl apply` doesn't work for TPR at the moment. See [kubernetes/#29542](https://github.com/kubernetes/kubernetes/issues/29542). As a workaround, we use cURL to resize the cluster.

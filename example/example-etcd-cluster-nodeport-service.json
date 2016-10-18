@@ -1,0 +1,22 @@
+{
+    "kind": "Service",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "etcd-cluster-client-service"
+    },
+    "spec": {
+        "selector": {
+            "etcd_cluster": "etcd-cluster",
+            "app": "etcd"
+        },
+        "ports": [
+            {
+                "protocol": "TCP",
+                "port": 2379,
+                "targetPort": 2379,
+                "nodePort": 32379
+            }
+        ],
+        "type": "NodePort"
+    }
+}
