@@ -45,6 +45,8 @@ var (
 	}
 
 	ErrVersionOutdated = errors.New("requested version is outdated in apiserver")
+
+	initRetryWaitTime = 30 * time.Second
 )
 
 type rawEvent struct {
@@ -93,11 +95,23 @@ func New(cfg Config) *Controller {
 }
 
 func (c *Controller) Run() error {
-	watchVersion, err := c.initResource()
-	if err != nil {
-		panic(err)
+	var (
+		watchVersion string
+		err          error
+	)
+
+	for {
+		watchVersion, err = c.initResource()
+		if err == nil {
+			break
+		}
+		log.Errorf("failed to initialize controller: %v", err)
+		log.Infof("retry controller initialization in %v...", initRetryWaitTime)
+		time.Sleep(initRetryWaitTime)
+		// todo: add max retry?
 	}
-	log.Println("etcd cluster controller starts running...")
+
+	log.Infof("etcd cluster controller starts running from watch version: %s", watchVersion)
 
 	defer func() {
 		for _, stopC := range c.stopChMap {
