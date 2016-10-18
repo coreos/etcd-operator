@@ -2,17 +2,17 @@
 
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-controller-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-controller-master/)
 
-### Project status: **pre-alpha**
+**Project status: *pre-alpha***
 
-Managed etcd clusters on Kubernetes:
+Kube-etcd-controller manages etcd clusters atop [Kubernetes][k8s-home], automating their creation and administration:
 
-- [creation](#create-an-etcd-cluster)
-- [destroy](#destroy-an-existing-etcd-cluster)
-- [resize](#resize-an-etcd-cluster)
-- [recovery](#try-member-recovery)
-- [backup](#try-disaster-recovery)
-- cluster migration
- - migrate the non managed etcd cluster into the controller's manage
+- [Create](#create-an-etcd-cluster)
+- [Destroy](#destroy-an-existing-etcd-cluster)
+- [Resize](#resize-an-etcd-cluster)
+- [Recover a member](#member-recovery)
+- [Backup and restore a cluster](#disaster-recovery)
+- Cluster migration (TODO)
+ - Migrate an existing etcd cluster into controller management
 - [rolling upgrade](#try-upgrade-etcd-cluster)
 
 ## Requirements
@@ -22,8 +22,8 @@ Managed etcd clusters on Kubernetes:
 
 ## Limitations
 
-- Backup only works for data in etcd3 storage, not etcd2 storage.
-- Migration only supports single member cluster with all nodes running in the same Kuberentes cluster.
+- Backup works only for data in etcd3 storage, not for data in etcd2 storage.
+- Migration, the process of allowing the controller to manage existing etcd3 clusters, only supports a single-member cluster, with all nodes running in the same Kubernetes cluster.
 
 ## Deploy kube-etcd-controller
 
@@ -32,7 +32,7 @@ $ kubectl create -f example/etcd-controller.yaml
 pod "kube-etcd-controller" created
 ```
 
-kube-etcd-controller will create a "EtcdCluster" TPR and "etcd-controller-backup" storage class automatically.
+kube-etcd-controller will create a Kubernetes *Third-Party Resource* (TPR) called "etcd-cluster", and an "etcd-controller-backup" storage class.
 
 ```bash
 $ kubectl get thirdpartyresources
@@ -73,18 +73,18 @@ $ kubectl logs etcd-cluster-0000
 
 ## Resize an etcd cluster
 
-`kubectl apply` doesn't work for TPR at the moment. See [kubernetes/#29542](https://github.com/kubernetes/kubernetes/issues/29542).
-
-In this example, we use cURL to update the cluster as a workaround.
+`kubectl apply` doesn't work for TPR at the moment. See [kubernetes/#29542](https://github.com/kubernetes/kubernetes/issues/29542). As a workaround, we use cURL to resize the cluster.
 
 Use kubectl to create a reverse proxy:
+
 ```
 $ kubectl proxy --port=8080
 Starting to serve on 127.0.0.1:8080
 ```
 Now we can talk to apiserver via "http://127.0.0.1:8080".
 
-Have json file:
+Create a json file with the new configuration:
+
 ```
 $ cat body.json
 {
@@ -105,7 +105,8 @@ $ cat body.json
 }
 ```
 
-In another terminal, use the following command changed the cluster size from 3 to 5.
+In another terminal, use the following command to change the cluster size from 3 to 5.
+
 ```
 $ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
 
@@ -146,7 +147,8 @@ etcd-cluster-backup-tool-e9gkv   1/1       Running             0          2m
 
 Now we can decrease the size of cluster from 5 back to 3.
 
-Have json file ready: (note the size change to 3)
+Create another json file with the cluster size specified back to 3:
+
 ```
 $ cat body.json
 {
@@ -167,12 +169,14 @@ $ cat body.json
 }
 ```
 
-Apply it to API Server:
+Send it to API Server:
+
 ```
 $ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
 ```
 
-We should see that etcd cluster would eventually reduce to 3 pods:
+We should see that etcd cluster eventually reduces to 3 pods:
+
 ```
 $ kubectl get pods
 NAME                             READY     STATUS    RESTARTS   AGE
@@ -193,14 +197,15 @@ $ kubectl get pods
 NAME                       READY     STATUS    RESTARTS   AGE
 ```
 
-## Try member recovery
+## Member recovery
 
 If the minority of etcd members crash, the etcd controller will automatically recover the failure.
 Let's walk through in the following steps.
 
-Redo "create" process to have initial 3 members cluster.
+Redo the "create" process to have a cluster with 3 members.
 
 Simulate a member failure by deleting a pod:
+
 ```bash
 $ kubectl delete pod etcd-cluster-0000
 ```
@@ -215,11 +220,11 @@ etcd-cluster-0002   1/1       Running   0          5s
 etcd-cluster-0003   1/1       Running   0          5s
 ```
 
-## Try controller recovery
+### Controller recovery
 
 If the etcd controller restarts, it can recover its previous state.
 
-Continued from above, you can try to simulate a controller crash and a member crash:
+Continued from above, you can simulate a controller crash and a member crash:
 
 ```bash
 $ kubectl delete -f example/etcd-controller.yaml
@@ -229,7 +234,7 @@ $ kubectl delete etcd-cluster-0001
 pod "etcd-cluster-0001" deleted
 ```
 
-Then restart the etcd controller. It should automatically recover itself. It also recovers the etcd cluster!
+Then restart the etcd controller. It should automatically recover itself. It also recovers the etcd cluster:
 
 ```bash
 $ kubectl create -f example/etcd-cluster.yaml
@@ -241,10 +246,9 @@ etcd-cluster-0003   1/1       Running   0          4m
 etcd-cluster-0004   1/1       Running   0          6s
 ```
 
-## Try disaster recovery
+## Disaster recovery
 
-If the majority of etcd members crash and at least one backup exists for the cluster, the etcd controller can restore
-entire cluster from the backup.
+If the majority of etcd members crash, but at least one backup exists for the cluster, the etcd controller can restore the entire cluster from the backup.
 
 By default, the etcd controller creates a storage class on initialization:
 
@@ -254,7 +258,7 @@ NAME                     TYPE
 etcd-controller-backup   kubernetes.io/gce-pd
 ```
 
-This is used to request the persistent volume to store the backup data. (We are planning to support AWS EBS soon.)
+This is used to request the persistent volume to store the backup data. (TODO: We are planning to support AWS EBS soon.)
 
 Continued from last example, a persistent volume is claimed for the backup pod:
 
@@ -282,11 +286,10 @@ pod "etcd-cluster-0003" deleted
 ```
 
 Now quorum is lost. The etcd controller will start to recover the cluster by:
-- create a new seed member to recover from the backup
-- add enough members into the seed cluster
+- Creating a new seed member to recover from the backup
+- Add the specified number of members into the seed cluster
 
 ```
-
 $ kubectl get pods
 NAME                             READY     STATUS     RESTARTS   AGE
 etcd-cluster-0005                0/1       Init:0/2   0          11s
@@ -300,13 +303,14 @@ etcd-cluster-0007                1/1       Running   0          3m
 etcd-cluster-backup-tool-e9gkv   1/1       Running   0          22m
 ```
 
-Note that there might be race that it falls to member recovery because of delay in deleting the second pod.
+Note: Sometimes member recovery can fail because of a race caused by a delay in pod deletion. The process will be retried in this event.
 
-## Try upgrade etcd cluster
+## Upgrade an etcd cluster
 
-Cleanup any existing etcd cluster but keeps etcd controller running.
+Clean up any existing etcd cluster, but keep the etcd controller running.
 
-Have following yaml file ready:
+Have the following yaml file ready:
+
 ```
 $ cat 3.0-etcd-cluster.yaml
 apiVersion: "coreos.com/v1"
@@ -318,7 +322,8 @@ spec:
   version: "v3.0.12"
 ```
 
-Create an etcd cluster with the version (3.0.12) specified in the yaml file:
+Create an etcd cluster with the version specified (3.0.12) in the yaml file:
+
 ```
 $ kubectl create -f 3.0-etcd-cluster.yaml
 $ kubectl get pods
@@ -329,6 +334,7 @@ etcd-cluster-0002      1/1       Running   0          14s
 ```
 
 The container image version should be 3.0.12:
+
 ```
 $ kubectl get pod etcd-cluster-0000 -o yaml | grep "image:" | uniq
     image: quay.io/coreos/etcd:v3.0.12
@@ -338,6 +344,7 @@ $ kubectl get pod etcd-cluster-0000 -o yaml | grep "image:" | uniq
 We use cURL to update the cluster as a workaround.
 
 Use kubectl to create a reverse proxy:
+
 ```
 $ kubectl proxy --port=8080
 Starting to serve on 127.0.0.1:8080
@@ -345,6 +352,7 @@ Starting to serve on 127.0.0.1:8080
 
 Have following json file ready:
 (Note that the version field is changed from v3.0.12 to v3.1.0-alpha.1)
+
 ```
 $ cat body.json
 {
@@ -361,14 +369,20 @@ $ cat body.json
 ```
 
 Then we update the version in spec.
+
 ```
 $ curl -H 'Content-Type: application/json' -X PUT --data @body.json \
     http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
 ```
 
-Wait 30 seconds. The container image version should be updated to v3.1.0-alpha.1:
+Wait ~30 seconds. The container image version should be updated to v3.1.0-alpha.1:
+
 ```
 $ kubectl get pod etcd-cluster-0000 -o yaml | grep "image:" | uniq
     image: quay.io/coreos/etcd:v3.1.0-alpha.1
 ```
-Check other two pods and you should see the same result.
+
+Check the other two pods and you should see the same result.
+
+
+[k8s-home]: http://kubernetes.io
