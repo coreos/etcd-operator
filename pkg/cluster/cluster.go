@@ -123,8 +123,8 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 	needDeleteCluster := true
 
 	defer func() {
-		log.Warningf("kiling cluster (%v)", c.name)
 		if needDeleteCluster {
+			log.Warningf("deleting cluster (%v)", c.name)
 			c.delete()
 		}
 		close(c.stopCh)
