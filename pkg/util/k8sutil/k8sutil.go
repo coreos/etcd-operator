@@ -279,12 +279,14 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 							Protocol:      api.ProtocolTCP,
 						},
 					},
-					// set pod to ready when a get succeeds
+					// For readiness probe, we only requires the etcd server to respond, not
+					// quorumly accessible. Because reconcile relies on readiness, and
+					// reconcile could handle disaster recovery.
 					ReadinessProbe: &api.Probe{
 						Handler: api.Handler{
 							Exec: &api.ExecAction{
 								Command: []string{"/bin/sh", "-c",
-									"ETCDCTL_API=3 etcdctl get foo"},
+									"ETCDCTL_API=3 etcdctl get --consistency=s foo"},
 							},
 						},
 						// If an etcd member tries to join quorum, it has 5s strict check
