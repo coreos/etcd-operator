@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/Sirupsen/logrus"
@@ -24,6 +25,7 @@ import (
 	"github.com/coreos/kube-etcd-controller/pkg/chaos"
 	"github.com/coreos/kube-etcd-controller/pkg/controller"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
+	"github.com/coreos/kube-etcd-controller/version"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/labels"
 )
@@ -39,6 +41,8 @@ var (
 	namespace        string
 
 	chaosLevel int
+
+	printVersion bool
 )
 
 func init() {
@@ -52,6 +56,7 @@ func init() {
 	flag.BoolVar(&tlsInsecure, "tls-insecure", false, "- NOT RECOMMENDED FOR PRODUCTION - Don't verify API server's CA certificate.")
 	// chaos level will be removed once we have a formal tool to inject failures.
 	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the controller.")
+	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.Parse()
 
 	namespace = os.Getenv("MY_POD_NAMESPACE")
@@ -61,6 +66,11 @@ func init() {
 }
 
 func main() {
+	if printVersion {
+		fmt.Println("kube-etcd-controller", version.Version)
+		os.Exit(0)
+	}
+
 	if analyticsEnabled {
 		analytics.Enable()
 	}
