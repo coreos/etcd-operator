@@ -81,10 +81,10 @@ func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
 			return err
 		}
 		defer etcdcli.Close()
-		if err := etcdutil.WaitMemberReady(etcdcli, constants.DefaultDialTimeout); err != nil {
+		if err := c.updateMembers(etcdcli); err != nil {
+			log.Errorf("fail to refresh members: %v", err)
 			return err
 		}
-		c.updateMembers(etcdcli)
 	}
 
 	log.Println("Expected membership:", c.members)

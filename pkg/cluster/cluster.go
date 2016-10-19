@@ -349,11 +349,11 @@ func (c *Cluster) Update(spec *spec.ClusterSpec) {
 	}
 }
 
-func (c *Cluster) updateMembers(etcdcli *clientv3.Client) {
+func (c *Cluster) updateMembers(etcdcli *clientv3.Client) error {
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberList(ctx)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	c.members = etcdutil.MemberSet{}
 	for _, m := range resp.Members {
@@ -367,6 +367,7 @@ func (c *Cluster) updateMembers(etcdcli *clientv3.Client) {
 			ID:   m.ID,
 		}
 	}
+	return nil
 }
 
 func findID(name string) int {
