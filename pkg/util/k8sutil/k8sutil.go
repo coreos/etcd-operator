@@ -169,6 +169,7 @@ func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod, time
 // TODO: converge the port logic with member ClientAddr() and PeerAddr()
 func makeEtcdService(etcdName, clusterName string) *api.Service {
 	labels := map[string]string{
+		"app":          "etcd",
 		"etcd_node":    etcdName,
 		"etcd_cluster": clusterName,
 	}
