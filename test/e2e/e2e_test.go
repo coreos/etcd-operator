@@ -318,13 +318,13 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 	return nil
 }
 
-func getLogs(kubecli *k8sclient.Client, ns, podID, container string, out io.Writer) error {
+func getLogs(kubecli *k8sclient.Client, ns, p, c string, out io.Writer) error {
 	req := kubecli.RESTClient.Get().
 		Namespace(ns).
-		Name(podID).
 		Resource("pods").
+		Name(p).
 		SubResource("log").
-		Param("container", container).
+		Param("container", c).
 		Param("tailLines", "20")
 
 	readCloser, err := req.Stream()
