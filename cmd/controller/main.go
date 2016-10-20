@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/kube-etcd-controller/pkg/analytics"
@@ -26,6 +27,9 @@ import (
 	"github.com/coreos/kube-etcd-controller/pkg/controller"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"github.com/coreos/kube-etcd-controller/version"
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/client/leaderelection"
+	"k8s.io/kubernetes/pkg/client/record"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/labels"
 )
@@ -43,6 +47,12 @@ var (
 	chaosLevel int
 
 	printVersion bool
+)
+
+var (
+	leaseDuration = 15 * time.Second
+	renewDuration = 5 * time.Second
+	retryPeriod   = 3 * time.Second
 )
 
 func init() {
@@ -77,6 +87,37 @@ func main() {
 
 	analytics.ControllerStarted()
 
+	id, err := os.Hostname()
+	if err != nil {
+		logrus.Fatalf("failed to get hostname: %v", err)
+	}
+
+	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
+		EndpointsMeta: api.ObjectMeta{
+			Namespace: "default",
+			Name:      "etcd-controller",
+		},
+		Client: k8sutil.MustCreateClient(masterHost, tlsInsecure, &restclient.TLSClientConfig{
+			CertFile: certFile,
+			KeyFile:  keyFile,
+			CAFile:   caFile,
+		}),
+		EventRecorder: &record.FakeRecorder{},
+		Identity:      id,
+		LeaseDuration: leaseDuration,
+		RenewDeadline: renewDuration,
+		RetryPeriod:   retryPeriod,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: run,
+			OnStoppedLeading: func() {
+				logrus.Fatalf("leader election lost")
+			},
+		},
+	})
+	panic("unreachable")
+}
+
+func run(stop <-chan struct{}) {
 	for {
 		ctx, cancel := context.WithCancel(context.Background())
 
