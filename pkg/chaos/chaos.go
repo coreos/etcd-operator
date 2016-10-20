@@ -36,7 +36,11 @@ func NewMonkeys(k8s *unversioned.Client) *Monkeys {
 
 // TODO: respect context in k8s operations.
 func (m *Monkeys) CrushPods(ctx context.Context, ns string, ls labels.Selector, killRate float64) {
-	limiter := rate.NewLimiter(rate.Limit(killRate), int(killRate))
+	burst := int(killRate)
+	if burst <= 0 {
+		burst = 1
+	}
+	limiter := rate.NewLimiter(rate.Limit(killRate), burst)
 	for {
 		err := limiter.Wait(ctx)
 		if err != nil { // user cancellation
