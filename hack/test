@@ -40,7 +40,7 @@ function fmt_pass {
 }
 
 function build_pass {
-	hack/build/controller/build
+	IMAGE=$CONTROLLER_IMAGE hack/build/controller/build
 }
 
 function e2e_pass {
