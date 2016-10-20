@@ -271,7 +271,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 			Containers: []api.Container{
 				{
 					Command: commands,
-					Name:    m.Name,
+					Name:    "etcd",
 					Image:   MakeEtcdImage(cs.Version),
 					Ports: []api.ContainerPort{
 						{
