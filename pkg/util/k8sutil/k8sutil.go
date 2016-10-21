@@ -435,16 +435,16 @@ func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, 
 	})
 }
 
-func SliceReadyAndUnreadyPods(podList *api.PodList) (ready, unready []*api.Pod) {
+func FilterRunning(podList *api.PodList) []*api.Pod {
+	running := []*api.Pod{}
 	for i := range podList.Items {
 		pod := &podList.Items[i]
-		if pod.Status.Phase == api.PodRunning && api.IsPodReady(pod) {
-			ready = append(ready, pod)
+		if pod.Status.Phase != api.PodRunning {
 			continue
 		}
-		unready = append(unready, pod)
+		running = append(running, pod)
 	}
-	return
+	return running
 }
 
 func EtcdPodListOpt(clusterName string) api.ListOptions {
