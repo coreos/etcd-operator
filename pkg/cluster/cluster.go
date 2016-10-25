@@ -146,16 +146,16 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				return
 			}
 		case <-time.After(5 * time.Second):
-			ready, unready, err := c.pollPods()
+			running, err := c.pollPods()
 			if err != nil {
-				panic(err)
-			}
-			if len(ready) == 0 || len(unready) > 0 {
-				log.Infof("skip reconciliation: cluster (%s), ready (%v), unready (%v)", c.name, k8sutil.GetPodNames(ready), k8sutil.GetPodNames(unready))
+				log.Errorf("cluster (%v) fail to poll pods: %v", c.name, err)
 				continue
 			}
+			if len(running) == 0 {
+				panic("TODO: disaster recovery")
+			}
 
-			if err := c.reconcile(ready); err != nil {
+			if err := c.reconcile(running); err != nil {
 				log.Errorf("cluster (%v) fail to reconcile: %v", c.name, err)
 				if isFatalError(err) {
 					log.Errorf("cluster (%v) had fatal error: %v", c.name, err)
@@ -434,11 +434,11 @@ func (c *Cluster) removePodAndService(name string) error {
 	return nil
 }
 
-func (c *Cluster) pollPods() ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
+func (c *Cluster) pollPods() ([]*k8sapi.Pod, error) {
 	podList, err := c.kclient.Pods(c.namespace).List(k8sutil.EtcdPodListOpt(c.name))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)
+		return nil, fmt.Errorf("failed to list running pods: %v", err)
 	}
-	ready, unready := k8sutil.SliceReadyAndUnreadyPods(podList)
-	return ready, unready, nil
+	r := k8sutil.FilterRunning(podList)
+	return r, nil
 }
