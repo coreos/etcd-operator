@@ -50,11 +50,14 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 		return c.reconcileSize(running)
 	case needUpgrade(pods, c.spec):
 		c.status.upgradeVersionTo(c.spec.Version)
+		c.status.reportToTPR(c.kclient, c.masterHost, c.namespace, c.name)
 
 		m := pickOneOldMember(pods, c.spec.Version)
 		return c.upgradeOneMember(m)
 	default:
 		c.status.setVersion(c.spec.Version)
+		c.status.reportToTPR(c.kclient, c.masterHost, c.namespace, c.name)
+
 		return nil
 	}
 }
