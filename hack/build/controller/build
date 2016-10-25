@@ -16,10 +16,5 @@ fi
 
 : ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/kube-etcd-controller"}
 
-mkdir -p _output/bin || true
-
-# Static compilation is useful when etcd is run in a container
-CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o _output/bin/kube-etcd-controller cmd/controller/main.go
-
 docker build --tag "${IMAGE}" -f hack/build/controller/Dockerfile .
 gcloud docker -- push "${IMAGE}"
