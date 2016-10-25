@@ -1,0 +1,23 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: kube-etcd-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: kube-etcd-controller
+  template:
+    metadata:
+      labels:
+        name: kube-etcd-controller
+    spec:
+      containers:
+      - name: etcd-controller
+        # TODO: change this to official quay container
+        image: gcr.io/coreos-k8s-scale-testing/kube-etcd-controller
+        env:
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
