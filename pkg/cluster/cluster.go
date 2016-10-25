@@ -51,6 +51,8 @@ type clusterEvent struct {
 type Cluster struct {
 	kclient *unversioned.Client
 
+	status *Status
+
 	spec *spec.ClusterSpec
 
 	name      string
@@ -88,6 +90,7 @@ func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, s
 		eventCh:   make(chan *clusterEvent, 100),
 		stopCh:    make(chan struct{}),
 		spec:      spec,
+		status:    &Status{},
 	}
 	if isNewCluster {
 		var err error
