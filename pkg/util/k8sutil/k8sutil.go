@@ -140,12 +140,13 @@ func makeBackupName(clusterName string) string {
 	return fmt.Sprintf("%s-backup-tool", clusterName)
 }
 
-func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName, ns string) error {
+func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName, ns string) (*api.Service, error) {
 	svc := makeEtcdService(etcdName, clusterName)
-	if _, err := kclient.Services(ns).Create(svc); err != nil {
-		return err
+	retSvc, err := kclient.Services(ns).Create(svc)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return retSvc, nil
 }
 
 func CreateEtcdNodePortService(kclient *unversioned.Client, etcdName, clusterName, ns string) (*api.Service, error) {
