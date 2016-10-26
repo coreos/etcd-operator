@@ -179,22 +179,22 @@ func waitUntilSizeReached(f *framework.Framework, clusterName string, size, time
 func waitSizeReachedWithFilter(f *framework.Framework, clusterName string, size, timeout int, filterPod func(*api.Pod) bool) ([]string, error) {
 	var names []string
 	err := wait.Poll(5*time.Second, time.Duration(timeout)*time.Second, func() (done bool, err error) {
-		pods, err := f.KubeClient.Pods(f.Namespace.Name).List(k8sutil.EtcdPodListOpt(clusterName))
+		podList, err := f.KubeClient.Pods(f.Namespace.Name).List(k8sutil.EtcdPodListOpt(clusterName))
 		if err != nil {
 			return false, err
 		}
-		ready, _ := k8sutil.SliceReadyAndUnreadyPods(pods)
-		names = []string{}
-		for _, pod := range ready {
-			if !filterPod(pod) {
-				continue
+		names = nil
+		for i := range podList.Items {
+			pod := &podList.Items[i]
+			if pod.Status.Phase == api.PodRunning {
+				names = append(names, pod.Name)
 			}
-			names = append(names, pod.Name)
 		}
 		fmt.Printf("waiting size (%d), etcd pods: %v\n", size, names)
 		if len(names) != size {
 			return false, nil
 		}
+		// TODO: check etcd member membership
 		return true, nil
 	})
 	if err != nil {
@@ -287,12 +287,6 @@ func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) error {
 func deleteEtcdCluster(f *framework.Framework, name string) error {
 	// TODO: save etcd logs.
 	fmt.Printf("deleting etcd cluster: %v\n", name)
-	pods, err := f.KubeClient.Pods(f.Namespace.Name).List(k8sutil.EtcdPodListOpt(name))
-	if err != nil {
-		return err
-	}
-	ready, unready := k8sutil.SliceReadyAndUnreadyPods(pods)
-	fmt.Printf("ready: %v, unready: %v\n", k8sutil.GetPodNames(ready), k8sutil.GetPodNames(unready))
 
 	buf := bytes.NewBuffer(nil)
 	if err := getLogs(f.KubeClient, f.Namespace.Name, "kube-etcd-controller", "kube-etcd-controller", buf); err != nil {

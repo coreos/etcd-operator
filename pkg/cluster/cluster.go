@@ -149,16 +149,20 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				return
 			}
 		case <-time.After(5 * time.Second):
-			ready, unready, err := c.pollPods()
+			running, pending, err := c.pollPods()
 			if err != nil {
-				panic(err)
-			}
-			if len(ready) == 0 || len(unready) > 0 {
-				log.Infof("skip reconciliation: cluster (%s), ready (%v), unready (%v)", c.name, k8sutil.GetPodNames(ready), k8sutil.GetPodNames(unready))
+				log.Errorf("cluster (%v) fail to poll pods: %v", c.name, err)
 				continue
 			}
+			if len(pending) > 0 {
+				log.Infof("cluster (%v) skip reconciliation: running (%v), pending (%v)", c.name, k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
+				continue
+			}
+			if len(running) == 0 {
+				panic("TODO: disaster recovery")
+			}
 
-			if err := c.reconcile(ready); err != nil {
+			if err := c.reconcile(running); err != nil {
 				log.Errorf("cluster (%v) fail to reconcile: %v", c.name, err)
 				if isFatalError(err) {
 					log.Errorf("cluster (%v) had fatal error: %v", c.name, err)
@@ -409,7 +413,8 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	if needRecovery {
 		k8sutil.AddRecoveryToPod(pod, c.name, m.Name, token, c.spec)
 	}
-	return k8sutil.CreateAndWaitPod(c.kclient, c.namespace, pod, 10*time.Second)
+	_, err := c.kclient.Pods(c.namespace).Create(pod)
+	return err
 }
 
 func (c *Cluster) removePodAndService(name string) error {
@@ -433,6 +438,18 @@ func (c *Cluster) pollPods() ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)
 	}
-	ready, unready := k8sutil.SliceReadyAndUnreadyPods(podList)
-	return ready, unready, nil
+
+	var running []*k8sapi.Pod
+	var pending []*k8sapi.Pod
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		switch pod.Status.Phase {
+		case k8sapi.PodRunning:
+			running = append(running, pod)
+		case k8sapi.PodPending:
+			pending = append(pending, pod)
+		}
+	}
+
+	return running, pending, nil
 }

@@ -236,27 +236,12 @@ func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string, cs *spec.Cl
 }
 
 func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec) *api.Pod {
-	commands := []string{
-		"/usr/local/bin/etcd",
-		"--data-dir",
-		dataDir,
-		"--name",
-		m.Name,
-		"--initial-advertise-peer-urls",
-		m.PeerAddr(),
-		"--listen-peer-urls",
-		"http://0.0.0.0:2380",
-		"--listen-client-urls",
-		"http://0.0.0.0:2379",
-		"--advertise-client-urls",
-		m.ClientAddr(),
-		"--initial-cluster",
-		strings.Join(initialCluster, ","),
-		"--initial-cluster-state",
-		state,
-	}
+	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
+		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
+		"--initial-cluster=%s --initial-cluster-state=%s",
+		dataDir, m.Name, m.PeerAddr(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
 	if state == "new" {
-		commands = append(commands, "--initial-cluster-token", token)
+		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
@@ -271,7 +256,9 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{
-					Command: commands,
+					// TODO: fix "sleep 5".
+					// Without waiting some time, there is highly probable flakes in network setup.
+					Command: []string{"/bin/sh", "-c", fmt.Sprintf("sleep 5; %s", commands)},
 					Name:    "etcd",
 					Image:   MakeEtcdImage(cs.Version),
 					Ports: []api.ContainerPort{
@@ -280,23 +267,6 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 							ContainerPort: int32(2380),
 							Protocol:      api.ProtocolTCP,
 						},
-					},
-					// For readiness probe, we only requires the etcd server to respond, not
-					// quorumly accessible. Because reconcile relies on readiness, and
-					// reconcile could handle disaster recovery.
-					ReadinessProbe: &api.Probe{
-						Handler: api.Handler{
-							Exec: &api.ExecAction{
-								Command: []string{"/bin/sh", "-c",
-									"ETCDCTL_API=3 etcdctl get --consistency=s foo"},
-							},
-						},
-						// If an etcd member tries to join quorum, it has 5s strict check
-						// It can still serve client request.
-						InitialDelaySeconds: 5,
-						TimeoutSeconds:      10,
-						PeriodSeconds:       10,
-						FailureThreshold:    3,
 					},
 					// a pod is alive only if a get succeeds
 					// the etcd pod should die if liveness probing fails.
@@ -451,18 +421,6 @@ func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, 
 			return false, fmt.Errorf("invalid status code: %v", resp.Status)
 		}
 	})
-}
-
-func SliceReadyAndUnreadyPods(podList *api.PodList) (ready, unready []*api.Pod) {
-	for i := range podList.Items {
-		pod := &podList.Items[i]
-		if pod.Status.Phase == api.PodRunning && api.IsPodReady(pod) {
-			ready = append(ready, pod)
-			continue
-		}
-		unready = append(unready, pod)
-	}
-	return
 }
 
 func EtcdPodListOpt(clusterName string) api.ListOptions {
