@@ -228,21 +228,21 @@ func (c *Cluster) migrateSeedMember() error {
 
 	log.Infof("adding a new member")
 
-	// create service with node port on peer port
-	// the seed member outside the Kubernetes cluster then can access the service
-	etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
-	npsrv, nperr := k8sutil.CreateEtcdNodePortService(c.kclient, etcdName, c.name, c.namespace)
-	if nperr != nil {
-		return nperr
-	}
-
 	// create the first member inside Kubernetes for migration
-	m := &etcdutil.Member{Name: etcdName, AdditionalPeerURL: "http://127.0.0.1:" + k8sutil.GetNodePortString(npsrv)}
-	mpurls := []string{fmt.Sprintf("http://%s:2380", m.Name), m.AdditionalPeerURL}
+	etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
+	m := &etcdutil.Member{Name: etcdName}
 
-	if err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace); err != nil {
+	svc, err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace)
+	if err != nil {
 		return err
 	}
+	log.Info("created etcd service")
+
+	// Used the service IP as additional peer URL so that the seed member can access it.
+	m.AdditionalPeerURL = fmt.Sprintf("http://%s:2380", svc.Spec.ClusterIP)
+
+	mpurls := []string{fmt.Sprintf("http://%s:2380", m.Name), m.AdditionalPeerURL}
+
 	initialCluster := make([]string, 0)
 	for _, purl := range seedMember.PeerURLs {
 		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", seedMember.Name, purl))
@@ -295,15 +295,6 @@ func (c *Cluster) migrateSeedMember() error {
 	}
 
 	log.Infof("removed the seed member")
-
-	// remove the external nodeport service and change the peerURL that only
-	// contains the internal service
-	err = c.kclient.Services(c.namespace).Delete(npsrv.ObjectMeta.Name)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err = etcdcli.MemberList(ctx)
@@ -405,7 +396,7 @@ func (c *Cluster) delete() {
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
 	// TODO: remove garbage service. Because we will fail after service created before pods created.
-	if err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace); err != nil {
+	if _, err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace); err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
 		}
