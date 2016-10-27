@@ -258,7 +258,7 @@ func (c *Cluster) migrateSeedMember() error {
 	pod := k8sutil.MakeEtcdPod(m, initialCluster, c.name, "existing", "", c.spec)
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, m.Name, mpurls, c.spec)
 
-	if err := k8sutil.CreateAndWaitPod(c.kclient, c.namespace, pod, 10*time.Second); err != nil {
+	if _, err := c.kclient.Pods(c.namespace).Create(pod); err != nil {
 		return err
 	}
 	c.idCounter++
