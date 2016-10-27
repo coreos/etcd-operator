@@ -210,8 +210,11 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 		log.Errorf("fail to do disaster recovery for cluster (%s): no backup policy has been defined.", c.name)
 		return errNoBackupExist
 	}
-	ok := requestBackupNow(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
-	if ok {
+	backupNow := false
+	if len(left) != 0 {
+		backupNow = requestBackupNow(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
+	}
+	if backupNow {
 		log.Info("Made a latest backup successfully")
 	} else {
 		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
