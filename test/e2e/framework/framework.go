@@ -25,12 +25,17 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 )
 
+const (
+	EtcdControllerPodName = "kube-etcd-controller"
+)
+
 var Global *Framework
 
 type Framework struct {
-	KubeClient *unversioned.Client
-	MasterHost string
-	Namespace  *api.Namespace
+	KubeClient      *unversioned.Client
+	MasterHost      string
+	Namespace       *api.Namespace
+	ControllerImage string
 }
 
 // Setup setups a test framework and points "Global" to it.
@@ -63,11 +68,12 @@ func Setup() error {
 	}
 
 	Global = &Framework{
-		MasterHost: config.Host,
-		KubeClient: cli,
-		Namespace:  namespace,
+		MasterHost:      config.Host,
+		KubeClient:      cli,
+		Namespace:       namespace,
+		ControllerImage: *ctrlImage,
 	}
-	return Global.setup(*ctrlImage)
+	return Global.setup()
 }
 
 func Teardown() error {
@@ -76,15 +82,14 @@ func Teardown() error {
 			return err
 		}
 	}
-	// TODO: delete TPR
 	// TODO: check all deleted and wait
 	Global = nil
 	logrus.Info("e2e teardown successfully")
 	return nil
 }
 
-func (f *Framework) setup(ctrlImage string) error {
-	if err := f.setupEtcdController(ctrlImage); err != nil {
+func (f *Framework) setup() error {
+	if err := f.StartEtcdController(); err != nil {
 		logrus.Errorf("fail to setup etcd controller: %v", err)
 		return err
 	}
@@ -92,7 +97,11 @@ func (f *Framework) setup(ctrlImage string) error {
 	return nil
 }
 
-func (f *Framework) setupEtcdController(ctrlImage string) error {
+func (f *Framework) StopEtcdController() error {
+	return f.KubeClient.Pods(f.Namespace.Name).Delete(EtcdControllerPodName, api.NewDeleteOptions(0))
+}
+
+func (f *Framework) StartEtcdController() error {
 	// TODO: unify this and the yaml file in example/
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
@@ -103,7 +112,7 @@ func (f *Framework) setupEtcdController(ctrlImage string) error {
 			Containers: []api.Container{
 				{
 					Name:  "kube-etcd-controller",
-					Image: ctrlImage,
+					Image: f.ControllerImage,
 					Env: []api.EnvVar{
 						{
 							Name:      "MY_POD_NAMESPACE",

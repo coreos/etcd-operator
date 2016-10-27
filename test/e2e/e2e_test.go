@@ -163,7 +163,15 @@ func TestDisasterRecovery(t *testing.T) {
 		return
 	}
 	fmt.Println("reached to 3 members cluster")
+	// Ideally we want to pause the controller when we are killing etcd pods
+	// to prevent controller from recovering members in race.
+	if err := f.StopEtcdController(); err != nil {
+		t.Fatal(err)
+	}
 	if err := killMembers(f, names[0], names[1]); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.StartEtcdController(); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 120); err != nil {
@@ -307,7 +315,7 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 	}
 
 	buf := bytes.NewBuffer(nil)
-	if err := getLogs(f.KubeClient, f.Namespace.Name, "kube-etcd-controller", "kube-etcd-controller", buf); err != nil {
+	if err := getLogs(f.KubeClient, f.Namespace.Name, framework.EtcdControllerPodName, "kube-etcd-controller", buf); err != nil {
 		return err
 	}
 	fmt.Println("kube-etcd-controller logs ===")
