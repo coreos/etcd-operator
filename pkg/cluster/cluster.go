@@ -159,7 +159,10 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				continue
 			}
 			if len(running) == 0 {
-				panic("TODO: disaster recovery")
+				err := c.disasterRecovery(nil)
+				if err != nil {
+					panic("TODO: handle disaster recovery error")
+				}
 			}
 
 			if err := c.reconcile(running); err != nil {
