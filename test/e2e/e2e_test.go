@@ -285,8 +285,26 @@ func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) error {
 }
 
 func deleteEtcdCluster(f *framework.Framework, name string) error {
-	// TODO: save etcd logs.
 	fmt.Printf("deleting etcd cluster: %v\n", name)
+	podList, err := f.KubeClient.Pods(f.Namespace.Name).List(k8sutil.EtcdPodListOpt(name))
+	if err != nil {
+		return err
+	}
+	fmt.Println("etcd pods ======")
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		fmt.Printf("pod (%v): status (%v)\n", pod.Name, pod.Status.Phase)
+		buf := bytes.NewBuffer(nil)
+
+		if pod.Status.Phase == api.PodFailed {
+			if err := getLogs(f.KubeClient, f.Namespace.Name, pod.Name, "etcd", buf); err != nil {
+				return err
+			}
+			fmt.Println(pod.Name, "logs ===")
+			fmt.Println(buf.String())
+			fmt.Println(pod.Name, "logs END ===")
+		}
+	}
 
 	buf := bytes.NewBuffer(nil)
 	if err := getLogs(f.KubeClient, f.Namespace.Name, "kube-etcd-controller", "kube-etcd-controller", buf); err != nil {
