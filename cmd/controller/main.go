@@ -125,10 +125,10 @@ func run(stop <-chan struct{}) {
 
 		switch chaosLevel {
 		case 1:
-			logrus.Infof("chaos level = 1: randomly kill one etcd pod every 10 seconds")
+			logrus.Infof("chaos level = 1: periodically kill one etcd pod")
 			m := chaos.NewMonkeys(cfg.KubeCli)
 			ls := labels.SelectorFromSet(map[string]string{"app": "etcd"})
-			go m.CrushPods(ctx, cfg.Namespace, ls, 0.1)
+			go m.CrushPods(ctx, cfg.Namespace, ls, 30*time.Second)
 		default:
 		}
 
