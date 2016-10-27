@@ -140,33 +140,6 @@ func makeBackupName(clusterName string) string {
 	return fmt.Sprintf("%s-backup-tool", clusterName)
 }
 
-func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName, ns string) (*api.Service, error) {
-	svc := makeEtcdService(etcdName, clusterName)
-	retSvc, err := kclient.Services(ns).Create(svc)
-	if err != nil {
-		return nil, err
-	}
-	return retSvc, nil
-}
-
-func CreateEtcdNodePortService(kclient *unversioned.Client, etcdName, clusterName, ns string) (*api.Service, error) {
-	svc := makeEtcdNodePortService(etcdName, clusterName)
-	return kclient.Services(ns).Create(svc)
-}
-
-func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod, timeout time.Duration) error {
-	if _, err := kclient.Pods(ns).Create(pod); err != nil {
-		return err
-	}
-	w, err := kclient.Pods(ns).Watch(api.SingleObject(api.ObjectMeta{Name: pod.Name}))
-	if err != nil {
-		return err
-	}
-	_, err = watch.Until(timeout, w, unversioned.PodRunning)
-	// TODO: cleanup pod on failure
-	return err
-}
-
 // TODO: converge the port logic with member ClientAddr() and PeerAddr()
 func makeEtcdService(etcdName, clusterName string) *api.Service {
 	labels := map[string]string{
@@ -198,36 +171,31 @@ func makeEtcdService(etcdName, clusterName string) *api.Service {
 					Protocol:   api.ProtocolTCP,
 				},
 			},
-			Selector: labels,
 		},
 	}
 	return svc
 }
 
-func makeEtcdNodePortService(etcdName, clusterName string) *api.Service {
-	labels := map[string]string{
-		"etcd_node":    etcdName,
-		"etcd_cluster": clusterName,
+func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName, ns string) (*api.Service, error) {
+	svc := makeEtcdService(etcdName, clusterName)
+	retSvc, err := kclient.Services(ns).Create(svc)
+	if err != nil {
+		return nil, err
 	}
-	svc := &api.Service{
-		ObjectMeta: api.ObjectMeta{
-			Name:   etcdName + "-nodeport",
-			Labels: labels,
-		},
-		Spec: api.ServiceSpec{
-			Ports: []api.ServicePort{
-				{
-					Name:       "server",
-					Port:       2380,
-					TargetPort: intstr.FromInt(2380),
-					Protocol:   api.ProtocolTCP,
-				},
-			},
-			Type:     api.ServiceTypeNodePort,
-			Selector: labels,
-		},
+	return retSvc, nil
+}
+
+func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod, timeout time.Duration) error {
+	if _, err := kclient.Pods(ns).Create(pod); err != nil {
+		return err
 	}
-	return svc
+	w, err := kclient.Pods(ns).Watch(api.SingleObject(api.ObjectMeta{Name: pod.Name}))
+	if err != nil {
+		return err
+	}
+	_, err = watch.Until(timeout, w, unversioned.PodRunning)
+	// TODO: cleanup pod on failure
+	return err
 }
 
 func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string, cs *spec.ClusterSpec) {

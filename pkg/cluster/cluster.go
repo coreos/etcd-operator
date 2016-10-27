@@ -399,8 +399,8 @@ func (c *Cluster) delete() {
 }
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
-	// TODO: remove garbage service. Because we will fail after service created before pods created.
-	if _, err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace); err != nil {
+	svc, err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace)
+	if err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
 		}
@@ -413,7 +413,42 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	if needRecovery {
 		k8sutil.AddRecoveryToPod(pod, c.name, m.Name, token, c.spec)
 	}
-	_, err := c.kclient.Pods(c.namespace).Create(pod)
+	retPod, err := c.kclient.Pods(c.namespace).Create(pod)
+	if err != nil {
+		return err
+	}
+
+	podIP := retPod.Status.PodIP
+	notFound := false
+
+	endpoint, err := c.kclient.Endpoints(c.namespace).Get(svc.Name)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+		notFound = true
+	}
+	if notFound {
+		_, err = c.kclient.Endpoints(c.namespace).Create(&k8sapi.Endpoints{
+			ObjectMeta: k8sapi.ObjectMeta{
+				Name: svc.Name,
+			},
+			Subsets: []k8sapi.EndpointSubset{{
+				Addresses: []k8sapi.EndpointAddress{{
+					IP: podIP,
+				}},
+				Ports: []k8sapi.EndpointPort{{
+					Port: 2379,
+				}},
+			}},
+		})
+	} else {
+		endpoint.Subsets[0].Addresses = []k8sapi.EndpointAddress{{
+			IP: podIP,
+		}}
+		_, err = c.kclient.Endpoints(c.namespace).Update(endpoint)
+	}
+
 	return err
 }
 
