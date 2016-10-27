@@ -17,9 +17,9 @@ package chaos
 import (
 	"context"
 	"math/rand"
+	"time"
 
 	"github.com/Sirupsen/logrus"
-	"golang.org/x/time/rate"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
@@ -35,16 +35,12 @@ func NewMonkeys(k8s *unversioned.Client) *Monkeys {
 }
 
 // TODO: respect context in k8s operations.
-func (m *Monkeys) CrushPods(ctx context.Context, ns string, ls labels.Selector, killRate float64) {
-	burst := int(killRate)
-	if burst <= 0 {
-		burst = 1
-	}
-	limiter := rate.NewLimiter(rate.Limit(killRate), burst)
+func (m *Monkeys) CrushPods(ctx context.Context, ns string, ls labels.Selector, interval time.Duration) {
 	for {
-		err := limiter.Wait(ctx)
-		if err != nil { // user cancellation
-			logrus.Infof("crushPods is cancelled for selector %v by the user: %v", ls.String(), err)
+		select {
+		case <-time.After(interval):
+		case <-ctx.Done():
+			logrus.Infof("crushPods is cancelled for selector %v by the user", ls.String())
 			return
 		}
 
