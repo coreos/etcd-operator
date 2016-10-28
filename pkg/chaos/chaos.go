@@ -60,7 +60,7 @@ func (m *Monkeys) CrushPods(ctx context.Context, ns string, ls labels.Selector, 
 
 		// todo: kill multiple pods in one round?
 		tokill := pods.Items[rand.Intn(len(pods.Items))].Name
-		err = m.k8s.Pods(ns).Delete(tokill, nil)
+		err = m.k8s.Pods(ns).Delete(tokill, api.NewDeleteOptions(0))
 		if err != nil {
 			logrus.Errorf("failed to kill pod %v: %v", tokill, err)
 			continue
