@@ -182,7 +182,7 @@ func TestDisasterRecovery(t *testing.T) {
 func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Duration) error {
 	w, err := f.KubeClient.Pods(f.Namespace.Name).Watch(api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"app":          "etcd_backup_tool",
+			"app":          k8sutil.BackupPodSelectorAppField,
 			"etcd_cluster": clusterName,
 		}),
 	})
