@@ -29,7 +29,9 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	k8sclient "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/wait"
+	"k8s.io/kubernetes/pkg/watch"
 )
 
 func TestCreateCluster(t *testing.T) {
@@ -163,6 +165,9 @@ func TestDisasterRecovery(t *testing.T) {
 		return
 	}
 	fmt.Println("reached to 3 members cluster")
+	if err := waitBackupPodUp(f, testEtcd.Name, 60*time.Second); err != nil {
+		t.Fatalf("failed to create backup pod: %v", err)
+	}
 	// TODO: There might be race that controller will recover members between
 	// 		these members are deleted individually.
 	if err := killMembers(f, names[0], names[1]); err != nil {
@@ -172,6 +177,17 @@ func TestDisasterRecovery(t *testing.T) {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 	// TODO: add checking of data in etcd
+}
+
+func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Duration) error {
+	w, err := f.KubeClient.Pods(f.Namespace.Name).Watch(api.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			"app":          "etcd_backup_tool",
+			"etcd_cluster": clusterName,
+		}),
+	})
+	_, err = watch.Until(timeout, w, k8sclient.PodRunning)
+	return err
 }
 
 func waitUntilSizeReached(f *framework.Framework, clusterName string, size, timeout int) ([]string, error) {
