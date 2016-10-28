@@ -109,7 +109,7 @@ func GetNodePortString(srv *api.Service) string {
 }
 
 func MakeBackupHostPort(clusterName string) string {
-	return fmt.Sprintf("%s:%d", makeBackupName(clusterName), constants.DefaultBackupPodHTTPPort)
+	return fmt.Sprintf("%s:%d", MakeBackupName(clusterName), constants.DefaultBackupPodHTTPPort)
 }
 
 func PodWithAddMemberInitContainer(p *api.Pod, name string, peerURLs []string, cs *spec.ClusterSpec) *api.Pod {
@@ -137,7 +137,7 @@ func PodWithNodeSelector(p *api.Pod, ns map[string]string) *api.Pod {
 	return p
 }
 
-func makeBackupName(clusterName string) string {
+func MakeBackupName(clusterName string) string {
 	return fmt.Sprintf("%s-backup-tool", clusterName)
 }
 

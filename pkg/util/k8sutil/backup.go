@@ -104,7 +104,7 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 		"app":          BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
 	}
-	name := makeBackupName(clusterName)
+	name := MakeBackupName(clusterName)
 	_, err = kubecli.ReplicaSets(ns).Create(&extensions.ReplicaSet{
 		ObjectMeta: api.ObjectMeta{
 			Name: name,
@@ -176,7 +176,7 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 }
 
 func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, cleanup bool) error {
-	name := makeBackupName(clusterName)
+	name := MakeBackupName(clusterName)
 	err := kubecli.Services(ns).Delete(name)
 	if err != nil {
 		return err
