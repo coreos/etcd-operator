@@ -76,7 +76,6 @@ func Teardown() error {
 			return err
 		}
 	}
-	// TODO: delete TPR
 	// TODO: check all deleted and wait
 	Global = nil
 	logrus.Info("e2e teardown successfully")
