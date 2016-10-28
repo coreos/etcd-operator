@@ -97,8 +97,9 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 		return lastSnapRev, err
 	}
 	if len(pods.Items) == 0 {
-		logrus.Warning("no running pods found")
-		return lastSnapRev, fmt.Errorf("no running pods found")
+		msg := "no running etcd pods found"
+		logrus.Warning(msg)
+		return lastSnapRev, fmt.Errorf(msg)
 	}
 	member, rev, err := getMemberWithMaxRev(pods)
 	if err != nil {
