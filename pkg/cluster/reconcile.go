@@ -253,7 +253,7 @@ func requestBackupNow(httpClient *http.Client, addr string) bool {
 }
 
 func checkBackupExist(httpClient *http.Client, addr string) (bool, error) {
-	resp, err := httpClient.Head(fmt.Sprintf("http://%s/backupnow", addr))
+	resp, err := httpClient.Head(fmt.Sprintf("http://%s/backup", addr))
 	if err != nil {
 		log.Errorf("check backup (%s) failed: %v", addr, err)
 		return false, err
