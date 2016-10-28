@@ -31,7 +31,6 @@ import (
 	k8sclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/wait"
-	"k8s.io/kubernetes/pkg/watch"
 )
 
 func TestCreateCluster(t *testing.T) {
@@ -180,14 +179,17 @@ func TestDisasterRecovery(t *testing.T) {
 }
 
 func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Duration) error {
-	w, err := f.KubeClient.Pods(f.Namespace.Name).Watch(api.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"app":          k8sutil.BackupPodSelectorAppField,
-			"etcd_cluster": clusterName,
-		}),
+	return wait.Poll(5*time.Second, timeout, func() (done bool, err error) {
+		podList, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
+			LabelSelector: labels.SelectorFromSet(map[string]string{
+				"app":          k8sutil.BackupPodSelectorAppField,
+				"etcd_cluster": clusterName,
+			})})
+		if err != nil {
+			return false, err
+		}
+		return len(podList.Items) > 0, nil
 	})
-	_, err = watch.Until(timeout, w, k8sclient.PodRunning)
-	return err
 }
 
 func waitUntilSizeReached(f *framework.Framework, clusterName string, size, timeout int) ([]string, error) {
