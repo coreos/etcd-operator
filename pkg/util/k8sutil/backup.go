@@ -32,7 +32,8 @@ import (
 )
 
 const (
-	storageClassName = "etcd-controller-backup"
+	storageClassName          = "etcd-controller-backup"
+	BackupPodSelectorAppField = "etcd_backup_tool"
 )
 
 func CreateStorageClass(kubecli *unversioned.Client, pvProvisioner string) error {
@@ -100,7 +101,7 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 	}
 
 	labels := map[string]string{
-		"app":          "etcd_backup_tool",
+		"app":          BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
 	}
 	name := makeBackupName(clusterName)
