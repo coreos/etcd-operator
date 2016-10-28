@@ -225,7 +225,7 @@ func waitSizeReachedWithFilter(f *framework.Framework, clusterName string, size,
 
 func killMembers(f *framework.Framework, names ...string) error {
 	for _, name := range names {
-		err := f.KubeClient.Pods(f.Namespace.Name).Delete(name, nil)
+		err := f.KubeClient.Pods(f.Namespace.Name).Delete(name, api.NewDeleteOptions(0))
 		if err != nil {
 			return err
 		}

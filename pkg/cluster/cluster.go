@@ -427,7 +427,7 @@ func (c *Cluster) removePodAndService(name string) error {
 			return err
 		}
 	}
-	err = c.kclient.Pods(c.namespace).Delete(name, nil)
+	err = c.kclient.Pods(c.namespace).Delete(name, k8sapi.NewDeleteOptions(0))
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
