@@ -161,8 +161,12 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			if len(running) == 0 {
 				err := c.disasterRecovery(nil)
 				if err != nil {
-					panic("TODO: handle disaster recovery error")
+					if err == errNoBackupExist {
+						panic("TODO: mark cluster dead if no backup for disaster recovery.")
+					}
+					log.Errorf("cluster (%v) fail to recover. Will retry later: %v", c.name, err)
 				}
+				continue // Backoff, either on normal recovery or error.
 			}
 
 			if err := c.reconcile(running); err != nil {
