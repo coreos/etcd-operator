@@ -159,6 +159,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				continue
 			}
 			if len(running) == 0 {
+				log.Warningf("cluster (%v) all etcd pods are dead. Trying to recover from a previous backup", c.name)
 				err := c.disasterRecovery(nil)
 				if err != nil {
 					if err == errNoBackupExist {
