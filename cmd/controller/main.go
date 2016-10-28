@@ -94,7 +94,7 @@ func main() {
 
 	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
 		EndpointsMeta: api.ObjectMeta{
-			Namespace: "default",
+			Namespace: namespace,
 			Name:      "etcd-controller",
 		},
 		Client: k8sutil.MustCreateClient(masterHost, tlsInsecure, &restclient.TLSClientConfig{
