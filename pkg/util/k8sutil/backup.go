@@ -161,8 +161,8 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 			Ports: []api.ServicePort{
 				{
 					Name:       "backup-service",
-					Port:       19999, // default port
-					TargetPort: intstr.FromInt(19999),
+					Port:       constants.DefaultBackupPodHTTPPort,
+					TargetPort: intstr.FromInt(constants.DefaultBackupPodHTTPPort),
 					Protocol:   api.ProtocolTCP,
 				},
 			},
