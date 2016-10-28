@@ -163,6 +163,8 @@ func TestDisasterRecovery(t *testing.T) {
 		return
 	}
 	fmt.Println("reached to 3 members cluster")
+	// TODO: There might be race that controller will recover members between
+	// 		these members are deleted individually.
 	if err := killMembers(f, names[0], names[1]); err != nil {
 		t.Fatal(err)
 	}
