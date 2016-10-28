@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/kube-etcd-controller/pkg/spec"
+	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
@@ -108,7 +109,7 @@ func GetNodePortString(srv *api.Service) string {
 }
 
 func MakeBackupHostPort(clusterName string) string {
-	return fmt.Sprintf("%s:19999", makeBackupName(clusterName))
+	return fmt.Sprintf("%s:%s", makeBackupName(clusterName), constants.DefaultBackupPodHTTPPort)
 }
 
 func PodWithAddMemberInitContainer(p *api.Pod, name string, peerURLs []string, cs *spec.ClusterSpec) *api.Pod {

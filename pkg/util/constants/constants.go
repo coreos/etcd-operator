@@ -21,5 +21,7 @@ const (
 	DefaultRequestTimeout   = 5 * time.Second
 	DefaultSnapshotInterval = 1800 * time.Second
 
+	DefaultBackupPodHTTPPort = "19999"
+
 	BackupDir = "/home/backup/"
 )
