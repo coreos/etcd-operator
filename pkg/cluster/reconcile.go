@@ -211,8 +211,9 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 		return errNoBackupExist
 	}
 	backupNow := false
-	if len(left) != 0 {
-		backupNow = requestBackupNow(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
+	if len(left) > 0 {
+		log.Infof("cluster (%v) has some pods still running (%v). Will try to make a latest backup from one of them.", c.name, left)
+		backupNow = RequestBackupNow(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
 	}
 	if backupNow {
 		log.Info("Made a latest backup successfully")
@@ -238,7 +239,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	return c.restoreSeedMember()
 }
 
-func requestBackupNow(httpClient *http.Client, addr string) bool {
+func RequestBackupNow(httpClient *http.Client, addr string) bool {
 	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", addr))
 	if err != nil {
 		log.Errorf("backupnow (%s) request failed: %v", addr, err)
