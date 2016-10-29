@@ -4,7 +4,7 @@
 
 **Project status: *alpha***
 
-The `etcd operator` project now ships with a lot of execiting features. We strongly encourage you to give it a try, and provide early feedbacks. It would be a great help for us to keep on improving and sharping this project. However, please do notice that this project is still in alpha stage. Not all planned feature are completed. The API, spec, status and other user facing objects is subject to change. We do not support backward-compability for the alpha releases.
+The `etcd operator` project now ships with a lot of execiting features. We strongly encourage you to give it a try, and provide early feedbacks. It would be a great help for us to keep on improving and sharping this project. However, please do notice that this project is still in alpha stage. Not all planned feature are completed. The API, spec, status and other user facing objects are subject to change. We do not support backward-compability for the alpha releases.
 
 ## Overview
 
