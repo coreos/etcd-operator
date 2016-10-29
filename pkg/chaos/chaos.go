@@ -35,17 +35,22 @@ func NewMonkeys(k8s *unversioned.Client) *Monkeys {
 }
 
 // TODO: respect context in k8s operations.
-func (m *Monkeys) CrushPods(ctx context.Context, ns string, ls labels.Selector, killRate float64) {
+func (m *Monkeys) CrushPods(ctx context.Context, ns string, ls labels.Selector, killRate rate.Limit, killProbability float64) {
 	burst := int(killRate)
 	if burst <= 0 {
 		burst = 1
 	}
-	limiter := rate.NewLimiter(rate.Limit(killRate), burst)
+	limiter := rate.NewLimiter(killRate, burst)
 	for {
 		err := limiter.Wait(ctx)
 		if err != nil { // user cancellation
-			logrus.Infof("crushPods is cancelled for selector %v by the user: %v", ls.String(), err)
+			logrus.Infof("crushPods is canceled for selector %v by the user: %v", ls.String(), err)
 			return
+		}
+
+		if p := rand.Float64(); p > killProbability {
+			logrus.Infof("skip killing pod: probability: %v, got p: %v", killProbability, p)
+			continue
 		}
 
 		pods, err := m.k8s.Pods(ns).List(api.ListOptions{LabelSelector: ls})

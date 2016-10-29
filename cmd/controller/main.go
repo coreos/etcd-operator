@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/kube-etcd-controller/pkg/controller"
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"github.com/coreos/kube-etcd-controller/version"
+	"golang.org/x/time/rate"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/leaderelection"
 	"k8s.io/kubernetes/pkg/client/record"
@@ -125,10 +126,10 @@ func run(stop <-chan struct{}) {
 
 		switch chaosLevel {
 		case 1:
-			logrus.Infof("chaos level = 1: randomly kill one etcd pod every 10 seconds")
+			logrus.Infof("chaos level = 1: randomly kill one etcd pod every 30 seconds at 50%")
 			m := chaos.NewMonkeys(cfg.KubeCli)
 			ls := labels.SelectorFromSet(map[string]string{"app": "etcd"})
-			go m.CrushPods(ctx, cfg.Namespace, ls, 0.1)
+			go m.CrushPods(ctx, cfg.Namespace, ls, rate.Every(30*time.Second), 0.5)
 		default:
 		}
 
