@@ -363,6 +363,10 @@ func (c *Cluster) updateMembers(etcdcli *clientv3.Client) error {
 	}
 	c.members = etcdutil.MemberSet{}
 	for _, m := range resp.Members {
+		if len(m.Name) == 0 {
+			c.members = nil
+			return fmt.Errorf("the name of member (%x) is empty. Not ready yet. Will retry later", m.ID)
+		}
 		id := findID(m.Name)
 		if id+1 > c.idCounter {
 			c.idCounter = id + 1
