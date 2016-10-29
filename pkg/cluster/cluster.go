@@ -380,7 +380,7 @@ func findID(name string) int {
 	i := strings.LastIndex(name, "-")
 	id, err := strconv.Atoi(name[i+1:])
 	if err != nil {
-		panic(err)
+		log.Fatalf("fail to extract valid ID from name (%s): %v", name, err)
 	}
 	return id
 }
