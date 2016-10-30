@@ -83,7 +83,9 @@ func getLatestSnapshotName(files []os.FileInfo) string {
 		s := strings.Split(base, ".")[0]
 		rev, err := strconv.ParseInt(s, 16, 64)
 		if err != nil {
-			logrus.Errorf("failed to understand snapshot name (%s): error (%v)", file.Name(), err)
+			// There might be other system files, e.g. "lost+found".
+			// We are ignoring non backup format files.
+			logrus.Warningf("fail to understand snapshot name (%s): error (%v)", file.Name(), err)
 			continue
 		}
 		if rev > maxRev {
