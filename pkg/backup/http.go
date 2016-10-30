@@ -65,7 +65,6 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 	}
 	fname := getLatestSnapshotName(files)
 	if len(fname) == 0 {
-		logrus.Error("couldn't find any snapshot file")
 		http.NotFound(w, r)
 		return
 	}
