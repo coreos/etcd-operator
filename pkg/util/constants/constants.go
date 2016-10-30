@@ -23,5 +23,5 @@ const (
 
 	DefaultBackupPodHTTPPort = 19999
 
-	BackupDir = "/home/backup/"
+	BackupDir = "/var/etcd-backup/data"
 )
