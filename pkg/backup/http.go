@@ -79,10 +79,12 @@ func getLatestSnapshotName(files []os.FileInfo) string {
 	fname := ""
 	for _, file := range files {
 		base := filepath.Base(file.Name())
-		s := strings.Split(base, ".")[0]
-		rev, err := strconv.ParseInt(s, 16, 64)
+		if !isBackup(base) {
+			continue
+		}
+		rev, err := getRev(base)
 		if err != nil {
-			logrus.Errorf("failed to understand snapshot name (%s): error (%v)", file.Name(), err)
+			logrus.Errorf("fail to get rev from backup (%s): %v", file.Name(), err)
 			continue
 		}
 		if rev > maxRev {
@@ -91,4 +93,13 @@ func getLatestSnapshotName(files []os.FileInfo) string {
 		}
 	}
 	return fname
+}
+
+func isBackup(filename string) bool {
+	return strings.HasSuffix(filename, backupFilenameSuffix)
+}
+
+func getRev(filename string) (int64, error) {
+	fields := strings.SplitN(filename, ".", 3)
+	return strconv.ParseInt(fields[1], 16, 64)
 }
