@@ -31,7 +31,7 @@ type BackupPolicy struct {
 	// time).
 	MaxSnapshot int `json:"maxSnapshot"`
 	// VolumeSizeInMB specifies the required volume size to perform backups.
-	// Controller will claim the required size before creating the etcd cluster for backup
+	// Operator will claim the required size before creating the etcd cluster for backup
 	// purpose.
 	// If the snapshot size is larger than the size specified, backup fails.
 	VolumeSizeInMB int `json:"volumeSizeInMB"`
@@ -39,6 +39,6 @@ type BackupPolicy struct {
 	// If it's not set by user, the default is "PersistentVolume".
 	StorageType BackupStorageType `json:"storageType"`
 	// CleanupStorageIfDeleted specified whether we want to cleanup the backup data if cluster is deleted.
-	// By default, controller will keep the backup data.
+	// By default, operator will keep the backup data.
 	CleanupBackupIfDeleted bool `json:"cleanupBackupIfDeleted"`
 }
