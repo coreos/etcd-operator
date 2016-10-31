@@ -2,11 +2,11 @@
 
 ## Overview
 
-If a cluster has less than majority of members alive, controller considers it disastrous failure. There might be other disastrous failures. Controller will do disaster recovery on such cases and try to recover entire cluster from snapshot.
+If a cluster has less than majority of members alive, operator considers it disastrous failure. There might be other disastrous failures. Operator will do disaster recovery on such cases and try to recover entire cluster from snapshot.
 
 We have a backup pod to save checkpoints of the cluster.
 
-If disastrous failure happened but no checkpoint is found, controller would consider the cluster dead.
+If disastrous failure happened but no checkpoint is found, operator would consider the cluster dead.
 
 ## Technical details
 

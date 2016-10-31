@@ -140,13 +140,13 @@ func TestOneMemberRecovery(t *testing.T) {
 }
 
 // TestDisasterRecovery2Members tests disaster recovery that
-// controller will make a backup from the left one pod.
+// ooperator will make a backup from the left one pod.
 func TestDisasterRecovery2Members(t *testing.T) {
 	testDisasterRecovery(t, 2)
 }
 
 // TestDisasterRecoveryAll tests disaster recovery that
-// we should make a backup ahead and controller will recover cluster from it.
+// we should make a backup ahead and ooperator will recover cluster from it.
 func TestDisasterRecoveryAll(t *testing.T) {
 	testDisasterRecovery(t, 3)
 }
@@ -182,7 +182,7 @@ func testDisasterRecovery(t *testing.T, numToKill int) {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
 	// No left pod to make a backup from. We need to back up ahead.
-	// If there is any left pod, controller should be able to make a backup from it.
+	// If there is any left pod, ooperator should be able to make a backup from it.
 	if numToKill == len(names) {
 		if err := makeBackup(f, testEtcd.Name); err != nil {
 			t.Fatalf("fail to make a latest backup: %v", err)
@@ -192,7 +192,7 @@ func testDisasterRecovery(t *testing.T, numToKill int) {
 	for i := 0; i < numToKill; i++ {
 		toKill[i] = names[i]
 	}
-	// TODO: There might be race that controller will recover members between
+	// TODO: There might be race that ooperator will recover members between
 	// 		these members are deleted individually.
 	if err := killMembers(f, toKill...); err != nil {
 		t.Fatal(err)

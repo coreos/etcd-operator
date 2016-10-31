@@ -5,7 +5,7 @@
 The primary goals etcd-operator cluster TLS:
  * Encrypt etcd client/peer communication
  * Cryptographically attestable identites for following components:
-    * etcd controller
+    * etcd operator
     * etcd cluster TPR objects
     * backup tool pods
     * etcd pods
@@ -18,7 +18,7 @@ Here is the overview for etcd-operator TLS flow, which should set us up well for
 ### Trust delegation diagram:
 
     -----------------
-    | external PKI  |  (something that can sign the controller's CSRs)
+    | external PKI  |  (something that can sign the operator's CSRs)
     -----------------
 		  |	 |
 	      |  | /|\ CERT
@@ -28,7 +28,7 @@ Here is the overview for etcd-operator TLS flow, which should set us up well for
 	      |  |
 		  |	 |
 		  |  |
-		  |  |---> [ controller client-interface CA ]
+		  |  |---> [ operator client-interface CA ]
 		  |         |
 		  |			|                    --------------> [ etcd-cluster-A client-interface CLIENT CERT ]
 		  |			|                    |
@@ -62,7 +62,7 @@ Here is the overview for etcd-operator TLS flow, which should set us up well for
 		  |			| ...
           |
 		  |
-		  |------> [ controller peer-interface CA ]
+		  |------> [ operator peer-interface CA ]
 					|
 					|
 					|-------->  [ etcd-cluster-A peer interface CERTIFICATE AUTHORITY ]
@@ -90,20 +90,20 @@ Here is the overview for etcd-operator TLS flow, which should set us up well for
 ### Certificate signing procedure
 
 1. etcd-operator pod startup:
-  * generate `controller CA` private key
-  * generate `controller CA` certificate (peer and client) (select one of following)
+  * generate `operator CA` private key
+  * generate `operator CA` certificate (peer and client) (select one of following)
       * generate self-signed cert (default for now, useful for development mode)
       * generate CSR, wait for external entity to sign it and return cert via Kubernetes API (production mode, allows integration with arbitrary external PKI systems)
 
-2. etcd cluster creation (in controller pod):
+2. etcd cluster creation (in operator pod):
   * generate private key
-  * generate `controller CA` as a subordinate CA of `cluster CA` using parameter from cluster spec
+  * generate `operator CA` as a subordinate CA of `cluster CA` using parameter from cluster spec
 
 3. etcd node pod startup (in the etcd pod, prior to etcd application starting):
   * generate private key
   * generate a CSR for `CN=etcd-cluster-xxxx`, submit for signing via annotation  (peer and client)
 
-4. etcd node enrollment (in controller pod) (peer and client)
+4. etcd node enrollment (in operator pod) (peer and client)
   * observe new CSR annotation on `pod/etcd-cluster-xxxx`
   * sign CSR with the `cluster CA` for `pod/etcd-cluster-xxxx`
   * --> return certificate via annotation to `pod/etcd-cluster-xxxx`
@@ -168,23 +168,23 @@ _note: steps 2-9 can be repeated to implement a primitive cert refresh mechanism
 ------
 
 
-Here's a table showing how this process is currently used in the kube etcd controller TLS infrastructure:
+Here's a table showing how this process is currently used in the etcd operator TLS infrastructure:
 
 | _signer_      | signing CA     |  _singee_  | signed indenties  | identity type |
 | ------------- | -------------- | ---------- | ----------------- | ------------- |
-| external pki  | external CA    | controller | <ul><li>controller peer ca</li><li>controller client ca</li></ul> | CERTIFICATE AUTHORITY |
-| controller    | clusterA peer ca | etcd-xxxx | etcd-xxxx-peer-interface | SERVER CERTIFICATE |
-| controller    | clusterA client ca | etcd-xxxx | etcd-xxxx, client-interface | SERVER CERTIFICATE  |
-| controller    | clusterA client ca | clusterA-backup-tool | clusterA-backup-tool, client ce | CLIENT CERTIFICATE |
+| external pki  | external CA    | operator | <ul><li>operator peer ca</li><li>operator client ca</li></ul> | CERTIFICATE AUTHORITY |
+| operator      | clusterA peer ca | etcd-xxxx | etcd-xxxx-peer-interface | SERVER CERTIFICATE |
+| operator      | clusterA client ca | etcd-xxxx | etcd-xxxx, client-interface | SERVER CERTIFICATE  |
+| operator      | clusterA client ca | clusterA-backup-tool | clusterA-backup-tool, client ce | CLIENT CERTIFICATE |
 
 ## Things to note:
 * **Private Keys Stay Put:** If a private key is needed, is its generated on and never leaves the component that uses it. The business of shuffling around private key material across networks is a dangerous business.
 
-  Most importantly, the external PKI component must be allowed to sign the controller's CSR _without_ divulging it's CA private key to the cluster.
+  Most importantly, the external PKI component must be allowed to sign the operator's CSR _without_ divulging it's CA private key to the cluster.
 
 * **Separate peer and client cert chains:** The motivation is to provide the ability to isolate the etcd peer (data) plane from the etcd client (control) plane.
 
-  The client interface CA will be expected to sign CSRs for any new entity that wants to "talk to" the cluster- this includes entirely external components like backup controllers, load-balancers, etc.
+  The client interface CA will be expected to sign CSRs for any new entity that wants to "talk to" the cluster- this includes entirely external components like backup operators, load-balancers, etc.
 
   The peer interface CA, on the other hand, will sign CSRs only for new entities that want to join the cluster.
 

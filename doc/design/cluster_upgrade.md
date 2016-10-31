@@ -3,7 +3,7 @@
 ## etcd upgrade story
 
 - A user “kubectl apply” a new version in EtcdCluster object
-- etcd controller detects the version and
+- etcd operator detects the version and
   - if the targeted version is allowed, does rolling upgrade
   - otherwise, rejects it in admission control; We will write an admission plug-in to verify EtcdCluster object.
 
@@ -20,7 +20,7 @@
 ## Support notes
 
 - Upgrade path: We only support one minor version upgrade, e.g. 3.0 -> 3.1, no 3.0 -> 3.2. Only support v3.0+
-- Rollback: We relies on etcd controller to do periodic backup.
+- Rollback: We relies on etcd operator to do periodic backup.
   For alpha release, we will provide features to do manual rollback.
   In the future, we might consider support automatic rollback.
 
