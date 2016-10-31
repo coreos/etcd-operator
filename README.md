@@ -1,6 +1,6 @@
 # etcd operator
 
-[![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-controller-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-controller-master/)
+[![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-operator-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-master/)
 
 **Project status: *alpha***
 
