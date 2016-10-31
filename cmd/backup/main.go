@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/kube-etcd-controller/pkg/backup"
-	"github.com/coreos/kube-etcd-controller/pkg/spec"
-	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
-	"github.com/coreos/kube-etcd-controller/version"
+	"github.com/coreos/etcd-operator/pkg/backup"
+	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/version"
 )
 
 var (
@@ -51,7 +51,7 @@ func init() {
 
 func main() {
 	if printVersion {
-		fmt.Println("kube-etcd-backup", version.Version)
+		fmt.Println("etcd-operator-backup", version.Version)
 		os.Exit(0)
 	}
 

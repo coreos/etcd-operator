@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The kube-etcd-etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,13 +19,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
+	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/kube-etcd-controller/pkg/spec"
-	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
-	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
-	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"golang.org/x/net/context"
 	"k8s.io/kubernetes/pkg/api"
 )
@@ -65,7 +66,7 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 //
 // Definitions:
 // - running pods in k8s cluster
-// - members in controller knowledge
+// - members in etcd-operator knowledge
 // Steps:
 // 1. Remove all pods from running set that does not belong to member set.
 // 2. L consist of remaining pods of runnings

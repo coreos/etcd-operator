@@ -1,4 +1,4 @@
-package: github.com/coreos/kube-etcd-controller
+package: github.com/coreos/etcd-operator
 import:
 - package: github.com/Sirupsen/logrus
   version: v0.10.0

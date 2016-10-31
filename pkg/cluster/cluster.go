@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The kube-etcd-etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,12 +21,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
+	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/kube-etcd-controller/pkg/spec"
-	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
-	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
-	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
 	k8sapi "k8s.io/kubernetes/pkg/api"
@@ -298,7 +299,7 @@ func (c *Cluster) migrateSeedMember() error {
 
 	// delete the original seed member from the etcd cluster.
 	// now we have migrate the seed member into kubernetes.
-	// our controller not takes control over it.
+	// our etcd-operator not takes control over it.
 	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	_, err = etcdcli.Cluster.MemberRemove(ctx, seedID)
 	cancel()

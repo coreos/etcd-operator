@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
 package controller
 
 import (
-	"github.com/coreos/kube-etcd-controller/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/spec"
+
 	"k8s.io/kubernetes/pkg/api/unversioned"
 )
 

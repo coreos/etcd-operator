@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,11 +23,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/analytics"
+	"github.com/coreos/etcd-operator/pkg/cluster"
+	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
 	log "github.com/Sirupsen/logrus"
-	"github.com/coreos/kube-etcd-controller/pkg/analytics"
-	"github.com/coreos/kube-etcd-controller/pkg/cluster"
-	"github.com/coreos/kube-etcd-controller/pkg/spec"
-	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/extensions"

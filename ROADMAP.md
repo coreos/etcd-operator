@@ -1,6 +1,6 @@
 # Roadmap
 
-This document defines a high level roadmap for the etcd cluster controller development.
+This document defines a high level roadmap for the etcd cluster operator development.
 
 The dates below should not be considered authoritative, but rather indicative of the projected timeline of the project.
 
@@ -21,7 +21,7 @@ The dates below should not be considered authoritative, but rather indicative of
   - More structured logging
       - Add prefix for different clusters
       - Use infof, waringf, errorf consistently
-  - Expose controller metrics
+  - Expose operator metrics
       - How many clusters it manages
       - How many actions it does
    - Expose the running status of the etcd cluster

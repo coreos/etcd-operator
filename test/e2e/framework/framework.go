@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,8 +18,9 @@ import (
 	"flag"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
 	"github.com/Sirupsen/logrus"
-	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
@@ -36,7 +37,7 @@ type Framework struct {
 // Setup setups a test framework and points "Global" to it.
 func Setup() error {
 	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
-	ctrlImage := flag.String("controller-image", "", "controller image, e.g. gcr.io/coreos-k8s-scale-testing/kube-etcd-controller")
+	opImage := flag.String("operator-image", "", "operator image, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator")
 	ns := flag.String("namespace", "default", "e2e test namespace")
 	flag.Parse()
 
@@ -67,7 +68,7 @@ func Setup() error {
 		KubeClient: cli,
 		Namespace:  namespace,
 	}
-	return Global.setup(*ctrlImage)
+	return Global.setup(*opImage)
 }
 
 func Teardown() error {
@@ -82,27 +83,27 @@ func Teardown() error {
 	return nil
 }
 
-func (f *Framework) setup(ctrlImage string) error {
-	if err := f.setupEtcdController(ctrlImage); err != nil {
-		logrus.Errorf("fail to setup etcd controller: %v", err)
+func (f *Framework) setup(opImage string) error {
+	if err := f.setupEtcdOperator(opImage); err != nil {
+		logrus.Errorf("fail to setup etcd operator: %v", err)
 		return err
 	}
 	logrus.Info("e2e setup successfully")
 	return nil
 }
 
-func (f *Framework) setupEtcdController(ctrlImage string) error {
+func (f *Framework) setupEtcdOperator(opImage string) error {
 	// TODO: unify this and the yaml file in example/
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
-			Name:   "kube-etcd-controller",
-			Labels: map[string]string{"name": "kube-etcd-controller"},
+			Name:   "etcd-operator",
+			Labels: map[string]string{"name": "etcd-operator"},
 		},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{
-					Name:  "kube-etcd-controller",
-					Image: ctrlImage,
+					Name:  "etcd-operator",
+					Image: opImage,
 					Env: []api.EnvVar{
 						{
 							Name:      "MY_POD_NAMESPACE",
@@ -124,6 +125,6 @@ func (f *Framework) setupEtcdController(ctrlImage string) error {
 		return err
 	}
 
-	logrus.Info("etcd controller created successfully")
+	logrus.Info("etcd operator created successfully")
 	return nil
 }

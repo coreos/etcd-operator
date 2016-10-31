@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,9 @@ package e2e
 import (
 	"testing"
 
-	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
-	"github.com/coreos/kube-etcd-controller/test/e2e/framework"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/test/e2e/framework"
+
 	"k8s.io/kubernetes/pkg/api"
 )
 
