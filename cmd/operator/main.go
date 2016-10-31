@@ -39,6 +39,7 @@ import (
 
 var (
 	analyticsEnabled bool
+	backupImage      string
 	pvProvisioner    string
 	masterHost       string
 	tlsInsecure      bool
@@ -61,6 +62,7 @@ var (
 func init() {
 	flag.BoolVar(&analyticsEnabled, "analytics", true, "Send analytical event (Cluster Created/Deleted etc.) to Google Analytics")
 
+	flag.StringVar(&backupImage, "backup-image", "quay.io/coreos/etcd-backup", "the image of etcd backup tool")
 	flag.StringVar(&pvProvisioner, "pv-provisioner", "kubernetes.io/gce-pd", "persistent volume provisioner type")
 	flag.StringVar(&masterHost, "master", "", "API Server addr, e.g. ' - NOT RECOMMENDED FOR PRODUCTION - http://127.0.0.1:8080'. Omit parameter to run in on-cluster mode and utilize the service account token.")
 	flag.StringVar(&certFile, "cert-file", "", " - NOT RECOMMENDED FOR PRODUCTION - Path to public TLS certificate file.")
@@ -151,6 +153,7 @@ func newControllerConfig() controller.Config {
 		PVProvisioner: pvProvisioner,
 		Namespace:     namespace,
 		KubeCli:       kubecli,
+		BackupImage:   backupImage,
 	}
 	if len(cfg.MasterHost) == 0 {
 		logrus.Info("use in cluster client from k8s library")

@@ -95,7 +95,7 @@ func createAndWaitPVC(kubecli *unversioned.Client, clusterName, ns string, volum
 	return retClaim, nil
 }
 
-func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, policy spec.BackupPolicy) error {
+func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, image, clusterName, ns string, policy spec.BackupPolicy) error {
 	claim, err := createAndWaitPVC(kubecli, clusterName, ns, policy.VolumeSizeInMB)
 	if err != nil {
 		return err
@@ -121,7 +121,7 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 					Containers: []api.Container{
 						{
 							Name:  "backup",
-							Image: "gcr.io/coreos-k8s-scale-testing/etcd-backup:latest",
+							Image: image,
 							Command: []string{
 								"backup",
 								"--etcd-cluster",

@@ -28,7 +28,6 @@ function fmt_pass {
 		fi
 	done
 
-
 	echo "Checking govet..."
 	for file in $allfiles; do
 		checkRes=$(go vet $file)
@@ -41,11 +40,13 @@ function fmt_pass {
 
 function build_pass {
 	IMAGE=$OPERATOR_IMAGE hack/build/operator/build
+	IMAGE=$BACKUP_IMAGE hack/build/backup/build
 }
 
 function e2e_pass {
 	TEST_PKGS=`go list ./test/... | grep -v framework`
-	go test -v ${TEST_PKGS} --kubeconfig $KUBERNETES_KUBECONFIG_PATH --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
+	go test -v ${TEST_PKGS} --kubeconfig $KUBERNETES_KUBECONFIG_PATH \
+		--operator-image $OPERATOR_IMAGE --backup-image $BACKUP_IMAGE --namespace ${TEST_NAMESPACE}
 }
 
 for p in $PASSES; do
