@@ -121,7 +121,7 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 					Containers: []api.Container{
 						{
 							Name:  "backup",
-							Image: "gcr.io/coreos-k8s-scale-testing/kube-etcd-backup:latest",
+							Image: "gcr.io/coreos-k8s-scale-testing/etcd-backup:latest",
 							Command: []string{
 								"backup",
 								"--etcd-cluster",

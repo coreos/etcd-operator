@@ -4,7 +4,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-: ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/kube-etcd-backup"}
+: ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-backup"}
 
 mkdir -p _output/bin || true
 
