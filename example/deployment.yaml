@@ -1,21 +1,21 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: kube-etcd-controller
+  name: etcd-operator
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: kube-etcd-controller
+      name: etcd-operator
   template:
     metadata:
       labels:
-        name: kube-etcd-controller
+        name: etcd-operator
     spec:
       containers:
-      - name: etcd-controller
+      - name: etcd-operator
         # TODO: change this to official quay container
-        image: gcr.io/coreos-k8s-scale-testing/kube-etcd-controller
+        image: gcr.io/coreos-k8s-scale-testing/etcd-operator
         env:
         - name: MY_POD_NAMESPACE
           valueFrom:

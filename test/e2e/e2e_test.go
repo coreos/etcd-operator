@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,11 +23,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/kube-etcd-controller/pkg/cluster"
-	"github.com/coreos/kube-etcd-controller/pkg/spec"
-	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
-	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
-	"github.com/coreos/kube-etcd-controller/test/e2e/framework"
+	"github.com/coreos/etcd-operator/pkg/cluster"
+	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/test/e2e/framework"
+
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	k8sclient "k8s.io/kubernetes/pkg/client/unversioned"
@@ -365,12 +366,12 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 	}
 
 	buf := bytes.NewBuffer(nil)
-	if err := getLogs(f.KubeClient, f.Namespace.Name, "kube-etcd-controller", "kube-etcd-controller", buf); err != nil {
+	if err := getLogs(f.KubeClient, f.Namespace.Name, "etcd-operator", "etcd-operator", buf); err != nil {
 		return err
 	}
-	fmt.Println("kube-etcd-controller logs ===")
+	fmt.Println("etcd-operator logs ===")
 	fmt.Println(buf.String())
-	fmt.Println("kube-etcd-controller logs END ===")
+	fmt.Println("etcd-operator logs END ===")
 
 	req, err := http.NewRequest("DELETE",
 		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace.Name, name), nil)

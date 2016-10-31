@@ -14,7 +14,7 @@ if ! which docker > /dev/null; then
 	exit 1
 fi
 
-: ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/kube-etcd-controller"}
+: ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator"}
 
-docker build --tag "${IMAGE}" -f hack/build/controller/Dockerfile .
+docker build --tag "${IMAGE}" -f hack/build/operator/Dockerfile .
 gcloud docker -- push "${IMAGE}"

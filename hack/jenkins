@@ -13,8 +13,8 @@ export GOPATH=`pwd`
 echo "GOPATH: ${GOPATH}"
 
 mkdir -p $GOPATH/src/github.com/coreos
-ln -s "${origpwd}" $GOPATH/src/github.com/coreos/kube-etcd-controller
-cd $GOPATH/src/github.com/coreos/kube-etcd-controller
+ln -s "${origpwd}" $GOPATH/src/github.com/coreos/etcd-operator
+cd $GOPATH/src/github.com/coreos/etcd-operator
 
 cleanup() {
 	echo "cleaning up ==="
@@ -27,10 +27,10 @@ trap cleanup EXIT
 glide install
 
 GIT_VERSION=$(git rev-parse HEAD)
-export CONTROLLER_IMAGE="gcr.io/coreos-k8s-scale-testing/kube-etcd-controller:${GIT_VERSION}"
+export OPERATOR_IMAGE="gcr.io/coreos-k8s-scale-testing/etcd-operator:${GIT_VERSION}"
 export TEST_NAMESPACE="e2e-test-${BUILD_ID}"
 
-echo "controller image: ${CONTROLLER_IMAGE}"
+echo "operator image: ${OPERATOR_IMAGE}"
 echo "test namespace: ${TEST_NAMESPACE}"
 
 if "hack/test"; then

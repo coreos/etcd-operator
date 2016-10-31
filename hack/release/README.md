@@ -1,7 +1,7 @@
 Release Workflow
 ======
 
-This docs describes the release process of kube-etcd-controller public docker image.
+This docs describes the release process of etcd-operator public docker image.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ Make sure you have a quay.io account.
 
 ## Build image
 
-Make sure your working directory is root of "kube-etcd-controller/".
+Make sure your working directory is root of "etcd-operator/".
 
 Install dependency if none exists:
 ```
@@ -23,7 +23,7 @@ You should see "vendor/".
 
 Build docker image
 ```
-$ docker build --tag quay.io/coreos/kube-etcd-controller:${TAG} -f hack/build/controller/Dockerfile .
+$ docker build --tag quay.io/coreos/etcd-operator:${TAG} -f hack/build/controller/Dockerfile .
 ```
 `${TAG}` is the release tag. For example, "v0.0.1", "latest".
 We also need to create a corresponding release on github with release note.
@@ -38,6 +38,6 @@ Follow the prompts.
 
 Push docker image to quay.io:
 ```
-$ docker push quay.io/coreos/kube-etcd-controller:${TAG}
+$ docker push quay.io/coreos/etcd-operator:${TAG}
 ```
 `${TAG}` is the same as above.

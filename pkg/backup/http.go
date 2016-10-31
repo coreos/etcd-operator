@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The kube-etcd-etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +24,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/kube-etcd-etcd-operator/pkg/util/constants"
+
 	"github.com/Sirupsen/logrus"
-	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
 )
 
 func (b *Backup) startHTTP() {

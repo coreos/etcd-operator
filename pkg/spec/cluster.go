@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ type EtcdCluster struct {
 
 type ClusterSpec struct {
 	// Size is the expected size of the etcd cluster.
-	// The controller will eventually make the size of the running
+	// The etcd-operator will eventually make the size of the running
 	// cluster equal to the expected size.
 	// The vaild range of the size is from 1 to 7.
 	Size int `json:"size"`
@@ -37,11 +37,11 @@ type ClusterSpec struct {
 	// labels.
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// AntiAffinity determines if the controller tries to avoid putting
+	// AntiAffinity determines if the etcd-operator tries to avoid putting
 	// the etcd members in the same cluster onto the same node.
 	AntiAffinity bool `json:"antiAffinity"`
 	// Version is the expected version of the etcd cluster.
-	// The controller will eventually make the etcd cluster version
+	// The etcd-operator will eventually make the etcd cluster version
 	// equal to the expected version.
 	Version string `json:"version"`
 	// Backup is the backup policy for the etcd cluster.

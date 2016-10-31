@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,12 +21,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/analytics"
+	"github.com/coreos/etcd-operator/pkg/chaos"
+	"github.com/coreos/etcd-operator/pkg/controller"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/version"
+
 	"github.com/Sirupsen/logrus"
-	"github.com/coreos/kube-etcd-controller/pkg/analytics"
-	"github.com/coreos/kube-etcd-controller/pkg/chaos"
-	"github.com/coreos/kube-etcd-controller/pkg/controller"
-	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
-	"github.com/coreos/kube-etcd-controller/version"
 	"golang.org/x/time/rate"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/leaderelection"
@@ -67,7 +68,7 @@ func init() {
 	flag.StringVar(&caFile, "ca-file", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to TLS CA file.")
 	flag.BoolVar(&tlsInsecure, "tls-insecure", false, "- NOT RECOMMENDED FOR PRODUCTION - Don't verify API server's CA certificate.")
 	// chaos level will be removed once we have a formal tool to inject failures.
-	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the controller.")
+	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the operator.")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.Parse()
 
@@ -79,7 +80,7 @@ func init() {
 
 func main() {
 	if printVersion {
-		fmt.Println("kube-etcd-controller", version.Version)
+		fmt.Println("etcd-operator", version.Version)
 		os.Exit(0)
 	}
 
@@ -87,7 +88,7 @@ func main() {
 		analytics.Enable()
 	}
 
-	analytics.ControllerStarted()
+	analytics.OperatorStarted()
 
 	id, err := os.Hostname()
 	if err != nil {
@@ -97,7 +98,7 @@ func main() {
 	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
 		EndpointsMeta: api.ObjectMeta{
 			Namespace: namespace,
-			Name:      "etcd-controller",
+			Name:      "etcd-operator",
 		},
 		Client: k8sutil.MustCreateClient(masterHost, tlsInsecure, &restclient.TLSClientConfig{
 			CertFile: certFile,

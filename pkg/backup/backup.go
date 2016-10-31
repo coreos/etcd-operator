@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The kube-etcd-etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,14 +22,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"golang.org/x/net/context"
+	"github.com/coreos/kube-etcd-etcd-operator/pkg/spec"
+	"github.com/coreos/kube-etcd-etcd-operator/pkg/util/constants"
+	"github.com/coreos/kube-etcd-etcd-operator/pkg/util/etcdutil"
+	"github.com/coreos/kube-etcd-etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/kube-etcd-controller/pkg/spec"
-	"github.com/coreos/kube-etcd-controller/pkg/util/constants"
-	"github.com/coreos/kube-etcd-controller/pkg/util/etcdutil"
-	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
+	"golang.org/x/net/context"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )

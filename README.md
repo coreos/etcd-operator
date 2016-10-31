@@ -1,4 +1,4 @@
-# kube-etcd-controller
+# etcd operator
 
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-controller-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-controller-master/)
 
@@ -8,15 +8,13 @@ The `etcd operator` project now ships with a lot of execiting features. We stron
 
 ## Overview
 
-Kube-etcd-controller manages etcd clusters atop [Kubernetes][k8s-home], automating their creation and administration:
+etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating their creation and administration:
 
 - [Create](#create-an-etcd-cluster)
 - [Destroy](#destroy-an-existing-etcd-cluster)
 - [Resize](#resize-an-etcd-cluster)
 - [Recover a member](#member-recovery)
 - [Backup and restore a cluster](#disaster-recovery)
-- Cluster migration (TODO)
- - Migrate an existing etcd cluster into controller management
 - [rolling upgrade](#try-upgrade-etcd-cluster)
 
 ## Requirements
@@ -27,16 +25,16 @@ Kube-etcd-controller manages etcd clusters atop [Kubernetes][k8s-home], automati
 ## Limitations
 
 - Backup works only for data in etcd3 storage, not for data in etcd2 storage.
-- Migration, the process of allowing the controller to manage existing etcd3 clusters, only supports a single-member cluster, with all nodes running in the same Kubernetes cluster.
+- Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with all nodes running in the same Kubernetes cluster.
 
-## Deploy kube-etcd-controller
+## Deploy etcd operator
 
 ```bash
-$ kubectl create -f example/etcd-controller.yaml
-pod "kube-etcd-controller" created
+$ kubectl create -f example/etcd operator.yaml
+pod "etcd operator" created
 ```
 
-kube-etcd-controller will create a Kubernetes *Third-Party Resource* (TPR) called "etcd-cluster", and an "etcd-controller-backup" storage class.
+etcd operator will create a Kubernetes *Third-Party Resource* (TPR) called "etcd-cluster", and an "etcd operator-backup" storage class.
 
 ```bash
 $ kubectl get thirdpartyresources
@@ -212,7 +210,7 @@ NAME                       READY     STATUS    RESTARTS   AGE
 
 ## Member recovery
 
-If the minority of etcd members crash, the etcd controller will automatically recover the failure.
+If the minority of etcd members crash, the etcd operator will automatically recover the failure.
 Let's walk through in the following steps.
 
 Redo the "create" process to have a cluster with 3 members.
@@ -223,7 +221,7 @@ Simulate a member failure by deleting a pod:
 $ kubectl delete pod etcd-cluster-0000
 ```
 
-The etcd controller will recover the failure by creating a new pod `etcd-cluster-0003`
+The etcd operator will recover the failure by creating a new pod `etcd-cluster-0003`
 
 ```bash
 $ kubectl get pods
@@ -233,25 +231,25 @@ etcd-cluster-0002   1/1       Running   0          5s
 etcd-cluster-0003   1/1       Running   0          5s
 ```
 
-### Controller recovery
+### etcd operator recovery
 
-If the etcd controller restarts, it can recover its previous state.
+If the etcd operator restarts, it can recover its previous state.
 
-Continued from above, you can simulate a controller crash and a member crash:
+Continued from above, you can simulate a operator crash and a member crash:
 
 ```bash
-$ kubectl delete -f example/etcd-controller.yaml
-pod "kube-etcd-controller" deleted
+$ kubectl delete -f example/etcd-operator.yaml
+pod "etcd-operator" deleted
 
 $ kubectl delete etcd-cluster-0001
 pod "etcd-cluster-0001" deleted
 ```
 
-Then restart the etcd controller. It should automatically recover itself. It also recovers the etcd cluster:
+Then restart the etcd operator. It should automatically recover itself. It also recovers the etcd cluster:
 
 ```bash
 $ kubectl create -f example/etcd-cluster.yaml
-pod "kube-etcd-controller" created
+pod "etcd-operator" created
 $ kubectl get pods
 NAME                READY     STATUS    RESTARTS   AGE
 etcd-cluster-0002   1/1       Running   0          4m
@@ -261,14 +259,14 @@ etcd-cluster-0004   1/1       Running   0          6s
 
 ## Disaster recovery
 
-If the majority of etcd members crash, but at least one backup exists for the cluster, the etcd controller can restore the entire cluster from the backup.
+If the majority of etcd members crash, but at least one backup exists for the cluster, the etcd operator can restore the entire cluster from the backup.
 
-By default, the etcd controller creates a storage class on initialization:
+By default, the etcd operator creates a storage class on initialization:
 
 ```
 $ kubectl get storageclass
 NAME                     TYPE
-etcd-controller-backup   kubernetes.io/gce-pd
+etcd-operator-backup   kubernetes.io/gce-pd
 ```
 
 This is used to request the persistent volume to store the backup data. (TODO: We are planning to support AWS EBS soon.)
@@ -298,7 +296,7 @@ pod "etcd-cluster-0002" deleted
 pod "etcd-cluster-0003" deleted
 ```
 
-Now quorum is lost. The etcd controller will start to recover the cluster by:
+Now quorum is lost. The etcd operator will start to recover the cluster by:
 - Creating a new seed member to recover from the backup
 - Add the specified number of members into the seed cluster
 
@@ -320,7 +318,7 @@ Note: Sometimes member recovery can fail because of a race caused by a delay in 
 
 ## Upgrade an etcd cluster
 
-Clean up any existing etcd cluster, but keep the etcd controller running.
+Clean up any existing etcd cluster, but keep the etcd operator running.
 
 Have the following yaml file ready:
 

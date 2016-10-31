@@ -1,4 +1,4 @@
-// Copyright 2016 The kube-etcd-controller Authors
+// Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,6 +70,6 @@ func ClusterDeleted() {
 	send(ga.NewEvent(category, "cluster_deleted"))
 }
 
-func ControllerStarted() {
-	send(ga.NewEvent(category, "controller_started"))
+func OperatorStarted() {
+	send(ga.NewEvent(category, "opeartor_started"))
 }

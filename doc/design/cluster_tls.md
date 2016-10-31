@@ -2,7 +2,7 @@
 
 ## Abstract
 
-The primary goals kube-etcd-controller cluster TLS:
+The primary goals etcd-operator cluster TLS:
  * Encrypt etcd client/peer communication
  * Cryptographically attestable identites for following components:
     * etcd controller
@@ -13,7 +13,7 @@ The primary goals kube-etcd-controller cluster TLS:
 
 ## Intra-Cluster PKI overview
 
-Here is the overview for kube-etcd-controller TLS flow, which should set us up well for integrating with pre-existing external PKI.
+Here is the overview for etcd-operator TLS flow, which should set us up well for integrating with pre-existing external PKI.
 
 ### Trust delegation diagram:
 
@@ -89,7 +89,7 @@ Here is the overview for kube-etcd-controller TLS flow, which should set us up w
 
 ### Certificate signing procedure
 
-1. kube-etcd-controller pod startup:
+1. etcd-operator pod startup:
   * generate `controller CA` private key
   * generate `controller CA` certificate (peer and client) (select one of following)
       * generate self-signed cert (default for now, useful for development mode)
@@ -139,7 +139,7 @@ In the case that the _signer_ and _signee_ are within the same component, we hav
 
 This is a symbol for a _signee_ submitting a CSR to a _signer_, and recieving back a signed certificate back.
 
-In the case of kube-etcd-controller, this will be coordinated via the Kubernetes API server.
+In the case of etcd-operator, this will be coordinated via the Kubernetes API server.
 
 -----
 
