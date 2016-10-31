@@ -17,10 +17,9 @@ package backup
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 
 	"golang.org/x/net/context"
@@ -33,6 +32,11 @@ import (
 	"github.com/coreos/kube-etcd-controller/pkg/util/k8sutil"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+)
+
+const (
+	backupTmpDir   = "tmp"
+	backupFilePerm = 0600
 )
 
 type Backup struct {
@@ -59,8 +63,10 @@ func New(kclient *unversioned.Client, clusterName, ns string, policy spec.Backup
 }
 
 func (b *Backup) Run() {
-	// It will be no-op if backup dir existed.
-	if err := os.MkdirAll(constants.BackupDir, 0700); err != nil {
+	// We created not only backup dir and but also tmp dir under it.
+	// tmp dir is used to store intermediate snapshot files.
+	// It will be no-op if target dir existed.
+	if err := os.MkdirAll(filepath.Join(constants.BackupDir, backupTmpDir), 0700); err != nil {
 		panic(err)
 	}
 
@@ -141,8 +147,11 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	}
 	defer rc.Close()
 
-	// TODO: custom backup dir
-	tmpfile, err := ioutil.TempFile(backupDir, "snapshot")
+	filename := makeFilename(rev)
+	tmpfile, err := os.OpenFile(filepath.Join(backupDir, backupTmpDir, filename), os.O_WRONLY|O_TRUNC|O_CREATE, backupFilePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create snapshot tempfile: %v", err)
+	}
 	n, err := io.Copy(tmpfile, rc)
 	if err != nil {
 		tmpfile.Close()
@@ -151,7 +160,8 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	}
 	cancel()
 	tmpfile.Close()
-	nextSnapshotName := path.Join(backupDir, makeFilename(rev))
+
+	nextSnapshotName := filepath.Join(backupDir, filename)
 	err = os.Rename(tmpfile.Name(), nextSnapshotName)
 	if err != nil {
 		os.Remove(tmpfile.Name())
