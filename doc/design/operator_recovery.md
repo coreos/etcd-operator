@@ -1,7 +1,7 @@
-# Controller recovery
+# Operator recovery
 
 - Create TPR
- - If the creation succeed, then the controller is a new one and does not require recovery. END.
+ - If the creation succeed, then the operator is a new one and does not require recovery. END.
 - Find all existing clusters
  - loop over the third part resource items to get all created clusters
 - Reconstruct clusters

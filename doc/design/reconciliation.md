@@ -4,7 +4,7 @@
 
 Given a desired size S, we have two membership states:
 - running pods P in k8s cluster
-- membership M in controller knowledge
+- membership M in operator knowledge
 
 Reconciliation is the process to make these two states consistent with the desired size S.
 

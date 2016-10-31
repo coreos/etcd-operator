@@ -23,7 +23,7 @@ You should see "vendor/".
 
 Build docker image
 ```
-$ docker build --tag quay.io/coreos/etcd-operator:${TAG} -f hack/build/controller/Dockerfile .
+$ docker build --tag quay.io/coreos/etcd-operator:${TAG} -f hack/build/operator/Dockerfile .
 ```
 `${TAG}` is the release tag. For example, "v0.0.1", "latest".
 We also need to create a corresponding release on github with release note.

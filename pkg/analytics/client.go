@@ -22,7 +22,7 @@ import (
 
 const (
 	id       = "UA-42684979-8"
-	category = "etcd-controller"
+	category = "etcd-operator"
 )
 
 var (
