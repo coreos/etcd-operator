@@ -32,6 +32,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/leaderelection"
 	"k8s.io/kubernetes/pkg/client/record"
 	"k8s.io/kubernetes/pkg/client/restclient"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
 )
 
@@ -123,15 +124,7 @@ func run(stop <-chan struct{}) {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		cfg := newControllerConfig()
-
-		switch chaosLevel {
-		case 1:
-			logrus.Info("chaos level = 1: randomly kill one etcd pod every 30 seconds at 50%")
-			m := chaos.NewMonkeys(cfg.KubeCli)
-			ls := labels.SelectorFromSet(map[string]string{"app": "etcd"})
-			go m.CrushPods(ctx, cfg.Namespace, ls, rate.Every(30*time.Second), 0.5)
-		default:
-		}
+		startChaos(ctx, cfg.KubeCli, cfg.Namespace, chaosLevel)
 
 		c := controller.New(cfg)
 		err := c.Run()
@@ -163,4 +156,39 @@ func newControllerConfig() controller.Config {
 		cfg.MasterHost = k8sutil.MustGetInClusterMasterHost()
 	}
 	return cfg
+}
+
+func startChaos(ctx context.Context, k8s *unversioned.Client, ns string, chaosLevel int) {
+	m := chaos.NewMonkeys(k8s)
+	ls := labels.SelectorFromSet(map[string]string{"app": "etcd"})
+
+	switch chaosLevel {
+	case 1:
+		logrus.Info("chaos level = 1: randomly kill one etcd pod every 30 seconds at 50%")
+		c := &chaos.CrashConfig{
+			Namespace: ns,
+			Selector:  ls,
+
+			KillRate:        rate.Every(30 * time.Second),
+			KillProbability: 0.5,
+			KillMax:         1,
+		}
+
+		go m.CrushPods(ctx, c)
+
+	case 2:
+		logrus.Info("chaos level = 2: randomly kill at most five etcd pods every 30 seconds at 50%")
+		c := &chaos.CrashConfig{
+			Namespace: ns,
+			Selector:  ls,
+
+			KillRate:        rate.Every(30 * time.Second),
+			KillProbability: 0.5,
+			KillMax:         5,
+		}
+
+		go m.CrushPods(ctx, c)
+
+	default:
+	}
 }

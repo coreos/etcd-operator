@@ -34,13 +34,24 @@ func NewMonkeys(k8s *unversioned.Client) *Monkeys {
 	return &Monkeys{k8s: k8s}
 }
 
+type CrashConfig struct {
+	Namespace string
+	Selector  labels.Selector
+
+	KillRate        rate.Limit
+	KillProbability float64
+	KillMax         int
+}
+
 // TODO: respect context in k8s operations.
-func (m *Monkeys) CrushPods(ctx context.Context, ns string, ls labels.Selector, killRate rate.Limit, killProbability float64) {
-	burst := int(killRate)
+func (m *Monkeys) CrushPods(ctx context.Context, c *CrashConfig) {
+	burst := int(c.KillRate)
 	if burst <= 0 {
 		burst = 1
 	}
-	limiter := rate.NewLimiter(killRate, burst)
+	limiter := rate.NewLimiter(c.KillRate, burst)
+	ls := c.Selector
+	ns := c.Namespace
 	for {
 		err := limiter.Wait(ctx)
 		if err != nil { // user cancellation
@@ -48,8 +59,8 @@ func (m *Monkeys) CrushPods(ctx context.Context, ns string, ls labels.Selector, 
 			return
 		}
 
-		if p := rand.Float64(); p > killProbability {
-			logrus.Infof("skip killing pod: probability: %v, got p: %v", killProbability, p)
+		if p := rand.Float64(); p > c.KillProbability {
+			logrus.Infof("skip killing pod: probability: %v, got p: %v", c.KillProbability, p)
 			continue
 		}
 
@@ -63,13 +74,26 @@ func (m *Monkeys) CrushPods(ctx context.Context, ns string, ls labels.Selector, 
 			continue
 		}
 
-		// todo: kill multiple pods in one round?
-		tokill := pods.Items[rand.Intn(len(pods.Items))].Name
-		err = m.k8s.Pods(ns).Delete(tokill, api.NewDeleteOptions(0))
-		if err != nil {
-			logrus.Errorf("failed to kill pod %v: %v", tokill, err)
-			continue
+		max := len(pods.Items)
+		kmax := rand.Intn(c.KillMax) + 1
+		if kmax < max {
+			max = kmax
 		}
-		logrus.Infof("killed pod %v for selector %v", tokill, ls.String())
+
+		logrus.Infof("start to kill %d pods for selector %v", max, ls.String())
+
+		tokills := make(map[string]struct{})
+		for len(tokills) <= max {
+			tokills[pods.Items[rand.Intn(len(pods.Items))].Name] = struct{}{}
+		}
+
+		for tokill := range tokills {
+			err = m.k8s.Pods(ns).Delete(tokill, api.NewDeleteOptions(0))
+			if err != nil {
+				logrus.Errorf("failed to kill pod %v: %v", tokill, err)
+				continue
+			}
+			logrus.Infof("killed pod %v for selector %v", tokill, ls.String())
+		}
 	}
 }
