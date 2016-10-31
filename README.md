@@ -15,7 +15,7 @@ etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating thei
 - [Resize](#resize-an-etcd-cluster)
 - [Recover a member](#member-recovery)
 - [Backup and restore a cluster](#disaster-recovery)
-- [rolling upgrade](#try-upgrade-etcd-cluster)
+- [Rolling upgrade](#try-upgrade-etcd-cluster)
 
 ## Requirements
 
