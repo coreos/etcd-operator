@@ -35,8 +35,9 @@ import (
 )
 
 const (
-	backupTmpDir   = "tmp"
-	backupFilePerm = 0600
+	backupTmpDir         = "tmp"
+	backupFilePerm       = 0600
+	backupFilenameSuffix = "etcd.backup"
 )
 
 type Backup struct {
@@ -148,7 +149,7 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	defer rc.Close()
 
 	filename := makeFilename(rev)
-	tmpfile, err := os.OpenFile(filepath.Join(backupDir, backupTmpDir, filename), os.O_WRONLY|O_TRUNC|O_CREATE, backupFilePerm)
+	tmpfile, err := os.OpenFile(filepath.Join(backupDir, backupTmpDir, filename), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, backupFilePerm)
 	if err != nil {
 		return fmt.Errorf("failed to create snapshot tempfile: %v", err)
 	}
@@ -172,7 +173,8 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 }
 
 func makeFilename(rev int64) string {
-	return fmt.Sprintf("%016x.backup", rev)
+	// TODO: version aware backup.
+	return fmt.Sprintf("%s.%016x.%s", "etcd-version", rev, backupFilenameSuffix)
 }
 
 func getMemberWithMaxRev(pods *api.PodList) (*etcdutil.Member, int64, error) {
