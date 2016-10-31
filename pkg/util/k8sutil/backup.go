@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	storageClassName          = "etcd-controller-backup"
+	storageClassName          = "etcd-operator-backup"
 	BackupPodSelectorAppField = "etcd_backup_tool"
 )
 
