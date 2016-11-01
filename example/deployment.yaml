@@ -4,9 +4,6 @@ metadata:
   name: etcd-operator
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      name: etcd-operator
   template:
     metadata:
       labels:
