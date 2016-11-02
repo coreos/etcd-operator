@@ -72,6 +72,7 @@ type Config struct {
 	MasterHost    string
 	KubeCli       *unversioned.Client
 	PVProvisioner string
+	BackupImage   string
 }
 
 func (c *Config) validate() error {
@@ -138,7 +139,7 @@ func (c *Controller) Run() error {
 
 				backup := clusterSpec.Backup
 				if backup != nil && backup.MaxSnapshot != 0 {
-					err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, *backup)
+					err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.BackupImage, clusterName, c.Namespace, *backup)
 					if err != nil {
 						panic(err)
 					}
@@ -175,7 +176,7 @@ func (c *Controller) findAllClusters() (string, error) {
 
 		backup := item.Spec.Backup
 		if backup != nil && backup.MaxSnapshot != 0 {
-			err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, item.Name, c.Namespace, *backup)
+			err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.BackupImage, item.Name, c.Namespace, *backup)
 			if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 				panic(err)
 			}

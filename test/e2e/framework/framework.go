@@ -16,6 +16,7 @@ package framework
 
 import (
 	"flag"
+	"fmt"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -38,6 +39,7 @@ type Framework struct {
 func Setup() error {
 	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
 	opImage := flag.String("operator-image", "", "operator image, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator")
+	backupImage := flag.String("backup-image", "", "backup image, e.g. gcr.io/coreos-k8s-scale-testing/etcd-backup")
 	ns := flag.String("namespace", "default", "e2e test namespace")
 	flag.Parse()
 
@@ -68,7 +70,7 @@ func Setup() error {
 		KubeClient: cli,
 		Namespace:  namespace,
 	}
-	return Global.setup(*opImage)
+	return Global.setup(*opImage, *backupImage)
 }
 
 func Teardown() error {
@@ -83,8 +85,8 @@ func Teardown() error {
 	return nil
 }
 
-func (f *Framework) setup(opImage string) error {
-	if err := f.setupEtcdOperator(opImage); err != nil {
+func (f *Framework) setup(opImage, backupImage string) error {
+	if err := f.setupEtcdOperator(opImage, backupImage); err != nil {
 		logrus.Errorf("fail to setup etcd operator: %v", err)
 		return err
 	}
@@ -92,7 +94,7 @@ func (f *Framework) setup(opImage string) error {
 	return nil
 }
 
-func (f *Framework) setupEtcdOperator(opImage string) error {
+func (f *Framework) setupEtcdOperator(opImage, backupImage string) error {
 	// TODO: unify this and the yaml file in example/
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
@@ -104,6 +106,10 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 				{
 					Name:  "etcd-operator",
 					Image: opImage,
+					Command: []string{
+						"/bin/sh", "-c",
+						fmt.Sprintf("/usr/local/bin/etcd-operator --backup-image=%s", backupImage),
+					},
 					Env: []api.EnvVar{
 						{
 							Name:      "MY_POD_NAMESPACE",
