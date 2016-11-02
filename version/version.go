@@ -14,4 +14,4 @@
 
 package version
 
-var Version = "0.0.2+git"
+var Version = "0.1.0"
