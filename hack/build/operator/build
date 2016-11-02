@@ -4,17 +4,21 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-if ! which go > /dev/null; then
-	echo "go needs to be installed"
+if ! which docker > /dev/null; then
+	echo "docker needs to be installed"
 	exit 1
 fi
 
-if ! which docker > /dev/null; then
+if ! which gcloud > /dev/null; then
 	echo "docker needs to be installed"
 	exit 1
 fi
 
 : ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator"}
 
-docker build --tag "${IMAGE}" -f hack/build/operator/Dockerfile .
+ldKVPairs="github.com/coreos/etcd-operator/pkg/util/k8sutil.BackupImage=${IMAGE}"
+go_ldflags="-X ${ldKVPairs}"
+
+docker build --build-arg ARG_LDFLAGS="${go_ldflags}" \
+	--tag "${IMAGE}" -f hack/build/operator/Dockerfile .
 gcloud docker -- push "${IMAGE}"
