@@ -291,7 +291,7 @@ OK
 Now let's kill two pods to simulate a disaster failure:
 
 ```
-$ kubectl delete pod etcd-cluster-000 etcd-cluster-0003
+$ kubectl delete pod etcd-cluster-0002 etcd-cluster-0003 --now
 pod "etcd-cluster-0002" deleted
 pod "etcd-cluster-0003" deleted
 ```
