@@ -31,8 +31,8 @@ etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating thei
 ## Deploy etcd operator
 
 ```bash
-$ kubectl create -f example/etcd operator.yaml
-pod "etcd operator" created
+$ kubectl create -f example/deployment.yaml
+deployment "etcd-operator" created
 ```
 
 etcd operator will create a Kubernetes *Third-Party Resource* (TPR) called "etcd-cluster", and an "etcd operator-backup" storage class.
@@ -71,7 +71,6 @@ etcd-cluster-backup-tool   10.0.59.243    <none>        19999/TCP           32s
 $ kubectl logs etcd-cluster-0000
 ...
 2016-08-05 00:33:32.453768 I | api: enabled capabilities for version 3.0
-2016-08-05 00:33:32.454178 N | etcdmain: serving insecure client requests on 0.0.0.0:2379, this is strongly discouraged!
 ```
 
 If you are working with [minikube locally](https://github.com/kubernetes/minikube#minikube) create a nodePort service and test out that etcd is responding:
@@ -122,10 +121,10 @@ In another terminal, use the following command to change the cluster size from 3
 ```
 $ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
 
-{  
+{
    "apiVersion":"coreos.com/v1",
    "kind":"EtcdCluster",
-   "metadata":{  
+   "metadata":{
       "name":"etcd-cluster",
       "namespace":"default",
       "selfLink":"/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster",
@@ -133,8 +132,8 @@ $ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0
       "resourceVersion":"438492",
       "creationTimestamp":"2016-09-30T05:32:29Z"
    },
-   "spec":{  
-      "backup":{  
+   "spec":{
+      "backup":{
          "maxSnapshot":5,
          "snapshotIntervalInSecond":30,
          "volumeSizeInMB":512
@@ -219,7 +218,7 @@ Redo the "create" process to have a cluster with 3 members.
 Simulate a member failure by deleting a pod:
 
 ```bash
-$ kubectl delete pod etcd-cluster-0000
+$ kubectl delete pod etcd-cluster-0000 --now
 ```
 
 The etcd operator will recover the failure by creating a new pod `etcd-cluster-0003`
@@ -331,7 +330,7 @@ metadata:
   name: "etcd-cluster"
 spec:
   size: 3
-  version: "v3.0.12"
+  version: "v3.0.13"
 ```
 
 Create an etcd cluster with the version specified (3.0.12) in the yaml file:
