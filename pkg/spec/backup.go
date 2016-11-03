@@ -38,7 +38,7 @@ type BackupPolicy struct {
 	// StorageType specifies the type of storage device to store backup files.
 	// If it's not set by user, the default is "PersistentVolume".
 	StorageType BackupStorageType `json:"storageType"`
-	// CleanupStorageIfDeleted specified whether we want to cleanup the backup data if cluster is deleted.
+	// CleanupOnClusterDelete specified whether we want to cleanup the backup data if cluster is deleted.
 	// By default, operator will keep the backup data.
-	CleanupBackupIfDeleted bool `json:"cleanupBackupIfDeleted"`
+	CleanupOnClusterDelete bool `json:"cleanupOnClusterDelete"`
 }

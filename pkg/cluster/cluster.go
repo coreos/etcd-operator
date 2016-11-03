@@ -407,7 +407,7 @@ func (c *Cluster) delete() {
 		}
 	}
 	if c.spec.Backup != nil {
-		k8sutil.DeleteBackupReplicaSetAndService(c.kclient, c.name, c.namespace, c.spec.Backup.CleanupBackupIfDeleted)
+		k8sutil.DeleteBackupReplicaSetAndService(c.kclient, c.name, c.namespace, c.spec.Backup.CleanupOnClusterDelete)
 	}
 }
 
