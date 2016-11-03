@@ -2,11 +2,7 @@
 
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-operator-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-master/)
 
-**Project status: *alpha***
-
-The `etcd operator` project now ships with a lot of execiting features. We strongly encourage you to give it a try, and provide early feedbacks. It would be a great help for us to keep on improving and sharping this project. However, please do notice that this project is still in alpha stage. Not all planned feature are completed. The API, spec, status and other user facing objects are subject to change. We do not support backward-compability for the alpha releases.
-
-## Overview
+**Project status: *alpha*** Not all planned feature are completed. The API, spec, status and other user facing objects are subject to change. We do not support backward-compability for the alpha releases.
 
 etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating their creation and administration:
 
@@ -21,12 +17,6 @@ etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating thei
 
 - Kubernetes 1.4+
 - etcd 3.0+
-
-## Limitations
-
-- Backup works only for data in etcd3 storage, not for data in etcd2 storage.
-- Backup requires PV to work, and it only works on AWS(kubernetes.io/aws-ebs) or GCE(kubernetes.io/gce-pd) for now.
-- Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with all nodes running in the same Kubernetes cluster.
 
 ## Deploy etcd operator
 
@@ -395,5 +385,10 @@ $ kubectl get pod etcd-cluster-0000 -o yaml | grep "image:" | uniq
 
 Check the other two pods and you should see the same result.
 
+## Limitations
+
+- Backup works only for data in etcd3 storage, not for data in etcd2 storage.
+- Backup requires PV to work, and it only works on AWS(kubernetes.io/aws-ebs) or GCE(kubernetes.io/gce-pd) for now.
+- Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with all nodes running in the same Kubernetes cluster.
 
 [k8s-home]: http://kubernetes.io
