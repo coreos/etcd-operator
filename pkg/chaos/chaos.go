@@ -83,7 +83,7 @@ func (m *Monkeys) CrushPods(ctx context.Context, c *CrashConfig) {
 		logrus.Infof("start to kill %d pods for selector %v", max, ls.String())
 
 		tokills := make(map[string]struct{})
-		for len(tokills) <= max {
+		for len(tokills) < max {
 			tokills[pods.Items[rand.Intn(len(pods.Items))].Name] = struct{}{}
 		}
 
