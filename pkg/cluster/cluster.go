@@ -394,6 +394,7 @@ func (c *Cluster) delete() {
 	option := k8sapi.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"etcd_cluster": c.name,
+			"app":          "etcd",
 		}),
 	}
 
