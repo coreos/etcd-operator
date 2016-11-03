@@ -15,7 +15,7 @@ import:
 - package: github.com/xiang90/probing
   version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
 - package: k8s.io/kubernetes
-  version: v1.4.3
+  version: v1.4.5
   subpackages:
   - pkg/api
   - pkg/api/errors

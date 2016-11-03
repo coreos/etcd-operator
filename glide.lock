@@ -1,8 +1,45 @@
-hash: 45c9d4a612de923cb0bdb958f23ff04856062638543368ee9f4cfb2b7ea613e3
-updated: 2016-10-17T11:34:04.967827845-07:00
+hash: 1b4a53d7931771275b8e007ee58a5e7336810e6a5b9bd73a9db71b303f7ce76f
+updated: 2016-11-03T11:30:16.902990463-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
+- name: cloud.google.com/go
+  version: 3b1ae45394a234c385be014e9a488f2bb6eef821
+  subpackages:
+  - compute/metadata
+  - internal
+- name: github.com/aws/aws-sdk-go
+  version: c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc
+  subpackages:
+  - aws
+  - aws/awserr
+  - aws/awsutil
+  - aws/client
+  - aws/client/metadata
+  - aws/corehandlers
+  - aws/credentials
+  - aws/credentials/ec2rolecreds
+  - aws/defaults
+  - aws/ec2metadata
+  - aws/request
+  - aws/session
+  - private/endpoints
+  - private/protocol/ec2query
+  - private/protocol/json/jsonutil
+  - private/protocol/jsonrpc
+  - private/protocol/query
+  - private/protocol/query/queryutil
+  - private/protocol/rest
+  - private/protocol/restxml
+  - private/protocol/xml/xmlutil
+  - private/signer/v4
+  - private/waiter
+  - service/autoscaling
+  - service/ec2
+  - service/ecr
+  - service/elb
+  - service/route53
+  - service/s3
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
@@ -113,6 +150,8 @@ imports:
   - swagger
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+- name: github.com/go-ini/ini
+  version: 2e44421e256d82ebbf3d4d4fcabe8930b905eff3
 - name: github.com/gogo/protobuf
   version: e18d7aa8f8c624c915db340349aad4c49b10d173
   subpackages:
@@ -143,6 +182,10 @@ imports:
   - vanity/command
 - name: github.com/golang/glog
   version: 44145f04b68cf362d9c4df2182967c2275eaefed
+- name: github.com/golang/groupcache
+  version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
+  subpackages:
+  - lru
 - name: github.com/golang/protobuf
   version: 8616e8ee5e20a1704615e6c8d7afcdac06087a67
   subpackages:
@@ -151,7 +194,7 @@ imports:
 - name: github.com/google/btree
   version: 7d79101e329e5a3adf994758c578dab82b90c017
 - name: github.com/google/cadvisor
-  version: 0cdf4912793fac9990de3790c273342ec31817fb
+  version: a726d13de8cb32860e73d72a78dc8e0124267709
   subpackages:
   - api
   - cache/memory
@@ -204,6 +247,8 @@ imports:
   - utilities
 - name: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
+- name: github.com/jmespath/go-jmespath
+  version: 3433f3ea46d9f8019119e7dd41274e112a2359a9
 - name: github.com/jonboulle/clockwork
   version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
 - name: github.com/jpillora/go-ogle-analytics
@@ -262,7 +307,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/oauth2
-  version: b5adcc2dcdf009d0391547edc6ecbaff889f5bb9
+  version: 3c3a985cb79f52a3190fbc056984415ca6763d01
   subpackages:
   - google
   - internal
@@ -277,7 +322,7 @@ imports:
   subpackages:
   - rate
 - name: google.golang.org/appengine
-  version: 12d5545dc1cfa6047a286d5e853841b6471f4c19
+  version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
   subpackages:
   - internal
   - internal/app_identity
@@ -288,13 +333,8 @@ imports:
   - internal/remote_api
   - internal/urlfetch
   - urlfetch
-- name: google.golang.org/cloud
-  version: eb47ba841d53d93506cfbfbc03927daf9cc48f88
-  subpackages:
-  - compute/metadata
-  - internal
 - name: google.golang.org/grpc
-  version: 02fca896ff5f50c6bbbee0860345a49344b37a03
+  version: 231b4cfea0e79843053a33f5fe90bd4d84b23cd3
   subpackages:
   - codes
   - credentials
@@ -377,7 +417,7 @@ imports:
   - 1.4/tools/metrics
   - 1.4/transport
 - name: k8s.io/kubernetes
-  version: 4957b090e9a4f6a68b4a40375408fdc74a212260
+  version: 5a0a696437ad35c133c0c8493f7e9d22b0f9b81b
   subpackages:
   - pkg/api
   - pkg/api/endpoints
@@ -431,7 +471,9 @@ imports:
   - pkg/apis/storage/v1beta1
   - pkg/auth/user
   - pkg/capabilities
+  - pkg/client/leaderelection
   - pkg/client/metrics
+  - pkg/client/record
   - pkg/client/restclient
   - pkg/client/transport
   - pkg/client/typed/discovery
@@ -477,6 +519,7 @@ imports:
   - pkg/util/rand
   - pkg/util/runtime
   - pkg/util/sets
+  - pkg/util/strategicpatch
   - pkg/util/uuid
   - pkg/util/validation
   - pkg/util/validation/field
@@ -488,5 +531,6 @@ imports:
   - plugin/pkg/client/auth
   - plugin/pkg/client/auth/gcp
   - plugin/pkg/client/auth/oidc
+  - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 testImports: []
