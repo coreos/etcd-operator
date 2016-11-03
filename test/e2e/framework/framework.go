@@ -104,6 +104,10 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 				{
 					Name:  "etcd-operator",
 					Image: opImage,
+					Command: []string{
+						"/bin/sh", "-c",
+						"/usr/local/bin/etcd-operator --analytics=false",
+					},
 					Env: []api.EnvVar{
 						{
 							Name:      "MY_POD_NAMESPACE",
