@@ -184,7 +184,8 @@ func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 	if err != nil {
 		return err
 	}
-	err = kubecli.ReplicaSets(ns).Delete(name, nil)
+	orphanOption := false
+	err = kubecli.ReplicaSets(ns).Delete(name, &api.DeleteOptions{OrphanDependents: &orphanOption})
 	if err != nil {
 		return err
 	}
