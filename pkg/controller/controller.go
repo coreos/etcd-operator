@@ -36,7 +36,8 @@ import (
 )
 
 const (
-	tprName = "etcd-cluster.coreos.com"
+	tprName       = "etcd-cluster.coreos.com"
+	statusTPRName = "etcd-cluster-status.coreos.com"
 )
 
 var (
@@ -48,6 +49,8 @@ var (
 	ErrVersionOutdated = errors.New("requested version is outdated in apiserver")
 
 	initRetryWaitTime = 30 * time.Second
+
+	ReportStatusToTPR = false
 )
 
 type rawEvent struct {
@@ -72,6 +75,12 @@ type Config struct {
 	MasterHost    string
 	KubeCli       *unversioned.Client
 	PVProvisioner string
+}
+
+func init() {
+	if ReportStatusToTPR {
+		cluster.ReportStatusToTPR = true
+	}
 }
 
 func (c *Config) validate() error {
@@ -132,7 +141,7 @@ func (c *Controller) Run() error {
 				stopC := make(chan struct{})
 				c.stopChMap[clusterName] = stopC
 
-				nc := cluster.New(c.KubeCli, clusterName, c.Namespace, clusterSpec, stopC, &c.waitCluster)
+				nc := cluster.New(c.KubeCli, c.MasterHost, clusterName, c.Namespace, clusterSpec, stopC, &c.waitCluster)
 				c.clusters[clusterName] = nc
 				analytics.ClusterCreated()
 
@@ -170,7 +179,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		stopC := make(chan struct{})
 		c.stopChMap[item.Name] = stopC
 
-		nc := cluster.Restore(c.KubeCli, item.Name, c.Namespace, &item.Spec, stopC, &c.waitCluster)
+		nc := cluster.Restore(c.KubeCli, c.MasterHost, item.Name, c.Namespace, &item.Spec, stopC, &c.waitCluster)
 		c.clusters[item.Name] = nc
 
 		backup := item.Spec.Backup
@@ -201,6 +210,13 @@ func (c *Controller) initResource() (string, error) {
 			return "", err
 		}
 	}
+
+	err = c.createStatusTPR()
+	if err != nil && !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+		log.Errorf("failed to create status TPR: %v", err)
+		return "", err
+	}
+
 	err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
 	if err != nil {
 		log.Errorf("fail to create storage class: %v", err)
@@ -225,6 +241,28 @@ func (c *Controller) createTPR() error {
 	}
 
 	return k8sutil.WaitEtcdTPRReady(c.KubeCli.Client, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
+}
+
+func (c *Controller) createStatusTPR() error {
+	if !ReportStatusToTPR {
+		return nil
+	}
+
+	tpr := &extensions.ThirdPartyResource{
+		ObjectMeta: k8sapi.ObjectMeta{
+			Name: statusTPRName,
+		},
+		Versions: []extensions.APIVersion{
+			{Name: "v1"},
+		},
+		Description: "Statuses of managed etcd clusters",
+	}
+	_, err := c.KubeCli.ThirdPartyResources().Create(tpr)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {

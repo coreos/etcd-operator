@@ -35,6 +35,10 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 )
 
+var (
+	ReportStatusToTPR = false
+)
+
 type clusterEventType string
 
 const (
@@ -50,7 +54,8 @@ type clusterEvent struct {
 }
 
 type Cluster struct {
-	kclient *unversioned.Client
+	masterHost string
+	kclient    *unversioned.Client
 
 	status *Status
 
@@ -71,27 +76,28 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
-	return new(c, name, ns, spec, stopC, wg, true)
+func New(c *unversioned.Client, host, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
+	return new(c, host, name, ns, spec, stopC, wg, true)
 }
 
-func Restore(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
-	return new(c, name, ns, spec, stopC, wg, false)
+func Restore(c *unversioned.Client, host, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
+	return new(c, host, name, ns, spec, stopC, wg, false)
 }
 
-func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) *Cluster {
+func new(kclient *unversioned.Client, host, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) *Cluster {
 	if len(spec.Version) == 0 {
 		// TODO: set version in spec in apiserver
 		spec.Version = defaultVersion
 	}
 	c := &Cluster{
-		kclient:   kclient,
-		name:      name,
-		namespace: ns,
-		eventCh:   make(chan *clusterEvent, 100),
-		stopCh:    make(chan struct{}),
-		spec:      spec,
-		status:    &Status{},
+		kclient:    kclient,
+		masterHost: host,
+		name:       name,
+		namespace:  ns,
+		eventCh:    make(chan *clusterEvent, 100),
+		stopCh:     make(chan struct{}),
+		spec:       spec,
+		status:     &Status{},
 	}
 	if isNewCluster {
 		var err error
