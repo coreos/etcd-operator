@@ -231,7 +231,7 @@ Continued from above, you can simulate a operator crash and a member crash:
 $ kubectl delete -f example/etcd-operator.yaml
 pod "etcd-operator" deleted
 
-$ kubectl delete etcd-cluster-0001
+$ kubectl delete pod etcd-cluster-0001
 pod "etcd-cluster-0001" deleted
 ```
 
@@ -259,7 +259,7 @@ NAME                     TYPE
 etcd-operator-backup   kubernetes.io/gce-pd
 ```
 
-This is used to request the persistent volume to store the backup data. (TODO: We are planning to support AWS EBS soon.)
+This is used to request the persistent volume to store the backup data. (AWS EBS supported using --pv-provisioner=kubernetes.io/aws-ebs)
 
 Continued from last example, a persistent volume is claimed for the backup pod:
 
@@ -388,7 +388,7 @@ Check the other two pods and you should see the same result.
 ## Limitations
 
 - Backup works only for data in etcd3 storage, not for data in etcd2 storage.
-- Backup requires PV to work, and it only works on GCE(kubernetes.io/gce-pd) for now. We are planning to support AWS(kubernetes.io/aws-ebs) soon.
+- Backup requires PV to work, and it only works on GCE(kubernetes.io/gce-pd) and AWS(kubernetes.io/aws-ebs) for now. We are planning to support AWS(kubernetes.io/aws-ebs) soon.
 - Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with all nodes running in the same Kubernetes cluster.
 
 **The controller collects anonymous usage statistics to help us learning how the software is being used and how we can improve it. To disbale collection, run the controller with the flag `-analytics=false`**
