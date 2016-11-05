@@ -49,9 +49,10 @@ func CreateStorageClass(kubecli *unversioned.Client, pvProvisioner string) error
 }
 
 func createAndWaitPVC(kubecli *unversioned.Client, clusterName, ns string, volumeSizeInMB int) (*api.PersistentVolumeClaim, error) {
+	name := makePVCName(clusterName)
 	claim := &api.PersistentVolumeClaim{
 		ObjectMeta: api.ObjectMeta{
-			Name: makePVCName(clusterName),
+			Name: name,
 			Labels: map[string]string{
 				"etcd_cluster": clusterName,
 			},
@@ -70,26 +71,29 @@ func createAndWaitPVC(kubecli *unversioned.Client, clusterName, ns string, volum
 			},
 		},
 	}
-	retClaim, err := kubecli.PersistentVolumeClaims(ns).Create(claim)
+	_, err := kubecli.PersistentVolumeClaims(ns).Create(claim)
 	if err != nil {
-		return nil, err
+		if !IsKubernetesResourceAlreadyExistError(err) {
+			return nil, err
+		}
 	}
 
+	var retClaim *api.PersistentVolumeClaim
 	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
-		claim, err := kubecli.PersistentVolumeClaims(ns).Get(retClaim.Name)
+		var err error
+		retClaim, err = kubecli.PersistentVolumeClaims(ns).Get(name)
 		if err != nil {
 			return false, err
 		}
-		logrus.Infof("PV claim (%s) status.phase: %v", claim.Name, claim.Status.Phase)
-		if claim.Status.Phase != api.ClaimBound {
+		logrus.Infof("waiting PV claim (%s) to be 'Bound', current status: %v", name, retClaim.Status.Phase)
+		if retClaim.Status.Phase != api.ClaimBound {
 			return false, nil
 		}
 		return true, nil
 	})
 	if err != nil {
-		// TODO: remove retClaim
-		logrus.Errorf("fail to poll PVC (%s): %v", retClaim.Name, err)
-		return nil, err
+		wErr := fmt.Errorf("fail to wait PVC (%s) 'Bound': %v", name, err)
+		return nil, wErr
 	}
 
 	return retClaim, nil
@@ -152,7 +156,9 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 		},
 	})
 	if err != nil {
-		return err
+		if !IsKubernetesResourceAlreadyExistError(err) {
+			return err
+		}
 	}
 
 	svc := &api.Service{
@@ -173,7 +179,9 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 		},
 	}
 	if _, err := kubecli.Services(ns).Create(svc); err != nil {
-		return err
+		if !IsKubernetesResourceAlreadyExistError(err) {
+			return err
+		}
 	}
 	return nil
 }
