@@ -388,7 +388,7 @@ Check the other two pods and you should see the same result.
 ## Limitations
 
 - Backup works only for data in etcd3 storage, not for data in etcd2 storage.
-- Backup requires PV to work, and it only works on GCE(kubernetes.io/gce-pd) and AWS(kubernetes.io/aws-ebs) for now. We are planning to support AWS(kubernetes.io/aws-ebs) soon.
+- Backup requires PV to work, and it only works on GCE(kubernetes.io/gce-pd) and AWS(kubernetes.io/aws-ebs) for now.
 - Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with all nodes running in the same Kubernetes cluster.
 
 **The controller collects anonymous usage statistics to help us learning how the software is being used and how we can improve it. To disbale collection, run the controller with the flag `-analytics=false`**
