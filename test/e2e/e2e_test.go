@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/cluster"
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
@@ -146,15 +145,9 @@ func TestDisasterRecoveryAll(t *testing.T) {
 
 func testDisasterRecovery(t *testing.T, numToKill int) {
 	f := framework.Global
-	backupPolicy := &spec.BackupPolicy{
-		SnapshotIntervalInSecond: 60 * 60,
-		MaxSnapshot:              5,
-		VolumeSizeInMB:           512,
-		StorageType:              spec.BackupStorageTypePersistentVolume,
-		CleanupOnClusterDelete:   true,
-	}
 	origEtcd := e2eutil.MakeEtcdCluster("test-etcd-", 3)
-	origEtcd = e2eutil.EtcdClusterWithBackup(origEtcd, backupPolicy)
+	backupPolicy := e2eutil.MakeBackupPolicy()
+	origEtcd = e2eutil.EtcdClusterWithBackup(*origEtcd, backupPolicy)
 	testEtcd, err := e2eutil.CreateEtcdCluster(f, origEtcd)
 	if err != nil {
 		t.Fatal(err)

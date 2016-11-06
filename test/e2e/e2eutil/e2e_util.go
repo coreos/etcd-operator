@@ -63,6 +63,16 @@ func WaitSizeReachedWithFilter(f *framework.Framework, clusterName string, size,
 	return names, nil
 }
 
+func MakeBackupPolicy() *spec.BackupPolicy {
+	return &spec.BackupPolicy{
+		SnapshotIntervalInSecond: 60 * 60,
+		MaxSnapshot:              5,
+		VolumeSizeInMB:           512,
+		StorageType:              spec.BackupStorageTypePersistentVolume,
+		CleanupOnClusterDelete:   true,
+	}
+}
+
 func MakeEtcdCluster(genName string, size int) *spec.EtcdCluster {
 	return &spec.EtcdCluster{
 		TypeMeta: unversioned.TypeMeta{
@@ -78,10 +88,11 @@ func MakeEtcdCluster(genName string, size int) *spec.EtcdCluster {
 	}
 }
 
-func EtcdClusterWithBackup(ec *spec.EtcdCluster, backupPolicy *spec.BackupPolicy) *spec.EtcdCluster {
+func EtcdClusterWithBackup(ec spec.EtcdCluster, backupPolicy *spec.BackupPolicy) *spec.EtcdCluster {
 	ec.Spec.Backup = backupPolicy
-	return ec
+	return &ec
 }
+
 func EtcdClusterWithVersion(ec *spec.EtcdCluster, version string) *spec.EtcdCluster {
 	ec.Spec.Version = version
 	return ec
