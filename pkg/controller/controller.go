@@ -132,7 +132,7 @@ func (c *Controller) Run() error {
 
 				backup := clusterSpec.Backup
 				if backup != nil && backup.MaxSnapshot != 0 {
-					err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, *backup)
+					err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, c.PVProvisioner, *backup)
 					if err != nil {
 						log.Errorf("cluster (%s) is dead due to failure to create backup: %v", clusterName, err)
 						continue
@@ -181,7 +181,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		clusterName := item.Name
 		backup := item.Spec.Backup
 		if backup != nil && backup.MaxSnapshot != 0 {
-			err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, *backup)
+			err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, c.PVProvisioner, *backup)
 			if err != nil {
 				log.Errorf("cluster (%s) is dead due to failure to create backup: %v", clusterName, err)
 				continue
@@ -198,28 +198,28 @@ func (c *Controller) findAllClusters() (string, error) {
 }
 
 func (c *Controller) initResource() (string, error) {
+	watchVersion := "0"
 	err := c.createTPR()
 	if err != nil {
-		switch {
-		// etcd controller has been initialized before. We don't need to
-		// repeat the init process but recover cluster.
-		case k8sutil.IsKubernetesResourceAlreadyExistError(err):
-			watchVersion, err := c.findAllClusters()
+		if k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+			// TPR has been initialized before. We need to recover existing cluster.
+			watchVersion, err = c.findAllClusters()
 			if err != nil {
 				return "", err
 			}
-			return watchVersion, nil
-		default:
+		} else {
 			log.Errorf("fail to create TPR: %v", err)
 			return "", err
 		}
 	}
 	err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
 	if err != nil {
-		log.Errorf("fail to create storage class: %v", err)
-		return "", err
+		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+			log.Errorf("fail to create storage class: %v", err)
+			return "", err
+		}
 	}
-	return "0", nil
+	return watchVersion, nil
 }
 
 func (c *Controller) createTPR() error {

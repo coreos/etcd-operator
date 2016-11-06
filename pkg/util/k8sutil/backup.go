@@ -16,6 +16,7 @@ package k8sutil
 
 import (
 	"fmt"
+	"path"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -33,14 +34,16 @@ import (
 )
 
 const (
-	storageClassName          = "etcd-operator-backup"
+	storageClassPrefix        = "etcd-operator-backup"
 	BackupPodSelectorAppField = "etcd_backup_tool"
 )
 
 func CreateStorageClass(kubecli *unversioned.Client, pvProvisioner string) error {
+	// We need to get rid of prefix because naming doesn't support "/".
+	name := storageClassPrefix + "-" + path.Base(pvProvisioner)
 	class := &storage.StorageClass{
 		ObjectMeta: api.ObjectMeta{
-			Name: storageClassName,
+			Name: name,
 		},
 		Provisioner: pvProvisioner,
 	}
@@ -48,8 +51,9 @@ func CreateStorageClass(kubecli *unversioned.Client, pvProvisioner string) error
 	return err
 }
 
-func createAndWaitPVC(kubecli *unversioned.Client, clusterName, ns string, volumeSizeInMB int) (*api.PersistentVolumeClaim, error) {
+func createAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisioner string, volumeSizeInMB int) (*api.PersistentVolumeClaim, error) {
 	name := makePVCName(clusterName)
+	storageClassName := storageClassPrefix + "-" + path.Base(pvProvisioner)
 	claim := &api.PersistentVolumeClaim{
 		ObjectMeta: api.ObjectMeta{
 			Name: name,
@@ -101,8 +105,8 @@ func createAndWaitPVC(kubecli *unversioned.Client, clusterName, ns string, volum
 
 var BackupImage = "quay.io/coreos/etcd-operator:latest"
 
-func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, policy spec.BackupPolicy) error {
-	claim, err := createAndWaitPVC(kubecli, clusterName, ns, policy.VolumeSizeInMB)
+func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns, pvProvisioner string, policy spec.BackupPolicy) error {
+	claim, err := createAndWaitPVC(kubecli, clusterName, ns, pvProvisioner, policy.VolumeSizeInMB)
 	if err != nil {
 		return err
 	}
