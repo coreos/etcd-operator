@@ -129,23 +129,34 @@ func (c *Controller) Run() error {
 			switch event.Type {
 			case "ADDED":
 				clusterSpec := &event.Object.Spec
-				stopC := make(chan struct{})
-				c.stopChMap[clusterName] = stopC
-
-				nc := cluster.New(c.KubeCli, clusterName, c.Namespace, clusterSpec, stopC, &c.waitCluster)
-				c.clusters[clusterName] = nc
-				analytics.ClusterCreated()
 
 				backup := clusterSpec.Backup
 				if backup != nil && backup.MaxSnapshot != 0 {
 					err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, *backup)
 					if err != nil {
-						panic(err)
+						log.Errorf("cluster (%s) is dead due to failure to create backup: %v", clusterName, err)
+						continue
 					}
 				}
+
+				stopC := make(chan struct{})
+				c.stopChMap[clusterName] = stopC
+
+				nc := cluster.New(c.KubeCli, clusterName, c.Namespace, clusterSpec, stopC, &c.waitCluster)
+				c.clusters[clusterName] = nc
+
+				analytics.ClusterCreated()
 			case "MODIFIED":
+				if c.clusters[clusterName] == nil {
+					log.Warningf("cluster (%s) isn't alive, but received update", clusterName)
+					break
+				}
 				c.clusters[clusterName].Update(&event.Object.Spec)
 			case "DELETED":
+				if c.clusters[clusterName] == nil {
+					log.Warningf("cluster (%s) isn't alive, but received delete", clusterName)
+					break
+				}
 				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)
 				analytics.ClusterDeleted()
@@ -167,19 +178,21 @@ func (c *Controller) findAllClusters() (string, error) {
 		return "", err
 	}
 	for _, item := range list.Items {
+		clusterName := item.Name
+		backup := item.Spec.Backup
+		if backup != nil && backup.MaxSnapshot != 0 {
+			err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, *backup)
+			if err != nil {
+				log.Errorf("cluster (%s) is dead due to failure to create backup: %v", clusterName, err)
+				continue
+			}
+		}
+
 		stopC := make(chan struct{})
 		c.stopChMap[item.Name] = stopC
 
 		nc := cluster.Restore(c.KubeCli, item.Name, c.Namespace, &item.Spec, stopC, &c.waitCluster)
 		c.clusters[item.Name] = nc
-
-		backup := item.Spec.Backup
-		if backup != nil && backup.MaxSnapshot != 0 {
-			err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, item.Name, c.Namespace, *backup)
-			if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-				panic(err)
-			}
-		}
 	}
 	return list.ListMeta.ResourceVersion, nil
 }
