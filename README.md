@@ -259,7 +259,7 @@ NAME                     TYPE
 etcd-operator-backup   kubernetes.io/gce-pd
 ```
 
-This is used to request the persistent volume to store the backup data. (AWS EBS supported using --pv-provisioner=kubernetes.io/aws-ebs)
+This is used to request the persistent volume to store the backup data. (AWS EBS supported using --pv-provisioner=kubernetes.io/aws-ebs. See [AWS deployment](example/deployment-aws.yaml))
 
 Continued from last example, a persistent volume is claimed for the backup pod:
 
