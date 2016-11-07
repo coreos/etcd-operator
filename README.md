@@ -45,7 +45,6 @@ NAME                             READY     STATUS    RESTARTS   AGE
 etcd-cluster-0000                1/1       Running   0          23s
 etcd-cluster-0001                1/1       Running   0          16s
 etcd-cluster-0002                1/1       Running   0          8s
-etcd-cluster-backup-tool-rhygq   1/1       Running   0          18s
 ```
 
 ```bash
@@ -54,7 +53,6 @@ NAME                       CLUSTER-IP     EXTERNAL-IP   PORT(S)             AGE
 etcd-cluster-0000          10.0.84.34     <none>        2380/TCP,2379/TCP   37s
 etcd-cluster-0001          10.0.51.78     <none>        2380/TCP,2379/TCP   30s
 etcd-cluster-0002          10.0.140.141   <none>        2380/TCP,2379/TCP   22s
-etcd-cluster-backup-tool   10.0.59.243    <none>        19999/TCP           32s
 ```
 
 ```bash
@@ -96,11 +94,6 @@ $ cat body.json
     "namespace": "default"
   },
   "spec": {
-    "backup": {
-      "maxSnapshot": 5,
-      "snapshotIntervalInSecond": 30,
-      "volumeSizeInMB": 512
-    },
     "size": 5
   }
 }
@@ -123,11 +116,6 @@ $ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0
       "creationTimestamp":"2016-09-30T05:32:29Z"
    },
    "spec":{
-      "backup":{
-         "maxSnapshot":5,
-         "snapshotIntervalInSecond":30,
-         "volumeSizeInMB":512
-      },
       "size":5
    }
 }
@@ -143,7 +131,6 @@ etcd-cluster-0001                1/1       Running             0          2m
 etcd-cluster-0002                1/1       Running             0          2m
 etcd-cluster-0003                1/1       Running             0          9s
 etcd-cluster-0004                0/1       ContainerCreating   0          1s
-etcd-cluster-backup-tool-e9gkv   1/1       Running             0          2m
 ```
 
 Now we can decrease the size of cluster from 5 back to 3.
@@ -160,11 +147,6 @@ $ cat body.json
     "namespace": "default"
   },
   "spec": {
-    "backup": {
-      "maxSnapshot": 5,
-      "snapshotIntervalInSecond": 30,
-      "volumeSizeInMB": 512
-    },
     "size": 3
   }
 }
@@ -184,7 +166,6 @@ NAME                             READY     STATUS    RESTARTS   AGE
 etcd-cluster-0002                1/1       Running   0          3m
 etcd-cluster-0003                1/1       Running   0          1m
 etcd-cluster-0004                1/1       Running   0          1m
-etcd-cluster-backup-tool-e9gkv   1/1       Running   0          3m
 ```
 
 ## Destroy an existing etcd cluster
@@ -228,8 +209,8 @@ If the etcd operator restarts, it can recover its previous state.
 Continued from above, you can simulate a operator crash and a member crash:
 
 ```bash
-$ kubectl delete -f example/etcd-operator.yaml
-pod "etcd-operator" deleted
+$ kubectl delete -f example/deployment.yaml
+deployment "etcd-operator" deleted
 
 $ kubectl delete pod etcd-cluster-0001
 pod "etcd-cluster-0001" deleted
@@ -238,8 +219,9 @@ pod "etcd-cluster-0001" deleted
 Then restart the etcd operator. It should automatically recover itself. It also recovers the etcd cluster:
 
 ```bash
-$ kubectl create -f example/etcd-cluster.yaml
-pod "etcd-operator" created
+$ kubectl create -f example/deployment.yaml
+deployment "etcd-operator" created
+
 $ kubectl get pods
 NAME                READY     STATUS    RESTARTS   AGE
 etcd-cluster-0002   1/1       Running   0          4m
@@ -269,11 +251,18 @@ NAME               STATUS    VOLUME                                     CAPACITY
 pvc-etcd-cluster   Bound     pvc-164d18fe-8797-11e6-a8b4-42010af00002   1Gi        RWO           14m
 ```
 
+To enable backup, create an etcd cluster with [backup enabled spec](example/example-etcd-cluster-with-backup.yaml).
+
+```
+$ kubectl delete -f example/example-etcd-cluster.yaml
+$ kubectl create -f example/example-etcd-cluster-with-backup.yaml
+```
+
 Let's try to write some data into etcd:
 
 ```
 $ kubectl run --rm -i --tty fun --image quay.io/coreos/etcd --restart=Never -- /bin/sh
-/ # ETCDCTL_API=3 etcdctl --endpoints http://etcd-cluster-0002:2379 put foo bar
+/ # ETCDCTL_API=3 etcdctl --endpoints http://etcd-cluster-with-backup-0002:2379 put foo bar
 OK
 (ctrl-D to exit)
 ```
@@ -281,9 +270,9 @@ OK
 Now let's kill two pods to simulate a disaster failure:
 
 ```
-$ kubectl delete pod etcd-cluster-0002 etcd-cluster-0003 --now
-pod "etcd-cluster-0002" deleted
-pod "etcd-cluster-0003" deleted
+$ kubectl delete pod etcd-cluster-with-backup-0000 etcd-cluster-with-backup-0001 --now
+pod "etcd-cluster-with-backup-0000" deleted
+pod "etcd-cluster-with-backup-0001" deleted
 ```
 
 Now quorum is lost. The etcd operator will start to recover the cluster by:
@@ -292,16 +281,16 @@ Now quorum is lost. The etcd operator will start to recover the cluster by:
 
 ```
 $ kubectl get pods
-NAME                             READY     STATUS     RESTARTS   AGE
-etcd-cluster-0005                0/1       Init:0/2   0          11s
-etcd-cluster-backup-tool-e9gkv   1/1       Running    0          18m
+NAME                                         READY     STATUS     RESTARTS   AGE
+etcd-cluster-with-backup-0002                0/1       Init:0/2   0          11s
+etcd-cluster-with-backup-backup-tool-e9gkv   1/1       Running    0          18m
 ...
 $ kubectl get pods
-NAME                             READY     STATUS    RESTARTS   AGE
-etcd-cluster-0005                1/1       Running   0          3m
-etcd-cluster-0006                1/1       Running   0          3m
-etcd-cluster-0007                1/1       Running   0          3m
-etcd-cluster-backup-tool-e9gkv   1/1       Running   0          22m
+NAME                                         READY     STATUS    RESTARTS   AGE
+etcd-cluster-with-backup-0002                1/1       Running   0          3m
+etcd-cluster-with-backup-0003                1/1       Running   0          3m
+etcd-cluster-with-backup-0004                1/1       Running   0          3m
+etcd-cluster-with-backup-backup-tool-e9gkv   1/1       Running   0          22m
 ```
 
 Note: Sometimes member recovery can fail because of a race caused by a delay in pod deletion. The process will be retried in this event.
