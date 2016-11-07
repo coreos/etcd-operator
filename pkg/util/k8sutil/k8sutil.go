@@ -142,8 +142,17 @@ func MakeBackupName(clusterName string) string {
 	return fmt.Sprintf("%s-backup-tool", clusterName)
 }
 
-func CreateEtcdService(kclient *unversioned.Client, etcdName, clusterName, ns string) (*api.Service, error) {
-	svc := makeEtcdService(etcdName, clusterName)
+func CreateEtcdMemberService(kclient *unversioned.Client, etcdName, clusterName, ns string) (*api.Service, error) {
+	svc := makeEtcdMemberService(etcdName, clusterName)
+	retSvc, err := kclient.Services(ns).Create(svc)
+	if err != nil {
+		return nil, err
+	}
+	return retSvc, nil
+}
+
+func CreateEtcdService(kclient *unversioned.Client, clusterName, ns string) (*api.Service, error) {
+	svc := makeEtcdService(clusterName)
 	retSvc, err := kclient.Services(ns).Create(svc)
 	if err != nil {
 		return nil, err
@@ -169,8 +178,33 @@ func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod, time
 	return err
 }
 
+func makeEtcdService(clusterName string) *api.Service {
+	labels := map[string]string{
+		"app":          "etcd",
+		"etcd_cluster": clusterName,
+	}
+	svc := &api.Service{
+		ObjectMeta: api.ObjectMeta{
+			Name:   clusterName,
+			Labels: labels,
+		},
+		Spec: api.ServiceSpec{
+			Ports: []api.ServicePort{
+				{
+					Name:       "client",
+					Port:       2379,
+					TargetPort: intstr.FromInt(2379),
+					Protocol:   api.ProtocolTCP,
+				},
+			},
+			Selector: labels,
+		},
+	}
+	return svc
+}
+
 // TODO: converge the port logic with member ClientAddr() and PeerAddr()
-func makeEtcdService(etcdName, clusterName string) *api.Service {
+func makeEtcdMemberService(etcdName, clusterName string) *api.Service {
 	labels := map[string]string{
 		"app":          "etcd",
 		"etcd_node":    etcdName,
@@ -222,6 +256,12 @@ func makeEtcdNodePortService(etcdName, clusterName string) *api.Service {
 					Name:       "server",
 					Port:       2380,
 					TargetPort: intstr.FromInt(2380),
+					Protocol:   api.ProtocolTCP,
+				},
+				{
+					Name:       "client",
+					Port:       2379,
+					TargetPort: intstr.FromInt(2379),
 					Protocol:   api.ProtocolTCP,
 				},
 			},
