@@ -94,7 +94,11 @@ func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, s
 		status:    &Status{},
 	}
 	if isNewCluster {
-		var err error
+		err := c.createClientServiceLB()
+		if err != nil {
+			// todo: do not panic!
+			panic("todo:" + err.Error())
+		}
 		if spec.Seed == nil {
 			err = c.newSeedMember()
 		} else {
@@ -245,7 +249,7 @@ func (c *Cluster) migrateSeedMember() error {
 	etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
 	m := &etcdutil.Member{Name: etcdName}
 
-	svc, err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace)
+	svc, err := k8sutil.CreateEtcdMemberService(c.kclient, m.Name, c.name, c.namespace)
 	if err != nil {
 		return err
 	}
@@ -410,11 +414,36 @@ func (c *Cluster) delete() {
 	if c.spec.Backup != nil {
 		k8sutil.DeleteBackupReplicaSetAndService(c.kclient, c.name, c.namespace, c.spec.Backup.CleanupOnClusterDelete)
 	}
+
+	err = c.deleteClientServiceLB()
+	if err != nil {
+		// todo: do not panic!
+		panic("todo:" + err.Error())
+	}
+}
+
+func (c *Cluster) createClientServiceLB() error {
+	if _, err := k8sutil.CreateEtcdService(c.kclient, c.name, c.namespace); err != nil {
+		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Cluster) deleteClientServiceLB() error {
+	err := c.kclient.Services(c.namespace).Delete(c.name)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
 	// TODO: remove garbage service. Because we will fail after service created before pods created.
-	if _, err := k8sutil.CreateEtcdService(c.kclient, m.Name, c.name, c.namespace); err != nil {
+	if _, err := k8sutil.CreateEtcdMemberService(c.kclient, m.Name, c.name, c.namespace); err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
 		}
