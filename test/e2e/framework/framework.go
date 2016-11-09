@@ -15,7 +15,6 @@
 package framework
 
 import (
-	"flag"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -28,6 +27,13 @@ import (
 
 var Global *Framework
 
+type Config struct {
+	KubeConfig    string
+	OpImage       string
+	Namespace     string
+	PVProvisioner string
+}
+
 type Framework struct {
 	KubeClient *unversioned.Client
 	MasterHost string
@@ -35,13 +41,8 @@ type Framework struct {
 }
 
 // Setup setups a test framework and points "Global" to it.
-func Setup() error {
-	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
-	opImage := flag.String("operator-image", "", "operator image, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator")
-	ns := flag.String("namespace", "default", "e2e test namespace")
-	flag.Parse()
-
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+func Setup(cfg Config) error {
+	config, err := clientcmd.BuildConfigFromFlags("", cfg.KubeConfig)
 	if err != nil {
 		return err
 	}
@@ -50,10 +51,10 @@ func Setup() error {
 		return err
 	}
 	var namespace *api.Namespace
-	if *ns != "default" {
+	if cfg.Namespace != "default" {
 		namespace, err = cli.Namespaces().Create(&api.Namespace{
 			ObjectMeta: api.ObjectMeta{
-				Name: *ns,
+				Name: cfg.Namespace,
 			},
 		})
 	} else {
@@ -68,7 +69,7 @@ func Setup() error {
 		KubeClient: cli,
 		Namespace:  namespace,
 	}
-	return Global.setup(*opImage)
+	return Global.setup(cfg.OpImage, cfg.PVProvisioner)
 }
 
 func Teardown() error {
@@ -83,8 +84,8 @@ func Teardown() error {
 	return nil
 }
 
-func (f *Framework) setup(opImage string) error {
-	if err := f.setupEtcdOperator(opImage); err != nil {
+func (f *Framework) setup(opImage, pvProvisioner string) error {
+	if err := f.setupEtcdOperator(opImage, pvProvisioner); err != nil {
 		logrus.Errorf("fail to setup etcd operator: %v", err)
 		return err
 	}
@@ -92,7 +93,11 @@ func (f *Framework) setup(opImage string) error {
 	return nil
 }
 
-func (f *Framework) setupEtcdOperator(opImage string) error {
+func (f *Framework) setupEtcdOperator(opImage, pvProvisioner string) error {
+	pvParam := ""
+	if len(pvProvisioner) != 0 {
+		pvParam = " --pv-provisioner=" + pvProvisioner
+	}
 	// TODO: unify this and the yaml file in example/
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
@@ -106,7 +111,7 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 					Image: opImage,
 					Command: []string{
 						"/bin/sh", "-c",
-						"/usr/local/bin/etcd-operator --analytics=false",
+						"/usr/local/bin/etcd-operator --analytics=false" + pvParam,
 					},
 					Env: []api.EnvVar{
 						{

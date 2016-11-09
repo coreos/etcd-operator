@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
 	"github.com/coreos/etcd/embed"
@@ -69,18 +70,18 @@ func TestCreateClusterWithSeedMember(t *testing.T) {
 		},
 	}
 
-	testEtcd, err := createEtcdCluster(f, c)
+	testEtcd, err := e2eutil.CreateEtcdCluster(f, c)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+		if err := e2eutil.DeleteEtcdCluster(f, testEtcd.Name); err != nil {
 			t.Fatal(err)
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 120); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(f, testEtcd.Name, 3, 120); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 }

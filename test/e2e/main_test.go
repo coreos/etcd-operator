@@ -15,16 +15,22 @@
 package e2e
 
 import (
+	"flag"
 	"os"
 	"testing"
 
-	"github.com/coreos/etcd-operator/test/e2e/framework"
-
 	"github.com/Sirupsen/logrus"
+	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
 func TestMain(m *testing.M) {
-	if err := framework.Setup(); err != nil {
+	cfg := framework.Config{}
+	flag.StringVar(&cfg.KubeConfig, "kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
+	flag.StringVar(&cfg.OpImage, "operator-image", "", "operator image, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator")
+	flag.StringVar(&cfg.Namespace, "namespace", "default", "e2e test namespace")
+	flag.Parse()
+
+	if err := framework.Setup(cfg); err != nil {
 		logrus.Errorf("fail to setup framework: %v", err)
 		os.Exit(1)
 	}
