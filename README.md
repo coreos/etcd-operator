@@ -202,7 +202,7 @@ etcd-cluster-0002   1/1       Running   0          5s
 etcd-cluster-0003   1/1       Running   0          5s
 ```
 
-### etcd operator recovery
+## etcd operator recovery
 
 If the etcd operator restarts, it can recover its previous state.
 
