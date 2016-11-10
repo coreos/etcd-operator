@@ -47,7 +47,7 @@ func TestEtcdUpgrade(t *testing.T) {
 
 	testEtcd = etcdClusterWithVersion(testEtcd, "v3.1.0-alpha.1")
 
-	if err := updateEtcdCluster(f, testEtcd); err != nil {
+	if _, err := updateEtcdCluster(f, testEtcd); err != nil {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 

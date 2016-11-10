@@ -148,12 +148,17 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			switch event.typ {
 			case eventModifyCluster:
 				// TODO: we can't handle another upgrade while an upgrade is in progress
-				log.Printf("spec update: from: %v, to: %v", c.spec, event.spec)
+				log.Infof("spec update: from: %v to: %v", c.spec, event.spec)
 				c.spec = &event.spec
 			case eventDeleteCluster:
 				return
 			}
 		case <-time.After(5 * time.Second):
+			if c.spec.Paused {
+				log.Infof("control is paused, skipping reconcilation")
+				continue
+			}
+
 			running, pending, err := c.pollPods()
 			if err != nil {
 				log.Errorf("cluster (%v) fail to poll pods: %v", c.name, err)
@@ -343,7 +348,7 @@ func (c *Cluster) migrateSeedMember() error {
 
 func (c *Cluster) Update(spec *spec.ClusterSpec) {
 	anyInterestedChange := false
-	if spec.Size != c.spec.Size {
+	if (spec.Size != c.spec.Size) || (spec.Paused != c.spec.Paused) {
 		anyInterestedChange = true
 	}
 	if len(spec.Version) == 0 {
