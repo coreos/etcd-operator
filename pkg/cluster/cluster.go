@@ -26,7 +26,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
@@ -50,6 +50,8 @@ type clusterEvent struct {
 }
 
 type Cluster struct {
+	logger *logrus.Entry
+
 	kclient *unversioned.Client
 
 	status *Status
@@ -85,6 +87,7 @@ func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, s
 		spec.Version = defaultVersion
 	}
 	c := &Cluster{
+		logger:    logrus.WithField("cluster", name),
 		kclient:   kclient,
 		name:      name,
 		namespace: ns,
@@ -132,7 +135,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 
 	defer func() {
 		if needDeleteCluster {
-			log.Warningf("deleting cluster (%v)", c.name)
+			c.logger.Infof("deleting cluster")
 			c.delete()
 		}
 		close(c.stopCh)
@@ -148,42 +151,42 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			switch event.typ {
 			case eventModifyCluster:
 				// TODO: we can't handle another upgrade while an upgrade is in progress
-				log.Infof("spec update: from: %v to: %v", c.spec, event.spec)
+				c.logger.Infof("spec update: from: %v to: %v", c.spec, event.spec)
 				c.spec = &event.spec
 			case eventDeleteCluster:
 				return
 			}
 		case <-time.After(5 * time.Second):
 			if c.spec.Paused {
-				log.Infof("control is paused, skipping reconcilation")
+				c.logger.Infof("control is paused, skipping reconcilation")
 				continue
 			}
 
 			running, pending, err := c.pollPods()
 			if err != nil {
-				log.Errorf("cluster (%v) fail to poll pods: %v", c.name, err)
+				c.logger.Errorf("fail to poll pods: %v", err)
 				continue
 			}
 			if len(pending) > 0 {
-				log.Infof("cluster (%v) skip reconciliation: running (%v), pending (%v)", c.name, k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
+				c.logger.Infof("skip reconciliation: running (%v), pending (%v)", k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
 				continue
 			}
 			if len(running) == 0 {
-				log.Warningf("cluster (%v) all etcd pods are dead. Trying to recover from a previous backup", c.name)
+				c.logger.Warningf("all etcd pods are dead. Trying to recover from a previous backup")
 				err := c.disasterRecovery(nil)
 				if err != nil {
 					if err == errNoBackupExist {
 						panic("TODO: mark cluster dead if no backup for disaster recovery.")
 					}
-					log.Errorf("cluster (%v) fail to recover. Will retry later: %v", c.name, err)
+					c.logger.Errorf("fail to recover. Will retry later: %v", err)
 				}
-				continue // Backoff, either on normal recovery or error.
+				continue // Back-off, either on normal recovery or error.
 			}
 
 			if err := c.reconcile(running); err != nil {
-				log.Errorf("cluster (%v) fail to reconcile: %v", c.name, err)
+				c.logger.Errorf("fail to reconcile: %v", err)
 				if isFatalError(err) {
-					log.Errorf("cluster (%v) had fatal error: %v", c.name, err)
+					c.logger.Errorf("exiting for fatal error: %v", err)
 					return
 				}
 			}
@@ -208,11 +211,11 @@ func (c *Cluster) makeSeedMember() *etcdutil.Member {
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	m := c.makeSeedMember()
 	if err := c.createPodAndService(etcdutil.NewMemberSet(m), m, "new", recoverFromBackup); err != nil {
-		log.Errorf("failed to create seed member (%s): %v", m.Name, err)
+		c.logger.Errorf("failed to create seed member (%s): %v", m.Name, err)
 		return err
 	}
 	c.idCounter++
-	log.Infof("created cluster (%s) with seed member (%s)", c.name, m.Name)
+	c.logger.Infof("cluster created with seed member (%s)", m.Name)
 	return nil
 }
 
@@ -225,7 +228,7 @@ func (c *Cluster) restoreSeedMember() error {
 }
 
 func (c *Cluster) migrateSeedMember() error {
-	log.Infof("migrating seed member (%s)", c.spec.Seed.MemberClientEndpoints)
+	c.logger.Infof("migrating seed member (%s)", c.spec.Seed.MemberClientEndpoints)
 
 	cfg := clientv3.Config{
 		Endpoints:   c.spec.Seed.MemberClientEndpoints,
@@ -248,7 +251,7 @@ func (c *Cluster) migrateSeedMember() error {
 	seedMember := resp.Members[0]
 	seedID := resp.Members[0].ID
 
-	log.Infof("adding a new member")
+	c.logger.Infof("adding a new member")
 
 	// create the first member inside Kubernetes for migration
 	etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
@@ -258,7 +261,7 @@ func (c *Cluster) migrateSeedMember() error {
 	if err != nil {
 		return err
 	}
-	log.Info("created etcd service")
+	c.logger.Info("created etcd service")
 
 	// Used the service IP as additional peer URL so that the seed member can access it.
 	m.AdditionalPeerURL = fmt.Sprintf("http://%s:2380", svc.Spec.ClusterIP)
@@ -281,7 +284,7 @@ func (c *Cluster) migrateSeedMember() error {
 	}
 	c.idCounter++
 	etcdcli.Close()
-	log.Infof("added the new member")
+	c.logger.Infof("added the new member")
 
 	// wait for the delay
 	if c.spec.Seed.RemoveDelay == 0 {
@@ -292,10 +295,10 @@ func (c *Cluster) migrateSeedMember() error {
 	}
 
 	delay := time.Duration(c.spec.Seed.RemoveDelay) * time.Second
-	log.Infof("wait %v before remove the seed member", delay)
+	c.logger.Infof("wait %v before remove the seed member", delay)
 	time.Sleep(delay)
 
-	log.Infof("removing the seed member")
+	c.logger.Infof("removing the seed member")
 
 	cfg = clientv3.Config{
 		Endpoints:   []string{m.ClientAddr()},
@@ -316,7 +319,7 @@ func (c *Cluster) migrateSeedMember() error {
 		return fmt.Errorf("etcdcli failed to remove seed member: %v", err)
 	}
 
-	log.Infof("removed the seed member")
+	c.logger.Infof("removed the seed member")
 
 	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err = etcdcli.MemberList(ctx)
@@ -325,7 +328,7 @@ func (c *Cluster) migrateSeedMember() error {
 		return err
 	}
 
-	log.Infof("updating the peer urls (%v) for the member %x", resp.Members[0].PeerURLs, resp.Members[0].ID)
+	c.logger.Infof("updating the peer urls (%v) for the member %x", resp.Members[0].PeerURLs, resp.Members[0].ID)
 
 	m.AdditionalPeerURL = ""
 	for {
@@ -341,7 +344,7 @@ func (c *Cluster) migrateSeedMember() error {
 	}
 
 	etcdcli.Close()
-	log.Infof("finished the member migration")
+	c.logger.Infof("finished the member migration")
 
 	return nil
 }
@@ -394,7 +397,8 @@ func findID(name string) int {
 	i := strings.LastIndex(name, "-")
 	id, err := strconv.Atoi(name[i+1:])
 	if err != nil {
-		log.Fatalf("fail to extract valid ID from name (%s): %v", name, err)
+		// TODO: do not panic for single cluster error
+		panic(fmt.Sprintf("TODO: fail to extract valid ID from name (%s): %v", name, err))
 	}
 	return id
 }

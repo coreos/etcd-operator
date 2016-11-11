@@ -19,8 +19,6 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-
-	"github.com/Sirupsen/logrus"
 )
 
 func (c *Cluster) upgradeOneMember(m *etcdutil.Member) error {
@@ -28,13 +26,13 @@ func (c *Cluster) upgradeOneMember(m *etcdutil.Member) error {
 	if err != nil {
 		return fmt.Errorf("fail to get pod (%s): %v", m.Name, err)
 	}
-	logrus.Infof("upgrading the etcd member %v from %s to %s", m.Name, k8sutil.GetEtcdVersion(pod), c.spec.Version)
+	c.logger.Infof("upgrading the etcd member %v from %s to %s", m.Name, k8sutil.GetEtcdVersion(pod), c.spec.Version)
 	pod.Spec.Containers[0].Image = k8sutil.MakeEtcdImage(c.spec.Version)
 	k8sutil.SetEtcdVersion(pod, c.spec.Version)
 	_, err = c.kclient.Pods(c.namespace).Update(pod)
 	if err != nil {
 		return fmt.Errorf("fail to update the etcd member (%s): %v", m.Name, err)
 	}
-	logrus.Infof("finished upgrading the etcd member %v", m.Name)
+	c.logger.Infof("finished upgrading the etcd member %v", m.Name)
 	return nil
 }
