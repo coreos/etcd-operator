@@ -24,7 +24,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"golang.org/x/net/context"
@@ -39,8 +38,8 @@ var (
 // - it tries to reconcile the cluster to desired size.
 // - if the cluster needs for upgrade, it tries to upgrade old member one by one.
 func (c *Cluster) reconcile(pods []*api.Pod) error {
-	log.Println("Reconciling:")
-	defer log.Println("Finish reconciling")
+	c.logger.Infoln("Start reconciling")
+	defer c.logger.Infoln("Finish reconciling")
 
 	switch {
 	case len(pods) != c.spec.Size:
@@ -74,7 +73,7 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 // 4. If len(L) < len(members)/2 + 1, quorum lost. Go to recovery process.
 // 5. Add one missing member. END.
 func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
-	log.Infof("Running members: %s", running)
+	c.logger.Infoln("running members: %s", running)
 	if len(c.members) == 0 {
 		cfg := clientv3.Config{
 			Endpoints:   running.ClientURLs(),
@@ -86,16 +85,16 @@ func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
 		}
 		defer etcdcli.Close()
 		if err := c.updateMembers(etcdcli); err != nil {
-			log.Errorf("fail to refresh members: %v", err)
+			c.logger.Errorf("fail to refresh members: %v", err)
 			return err
 		}
 	}
 
-	log.Println("Expected membership:", c.members)
+	c.logger.Infof("Expected membership:", c.members)
 
 	unknownMembers := running.Diff(c.members)
 	if unknownMembers.Size() > 0 {
-		log.Println("Removing unexpected pods:", unknownMembers)
+		c.logger.Infof("Removing unexpected pods:", unknownMembers)
 		for _, m := range unknownMembers {
 			if err := c.removePodAndService(m.Name); err != nil {
 				return err
@@ -109,11 +108,11 @@ func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
 	}
 
 	if L.Size() < c.members.Size()/2+1 {
-		log.Println("Disaster recovery")
+		c.logger.Infof("Disaster recovery")
 		return c.disasterRecovery(L)
 	}
 
-	log.Println("Recovering one member")
+	c.logger.Infof("Recovering one member")
 	toRecover := c.members.Diff(L).PickOne()
 
 	if err := c.removeMember(toRecover); err != nil {
@@ -150,18 +149,18 @@ func (c *Cluster) addOneMember() error {
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
 	if err != nil {
-		log.Errorf("fail to add new member (%s): %v", newMember.Name, err)
+		c.logger.Errorf("fail to add new member (%s): %v", newMember.Name, err)
 		return err
 	}
 	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)
 
 	if err := c.createPodAndService(c.members, newMember, "existing", false); err != nil {
-		log.Errorf("fail to create member (%s): %v", newMember.Name, err)
+		c.logger.Errorf("fail to create member (%s): %v", newMember.Name, err)
 		return err
 	}
 	c.idCounter++
-	log.Printf("added member (%s), cluster (%s)", newMember.Name, c.members.PeerURLPairs())
+	c.logger.Infof("added member (%s)", newMember.Name)
 	return nil
 }
 
@@ -174,9 +173,9 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	if err != nil {
 		switch err {
 		case rpctypes.ErrGRPCMemberNotFound:
-			log.Infof("etcd member (%v) has been removed", toRemove.Name)
+			c.logger.Infof("etcd member (%v) has been removed", toRemove.Name)
 		default:
-			log.Errorf("fail to remove etcd member (%v): %v", toRemove.Name, err)
+			c.logger.Errorf("fail to remove etcd member (%v): %v", toRemove.Name, err)
 			return err
 		}
 	}
@@ -184,7 +183,7 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	if err := c.removePodAndService(toRemove.Name); err != nil {
 		return err
 	}
-	log.Printf("removed member (%v) with ID (%d)", toRemove.Name, toRemove.ID)
+	c.logger.Infof("removed member (%v) with ID (%d)", toRemove.Name, toRemove.ID)
 	return nil
 }
 
@@ -208,21 +207,29 @@ func removeMember(clientURLs []string, id uint64) error {
 
 func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	if c.spec.Backup == nil {
-		log.Errorf("fail to do disaster recovery for cluster (%s): no backup policy has been defined.", c.name)
+		c.logger.Errorf("fail to do disaster recovery: no backup policy has been defined.")
 		return errNoBackupExist
 	}
-	backupNow := false
+	var (
+		backupNow bool
+		err       error
+	)
+
 	if len(left) > 0 {
-		log.Infof("cluster (%v) has some pods still running (%v). Will try to make a latest backup from one of them.", c.name, left)
-		backupNow = RequestBackupNow(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
+		c.logger.Infof("pods are still running (%v). Will try to make a latest backup from one of them.", left)
+		backupNow, err = RequestBackupNow(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
+		if err != nil {
+			c.logger.Errorln(err)
+		}
 	}
 	if backupNow {
-		log.Info("Made a latest backup successfully")
+		c.logger.Info("made a latest backup")
 	} else {
 		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
 		// If so, we can still continue. Otherwise, it's fatal error.
 		exist, err := checkBackupExist(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
 		if err != nil {
+			c.logger.Errorln(err)
 			return err
 		}
 		if !exist {
@@ -240,29 +247,26 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	return c.restoreSeedMember()
 }
 
-func RequestBackupNow(httpClient *http.Client, addr string) bool {
+// TODO: make this private
+func RequestBackupNow(httpClient *http.Client, addr string) (bool, error) {
 	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", addr))
 	if err != nil {
-		log.Errorf("backupnow (%s) request failed: %v", addr, err)
-		return false
+		return false, fmt.Errorf("backupnow (%s) request failed: %v", addr, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		log.Errorf("backupnow (%s): unexpected status code (%v)", addr, resp.Status)
-		return false
+		return false, fmt.Errorf("backupnow (%s): unexpected status code (%v)", addr, resp.Status)
 	}
-	return true
+	return true, nil
 }
 
 func checkBackupExist(httpClient *http.Client, addr string) (bool, error) {
 	resp, err := httpClient.Head(fmt.Sprintf("http://%s/backup", addr))
 	if err != nil {
-		log.Errorf("check backup (%s) failed: %v", addr, err)
-		return false, err
+		return false, fmt.Errorf("check backup (%s) failed: %v", addr, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		log.Errorf("check backup (%s): unexpected status code (%v)", addr, resp.Status)
-		return false, nil
+		return false, fmt.Errorf("check backup (%s) failed: unexpected status code (%v)", addr, resp.Status)
 	}
 	return true, nil
 }
