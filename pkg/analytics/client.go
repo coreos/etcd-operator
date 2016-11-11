@@ -71,5 +71,5 @@ func ClusterDeleted() {
 }
 
 func OperatorStarted() {
-	send(ga.NewEvent(category, "opeartor_started"))
+	send(ga.NewEvent(category, "operator_started"))
 }
