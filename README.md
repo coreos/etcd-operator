@@ -25,7 +25,7 @@ $ kubectl create -f example/deployment.yaml
 deployment "etcd-operator" created
 ```
 
-etcd operator will create a Kubernetes *Third-Party Resource* (TPR) called "etcd-cluster", and an "etcd operator-backup" storage class.
+etcd operator will create a Kubernetes *Third-Party Resource* (TPR) called "etcd-cluster".
 
 ```bash
 $ kubectl get thirdpartyresources
@@ -237,25 +237,25 @@ By default, the etcd operator creates a storage class on initialization:
 
 ```
 $ kubectl get storageclass
-NAME                     TYPE
-etcd-operator-backup   kubernetes.io/gce-pd
+NAME                            TYPE
+etcd-operator-backup-gce-pd   kubernetes.io/gce-pd
 ```
 
 This is used to request the persistent volume to store the backup data. (AWS EBS supported using --pv-provisioner=kubernetes.io/aws-ebs. See [AWS deployment](example/deployment-aws.yaml))
-
-Continued from last example, a persistent volume is claimed for the backup pod:
-
-```
-$ kubectl get pvc
-NAME               STATUS    VOLUME                                     CAPACITY   ACCESSMODES   AGE
-pvc-etcd-cluster   Bound     pvc-164d18fe-8797-11e6-a8b4-42010af00002   1Gi        RWO           14m
-```
 
 To enable backup, create an etcd cluster with [backup enabled spec](example/example-etcd-cluster-with-backup.yaml).
 
 ```
 $ kubectl delete -f example/example-etcd-cluster.yaml
 $ kubectl create -f example/example-etcd-cluster-with-backup.yaml
+```
+
+A persistent volume claim is created for the backup pod:
+
+```
+$ kubectl get pvc
+NAME               STATUS    VOLUME                                     CAPACITY   ACCESSMODES   AGE
+pvc-etcd-cluster   Bound     pvc-164d18fe-8797-11e6-a8b4-42010af00002   1Gi        RWO           14m
 ```
 
 Let's try to write some data into etcd:
@@ -277,19 +277,19 @@ pod "etcd-cluster-with-backup-0001" deleted
 
 Now quorum is lost. The etcd operator will start to recover the cluster by:
 - Creating a new seed member to recover from the backup
-- Add the specified number of members into the seed cluster
+- Add more members until the size reaches to specified number
 
 ```
 $ kubectl get pods
 NAME                                         READY     STATUS     RESTARTS   AGE
-etcd-cluster-with-backup-0002                0/1       Init:0/2   0          11s
+etcd-cluster-with-backup-0003                0/1       Init:0/2   0          11s
 etcd-cluster-with-backup-backup-tool-e9gkv   1/1       Running    0          18m
 ...
 $ kubectl get pods
 NAME                                         READY     STATUS    RESTARTS   AGE
-etcd-cluster-with-backup-0002                1/1       Running   0          3m
 etcd-cluster-with-backup-0003                1/1       Running   0          3m
 etcd-cluster-with-backup-0004                1/1       Running   0          3m
+etcd-cluster-with-backup-0005                1/1       Running   0          3m
 etcd-cluster-with-backup-backup-tool-e9gkv   1/1       Running   0          22m
 ```
 
@@ -297,7 +297,10 @@ Note: Sometimes member recovery can fail because of a race caused by a delay in 
 
 ## Upgrade an etcd cluster
 
-Clean up any existing etcd cluster, but keep the etcd operator running.
+Continued from last example, clean up existing cluster:
+```
+$ kubectl delete -f example/example-etcd-cluster-with-backup.yaml
+```
 
 Have the following yaml file ready:
 
@@ -380,7 +383,7 @@ Check the other two pods and you should see the same result.
 - Backup requires PV to work, and it only works on GCE(kubernetes.io/gce-pd) and AWS(kubernetes.io/aws-ebs) for now.
 - Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with all nodes running in the same Kubernetes cluster.
 
-**The controller collects anonymous usage statistics to help us learning how the software is being used and how we can improve it. To disbale collection, run the controller with the flag `-analytics=false`**
+**The operator collects anonymous usage statistics to help us learning how the software is being used and how we can improve it. To disbale collection, run the operator with the flag `-analytics=false`**
 
 
 [k8s-home]: http://kubernetes.io
