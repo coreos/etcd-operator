@@ -32,6 +32,18 @@ type ClusterSpec struct {
 	// The vaild range of the size is from 1 to 7.
 	Size int `json:"size"`
 
+	// Version is the expected version of the etcd cluster.
+	// The etcd-operator will eventually make the etcd cluster version
+	// equal to the expected version.
+	Version string `json:"version"`
+
+	// Backup is the backup policy for the etcd cluster.
+	// There is no backup by default.
+	Backup *BackupPolicy `json:"backup,omitempty"`
+
+	// Paused is to pause the control of the operator for the etcd cluster.
+	Paused bool `json:"paused,omitempty"`
+
 	// NodeSelector specifies a map of key-value pairs. For the pod to be eligible
 	// to run on a node, the node must have each of the indicated key-value pairs as
 	// labels.
@@ -40,13 +52,7 @@ type ClusterSpec struct {
 	// AntiAffinity determines if the etcd-operator tries to avoid putting
 	// the etcd members in the same cluster onto the same node.
 	AntiAffinity bool `json:"antiAffinity"`
-	// Version is the expected version of the etcd cluster.
-	// The etcd-operator will eventually make the etcd cluster version
-	// equal to the expected version.
-	Version string `json:"version"`
-	// Backup is the backup policy for the etcd cluster.
-	// There is no backup by default.
-	Backup *BackupPolicy `json:"backup,omitempty"`
+
 	// HostNetwork determines if the etcd pods should be run
 	// in the host network namespace.
 	HostNetwork bool `json:"hostNetwork,omitempty"`

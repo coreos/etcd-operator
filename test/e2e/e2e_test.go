@@ -74,7 +74,7 @@ func TestResizeCluster3to5(t *testing.T) {
 	fmt.Println("reached to 3 members cluster")
 
 	testEtcd.Spec.Size = 5
-	if err := updateEtcdCluster(f, testEtcd); err != nil {
+	if _, err := updateEtcdCluster(f, testEtcd); err != nil {
 		t.Fatal(err)
 	}
 
@@ -103,7 +103,7 @@ func TestResizeCluster5to3(t *testing.T) {
 	fmt.Println("reached to 5 members cluster")
 
 	testEtcd.Spec.Size = 3
-	if err := updateEtcdCluster(f, testEtcd); err != nil {
+	if _, err := updateEtcdCluster(f, testEtcd); err != nil {
 		t.Fatal(err)
 	}
 
@@ -149,6 +149,55 @@ func TestDisasterRecovery2Members(t *testing.T) {
 // we should make a backup ahead and ooperator will recover cluster from it.
 func TestDisasterRecoveryAll(t *testing.T) {
 	testDisasterRecovery(t, 3)
+}
+
+// TestPauseControl tests the user can pause the operator from controlling
+// an etcd cluster.
+func TestPauseControl(t *testing.T) {
+	f := framework.Global
+	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60)
+	if err != nil {
+		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
+	}
+
+	testEtcd.Spec.Paused = true
+	if testEtcd, err = updateEtcdCluster(f, testEtcd); err != nil {
+		t.Fatalf("failed to pause control: %v", err)
+	}
+
+	// TODO: this is used to wait for the TPR to be updated.
+	// TODO: make this wait for reliable
+	time.Sleep(5 * time.Second)
+
+	if err := killMembers(f, names[0]); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 2, 30); err != nil {
+		t.Fatalf("failed to wait for killed member to die: %v", err)
+	}
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 30); err == nil {
+		t.Fatalf("cluster should not be recovered: control is paused")
+	}
+
+	testEtcd.Spec.Paused = false
+	if _, err = updateEtcdCluster(f, testEtcd); err != nil {
+		t.Fatalf("failed to resume control: %v", err)
+	}
+
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60); err != nil {
+		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
+	}
 }
 
 func testDisasterRecovery(t *testing.T, numToKill int) {
@@ -320,27 +369,32 @@ func createEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdC
 	return res, nil
 }
 
-func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) error {
+func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
 	b, err := json.Marshal(e)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req, err := http.NewRequest("PUT",
 		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace.Name, e.Name),
 		bytes.NewReader(b))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := f.KubeClient.Client.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status: %v", resp.Status)
+		return nil, fmt.Errorf("unexpected status: %v", resp.Status)
 	}
-	return nil
+	decoder := json.NewDecoder(resp.Body)
+	nspec := &spec.EtcdCluster{}
+	if err := decoder.Decode(nspec); err != nil {
+		return nil, err
+	}
+	return nspec, nil
 }
 
 func deleteEtcdCluster(f *framework.Framework, name string) error {
