@@ -28,7 +28,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -61,6 +61,8 @@ type Event struct {
 }
 
 type Controller struct {
+	logger *logrus.Entry
+
 	Config
 	clusters    map[string]*cluster.Cluster
 	stopChMap   map[string]chan struct{}
@@ -89,6 +91,8 @@ func New(cfg Config) *Controller {
 		panic(err)
 	}
 	return &Controller{
+		logger: logrus.WithField("pkg", "controller"),
+
 		Config:    cfg,
 		clusters:  make(map[string]*cluster.Cluster),
 		stopChMap: map[string]chan struct{}{},
@@ -106,13 +110,13 @@ func (c *Controller) Run() error {
 		if err == nil {
 			break
 		}
-		log.Errorf("failed to initialize controller: %v", err)
-		log.Infof("retry controller initialization in %v...", initRetryWaitTime)
+		c.logger.Errorf("initialization failed: %v", err)
+		c.logger.Infof("retry in %v...", initRetryWaitTime)
 		time.Sleep(initRetryWaitTime)
 		// todo: add max retry?
 	}
 
-	log.Infof("etcd cluster controller starts running from watch version: %s", watchVersion)
+	c.logger.Infof("starts running from watch version: %s", watchVersion)
 
 	defer func() {
 		for _, stopC := range c.stopChMap {
@@ -121,7 +125,7 @@ func (c *Controller) Run() error {
 		c.waitCluster.Wait()
 	}()
 
-	eventCh, errCh := monitorEtcdCluster(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client, watchVersion)
+	eventCh, errCh := c.monitor(watchVersion)
 
 	go func() {
 		for event := range eventCh {
@@ -134,7 +138,7 @@ func (c *Controller) Run() error {
 				if backup != nil && backup.MaxSnapshot != 0 {
 					err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, c.PVProvisioner, *backup)
 					if err != nil {
-						log.Errorf("cluster (%s) is dead due to failure to create backup: %v", clusterName, err)
+						c.logger.Errorf("cluster %q is dead: failed to create backup (%v)", clusterName, err)
 						continue
 					}
 				}
@@ -148,13 +152,13 @@ func (c *Controller) Run() error {
 				analytics.ClusterCreated()
 			case "MODIFIED":
 				if c.clusters[clusterName] == nil {
-					log.Warningf("cluster (%s) isn't alive, but received update", clusterName)
+					c.logger.Warningf("ignore modification: cluster %q not found (or dead)", clusterName)
 					break
 				}
 				c.clusters[clusterName].Update(&event.Object.Spec)
 			case "DELETED":
 				if c.clusters[clusterName] == nil {
-					log.Warningf("cluster (%s) isn't alive, but received delete", clusterName)
+					c.logger.Warningf("ignore delection: cluster %q not found (or dead)", clusterName)
 					break
 				}
 				c.clusters[clusterName].Delete()
@@ -167,7 +171,7 @@ func (c *Controller) Run() error {
 }
 
 func (c *Controller) findAllClusters() (string, error) {
-	log.Println("finding existing clusters...")
+	c.logger.Info("finding existing clusters...")
 	resp, err := k8sutil.ListETCDCluster(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client)
 	if err != nil {
 		return "", err
@@ -183,7 +187,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		if backup != nil && backup.MaxSnapshot != 0 {
 			err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, c.PVProvisioner, *backup)
 			if err != nil {
-				log.Errorf("cluster (%s) is dead due to failure to create backup: %v", clusterName, err)
+				c.logger.Errorf("cluster %q is dead: failure to create backup (%v)", clusterName, err)
 				continue
 			}
 		}
@@ -208,15 +212,13 @@ func (c *Controller) initResource() (string, error) {
 				return "", err
 			}
 		} else {
-			log.Errorf("fail to create TPR: %v", err)
-			return "", err
+			return "", fmt.Errorf("fail to create TPR: %v", err)
 		}
 	}
 	err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			log.Errorf("fail to create storage class: %v", err)
-			return "", err
+			return "", fmt.Errorf("fail to create storage class: %v", err)
 		}
 	}
 	return watchVersion, nil
@@ -240,12 +242,18 @@ func (c *Controller) createTPR() error {
 	return k8sutil.WaitEtcdTPRReady(c.KubeCli.Client, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
 }
 
-func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
+func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) {
+	host := c.MasterHost
+	ns := c.Namespace
+	httpClient := c.KubeCli.Client
+
 	eventCh := make(chan *Event)
 	// On unexpected error case, controller should exit
 	errCh := make(chan error, 1)
+
 	go func() {
 		defer close(eventCh)
+
 		for {
 			resp, err := k8sutil.WatchETCDCluster(host, ns, httpClient, watchVersion)
 			if err != nil {
@@ -257,29 +265,38 @@ func monitorEtcdCluster(host, ns string, httpClient *http.Client, watchVersion s
 				errCh <- errors.New("Invalid status code: " + resp.Status)
 				return
 			}
-			log.Printf("watching at %v", watchVersion)
+
+			c.logger.Infof("start watching at %v", watchVersion)
+
 			decoder := json.NewDecoder(resp.Body)
 			for {
 				ev, st, err := pollEvent(decoder)
+
 				if err != nil {
 					if err == io.EOF { // apiserver will close stream periodically
-						log.Debug("apiserver closed stream")
+						c.logger.Debug("apiserver closed stream")
 						break
 					}
+
+					c.logger.Errorf("received invalid event from API server: %v", err)
 					errCh <- err
 					return
 				}
+
 				if st != nil {
 					if st.Code == http.StatusGone { // event history is outdated
 						errCh <- ErrVersionOutdated // go to recovery path
 						return
 					}
-					log.Fatalf("unexpected status response from apiserver: %v", st.Message)
+					c.logger.Fatalf("unexpected status response from API server: %v", st.Message)
 				}
-				log.Printf("etcd cluster event: %v %v", ev.Type, ev.Object.Spec)
+
+				c.logger.Debugf("etcd cluster event: %v %v", ev.Type, ev.Object.Spec)
+
 				watchVersion = ev.Object.ObjectMeta.ResourceVersion
 				eventCh <- ev
 			}
+
 			resp.Body.Close()
 		}
 	}()
@@ -294,27 +311,25 @@ func pollEvent(decoder *json.Decoder) (*Event, *unversionedAPI.Status, error) {
 		if err == io.EOF {
 			return nil, nil, err
 		}
-		log.Errorf("fail to decode raw event from apiserver: %v", err)
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("fail to decode raw event from apiserver (%v)", err)
 	}
+
 	if re.Type == "ERROR" {
-		log.Errorf("watch error from apiserver: %s", re.Object)
 		status := &unversionedAPI.Status{}
 		err = json.Unmarshal(re.Object, status)
 		if err != nil {
-			log.Errorf("fail to decode (%s) into unversioned.Status: %v", re.Object, err)
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("fail to decode (%s) into unversioned.Status (%v)", re.Object, err)
 		}
 		return nil, status, nil
 	}
+
 	ev := &Event{
 		Type:   re.Type,
 		Object: &spec.EtcdCluster{},
 	}
 	err = json.Unmarshal(re.Object, ev.Object)
 	if err != nil {
-		log.Errorf("fail to unmarshal EtcdCluster object from data (%s): %v", re.Object, err)
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("fail to unmarshal EtcdCluster object from data (%s): %v", re.Object, err)
 	}
 	return ev, nil, nil
 }

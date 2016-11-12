@@ -87,7 +87,7 @@ func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, s
 		spec.Version = defaultVersion
 	}
 	c := &Cluster{
-		logger:    logrus.WithField("cluster", name),
+		logger:    logrus.WithField("pkg", "cluster").WithField("cluster-name", name),
 		kclient:   kclient,
 		name:      name,
 		namespace: ns,
