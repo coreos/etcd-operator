@@ -73,7 +73,7 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 // 4. If len(L) < len(members)/2 + 1, quorum lost. Go to recovery process.
 // 5. Add one missing member. END.
 func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
-	c.logger.Infoln("running members: %s", running)
+	c.logger.Infof("running members: %s", running)
 	if len(c.members) == 0 {
 		cfg := clientv3.Config{
 			Endpoints:   running.ClientURLs(),
@@ -90,7 +90,7 @@ func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
 		}
 	}
 
-	c.logger.Infof("Expected membership:", c.members)
+	c.logger.Infof("Expected membership: %s", c.members)
 
 	unknownMembers := running.Diff(c.members)
 	if unknownMembers.Size() > 0 {
