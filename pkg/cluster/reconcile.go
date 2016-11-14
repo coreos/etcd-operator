@@ -159,7 +159,6 @@ func (c *Cluster) addOneMember() error {
 		c.logger.Errorf("fail to create member (%s): %v", newMember.Name, err)
 		return err
 	}
-	c.idCounter++
 	c.logger.Infof("added member (%s)", newMember.Name)
 	return nil
 }
