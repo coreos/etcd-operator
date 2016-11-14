@@ -6,8 +6,7 @@
 
 etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating their creation and administration:
 
-- [Create](#create-an-etcd-cluster)
-- [Destroy](#destroy-an-existing-etcd-cluster)
+- [Create and destroy](#create-and-destroy-an-etcd-cluster)
 - [Resize](#resize-an-etcd-cluster)
 - [Recover a member](#member-recovery)
 - [Backup and restore a cluster](#disaster-recovery)
@@ -25,7 +24,7 @@ $ kubectl create -f example/deployment.yaml
 deployment "etcd-operator" created
 ```
 
-etcd operator will create a Kubernetes *Third-Party Resource* (TPR) called "etcd-cluster".
+etcd operator will create a Kubernetes *Third-Party Resource* (TPR) called "etcd-cluster" automatically.
 
 ```bash
 $ kubectl get thirdpartyresources
@@ -33,11 +32,13 @@ NAME                      DESCRIPTION             VERSION(S)
 etcd-cluster.coreos.com   Managed etcd clusters   v1
 ```
 
-## Create an etcd cluster
+## Create and destroy an etcd cluster
 
 ```bash
 $ kubectl create -f example/example-etcd-cluster.yaml
 ```
+
+A 3 member etcd cluster will be created.
 
 ```bash
 $ kubectl get pods
@@ -55,12 +56,6 @@ etcd-cluster-0001          10.0.51.78     <none>        2380/TCP,2379/TCP   30s
 etcd-cluster-0002          10.0.140.141   <none>        2380/TCP,2379/TCP   22s
 ```
 
-```bash
-$ kubectl logs etcd-cluster-0000
-...
-2016-08-05 00:33:32.453768 I | api: enabled capabilities for version 3.0
-```
-
 If you are working with [minikube locally](https://github.com/kubernetes/minikube#minikube) create a nodePort service and test out that etcd is responding:
 
 ```bash
@@ -70,9 +65,22 @@ export ETCDCTL_ENDPOINTS=$(minikube service etcd-cluster-client-service --url)
 etcdctl put foo bar
 ```
 
+Destroy etcd cluster:
+
+```bash
+$ kubectl delete -f example/example-etcd-cluster.yaml
+```
+
 ## Resize an etcd cluster
 
-`kubectl apply` doesn't work for TPR at the moment. See [kubernetes/#29542](https://github.com/kubernetes/kubernetes/issues/29542). As a workaround, we use cURL to resize the cluster.
+`kubectl apply` doesn't work for TPR at the moment. See [kubernetes/#29542](https://github.com/kubernetes/kubernetes/issues/29542).
+As a workaround, we use cURL to resize the cluster.
+
+Create an etcd cluster:
+
+```
+$ kubectl create -f example/example-etcd-cluster.yaml
+```
 
 Use kubectl to create a reverse proxy:
 
@@ -135,7 +143,7 @@ etcd-cluster-0004                0/1       ContainerCreating   0          1s
 
 Now we can decrease the size of cluster from 5 back to 3.
 
-Create another json file with the cluster size specified back to 3:
+Create a json file with cluster size of 3:
 
 ```
 $ cat body.json
@@ -152,13 +160,13 @@ $ cat body.json
 }
 ```
 
-Send it to API Server:
+Apply it to API Server:
 
 ```
 $ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
 ```
 
-We should see that etcd cluster eventually reduces to 3 pods:
+We should see that etcd cluster will eventually reduce to 3 pods:
 
 ```
 $ kubectl get pods
@@ -168,55 +176,58 @@ etcd-cluster-0003                1/1       Running   0          1m
 etcd-cluster-0004                1/1       Running   0          1m
 ```
 
-## Destroy an existing etcd cluster
-
-```bash
-$ kubectl delete -f example/example-etcd-cluster.yaml
-```
-
-```bash
-$ kubectl get pods
-NAME                       READY     STATUS    RESTARTS   AGE
-```
-
 ## Member recovery
 
 If the minority of etcd members crash, the etcd operator will automatically recover the failure.
 Let's walk through in the following steps.
 
-Redo the "create" process to have a cluster with 3 members.
+Create an etcd cluster:
 
-Simulate a member failure by deleting a pod:
+```
+$ kubectl create -f example/example-etcd-cluster.yaml
+```
+
+Wait until all three members are up. Simulate a member failure by deleting a pod:
 
 ```bash
 $ kubectl delete pod etcd-cluster-0000 --now
 ```
 
-The etcd operator will recover the failure by creating a new pod `etcd-cluster-0003`
+The etcd operator will recover the failure by creating a new pod `etcd-cluster-0003`:
 
 ```bash
 $ kubectl get pods
-NAME                       READY     STATUS    RESTARTS   AGE
+NAME                READY     STATUS    RESTARTS   AGE
 etcd-cluster-0001   1/1       Running   0          5s
 etcd-cluster-0002   1/1       Running   0          5s
 etcd-cluster-0003   1/1       Running   0          5s
 ```
 
+Destroy etcd cluster:
+```bash
+$ kubectl delete -f example/example-etcd-cluster.yaml
+```
+
 ## etcd operator recovery
 
 If the etcd operator restarts, it can recover its previous state.
+Let's walk through in the following steps.
 
-Continued from above, you can simulate a operator crash and a member crash:
+```
+$ kubectl create -f example/example-etcd-cluster.yaml
+```
+
+Wait until all three members are up. Then
 
 ```bash
 $ kubectl delete -f example/deployment.yaml
 deployment "etcd-operator" deleted
 
-$ kubectl delete pod etcd-cluster-0001
-pod "etcd-cluster-0001" deleted
+$ kubectl delete pod etcd-cluster-0000 --now
+pod "etcd-cluster-0000" deleted
 ```
 
-Then restart the etcd operator. It should automatically recover itself. It also recovers the etcd cluster:
+Then restart the etcd operator. It should recover itself and the etcd clusters it manages.
 
 ```bash
 $ kubectl create -f example/deployment.yaml
@@ -224,9 +235,9 @@ deployment "etcd-operator" created
 
 $ kubectl get pods
 NAME                READY     STATUS    RESTARTS   AGE
-etcd-cluster-0002   1/1       Running   0          4m
-etcd-cluster-0003   1/1       Running   0          4m
-etcd-cluster-0004   1/1       Running   0          6s
+etcd-cluster-0001   1/1       Running   0          5s
+etcd-cluster-0002   1/1       Running   0          5s
+etcd-cluster-0003   1/1       Running   0          5s
 ```
 
 ## Disaster recovery
@@ -246,7 +257,6 @@ This is used to request the persistent volume to store the backup data. (AWS EBS
 To enable backup, create an etcd cluster with [backup enabled spec](example/example-etcd-cluster-with-backup.yaml).
 
 ```
-$ kubectl delete -f example/example-etcd-cluster.yaml
 $ kubectl create -f example/example-etcd-cluster-with-backup.yaml
 ```
 
@@ -293,14 +303,9 @@ etcd-cluster-with-backup-0005                1/1       Running   0          3m
 etcd-cluster-with-backup-backup-tool-e9gkv   1/1       Running   0          22m
 ```
 
-Note: Sometimes member recovery can fail because of a race caused by a delay in pod deletion. The process will be retried in this event.
+Note: There could be a race that it will fall to single member recovery if a pod is recovered before another is deleted.
 
 ## Upgrade an etcd cluster
-
-Continued from last example, clean up existing cluster:
-```
-$ kubectl delete -f example/example-etcd-cluster-with-backup.yaml
-```
 
 Have the following yaml file ready:
 
