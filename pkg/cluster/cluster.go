@@ -103,7 +103,11 @@ func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, s
 			panic("todo:" + err.Error())
 		}
 		if spec.Seed == nil {
-			err = c.newSeedMember()
+			if c.spec.SelfHosted {
+				err = c.newSelfHostedSeedMember()
+			} else {
+				err = c.newSeedMember()
+			}
 		} else {
 			err = c.migrateSeedMember()
 		}
@@ -264,20 +268,18 @@ func (c *Cluster) migrateSeedMember() error {
 	c.logger.Info("created etcd service")
 
 	// Used the service IP as additional peer URL so that the seed member can access it.
-	m.AdditionalPeerURL = fmt.Sprintf("http://%s:2380", svc.Spec.ClusterIP)
-
-	mpurls := []string{fmt.Sprintf("http://%s:2380", m.Name), m.AdditionalPeerURL}
+	m.PeerURLs = []string{fmt.Sprintf("http://%s:2380", m.Name), fmt.Sprintf("http://%s:2380", svc.Spec.ClusterIP)}
 
 	initialCluster := make([]string, 0)
 	for _, purl := range seedMember.PeerURLs {
 		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", seedMember.Name, purl))
 	}
-	for _, purl := range mpurls {
+	for _, purl := range m.PeerURLs {
 		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", m.Name, purl))
 	}
 
 	pod := k8sutil.MakeEtcdPod(m, initialCluster, c.name, "existing", "", c.spec)
-	pod = k8sutil.PodWithAddMemberInitContainer(pod, m.Name, mpurls, c.spec)
+	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.spec.Seed.MemberClientEndpoints, m.Name, m.PeerURLs, c.spec)
 
 	if _, err := c.kclient.Pods(c.namespace).Create(pod); err != nil {
 		return err
@@ -330,7 +332,7 @@ func (c *Cluster) migrateSeedMember() error {
 
 	c.logger.Infof("updating the peer urls (%v) for the member %x", resp.Members[0].PeerURLs, resp.Members[0].ID)
 
-	m.AdditionalPeerURL = ""
+	m.PeerURLs = nil
 	for {
 		ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 		_, err = etcdcli.MemberUpdate(ctx, resp.Members[0].ID, []string{m.PeerAddr()})
@@ -386,8 +388,10 @@ func (c *Cluster) updateMembers(etcdcli *clientv3.Client) error {
 		}
 
 		c.members[m.Name] = &etcdutil.Member{
-			Name: m.Name,
-			ID:   m.ID,
+			Name:       m.Name,
+			ID:         m.ID,
+			ClientURLs: m.ClientURLs,
+			PeerURLs:   m.PeerURLs,
 		}
 	}
 	return nil

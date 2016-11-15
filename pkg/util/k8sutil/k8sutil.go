@@ -113,8 +113,7 @@ func MakeBackupHostPort(clusterName string) string {
 	return fmt.Sprintf("%s:%d", MakeBackupName(clusterName), constants.DefaultBackupPodHTTPPort)
 }
 
-func PodWithAddMemberInitContainer(p *api.Pod, name string, peerURLs []string, cs *spec.ClusterSpec) *api.Pod {
-	endpoints := cs.Seed.MemberClientEndpoints
+func PodWithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, peerURLs []string, cs *spec.ClusterSpec) *api.Pod {
 	containerSpec := []api.Container{
 		{
 			Name:  "add-member",
@@ -123,6 +122,7 @@ func PodWithAddMemberInitContainer(p *api.Pod, name string, peerURLs []string, c
 				"/bin/sh", "-c",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), name, strings.Join(peerURLs, ",")),
 			},
+			Env: []api.EnvVar{envPodIP},
 		},
 	}
 	b, err := json.Marshal(containerSpec)
@@ -297,44 +297,9 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 		},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
-				{
-					// TODO: fix "sleep 5".
-					// Without waiting some time, there is highly probable flakes in network setup.
-					Command: []string{"/bin/sh", "-c", fmt.Sprintf("sleep 5; %s", commands)},
-					Name:    "etcd",
-					Image:   MakeEtcdImage(cs.Version),
-					Ports: []api.ContainerPort{
-						{
-							Name:          "server",
-							ContainerPort: int32(2380),
-							Protocol:      api.ProtocolTCP,
-						},
-					},
-					// a pod is alive only if a get succeeds
-					// the etcd pod should die if liveness probing fails.
-					LivenessProbe: &api.Probe{
-						Handler: api.Handler{
-							Exec: &api.ExecAction{
-								Command: []string{"/bin/sh", "-c",
-									"ETCDCTL_API=3 etcdctl get foo"},
-							},
-						},
-						InitialDelaySeconds: 10,
-						TimeoutSeconds:      10,
-						// probe every 60 seconds
-						PeriodSeconds: 60,
-						// failed for 3 minutes
-						FailureThreshold: 3,
-					},
-					VolumeMounts: []api.VolumeMount{
-						{Name: "etcd-data", MountPath: etcdDir},
-					},
-				},
+				etcdContainer(commands, cs.Version),
 			},
 			RestartPolicy: api.RestartPolicyNever,
-			SecurityContext: &api.PodSecurityContext{
-				HostNetwork: cs.HostNetwork,
-			},
 			Volumes: []api.Volume{
 				{Name: "etcd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
 			},
@@ -343,31 +308,9 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 
 	SetEtcdVersion(pod, cs.Version)
 
-	if !cs.AntiAffinity {
-		return pod
+	if cs.AntiAffinity {
+		pod = PodWithAntiAffinity(pod, clusterName)
 	}
-
-	// set pod anti-affinity with the pods that belongs to the same etcd cluster
-	affinity := api.Affinity{
-		PodAntiAffinity: &api.PodAntiAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: []api.PodAffinityTerm{
-				{
-					LabelSelector: &unversionedAPI.LabelSelector{
-						MatchLabels: map[string]string{
-							"etcd_cluster": clusterName,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	affinityb, err := json.Marshal(affinity)
-	if err != nil {
-		panic("failed to marshal affinty struct")
-	}
-
-	pod.Annotations[api.AffinityAnnotationKey] = string(affinityb)
 
 	if len(cs.NodeSelector) != 0 {
 		pod = PodWithNodeSelector(pod, cs.NodeSelector)

@@ -53,9 +53,9 @@ type ClusterSpec struct {
 	// the etcd members in the same cluster onto the same node.
 	AntiAffinity bool `json:"antiAffinity"`
 
-	// HostNetwork determines if the etcd pods should be run
-	// in the host network namespace.
-	HostNetwork bool `json:"hostNetwork,omitempty"`
+	// SelfHosted determines if the etcd cluster is used for a self-hosted
+	// Kubernetes cluster.
+	SelfHosted bool `json:"selfHosted,omitempty"`
 	// Seed specifies a seed member for the cluster.
 	// If there is no seed member, a completely new cluster will be created.
 	// There is no seed member by default.
