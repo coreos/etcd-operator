@@ -172,7 +172,7 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	err := removeMember(c.members.ClientURLs(), toRemove.ID)
 	if err != nil {
 		switch err {
-		case rpctypes.ErrGRPCMemberNotFound:
+		case rpctypes.ErrMemberNotFound:
 			c.logger.Infof("etcd member (%v) has been removed", toRemove.Name)
 		default:
 			c.logger.Errorf("fail to remove etcd member (%v): %v", toRemove.Name, err)
