@@ -55,9 +55,9 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 	}
 	// In our test environment, we assume kube-proxy should be running on the same node.
 	// Thus we can use the service IP.
-	ok, _ := cluster.RequestBackupNow(f.KubeClient.Client, fmt.Sprintf("%s:%d", svc.Spec.ClusterIP, constants.DefaultBackupPodHTTPPort))
+	ok, err := cluster.RequestBackupNow(f.KubeClient.Client, fmt.Sprintf("%s:%d", svc.Spec.ClusterIP, constants.DefaultBackupPodHTTPPort))
 	if !ok {
-		return fmt.Errorf("fail to request backupnow")
+		return fmt.Errorf("fail to request backupnow: %v", err)
 	}
 	return nil
 }
