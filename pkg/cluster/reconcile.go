@@ -127,6 +127,10 @@ func (c *Cluster) resize() error {
 	}
 
 	if c.members.Size() < c.spec.Size {
+		if c.spec.SelfHosted {
+			return c.addOneSelfHostedMember()
+		}
+
 		return c.addOneMember()
 	}
 
@@ -206,6 +210,10 @@ func removeMember(clientURLs []string, id uint64) error {
 }
 
 func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
+	if c.spec.SelfHosted {
+		return errors.New("self-hosted cluster cannot be recovered from disaster")
+	}
+
 	if c.spec.Backup == nil {
 		c.logger.Errorf("fail to do disaster recovery: no backup policy has been defined.")
 		return errNoBackupExist

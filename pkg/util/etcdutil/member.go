@@ -26,20 +26,26 @@ type Member struct {
 	// but not from Kubernetes pod list.
 	ID uint64
 
-	// AdditionalPeerURL is only used for bootstrapping a member for seed cluster migration.
-	AdditionalPeerURL string
+	// PeerURLs is only used for self-hosted setup.
+	PeerURLs []string
+	// ClientURLs is only used for self-hosted setup.
+	ClientURLs []string
 }
 
 func (m *Member) ClientAddr() string {
+	if len(m.ClientURLs) != 0 {
+		return strings.Join(m.ClientURLs, ",")
+	}
+
 	return fmt.Sprintf("http://%s:2379", m.Name)
 }
 
 func (m *Member) PeerAddr() string {
-	pa := fmt.Sprintf("http://%s:2380", m.Name)
-	if len(m.AdditionalPeerURL) == 0 {
-		return pa
+	if len(m.PeerURLs) != 0 {
+		return strings.Join(m.PeerURLs, ",")
 	}
-	return strings.Join([]string{pa, m.AdditionalPeerURL}, ",")
+
+	return fmt.Sprintf("http://%s:2380", m.Name)
 }
 
 type MemberSet map[string]*Member
