@@ -218,15 +218,13 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 		c.logger.Errorf("fail to do disaster recovery: no backup policy has been defined.")
 		return errNoBackupExist
 	}
-	var (
-		backupNow bool
-		err       error
-	)
 
+	backupNow := true
 	if len(left) > 0 {
 		c.logger.Infof("pods are still running (%v). Will try to make a latest backup from one of them.", left)
-		backupNow, err = RequestBackupNow(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
+		err := RequestBackupNow(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
 		if err != nil {
+			backupNow = false
 			c.logger.Errorln(err)
 		}
 	}
@@ -256,16 +254,16 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 }
 
 // TODO: make this private
-func RequestBackupNow(httpClient *http.Client, addr string) (bool, error) {
+func RequestBackupNow(httpClient *http.Client, addr string) error {
 	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", addr))
 	if err != nil {
-		return false, fmt.Errorf("backupnow (%s) request failed: %v", addr, err)
+		return fmt.Errorf("backupnow (%s) request failed: %v", addr, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("backupnow (%s): unexpected status code (%v)", addr, resp.Status)
+		return fmt.Errorf("backupnow (%s): unexpected status code (%v)", addr, resp.Status)
 	}
-	return true, nil
+	return nil
 }
 
 func checkBackupExist(httpClient *http.Client, addr string) (bool, error) {
