@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -53,13 +54,19 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 	if err != nil {
 		return err
 	}
-	// In our test environment, we assume kube-proxy should be running on the same node.
-	// Thus we can use the service IP.
-	err = cluster.RequestBackupNow(f.KubeClient.Client, fmt.Sprintf("%s:%d", svc.Spec.ClusterIP, constants.DefaultBackupPodHTTPPort))
-	if err != nil {
-		return fmt.Errorf("fail to request backupnow: %v", err)
-	}
-	return nil
+
+	err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		// In our test environment, we assume kube-proxy should be running on the same node.
+		// Thus we can use the service IP.
+		// We are polling here because there could be delay of propagating service IP.
+		err := cluster.RequestBackupNow(f.KubeClient.Client, fmt.Sprintf("%s:%d", svc.Spec.ClusterIP, constants.DefaultBackupPodHTTPPort))
+		if err != nil {
+			logrus.Errorf("fail to request backupnow: %v", err)
+			return false, nil
+		}
+		return true, nil
+	})
+	return err
 }
 
 func waitUntilSizeReached(f *framework.Framework, clusterName string, size, timeout int) ([]string, error) {
