@@ -2,7 +2,7 @@
 
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-operator-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-master/)
 
-**Project status: *alpha*** Not all planned feature are completed. The API, spec, status and other user facing objects are subject to change. We do not support backward-compability for the alpha releases.
+**Project status: *alpha*** Not all planned feature are completed. The API, spec, status and other user facing objects are subject to change. We do not support backward-compatibility for the alpha releases.
 
 etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating their creation and administration:
 
