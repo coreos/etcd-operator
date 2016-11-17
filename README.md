@@ -388,7 +388,7 @@ Check the other two pods and you should see the same result.
 - Backup requires PV to work, and it only works on GCE(kubernetes.io/gce-pd) and AWS(kubernetes.io/aws-ebs) for now.
 - Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with all nodes running in the same Kubernetes cluster.
 
-**The operator collects anonymous usage statistics to help us learning how the software is being used and how we can improve it. To disbale collection, run the operator with the flag `-analytics=false`**
+**The operator collects anonymous usage statistics to help us learn how the software is being used and how we can improve it. To disable collection, run the operator with the flag `-analytics=false`.**
 
 
 [k8s-home]: http://kubernetes.io
