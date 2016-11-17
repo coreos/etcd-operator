@@ -102,14 +102,14 @@ func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, s
 			// todo: do not panic!
 			panic("todo:" + err.Error())
 		}
-		if spec.Seed == nil {
-			if c.spec.SelfHosted {
+		if c.spec.SelfHosted != nil {
+			if len(c.spec.SelfHosted.BootMemberClientEndpoint) == 0 {
 				err = c.newSelfHostedSeedMember()
 			} else {
-				err = c.newSeedMember()
+				err = c.migrateBootMember()
 			}
 		} else {
-			err = c.migrateSeedMember()
+			err = c.newSeedMember()
 		}
 		if err != nil {
 			panic(err)
@@ -229,126 +229,6 @@ func (c *Cluster) newSeedMember() error {
 
 func (c *Cluster) restoreSeedMember() error {
 	return c.startSeedMember(true)
-}
-
-func (c *Cluster) migrateSeedMember() error {
-	c.logger.Infof("migrating seed member (%s)", c.spec.Seed.MemberClientEndpoints)
-
-	cfg := clientv3.Config{
-		Endpoints:   c.spec.Seed.MemberClientEndpoints,
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	resp, err := etcdcli.MemberList(ctx)
-	cancel()
-	if err != nil {
-		return err
-	}
-	if len(resp.Members) != 1 {
-		return fmt.Errorf("seed cluster contains more than one member")
-	}
-	seedMember := resp.Members[0]
-	seedID := resp.Members[0].ID
-
-	c.logger.Infof("adding a new member")
-
-	// create the first member inside Kubernetes for migration
-	etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
-	m := &etcdutil.Member{Name: etcdName}
-
-	svc, err := k8sutil.CreateEtcdMemberService(c.kclient, m.Name, c.name, c.namespace)
-	if err != nil {
-		return err
-	}
-	c.logger.Info("created etcd service")
-
-	// Used the service IP as additional peer URL so that the seed member can access it.
-	m.PeerURLs = []string{fmt.Sprintf("http://%s:2380", m.Name), fmt.Sprintf("http://%s:2380", svc.Spec.ClusterIP)}
-
-	initialCluster := make([]string, 0)
-	for _, purl := range seedMember.PeerURLs {
-		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", seedMember.Name, purl))
-	}
-	for _, purl := range m.PeerURLs {
-		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", m.Name, purl))
-	}
-
-	pod := k8sutil.MakeEtcdPod(m, initialCluster, c.name, "existing", "", c.spec)
-	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.spec.Seed.MemberClientEndpoints, m.Name, m.PeerURLs, c.spec)
-
-	if _, err := c.kclient.Pods(c.namespace).Create(pod); err != nil {
-		return err
-	}
-	c.idCounter++
-	etcdcli.Close()
-	c.logger.Infof("added the new member")
-
-	// wait for the delay
-	if c.spec.Seed.RemoveDelay == 0 {
-		c.spec.Seed.RemoveDelay = 30
-	}
-	if c.spec.Seed.RemoveDelay < 10 {
-		c.spec.Seed.RemoveDelay = 10
-	}
-
-	delay := time.Duration(c.spec.Seed.RemoveDelay) * time.Second
-	c.logger.Infof("wait %v before remove the seed member", delay)
-	time.Sleep(delay)
-
-	c.logger.Infof("removing the seed member")
-
-	cfg = clientv3.Config{
-		Endpoints:   []string{m.ClientAddr()},
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err = clientv3.New(cfg)
-	if err != nil {
-		return err
-	}
-
-	// delete the original seed member from the etcd cluster.
-	// now we have migrate the seed member into kubernetes.
-	// our etcd-operator not takes control over it.
-	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	_, err = etcdcli.Cluster.MemberRemove(ctx, seedID)
-	cancel()
-	if err != nil {
-		return fmt.Errorf("etcdcli failed to remove seed member: %v", err)
-	}
-
-	c.logger.Infof("removed the seed member")
-
-	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	resp, err = etcdcli.MemberList(ctx)
-	cancel()
-	if err != nil {
-		return err
-	}
-
-	c.logger.Infof("updating the peer urls (%v) for the member %x", resp.Members[0].PeerURLs, resp.Members[0].ID)
-
-	m.PeerURLs = nil
-	for {
-		ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-		_, err = etcdcli.MemberUpdate(ctx, resp.Members[0].ID, []string{m.PeerAddr()})
-		cancel()
-		if err == nil {
-			break
-		}
-		if err != context.DeadlineExceeded {
-			return err
-		}
-	}
-
-	etcdcli.Close()
-	c.logger.Infof("finished the member migration")
-
-	return nil
 }
 
 func (c *Cluster) Update(spec *spec.ClusterSpec) {
