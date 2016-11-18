@@ -19,5 +19,5 @@ type SelfHostedPolicy struct {
 	// If there is no bootstrap member, a completely new cluster will be created.
 	// The boot member will be removed from the cluster once the self-hosted cluster
 	// setup successfully.
-	BootMemberClientEndpoint string
+	BootMemberClientEndpoint string `json:"bootMemberClientEndpoint"`
 }
