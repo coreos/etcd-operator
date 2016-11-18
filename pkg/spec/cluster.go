@@ -55,11 +55,7 @@ type ClusterSpec struct {
 
 	// SelfHosted determines if the etcd cluster is used for a self-hosted
 	// Kubernetes cluster.
-	SelfHosted bool `json:"selfHosted,omitempty"`
-	// Seed specifies a seed member for the cluster.
-	// If there is no seed member, a completely new cluster will be created.
-	// There is no seed member by default.
-	Seed *SeedPolicy `json:"seed,omitempty"`
+	SelfHosted *SelfHostedPolicy `json:"selfHosted,omitempty"`
 }
 
 type SeedPolicy struct {

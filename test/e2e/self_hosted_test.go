@@ -15,6 +15,10 @@
 package e2e
 
 import (
+	"fmt"
+	"net/url"
+	"os"
+	"path"
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api"
@@ -22,6 +26,8 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
+	"github.com/coreos/etcd/embed"
+	"github.com/coreos/etcd/pkg/netutil"
 )
 
 func TestCreateSelfHostedCluster(t *testing.T) {
@@ -42,6 +48,68 @@ func TestCreateSelfHostedCluster(t *testing.T) {
 	}
 }
 
+func TestCreateSelfHostedClusterWithBootMember(t *testing.T) {
+	dir := path.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
+	os.RemoveAll(dir)
+	defer os.RemoveAll(dir)
+
+	embedCfg := embed.NewConfig()
+	embedCfg.Dir = dir
+	lpurl, _ := url.Parse("http://0.0.0.0:12380")
+	lcurl, _ := url.Parse("http://0.0.0.0:12379")
+	embedCfg.LCUrls = []url.URL{*lcurl}
+	embedCfg.LPUrls = []url.URL{*lpurl}
+
+	host, _ := netutil.GetDefaultHost()
+	apurl, _ := url.Parse("http://" + host + ":12380")
+	acurl, _ := url.Parse("http://" + host + ":12379")
+	embedCfg.ACUrls = []url.URL{*acurl}
+	embedCfg.APUrls = []url.URL{*apurl}
+	embedCfg.InitialCluster = "default=" + apurl.String()
+
+	e, err := embed.StartEtcd(embedCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+
+	<-e.Server.ReadyNotify()
+	fmt.Println("etcdserver is ready")
+
+	f := framework.Global
+
+	c := &spec.EtcdCluster{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "EtcdCluster",
+			APIVersion: "coreos.com/v1",
+		},
+		ObjectMeta: api.ObjectMeta{
+			GenerateName: "etcd-test-seed-",
+		},
+		Spec: spec.ClusterSpec{
+			Size: 3,
+			SelfHosted: &spec.SelfHostedPolicy{
+				BootMemberClientEndpoint: embedCfg.ACUrls[0].String(),
+			},
+		},
+	}
+
+	testEtcd, err := createEtcdCluster(f, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 120); err != nil {
+		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
+	}
+}
+
 func makeSelfHostedEnabledCluster(genName string, size int) *spec.EtcdCluster {
 	return &spec.EtcdCluster{
 		TypeMeta: unversioned.TypeMeta{
@@ -53,7 +121,7 @@ func makeSelfHostedEnabledCluster(genName string, size int) *spec.EtcdCluster {
 		},
 		Spec: spec.ClusterSpec{
 			Size:       size,
-			SelfHosted: true,
+			SelfHosted: &spec.SelfHostedPolicy{},
 		},
 	}
 }

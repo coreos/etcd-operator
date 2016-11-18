@@ -127,7 +127,7 @@ func (c *Cluster) resize() error {
 	}
 
 	if c.members.Size() < c.spec.Size {
-		if c.spec.SelfHosted {
+		if c.spec.SelfHosted != nil {
 			return c.addOneSelfHostedMember()
 		}
 
@@ -191,6 +191,7 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	return nil
 }
 
+// TODO: move removeMember to etcdutil
 func removeMember(clientURLs []string, id uint64) error {
 	cfg := clientv3.Config{
 		Endpoints:   clientURLs,
@@ -210,7 +211,7 @@ func removeMember(clientURLs []string, id uint64) error {
 }
 
 func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
-	if c.spec.SelfHosted {
+	if c.spec.SelfHosted != nil {
 		return errors.New("self-hosted cluster cannot be recovered from disaster")
 	}
 
