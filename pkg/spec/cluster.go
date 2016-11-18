@@ -57,12 +57,3 @@ type ClusterSpec struct {
 	// Kubernetes cluster.
 	SelfHosted *SelfHostedPolicy `json:"selfHosted,omitempty"`
 }
-
-type SeedPolicy struct {
-	// The client endpoints of the seed member.
-	MemberClientEndpoints []string
-	// RemoveDelay specifies the delay to remove the original seed member from the
-	// cluster in seconds.
-	// The seed member will be removed in 30 second by default. Minimum delay is 10 seconds.
-	RemoveDelay int
-}
