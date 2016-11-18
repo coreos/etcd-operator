@@ -86,31 +86,6 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 		return err
 	}
 
-	// we have a 5 seconds startup delay in etcd pod
-	// wait for the just created etcd pod to be ready to accept requests
-	time.Sleep(5*time.Second + 2*time.Second)
-
-	cfg := clientv3.Config{
-		Endpoints:   []string{"http://" + pod.Status.PodIP + ":2379"},
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
-	if err != nil {
-		return err
-	}
-	defer etcdcli.Close()
-
-	// wait for the new pod to start and add itself into the etcd cluster.
-	// TODO: do not wait forever.
-	for {
-		err = c.updateMembers(etcdcli)
-		if err == nil {
-			break
-		}
-		c.logger.Errorf("failed to update membership (%v), retry in 5 seconds", err)
-		time.Sleep(5 * time.Second)
-	}
-
 	c.logger.Infof("self-hosted cluster created with seed member (%s)", newMemberName)
 	return nil
 }
@@ -160,26 +135,6 @@ func (c *Cluster) migrateBootMember() error {
 	err = removeMember([]string{"http://" + pod.Status.PodIP + ":2379"}, bootMember.ID)
 	if err != nil {
 		return fmt.Errorf("etcdcli failed to remove boot member: %v", err)
-	}
-
-	// TODO: remove the waiting code when reconcile knows how to update the initial self-hosted
-	// cluster
-	cfg := clientv3.Config{
-		Endpoints:   []string{"http://" + pod.Status.PodIP + ":2379"},
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
-	if err != nil {
-		return err
-	}
-	// TODO: do not wait forever.
-	for {
-		err = c.updateMembers(etcdcli)
-		if err == nil {
-			break
-		}
-		c.logger.Errorf("failed to update membership (%v), retry in 5 seconds", err)
-		time.Sleep(5 * time.Second)
 	}
 
 	c.logger.Infof("self-hosted cluster created with boot member (%s)", endpoint)

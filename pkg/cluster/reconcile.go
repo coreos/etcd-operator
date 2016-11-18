@@ -45,7 +45,12 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 	case len(pods) != c.spec.Size:
 		running := etcdutil.MemberSet{}
 		for _, pod := range pods {
-			running.Add(&etcdutil.Member{Name: pod.Name})
+			m := &etcdutil.Member{Name: pod.Name}
+			if c.spec.SelfHosted != nil {
+				m.ClientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
+				m.PeerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
+			}
+			running.Add(m)
 		}
 		return c.reconcileSize(running)
 	case needUpgrade(pods, c.spec):
