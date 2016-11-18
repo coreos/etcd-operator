@@ -75,13 +75,7 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
 
 	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.name, "new", uuid.New(), c.spec)
-	err := k8sutil.CreateAndWaitPod(c.kclient, c.namespace, pod, 30*time.Second)
-	if err != nil {
-		return err
-	}
-
-	// update pod status to get its IP
-	pod, err = c.kclient.Pods(c.namespace).Get(pod.Name)
+	_, err := k8sutil.CreateAndWaitPod(c.kclient, c.namespace, pod, 30*time.Second)
 	if err != nil {
 		return err
 	}
@@ -118,12 +112,7 @@ func (c *Cluster) migrateBootMember() error {
 
 	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.name, "existing", "", c.spec)
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, []string{endpoint}, newMemberName, []string{peerURL}, c.spec)
-	err = k8sutil.CreateAndWaitPod(c.kclient, c.namespace, pod, 30*time.Second)
-	if err != nil {
-		return err
-	}
-	// update pod status to get its IP
-	pod, err = c.kclient.Pods(c.namespace).Get(pod.Name)
+	pod, err = k8sutil.CreateAndWaitPod(c.kclient, c.namespace, pod, 30*time.Second)
 	if err != nil {
 		return err
 	}
