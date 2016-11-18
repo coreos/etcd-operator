@@ -33,6 +33,8 @@ export TEST_NAMESPACE="e2e-test-${BUILD_ID}"
 echo "operator image: ${OPERATOR_IMAGE}"
 echo "test namespace: ${TEST_NAMESPACE}"
 
+gcloud docker -a # have docker command access to gcloud 
+
 if "hack/test"; then
 	echo "Success! ==="
 else
