@@ -120,7 +120,7 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 		},
 	}
 
-	err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace.Name, pod, 60*time.Second)
+	_, err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace.Name, pod, 60*time.Second)
 	if err != nil {
 		return err
 	}
