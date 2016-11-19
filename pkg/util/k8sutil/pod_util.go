@@ -58,7 +58,7 @@ func etcdContainer(commands, version string) api.Container {
 			Handler: api.Handler{
 				Exec: &api.ExecAction{
 					Command: []string{"/bin/sh", "-c",
-						"ETCDCTL_API=3 etcdctl get foo"},
+						"ETCDCTL_API=3 etcdctl --endpoints=http://$(MY_POD_IP):2379 get foo"},
 				},
 			},
 			InitialDelaySeconds: 10,
