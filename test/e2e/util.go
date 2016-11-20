@@ -50,16 +50,9 @@ func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Du
 }
 
 func makeBackup(f *framework.Framework, clusterName string) error {
-	svc, err := f.KubeClient.Services(f.Namespace.Name).Get(k8sutil.MakeBackupName(clusterName))
-	if err != nil {
-		return err
-	}
-
-	err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
-		// In our test environment, we assume kube-proxy should be running on the same node.
-		// Thus we can use the service IP.
-		// We are polling here because there could be delay of propagating service IP.
-		err := cluster.RequestBackupNow(f.KubeClient.Client, fmt.Sprintf("%s:%d", svc.Spec.ClusterIP, constants.DefaultBackupPodHTTPPort))
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		// We are polling here because there could be delay of propagating service endpoints.
+		err := cluster.RequestBackupNow(f.KubeClient.Client, fmt.Sprintf("%s:%d", k8sutil.MakeBackupName(clusterName), constants.DefaultBackupPodHTTPPort))
 		if err != nil {
 			logrus.Errorf("fail to request backupnow: %v", err)
 			return false, nil
