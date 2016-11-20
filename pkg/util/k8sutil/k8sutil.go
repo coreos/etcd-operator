@@ -291,6 +291,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
+	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version), etcdLivenessProbe())
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
 			Name: m.Name,
@@ -302,9 +303,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 			Annotations: map[string]string{},
 		},
 		Spec: api.PodSpec{
-			Containers: []api.Container{
-				etcdContainer(commands, cs.Version),
-			},
+			Containers:    []api.Container{container},
 			RestartPolicy: api.RestartPolicyNever,
 			Volumes: []api.Volume{
 				{Name: "etcd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},

@@ -52,22 +52,6 @@ func etcdContainer(commands, version string) api.Container {
 				Protocol:      api.ProtocolTCP,
 			},
 		},
-		// a pod is alive only if a get succeeds
-		// the etcd pod should die if liveness probing fails.
-		LivenessProbe: &api.Probe{
-			Handler: api.Handler{
-				Exec: &api.ExecAction{
-					Command: []string{"/bin/sh", "-c",
-						"ETCDCTL_API=3 etcdctl get foo"},
-				},
-			},
-			InitialDelaySeconds: 10,
-			TimeoutSeconds:      10,
-			// probe every 60 seconds
-			PeriodSeconds: 60,
-			// failed for 3 minutes
-			FailureThreshold: 3,
-		},
 		VolumeMounts: []api.VolumeMount{
 			{Name: "etcd-data", MountPath: etcdDir},
 		},
@@ -75,6 +59,27 @@ func etcdContainer(commands, version string) api.Container {
 	}
 
 	return c
+}
+
+func containerWithLivenessProbe(c api.Container, lp *api.Probe) api.Container {
+	c.LivenessProbe = lp
+	return c
+}
+
+func etcdLivenessProbe() *api.Probe {
+	// etcd pod is alive only if a linearizable get succeeds.
+	return &api.Probe{
+		Handler: api.Handler{
+			Exec: &api.ExecAction{
+				Command: []string{"/bin/sh", "-c",
+					"ETCDCTL_API=3 etcdctl get foo"},
+			},
+		},
+		InitialDelaySeconds: 10,
+		TimeoutSeconds:      10,
+		PeriodSeconds:       60,
+		FailureThreshold:    3,
+	}
 }
 
 func PodWithAntiAffinity(pod *api.Pod, clusterName string) *api.Pod {
