@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -50,23 +49,23 @@ func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Du
 }
 
 func makeBackup(f *framework.Framework, clusterName string) error {
-	svc, err := f.KubeClient.Services(f.Namespace.Name).Get(k8sutil.MakeBackupName(clusterName))
+	ls := map[string]string{
+		"app":          k8sutil.BackupPodSelectorAppField,
+		"etcd_cluster": clusterName,
+	}
+	podList, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
+		LabelSelector: labels.SelectorFromSet(ls),
+	})
 	if err != nil {
 		return err
 	}
+	if len(podList.Items) < 1 {
+		return fmt.Errorf("no backup pod found")
+	}
 
-	err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
-		// In our test environment, we assume kube-proxy should be running on the same node.
-		// Thus we can use the service IP.
-		// We are polling here because there could be delay of propagating service IP.
-		err := cluster.RequestBackupNow(f.KubeClient.Client, fmt.Sprintf("%s:%d", svc.Spec.ClusterIP, constants.DefaultBackupPodHTTPPort))
-		if err != nil {
-			logrus.Errorf("fail to request backupnow: %v", err)
-			return false, nil
-		}
-		return true, nil
-	})
-	return err
+	// We are assuming pod ip is accessible from test machine.
+	addr := fmt.Sprintf("%s:%d", podList.Items[0].Status.PodIP, constants.DefaultBackupPodHTTPPort)
+	return cluster.RequestBackupNow(f.KubeClient.Client, addr)
 }
 
 func waitUntilSizeReached(f *framework.Framework, clusterName string, size, timeout int) ([]string, error) {
