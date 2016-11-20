@@ -91,7 +91,7 @@ func (c *Cluster) migrateBootMember() error {
 
 	resp, err := etcdutil.ListMembers([]string{endpoint})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to list members from boot member (%v)", err)
 	}
 	if len(resp.Members) != 1 {
 		return fmt.Errorf("boot cluster contains more than one member")

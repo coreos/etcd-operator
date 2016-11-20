@@ -53,14 +53,15 @@ func TestCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	os.RemoveAll(dir)
 	defer os.RemoveAll(dir)
 
+	host, _ := netutil.GetDefaultHost()
+
 	embedCfg := embed.NewConfig()
 	embedCfg.Dir = dir
-	lpurl, _ := url.Parse("http://0.0.0.0:12380")
-	lcurl, _ := url.Parse("http://0.0.0.0:12379")
+	lpurl, _ := url.Parse("http://" + host + ":12380")
+	lcurl, _ := url.Parse("http://" + host + ":12379")
 	embedCfg.LCUrls = []url.URL{*lcurl}
 	embedCfg.LPUrls = []url.URL{*lpurl}
 
-	host, _ := netutil.GetDefaultHost()
 	apurl, _ := url.Parse("http://" + host + ":12380")
 	acurl, _ := url.Parse("http://" + host + ":12379")
 	embedCfg.ACUrls = []url.URL{*acurl}
@@ -74,7 +75,8 @@ func TestCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	defer e.Close()
 
 	<-e.Server.ReadyNotify()
-	fmt.Println("etcdserver is ready")
+
+	t.Log("etcdserver is ready")
 
 	f := framework.Global
 
