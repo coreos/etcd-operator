@@ -15,12 +15,12 @@ The dates below should not be considered authoritative, but rather indicative of
   - Recover an etcd cluster from a S3 backup
 
 - Operationality
-  - Pause/Resume the control for an etcd cluster
+  - Pause/Resume the control for an etcd cluster -> finished
 
 - Metrics and logging
   - More structured logging
-      - Add prefix for different clusters
-      - Use infof, waringf, errorf consistently
+      - Add prefix for different clusters -> finished
+      - Use infof, waringf, errorf consistently -> finished
   - Expose operator metrics
       - How many clusters it manages
       - How many actions it does
