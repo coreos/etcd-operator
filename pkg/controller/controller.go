@@ -158,7 +158,7 @@ func (c *Controller) Run() error {
 				c.clusters[clusterName].Update(&event.Object.Spec)
 			case "DELETED":
 				if c.clusters[clusterName] == nil {
-					c.logger.Warningf("ignore delection: cluster %q not found (or dead)", clusterName)
+					c.logger.Warningf("ignore deletion: cluster %q not found (or dead)", clusterName)
 					break
 				}
 				c.clusters[clusterName].Delete()
