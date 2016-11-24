@@ -17,6 +17,7 @@ package cluster
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -263,11 +264,16 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 func RequestBackupNow(httpClient *http.Client, addr string) error {
 	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", addr))
 	if err != nil {
-		return fmt.Errorf("backupnow (%s) request failed: %v", addr, err)
+		return fmt.Errorf("backupnow (%s) failed: %v", addr, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("backupnow (%s): unexpected status code (%v)", addr, resp.Status)
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			b = []byte(fmt.Sprintf("fail to read HTTP response: %v", err))
+		}
+		return fmt.Errorf("backupnow (%s) failed: unexpected status code (%v), response (%s)",
+			addr, resp.Status, string(b))
 	}
 	return nil
 }
@@ -279,7 +285,12 @@ func checkBackupExist(httpClient *http.Client, addr string) (bool, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("check backup (%s) failed: unexpected status code (%v)", addr, resp.Status)
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			b = []byte(fmt.Sprintf("fail to read HTTP response: %v", err))
+		}
+		return false, fmt.Errorf("check backup (%s) failed: unexpected status code (%v), response (%s)",
+			addr, resp.Status, string(b))
 	}
 	return true, nil
 }
