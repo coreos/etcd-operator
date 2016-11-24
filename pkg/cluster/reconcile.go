@@ -277,6 +277,7 @@ func checkBackupExist(httpClient *http.Client, addr string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("check backup (%s) failed: %v", addr, err)
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return false, fmt.Errorf("check backup (%s) failed: unexpected status code (%v)", addr, resp.Status)
 	}
