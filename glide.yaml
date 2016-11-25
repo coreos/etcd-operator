@@ -32,3 +32,5 @@ import:
   - pkg/util/wait
   - pkg/watch
 - package: github.com/jpillora/go-ogle-analytics
+- package: github.com/coreos/go-semver
+  version: v0.2.0
