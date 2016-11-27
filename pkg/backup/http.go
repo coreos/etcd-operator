@@ -15,16 +15,17 @@
 package backup
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/util/constants"
+	"github.com/coreos/etcd-operator/pkg/util"
+	"github.com/coreos/go-semver/semver"
 
 	"github.com/Sirupsen/logrus"
 )
@@ -58,9 +59,9 @@ func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
-	files, err := ioutil.ReadDir(constants.BackupDir)
+	files, err := ioutil.ReadDir(b.backupDir)
 	if err != nil {
-		logrus.Errorf("failed to list dir (%s): error (%v)", constants.BackupDir, err)
+		logrus.Errorf("failed to list dir (%s): error (%v)", b.backupDir, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -69,10 +70,45 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	versionValue := r.FormValue(util.BackupHTTPQueryVersion)
+	reqV, err := getMajorAndMinorVersion(strings.TrimLeft(versionValue, "v"))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid param 'version' (%s): %v", versionValue, err), http.StatusBadRequest)
+		return
+	}
+	serV, err := getEtcdVersionFromSnap(fname)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("fail to parse etcd version from file (%s): %v", fname, err), http.StatusInternalServerError)
+		return
+	}
+	if !isVersionCompatible(reqV, serV) {
+		http.Error(w, fmt.Sprintf("requested version (%s) is not compatible with the backup (%s)", reqV, serV), http.StatusBadRequest)
+		return
+	}
+
 	if r.Method == http.MethodHead {
 		return
 	}
-	http.ServeFile(w, r, path.Join(constants.BackupDir, fname))
+	http.ServeFile(w, r, path.Join(b.backupDir, fname))
+}
+
+func isVersionCompatible(req, serve string) bool {
+	compatVersions, ok := compatibilityMap[req]
+	if !ok {
+		return false
+	}
+	_, ok = compatVersions[serve]
+	return ok
+}
+
+// getMajorAndMinorVersion expects a semver and then returns "major.minor"
+func getMajorAndMinorVersion(rawV string) (string, error) {
+	v, err := semver.NewVersion(rawV)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%d.%d", v.Major, v.Minor), nil
 }
 
 func getLatestSnapshotName(files []os.FileInfo) string {
@@ -98,9 +134,4 @@ func getLatestSnapshotName(files []os.FileInfo) string {
 
 func isBackup(filename string) bool {
 	return strings.HasSuffix(filename, backupFilenameSuffix)
-}
-
-func getRev(filename string) (int64, error) {
-	fields := strings.SplitN(filename, ".", 3)
-	return strconv.ParseInt(fields[1], 16, 64)
 }
