@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -240,7 +241,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	} else {
 		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
 		// If so, we can still continue. Otherwise, it's fatal error.
-		exist, err := checkBackupExist(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
+		exist, err := checkBackupExist(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name), c.spec.Version)
 		if err != nil {
 			c.logger.Errorln(err)
 			return err
@@ -278,8 +279,13 @@ func RequestBackupNow(httpClient *http.Client, addr string) error {
 	return nil
 }
 
-func checkBackupExist(httpClient *http.Client, addr string) (bool, error) {
-	resp, err := httpClient.Head(fmt.Sprintf("http://%s/backup", addr))
+func checkBackupExist(httpcli *http.Client, addr, ver string) (bool, error) {
+	req := &http.Request{
+		Method: http.MethodHead,
+		URL:    util.MakeBackupURL(addr, ver),
+	}
+
+	resp, err := httpcli.Do(req)
 	if err != nil {
 		return false, fmt.Errorf("check backup (%s) failed: %v", addr, err)
 	}

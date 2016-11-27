@@ -1,5 +1,5 @@
-hash: 1b4a53d7931771275b8e007ee58a5e7336810e6a5b9bd73a9db71b303f7ce76f
-updated: 2016-11-03T11:30:16.902990463-07:00
+hash: f165bc846f06e491f984e730bb51ef2e067bd073f8102d4ec8f6a094ccdd6d55
+updated: 2016-11-24T11:13:07.282615529-08:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -114,7 +114,7 @@ imports:
   - oauth2
   - oidc
 - name: github.com/coreos/go-semver
-  version: 568e959cd89871e61434c1143528d9162da89ef2
+  version: 8ab6407b697782a06568d4b7f1db25550ec2e4c6
   subpackages:
   - semver
 - name: github.com/coreos/go-systemd

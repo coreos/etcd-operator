@@ -39,6 +39,11 @@ const (
 	backupFilenameSuffix = "etcd.backup"
 )
 
+var compatibilityMap = map[string]map[string]struct{}{
+	"3.0": {"2.3": struct{}{}, "3.0": struct{}{}},
+	"3.1": {"3.0": struct{}{}, "3.1": struct{}{}},
+}
+
 type Backup struct {
 	kclient *unversioned.Client
 
@@ -46,6 +51,7 @@ type Backup struct {
 	namespace   string
 	policy      spec.BackupPolicy
 	listenAddr  string
+	backupDir   string
 
 	backupNow chan chan error
 }
@@ -57,6 +63,7 @@ func New(kclient *unversioned.Client, clusterName, ns string, policy spec.Backup
 		namespace:   ns,
 		policy:      policy,
 		listenAddr:  listenAddr,
+		backupDir:   constants.BackupDir,
 
 		backupNow: make(chan chan error),
 	}
@@ -66,7 +73,7 @@ func (b *Backup) Run() {
 	// We created not only backup dir and but also tmp dir under it.
 	// tmp dir is used to store intermediate snapshot files.
 	// It will be no-op if target dir existed.
-	if err := os.MkdirAll(filepath.Join(constants.BackupDir, backupTmpDir), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(b.backupDir, backupTmpDir), 0700); err != nil {
 		panic(err)
 	}
 
@@ -121,7 +128,7 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 	}
 
 	log.Printf("saving backup for cluster (%s)", b.clusterName)
-	if err := writeSnap(member, constants.BackupDir, rev); err != nil {
+	if err := writeSnap(member, b.backupDir, rev); err != nil {
 		err = fmt.Errorf("write snapshot failed: %v", err)
 		return lastSnapRev, err
 	}
@@ -140,14 +147,22 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	defer etcdcli.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	resp, err := etcdcli.Maintenance.Status(ctx, m.ClientAddr())
+	cancel()
+	if err != nil {
+		return err
+	}
+	ver := resp.Version
 
+	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	rc, err := etcdcli.Maintenance.Snapshot(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to receive snapshot (%v)", err)
 	}
+	defer cancel()
 	defer rc.Close()
 
-	filename := makeFilename(rev)
+	filename := makeFilename(ver, rev)
 	tmpfile, err := os.OpenFile(filepath.Join(backupDir, backupTmpDir, filename), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, backupFilePerm)
 	if err != nil {
 		return fmt.Errorf("failed to create snapshot tempfile: %v", err)
@@ -158,7 +173,6 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 		os.Remove(tmpfile.Name())
 		return fmt.Errorf("failed to save snapshot: %v", err)
 	}
-	cancel()
 	tmpfile.Close()
 
 	nextSnapshotName := filepath.Join(backupDir, filename)
@@ -169,11 +183,6 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	}
 	log.Printf("saved snapshot %s (size: %d) successfully", nextSnapshotName, n)
 	return nil
-}
-
-func makeFilename(rev int64) string {
-	// TODO: version aware backup.
-	return fmt.Sprintf("%s.%016x.%s", "etcd-version", rev, backupFilenameSuffix)
 }
 
 func getMemberWithMaxRev(pods *api.PodList) (*etcdutil.Member, int64, error) {
