@@ -218,7 +218,6 @@ func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 		c.logger.Errorf("failed to create seed member (%s): %v", m.Name, err)
 		return err
 	}
-	c.idCounter++
 	c.logger.Infof("cluster created with seed member (%s)", m.Name)
 	return nil
 }
@@ -350,7 +349,11 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 		k8sutil.AddRecoveryToPod(pod, c.name, m.Name, token, c.spec)
 	}
 	_, err := c.kclient.Pods(c.namespace).Create(pod)
-	return err
+	if err != nil {
+		return err
+	}
+	c.idCounter++
+	return nil
 }
 
 func (c *Cluster) removePodAndService(name string) error {
