@@ -5,7 +5,7 @@ set -o nounset
 set -o pipefail
 
 if [ -z "${PASSES-}" ]; then
-	PASSES="fmt build e2e"
+	PASSES="fmt build e2e unittest"
 fi
 
 find_files() {
@@ -46,6 +46,11 @@ function build_pass {
 function e2e_pass {
 	TEST_PKGS=`go list ./test/... | grep -v framework`
 	go test -v ${TEST_PKGS} --kubeconfig $KUBERNETES_KUBECONFIG_PATH --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
+}
+
+function unittest_pass {
+	TEST_PKGS=`go list ./pkg/...`
+	go test -v ${TEST_PKGS}
 }
 
 for p in $PASSES; do
