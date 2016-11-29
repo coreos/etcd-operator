@@ -155,7 +155,7 @@ func (c *Cluster) addOneMember() error {
 	}
 	defer etcdcli.Close()
 
-	newMemberName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
+	newMemberName := fmt.Sprintf("%s-%04d", c.Name, c.idCounter)
 	newMember := &etcdutil.Member{Name: newMemberName}
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
@@ -230,7 +230,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	backupNow := true
 	if len(left) > 0 {
 		c.logger.Infof("pods are still running (%v). Will try to make a latest backup from one of them.", left)
-		err := RequestBackupNow(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name))
+		err := RequestBackupNow(c.KubeCli.RESTClient.Client, k8sutil.MakeBackupHostPort(c.Name))
 		if err != nil {
 			backupNow = false
 			c.logger.Errorln(err)
@@ -241,7 +241,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	} else {
 		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
 		// If so, we can still continue. Otherwise, it's fatal error.
-		exist, err := checkBackupExist(c.kclient.RESTClient.Client, k8sutil.MakeBackupHostPort(c.name), c.spec.Version)
+		exist, err := checkBackupExist(c.KubeCli.RESTClient.Client, k8sutil.MakeBackupHostPort(c.Name), c.spec.Version)
 		if err != nil {
 			c.logger.Errorln(err)
 			return err

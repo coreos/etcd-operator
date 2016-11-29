@@ -49,17 +49,20 @@ type clusterEvent struct {
 	spec spec.ClusterSpec
 }
 
+type Config struct {
+	Name      string
+	Namespace string
+	KubeCli   *unversioned.Client
+}
+
 type Cluster struct {
 	logger *logrus.Entry
 
-	kclient *unversioned.Client
+	Config
 
 	status *Status
 
 	spec *spec.ClusterSpec
-
-	name      string
-	namespace string
 
 	idCounter int
 	eventCh   chan *clusterEvent
@@ -73,28 +76,26 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
-	return new(c, name, ns, spec, stopC, wg, true)
+func New(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
+	return new(c, s, stopC, wg, true)
 }
 
-func Restore(c *unversioned.Client, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
-	return new(c, name, ns, spec, stopC, wg, false)
+func Restore(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
+	return new(c, s, stopC, wg, false)
 }
 
-func new(kclient *unversioned.Client, name, ns string, spec *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) *Cluster {
-	if len(spec.Version) == 0 {
+func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) *Cluster {
+	if len(s.Version) == 0 {
 		// TODO: set version in spec in apiserver
-		spec.Version = defaultVersion
+		s.Version = defaultVersion
 	}
 	c := &Cluster{
-		logger:    logrus.WithField("pkg", "cluster").WithField("cluster-name", name),
-		kclient:   kclient,
-		name:      name,
-		namespace: ns,
-		eventCh:   make(chan *clusterEvent, 100),
-		stopCh:    make(chan struct{}),
-		spec:      spec,
-		status:    &Status{},
+		logger:  logrus.WithField("pkg", "cluster").WithField("cluster-name", config.Name),
+		Config:  config,
+		spec:    s,
+		eventCh: make(chan *clusterEvent, 100),
+		stopCh:  make(chan struct{}),
+		status:  &Status{},
 	}
 	if isNewCluster {
 		err := c.createClientServiceLB()
@@ -208,7 +209,7 @@ func isFatalError(err error) bool {
 }
 
 func (c *Cluster) makeSeedMember() *etcdutil.Member {
-	etcdName := fmt.Sprintf("%s-%04d", c.name, c.idCounter)
+	etcdName := fmt.Sprintf("%s-%04d", c.Name, c.idCounter)
 	return &etcdutil.Member{Name: etcdName}
 }
 
@@ -290,12 +291,12 @@ func findID(name string) int {
 func (c *Cluster) delete() {
 	option := k8sapi.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"etcd_cluster": c.name,
+			"etcd_cluster": c.Name,
 			"app":          "etcd",
 		}),
 	}
 
-	pods, err := c.kclient.Pods(c.namespace).List(option)
+	pods, err := c.KubeCli.Pods(c.Namespace).List(option)
 	if err != nil {
 		panic(err)
 	}
@@ -305,7 +306,7 @@ func (c *Cluster) delete() {
 		}
 	}
 	if c.spec.Backup != nil {
-		k8sutil.DeleteBackupReplicaSetAndService(c.kclient, c.name, c.namespace, c.spec.Backup.CleanupOnClusterDelete)
+		k8sutil.DeleteBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup.CleanupOnClusterDelete)
 	}
 
 	err = c.deleteClientServiceLB()
@@ -316,7 +317,7 @@ func (c *Cluster) delete() {
 }
 
 func (c *Cluster) createClientServiceLB() error {
-	if _, err := k8sutil.CreateEtcdService(c.kclient, c.name, c.namespace); err != nil {
+	if _, err := k8sutil.CreateEtcdService(c.KubeCli, c.Name, c.Namespace); err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
 		}
@@ -325,7 +326,7 @@ func (c *Cluster) createClientServiceLB() error {
 }
 
 func (c *Cluster) deleteClientServiceLB() error {
-	err := c.kclient.Services(c.namespace).Delete(c.name)
+	err := c.KubeCli.Services(c.Namespace).Delete(c.Name)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
@@ -336,7 +337,7 @@ func (c *Cluster) deleteClientServiceLB() error {
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
 	// TODO: remove garbage service. Because we will fail after service created before pods created.
-	if _, err := k8sutil.CreateEtcdMemberService(c.kclient, m.Name, c.name, c.namespace); err != nil {
+	if _, err := k8sutil.CreateEtcdMemberService(c.KubeCli, m.Name, c.Name, c.Namespace); err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
 		}
@@ -345,22 +346,22 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	if state == "new" {
 		token = uuid.New()
 	}
-	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.name, state, token, c.spec)
+	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.Name, state, token, c.spec)
 	if needRecovery {
-		k8sutil.AddRecoveryToPod(pod, c.name, m.Name, token, c.spec)
+		k8sutil.AddRecoveryToPod(pod, c.Name, m.Name, token, c.spec)
 	}
-	_, err := c.kclient.Pods(c.namespace).Create(pod)
+	_, err := c.KubeCli.Pods(c.Namespace).Create(pod)
 	return err
 }
 
 func (c *Cluster) removePodAndService(name string) error {
-	err := c.kclient.Services(c.namespace).Delete(name)
+	err := c.KubeCli.Services(c.Namespace).Delete(name)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
 	}
-	err = c.kclient.Pods(c.namespace).Delete(name, k8sapi.NewDeleteOptions(0))
+	err = c.KubeCli.Pods(c.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
@@ -370,7 +371,7 @@ func (c *Cluster) removePodAndService(name string) error {
 }
 
 func (c *Cluster) pollPods() ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
-	podList, err := c.kclient.Pods(c.namespace).List(k8sutil.EtcdPodListOpt(c.name))
+	podList, err := c.KubeCli.Pods(c.Namespace).List(k8sutil.EtcdPodListOpt(c.Name))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)
 	}

@@ -146,7 +146,12 @@ func (c *Controller) Run() error {
 				stopC := make(chan struct{})
 				c.stopChMap[clusterName] = stopC
 
-				nc := cluster.New(c.KubeCli, clusterName, c.Namespace, clusterSpec, stopC, &c.waitCluster)
+				cfg := cluster.Config{
+					Name:      clusterName,
+					Namespace: c.Namespace,
+					KubeCli:   c.KubeCli,
+				}
+				nc := cluster.New(cfg, clusterSpec, stopC, &c.waitCluster)
 				c.clusters[clusterName] = nc
 
 				analytics.ClusterCreated()
@@ -195,7 +200,12 @@ func (c *Controller) findAllClusters() (string, error) {
 		stopC := make(chan struct{})
 		c.stopChMap[item.Name] = stopC
 
-		nc := cluster.Restore(c.KubeCli, item.Name, c.Namespace, &item.Spec, stopC, &c.waitCluster)
+		cfg := cluster.Config{
+			Name:      clusterName,
+			Namespace: c.Namespace,
+			KubeCli:   c.KubeCli,
+		}
+		nc := cluster.Restore(cfg, &item.Spec, stopC, &c.waitCluster)
 		c.clusters[item.Name] = nc
 	}
 	return list.ListMeta.ResourceVersion, nil
