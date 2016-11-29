@@ -50,9 +50,10 @@ type clusterEvent struct {
 }
 
 type Config struct {
-	Name      string
-	Namespace string
-	KubeCli   *unversioned.Client
+	Name          string
+	Namespace     string
+	PVProvisioner string
+	KubeCli       *unversioned.Client
 }
 
 type Cluster struct {
@@ -76,15 +77,15 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
+func New(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
 	return new(c, s, stopC, wg, true)
 }
 
-func Restore(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
+func Restore(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
 	return new(c, s, stopC, wg, false)
 }
 
-func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) *Cluster {
+func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) (*Cluster, error) {
 	if len(s.Version) == 0 {
 		// TODO: set version in spec in apiserver
 		s.Version = defaultVersion
@@ -97,12 +98,20 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		stopCh:  make(chan struct{}),
 		status:  &Status{},
 	}
-	if isNewCluster {
-		err := c.createClientServiceLB()
+
+	backup := c.spec.Backup
+	if backup != nil {
+		err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, *backup)
 		if err != nil {
-			// todo: do not panic!
-			panic("todo:" + err.Error())
+			return nil, fmt.Errorf("fail to create backup: %v", err)
 		}
+	}
+
+	if err := c.createClientServiceLB(); err != nil {
+		return nil, fmt.Errorf("fail to create client service LB: %v", err)
+	}
+	if isNewCluster {
+		var err error
 		if c.spec.SelfHosted != nil {
 			if len(c.spec.SelfHosted.BootMemberClientEndpoint) == 0 {
 				err = c.newSelfHostedSeedMember()
@@ -113,13 +122,13 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 			err = c.newSeedMember()
 		}
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
 	wg.Add(1)
 	go c.run(stopC, wg)
 
-	return c
+	return c, nil
 }
 
 func (c *Cluster) Delete() {

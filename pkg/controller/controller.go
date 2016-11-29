@@ -132,26 +132,20 @@ func (c *Controller) Run() error {
 			clusterName := event.Object.ObjectMeta.Name
 			switch event.Type {
 			case "ADDED":
-				clusterSpec := &event.Object.Spec
-
-				backup := clusterSpec.Backup
-				if backup != nil && backup.MaxSnapshot != 0 {
-					err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, c.PVProvisioner, *backup)
-					if err != nil {
-						c.logger.Errorf("cluster %q is dead: failed to create backup (%v)", clusterName, err)
-						continue
-					}
-				}
-
 				stopC := make(chan struct{})
-				c.stopChMap[clusterName] = stopC
-
 				cfg := cluster.Config{
-					Name:      clusterName,
-					Namespace: c.Namespace,
-					KubeCli:   c.KubeCli,
+					Name:          clusterName,
+					Namespace:     c.Namespace,
+					PVProvisioner: c.PVProvisioner,
+					KubeCli:       c.KubeCli,
 				}
-				nc := cluster.New(cfg, clusterSpec, stopC, &c.waitCluster)
+				nc, err := cluster.New(cfg, &event.Object.Spec, stopC, &c.waitCluster)
+				if err != nil {
+					c.logger.Errorf("cluster (%q) is dead: %v", clusterName, err)
+					continue
+				}
+
+				c.stopChMap[clusterName] = stopC
 				c.clusters[clusterName] = nc
 
 				analytics.ClusterCreated()
@@ -188,25 +182,20 @@ func (c *Controller) findAllClusters() (string, error) {
 	}
 	for _, item := range list.Items {
 		clusterName := item.Name
-		backup := item.Spec.Backup
-		if backup != nil && backup.MaxSnapshot != 0 {
-			err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, clusterName, c.Namespace, c.PVProvisioner, *backup)
-			if err != nil {
-				c.logger.Errorf("cluster %q is dead: failure to create backup (%v)", clusterName, err)
-				continue
-			}
-		}
-
 		stopC := make(chan struct{})
-		c.stopChMap[item.Name] = stopC
-
 		cfg := cluster.Config{
-			Name:      clusterName,
-			Namespace: c.Namespace,
-			KubeCli:   c.KubeCli,
+			Name:          clusterName,
+			Namespace:     c.Namespace,
+			PVProvisioner: c.PVProvisioner,
+			KubeCli:       c.KubeCli,
 		}
-		nc := cluster.Restore(cfg, &item.Spec, stopC, &c.waitCluster)
-		c.clusters[item.Name] = nc
+		nc, err := cluster.Restore(cfg, &item.Spec, stopC, &c.waitCluster)
+		if err != nil {
+			c.logger.Errorf("cluster (%q) is dead: %v", clusterName, err)
+			continue
+		}
+		c.stopChMap[clusterName] = stopC
+		c.clusters[clusterName] = nc
 	}
 	return list.ListMeta.ResourceVersion, nil
 }
