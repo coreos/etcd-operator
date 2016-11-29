@@ -227,13 +227,14 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 		return errNoBackupExist
 	}
 
-	backupNow := true
+	backupNow := false
 	if len(left) > 0 {
 		c.logger.Infof("pods are still running (%v). Will try to make a latest backup from one of them.", left)
 		err := RequestBackupNow(c.KubeCli.RESTClient.Client, k8sutil.MakeBackupHostPort(c.Name))
 		if err != nil {
-			backupNow = false
 			c.logger.Errorln(err)
+		} else {
+			backupNow = true
 		}
 	}
 	if backupNow {
