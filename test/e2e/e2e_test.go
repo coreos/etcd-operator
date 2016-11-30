@@ -56,7 +56,6 @@ func TestResizeCluster3to5(t *testing.T) {
 
 	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
-		return
 	}
 	fmt.Println("reached to 3 members cluster")
 
@@ -85,7 +84,6 @@ func TestResizeCluster5to3(t *testing.T) {
 
 	if _, err := waitUntilSizeReached(f, testEtcd.Name, 5, 90); err != nil {
 		t.Fatalf("failed to create 5 members etcd cluster: %v", err)
-		return
 	}
 	fmt.Println("reached to 5 members cluster")
 
@@ -114,7 +112,6 @@ func TestOneMemberRecovery(t *testing.T) {
 	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
-		return
 	}
 	fmt.Println("reached to 3 members cluster")
 
