@@ -37,9 +37,14 @@ type ClusterSpec struct {
 	// equal to the expected version.
 	Version string `json:"version"`
 
-	// Backup is the backup policy for the etcd cluster.
-	// There is no backup by default.
+	// Backup defines the policy to backup data of etcd cluster if not nil.
+	// If backup policy is set but restore policy not, and if a previous backup exists,
+	// this cluster would face conflict and fail to start.
 	Backup *BackupPolicy `json:"backup,omitempty"`
+
+	// Restore defines the policy to restore cluster form existing backup if not nil.
+	// It's not allowed if restore policy is set and backup policy not.
+	Restore *RestorePolicy `json:"restore,omitempty"`
 
 	// Paused is to pause the control of the operator for the etcd cluster.
 	Paused bool `json:"paused,omitempty"`
@@ -56,4 +61,14 @@ type ClusterSpec struct {
 	// SelfHosted determines if the etcd cluster is used for a self-hosted
 	// Kubernetes cluster.
 	SelfHosted *SelfHostedPolicy `json:"selfHosted,omitempty"`
+}
+
+// RestorePolicy defines the policy to restore cluster form existing backup if not nil.
+type RestorePolicy struct {
+	// BackupClusterName is the cluster name of the backup to recover from.
+	BackupClusterName string `json:"backupClusterName"`
+
+	// StorageType specifies the type of storage device to store backup files.
+	// If not set, the default is "PersistentVolume".
+	StorageType BackupStorageType `json:"storageType"`
 }

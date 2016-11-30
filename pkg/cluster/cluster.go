@@ -15,6 +15,7 @@
 package cluster
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -99,36 +100,65 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		status:  &Status{},
 	}
 
-	backup := c.spec.Backup
-	if backup != nil {
-		err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, *backup)
-		if err != nil {
-			return nil, fmt.Errorf("fail to create backup: %v", err)
+	if err := c.prepareBackupAndRestore(); err != nil {
+		return nil, err
+	}
+
+	if isNewCluster && c.spec.Restore == nil {
+		// Note: For restore case, we will go through reconcile loop and disaster recovery.
+		if err := c.prepareSeedMember(isNewCluster); err != nil {
+			return nil, err
 		}
 	}
 
 	if err := c.createClientServiceLB(); err != nil {
 		return nil, fmt.Errorf("fail to create client service LB: %v", err)
 	}
-	if isNewCluster {
-		var err error
-		if c.spec.SelfHosted != nil {
-			if len(c.spec.SelfHosted.BootMemberClientEndpoint) == 0 {
-				err = c.newSelfHostedSeedMember()
-			} else {
-				err = c.migrateBootMember()
-			}
-		} else {
-			err = c.newSeedMember()
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
+
 	wg.Add(1)
 	go c.run(stopC, wg)
 
 	return c, nil
+}
+
+func (c *Cluster) prepareBackupAndRestore() error {
+	backup := c.spec.Backup
+	restore := c.spec.Restore
+	switch {
+	case backup == nil && restore != nil:
+		return errors.New("restore policy set but backup policy not. This is not allowed. Cluster to be made dead.")
+	case backup != nil && restore == nil:
+		err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
+		if err != nil {
+			return err
+		}
+		fallthrough
+	case backup != nil && restore != nil:
+		// TODO: do a PVC copy if restore.BackupClusterName != cluster.Name
+		err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace)
+		if err != nil {
+			return fmt.Errorf("fail to create backup: %v", err)
+		}
+		c.logger.Infof("backup created")
+		if restore != nil {
+			c.logger.Infof("will restore from existing backup if no etcd member running")
+		}
+	}
+	return nil
+}
+
+func (c *Cluster) prepareSeedMember(isNewCluster bool) error {
+	var err error
+	if c.spec.SelfHosted != nil {
+		if len(c.spec.SelfHosted.BootMemberClientEndpoint) == 0 {
+			err = c.newSelfHostedSeedMember()
+		} else {
+			err = c.migrateBootMember()
+		}
+	} else {
+		err = c.newSeedMember()
+	}
+	return err
 }
 
 func (c *Cluster) Delete() {
