@@ -27,11 +27,18 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
+
+	"github.com/coreos/etcd/clientv3"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	k8sclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/wait"
+)
+
+const (
+	etcdKeyFoo = "foo"
+	etcdValBar = "bar"
 )
 
 func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Duration) error {
@@ -124,10 +131,26 @@ func makeEtcdCluster(genName string, size int) *spec.EtcdCluster {
 	}
 }
 
+func makeBackupPolicy(cleanup bool) *spec.BackupPolicy {
+	return &spec.BackupPolicy{
+		SnapshotIntervalInSecond: 60 * 60,
+		MaxSnapshot:              5,
+		VolumeSizeInMB:           512,
+		StorageType:              spec.BackupStorageTypePersistentVolume,
+		CleanupOnClusterDelete:   cleanup,
+	}
+}
+
 func etcdClusterWithBackup(ec *spec.EtcdCluster, backupPolicy *spec.BackupPolicy) *spec.EtcdCluster {
 	ec.Spec.Backup = backupPolicy
 	return ec
 }
+
+func etcdClusterWithRestore(ec *spec.EtcdCluster, restorePolicy *spec.RestorePolicy) *spec.EtcdCluster {
+	ec.Spec.Restore = restorePolicy
+	return ec
+}
+
 func etcdClusterWithVersion(ec *spec.EtcdCluster, version string) *spec.EtcdCluster {
 	ec.Spec.Version = version
 	return ec
@@ -248,4 +271,16 @@ func getLogs(kubecli *k8sclient.Client, ns, p, c string, out io.Writer) error {
 
 	_, err = io.Copy(out, readCloser)
 	return err
+}
+
+func createEtcdClient(addr string) (*clientv3.Client, error) {
+	cfg := clientv3.Config{
+		Endpoints:   []string{addr},
+		DialTimeout: constants.DefaultDialTimeout,
+	}
+	c, err := clientv3.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
 }
