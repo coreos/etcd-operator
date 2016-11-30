@@ -105,11 +105,20 @@ func (b *Backup) Run() {
 }
 
 func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
-	pods, err := b.kclient.Pods(b.namespace).List(k8sutil.EtcdPodListOpt(b.clusterName))
+	podList, err := b.kclient.Pods(b.namespace).List(k8sutil.EtcdPodListOpt(b.clusterName))
 	if err != nil {
 		return lastSnapRev, err
 	}
-	if len(pods.Items) == 0 {
+
+	var pods []*api.Pod
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if pod.Status.Phase == api.PodRunning {
+			pods = append(pods, pod)
+		}
+	}
+
+	if len(pods) == 0 {
 		msg := "no running etcd pods found"
 		logrus.Warning(msg)
 		return lastSnapRev, fmt.Errorf(msg)
@@ -185,11 +194,11 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	return nil
 }
 
-func getMemberWithMaxRev(pods *api.PodList) (*etcdutil.Member, int64, error) {
+func getMemberWithMaxRev(pods []*api.Pod) (*etcdutil.Member, int64, error) {
 	var member *etcdutil.Member
 	maxRev := int64(0)
-	for i := range pods.Items {
-		m := &etcdutil.Member{Name: pods.Items[i].Name}
+	for _, pod := range pods {
+		m := &etcdutil.Member{Name: pod.Name}
 		cfg := clientv3.Config{
 			Endpoints:   []string{m.ClientAddr()},
 			DialTimeout: constants.DefaultDialTimeout,
