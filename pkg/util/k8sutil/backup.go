@@ -19,10 +19,8 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 
-	"github.com/Sirupsen/logrus"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
@@ -51,7 +49,7 @@ func CreateStorageClass(kubecli *unversioned.Client, pvProvisioner string) error
 	return err
 }
 
-func createAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisioner string, volumeSizeInMB int) (*api.PersistentVolumeClaim, error) {
+func CreateAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisioner string, volumeSizeInMB int) error {
 	name := makePVCName(clusterName)
 	storageClassName := storageClassPrefix + "-" + path.Base(pvProvisioner)
 	claim := &api.PersistentVolumeClaim{
@@ -77,46 +75,37 @@ func createAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisione
 	}
 	_, err := kubecli.PersistentVolumeClaims(ns).Create(claim)
 	if err != nil {
-		if !IsKubernetesResourceAlreadyExistError(err) {
-			return nil, err
-		}
+		return err
 	}
 
-	var retClaim *api.PersistentVolumeClaim
-	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+	err = wait.Poll(4*time.Second, 20*time.Second, func() (bool, error) {
 		var err error
-		retClaim, err = kubecli.PersistentVolumeClaims(ns).Get(name)
+		claim, err = kubecli.PersistentVolumeClaims(ns).Get(name)
 		if err != nil {
 			return false, err
 		}
-		logrus.Infof("waiting PV claim (%s) to be 'Bound', current status: %v", name, retClaim.Status.Phase)
-		if retClaim.Status.Phase != api.ClaimBound {
+		if claim.Status.Phase != api.ClaimBound {
 			return false, nil
 		}
 		return true, nil
 	})
 	if err != nil {
-		wErr := fmt.Errorf("fail to wait PVC (%s) 'Bound': %v", name, err)
-		return nil, wErr
+		wErr := fmt.Errorf("fail to wait PVC (%s) '(%v)/Bound': %v", name, claim.Status.Phase, err)
+		return wErr
 	}
 
-	return retClaim, nil
+	return nil
 }
 
 var BackupImage = "quay.io/coreos/etcd-operator:latest"
 
-func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns, pvProvisioner string, policy spec.BackupPolicy) error {
-	claim, err := createAndWaitPVC(kubecli, clusterName, ns, pvProvisioner, policy.VolumeSizeInMB)
-	if err != nil {
-		return err
-	}
-
+func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string) error {
 	labels := map[string]string{
 		"app":          BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
 	}
 	name := MakeBackupName(clusterName)
-	_, err = kubecli.ReplicaSets(ns).Create(&extensions.ReplicaSet{
+	_, err := kubecli.ReplicaSets(ns).Create(&extensions.ReplicaSet{
 		ObjectMeta: api.ObjectMeta{
 			Name: name,
 		},
@@ -151,7 +140,7 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 						Name: "etcd-backup-storage",
 						VolumeSource: api.VolumeSource{
 							PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{
-								ClaimName: claim.Name,
+								ClaimName: makePVCName(clusterName),
 							},
 						},
 					}},
@@ -197,7 +186,11 @@ func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 		return err
 	}
 	orphanOption := false
-	err = kubecli.ReplicaSets(ns).Delete(name, &api.DeleteOptions{OrphanDependents: &orphanOption})
+	gracePeriod := int64(0)
+	err = kubecli.ReplicaSets(ns).Delete(name, &api.DeleteOptions{
+		OrphanDependents:   &orphanOption,
+		GracePeriodSeconds: &gracePeriod,
+	})
 	if err != nil {
 		return err
 	}

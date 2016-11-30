@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
@@ -186,15 +185,8 @@ func TestPauseControl(t *testing.T) {
 
 func testDisasterRecovery(t *testing.T, numToKill int) {
 	f := framework.Global
-	backupPolicy := &spec.BackupPolicy{
-		SnapshotIntervalInSecond: 60 * 60,
-		MaxSnapshot:              5,
-		VolumeSizeInMB:           512,
-		StorageType:              spec.BackupStorageTypePersistentVolume,
-		CleanupOnClusterDelete:   true,
-	}
 	origEtcd := makeEtcdCluster("test-etcd-", 3)
-	origEtcd = etcdClusterWithBackup(origEtcd, backupPolicy)
+	origEtcd = etcdClusterWithBackup(origEtcd, makeBackupPolicy(true))
 	testEtcd, err := createEtcdCluster(f, origEtcd)
 	if err != nil {
 		t.Fatal(err)
