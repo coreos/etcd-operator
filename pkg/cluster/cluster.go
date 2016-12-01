@@ -106,7 +106,7 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 
 	if isNewCluster && c.spec.Restore == nil {
 		// Note: For restore case, we will go through reconcile loop and disaster recovery.
-		if err := c.prepareSeedMember(isNewCluster); err != nil {
+		if err := c.prepareSeedMember(); err != nil {
 			return nil, err
 		}
 	}
@@ -147,7 +147,7 @@ func (c *Cluster) prepareBackupAndRestore() error {
 	return nil
 }
 
-func (c *Cluster) prepareSeedMember(isNewCluster bool) error {
+func (c *Cluster) prepareSeedMember() error {
 	var err error
 	if c.spec.SelfHosted != nil {
 		if len(c.spec.SelfHosted.BootMemberClientEndpoint) == 0 {
