@@ -22,10 +22,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
-	"strings"
-
-	"github.com/Sirupsen/logrus"
 )
 
 const (
@@ -34,12 +30,15 @@ const (
 	backupFilenameSuffix = "etcd.backup"
 )
 
+// ensure fileBackend satisfies backend interface.
+var _ backend = &fileBackend{}
+
 type fileBackend struct {
 	dir string
 }
 
 func (fb *fileBackend) save(version string, snapRev int64, rc io.ReadCloser) error {
-	filename := makeFilename(version, snapRev)
+	filename := makeBackupName(version, snapRev)
 	tmpfile, err := os.OpenFile(filepath.Join(fb.dir, backupTmpDir, filename), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, backupFilePerm)
 	if err != nil {
 		return fmt.Errorf("failed to create snapshot tempfile: %v", err)
@@ -67,43 +66,16 @@ func (fb *fileBackend) getLatest() (string, io.ReadCloser, error) {
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to list dir (%s): error (%v)", fb.dir, err)
 	}
-	fn := getLatestSnapshotName(files)
+
+	var names []string
+	for _, f := range files {
+		names = append(names, f.Name())
+	}
+
+	fn := getLatestBackupName(names)
 	if fn == "" {
 		return "", nil, nil
 	}
 	f, err := os.Open(path.Join(fb.dir, fn))
 	return fn, f, err
-}
-
-func getLatestSnapshotName(files []os.FileInfo) string {
-	maxRev := int64(0)
-	fname := ""
-	for _, file := range files {
-		base := filepath.Base(file.Name())
-		if !isBackup(base) {
-			continue
-		}
-		rev, err := getRev(base)
-		if err != nil {
-			logrus.Errorf("fail to get rev from backup (%s): %v", file.Name(), err)
-			continue
-		}
-		if rev > maxRev {
-			maxRev = rev
-			fname = base
-		}
-	}
-	return fname
-}
-
-func isBackup(filename string) bool {
-	return strings.HasSuffix(filename, backupFilenameSuffix)
-}
-
-func makeFilename(ver string, rev int64) string {
-	return fmt.Sprintf("%s_%016x_%s", ver, rev, backupFilenameSuffix)
-}
-
-func getRev(filename string) (int64, error) {
-	return strconv.ParseInt(strings.SplitN(filename, "_", 3)[1], 16, 64)
 }
