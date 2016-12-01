@@ -51,7 +51,12 @@ func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Du
 		if err != nil {
 			return false, err
 		}
-		return len(podList.Items) > 0, nil
+		for i := range podList.Items {
+			if podList.Items[i].Status.Phase == api.PodRunning {
+				return true, nil
+			}
+		}
+		return false, nil
 	})
 }
 
