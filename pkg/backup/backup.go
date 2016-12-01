@@ -40,32 +40,33 @@ type Backup struct {
 	namespace   string
 	policy      spec.BackupPolicy
 	listenAddr  string
-	backupDir   string
+
+	be backend
 
 	backupNow chan chan error
 }
 
 func New(kclient *unversioned.Client, clusterName, ns string, policy spec.BackupPolicy, listenAddr string) *Backup {
+	// We created not only backup dir and but also tmp dir under it.
+	// tmp dir is used to store intermediate snapshot files.
+	// It will be no-op if target dir existed.
+	if err := os.MkdirAll(filepath.Join(constants.BackupDir, backupTmpDir), 0700); err != nil {
+		panic(err)
+	}
+
 	return &Backup{
 		kclient:     kclient,
 		clusterName: clusterName,
 		namespace:   ns,
 		policy:      policy,
 		listenAddr:  listenAddr,
-		backupDir:   constants.BackupDir,
+		be:          &fileBackend{dir: constants.BackupDir},
 
 		backupNow: make(chan chan error),
 	}
 }
 
 func (b *Backup) Run() {
-	// We created not only backup dir and but also tmp dir under it.
-	// tmp dir is used to store intermediate snapshot files.
-	// It will be no-op if target dir existed.
-	if err := os.MkdirAll(filepath.Join(b.backupDir, backupTmpDir), 0700); err != nil {
-		panic(err)
-	}
-
 	go b.startHTTP()
 
 	lastSnapRev := int64(0)
@@ -126,14 +127,14 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 	}
 
 	log.Printf("saving backup for cluster (%s)", b.clusterName)
-	if err := writeSnap(member, b.backupDir, rev); err != nil {
+	if err := b.writeSnap(member, rev); err != nil {
 		err = fmt.Errorf("write snapshot failed: %v", err)
 		return lastSnapRev, err
 	}
 	return rev, nil
 }
 
-func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
+func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.ClientAddr()},
 		DialTimeout: constants.DefaultDialTimeout,
@@ -159,7 +160,7 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	defer cancel()
 	defer rc.Close()
 
-	return writeBackupFile(backupDir, resp.Version, rev, rc)
+	return b.be.save(resp.Version, rev, rc)
 }
 
 func getMemberWithMaxRev(pods []*api.Pod) (*etcdutil.Member, int64, error) {

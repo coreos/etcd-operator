@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -33,9 +34,13 @@ const (
 	backupFilenameSuffix = "etcd.backup"
 )
 
-func writeBackupFile(backupDir, version string, snapRev int64, rc io.ReadCloser) error {
+type fileBackend struct {
+	dir string
+}
+
+func (fb *fileBackend) save(version string, snapRev int64, rc io.ReadCloser) error {
 	filename := makeFilename(version, snapRev)
-	tmpfile, err := os.OpenFile(filepath.Join(backupDir, backupTmpDir, filename), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, backupFilePerm)
+	tmpfile, err := os.OpenFile(filepath.Join(fb.dir, backupTmpDir, filename), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, backupFilePerm)
 	if err != nil {
 		return fmt.Errorf("failed to create snapshot tempfile: %v", err)
 	}
@@ -47,7 +52,7 @@ func writeBackupFile(backupDir, version string, snapRev int64, rc io.ReadCloser)
 	}
 	tmpfile.Close()
 
-	nextSnapshotName := filepath.Join(backupDir, filename)
+	nextSnapshotName := filepath.Join(fb.dir, filename)
 	err = os.Rename(tmpfile.Name(), nextSnapshotName)
 	if err != nil {
 		os.Remove(tmpfile.Name())
@@ -57,12 +62,17 @@ func writeBackupFile(backupDir, version string, snapRev int64, rc io.ReadCloser)
 	return nil
 }
 
-func getBackupFile(backupDir string) (string, error) {
-	files, err := ioutil.ReadDir(backupDir)
+func (fb *fileBackend) getLatest() (string, io.ReadCloser, error) {
+	files, err := ioutil.ReadDir(fb.dir)
 	if err != nil {
-		return "", fmt.Errorf("failed to list dir (%s): error (%v)", backupDir, err)
+		return "", nil, fmt.Errorf("failed to list dir (%s): error (%v)", fb.dir, err)
 	}
-	return getLatestSnapshotName(files), nil
+	fn := getLatestSnapshotName(files)
+	if fn == "" {
+		return "", nil, nil
+	}
+	f, err := os.Open(path.Join(fb.dir, fn))
+	return fn, f, err
 }
 
 func getLatestSnapshotName(files []os.FileInfo) string {
