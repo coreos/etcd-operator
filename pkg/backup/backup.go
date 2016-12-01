@@ -54,13 +54,21 @@ func New(kclient *unversioned.Client, clusterName, ns string, policy spec.Backup
 		panic(err)
 	}
 
+	var be backend
+	switch policy.StorageType {
+	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+		be = &fileBackend{dir: constants.BackupDir}
+	default:
+		logrus.Fatalf("unsupported storage type: %v", policy.StorageType)
+	}
+
 	return &Backup{
 		kclient:     kclient,
 		clusterName: clusterName,
 		namespace:   ns,
 		policy:      policy,
 		listenAddr:  listenAddr,
-		be:          &fileBackend{dir: constants.BackupDir},
+		be:          be,
 
 		backupNow: make(chan chan error),
 	}
