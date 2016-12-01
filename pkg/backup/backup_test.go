@@ -48,7 +48,7 @@ func TestBackupVersionCompatiblity(t *testing.T) {
 
 	for i, tt := range tests {
 		b := &Backup{
-			backupDir: d,
+			be: &fileBackend{dir: d},
 		}
 		req := &http.Request{
 			URL: util.MakeBackupURL("ignore", tt.reqVersion),

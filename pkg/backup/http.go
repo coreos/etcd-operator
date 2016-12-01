@@ -16,8 +16,8 @@ package backup
 
 import (
 	"fmt"
+	"io"
 	"net/http"
-	"path"
 	"strings"
 	"time"
 
@@ -55,7 +55,7 @@ func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
-	fname, err := getBackupFile(b.backupDir)
+	fname, rc, err := b.be.getLatest()
 	if err != nil {
 		logrus.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -87,5 +87,9 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodHead {
 		return
 	}
-	http.ServeFile(w, r, path.Join(b.backupDir, fname))
+
+	_, err = io.Copy(w, rc)
+	if err != nil {
+		logrus.Errorf("failed to write backup to %s: %v", r.RemoteAddr, err)
+	}
 }
