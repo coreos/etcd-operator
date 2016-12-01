@@ -18,6 +18,7 @@ package spec
 type BackupStorageType string
 
 const (
+	BackupStorageTypeDefault          = ""
 	BackupStorageTypePersistentVolume = "PersistentVolume"
 )
 
