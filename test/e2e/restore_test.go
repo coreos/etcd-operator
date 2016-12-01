@@ -48,6 +48,7 @@ func TestClusterRestore(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	_, err = etcdcli.Put(ctx, etcdKeyFoo, etcdValBar)
 	cancel()
+	etcdcli.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,6 +101,7 @@ func TestClusterRestore(t *testing.T) {
 	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.Get(ctx, etcdKeyFoo)
 	cancel()
+	etcdcli.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
