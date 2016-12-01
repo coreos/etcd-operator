@@ -16,33 +16,22 @@ package backup
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
+	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
-
-const (
-	backupTmpDir         = "tmp"
-	backupFilePerm       = 0600
-	backupFilenameSuffix = "etcd.backup"
-)
-
-var compatibilityMap = map[string]map[string]struct{}{
-	"3.0": {"2.3": struct{}{}, "3.0": struct{}{}},
-	"3.1": {"3.0": struct{}{}, "3.1": struct{}{}},
-}
 
 type Backup struct {
 	kclient *unversioned.Client
@@ -161,7 +150,6 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	if err != nil {
 		return err
 	}
-	ver := resp.Version
 
 	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	rc, err := etcdcli.Maintenance.Snapshot(ctx)
@@ -171,27 +159,7 @@ func writeSnap(m *etcdutil.Member, backupDir string, rev int64) error {
 	defer cancel()
 	defer rc.Close()
 
-	filename := makeFilename(ver, rev)
-	tmpfile, err := os.OpenFile(filepath.Join(backupDir, backupTmpDir, filename), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, backupFilePerm)
-	if err != nil {
-		return fmt.Errorf("failed to create snapshot tempfile: %v", err)
-	}
-	n, err := io.Copy(tmpfile, rc)
-	if err != nil {
-		tmpfile.Close()
-		os.Remove(tmpfile.Name())
-		return fmt.Errorf("failed to save snapshot: %v", err)
-	}
-	tmpfile.Close()
-
-	nextSnapshotName := filepath.Join(backupDir, filename)
-	err = os.Rename(tmpfile.Name(), nextSnapshotName)
-	if err != nil {
-		os.Remove(tmpfile.Name())
-		return fmt.Errorf("rename snapshot from %s to %s failed: %v", tmpfile.Name(), nextSnapshotName, err)
-	}
-	log.Printf("saved snapshot %s (size: %d) successfully", nextSnapshotName, n)
-	return nil
+	return writeBackupFile(backupDir, resp.Version, rev, rc)
 }
 
 func getMemberWithMaxRev(pods []*api.Pod) (*etcdutil.Member, int64, error) {
