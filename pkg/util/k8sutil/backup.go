@@ -15,12 +15,15 @@
 package k8sutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 	"time"
 
+	backupenv "github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 
+	"github.com/coreos/etcd-operator/pkg/spec"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
@@ -101,13 +104,17 @@ func CreateAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisione
 
 var BackupImage = "quay.io/coreos/etcd-operator:latest"
 
-func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string) error {
+func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, policy *spec.BackupPolicy) error {
+	bp, err := json.Marshal(policy)
+	if err != nil {
+		return err
+	}
 	labels := map[string]string{
 		"app":          BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
 	}
 	name := MakeBackupName(clusterName)
-	_, err := kubecli.ReplicaSets(ns).Create(&extensions.ReplicaSet{
+	_, err = kubecli.ReplicaSets(ns).Create(&extensions.ReplicaSet{
 		ObjectMeta: api.ObjectMeta{
 			Name: name,
 		},
@@ -131,6 +138,9 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 							Env: []api.EnvVar{{
 								Name:      "MY_POD_NAMESPACE",
 								ValueFrom: &api.EnvVarSource{FieldRef: &api.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+							}, {
+								Name:  backupenv.BackupPolicy,
+								Value: string(bp),
 							}},
 							VolumeMounts: []api.VolumeMount{{
 								Name:      "etcd-backup-storage",
