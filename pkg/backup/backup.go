@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -58,6 +59,15 @@ func New(kclient *unversioned.Client, clusterName, ns string, policy spec.Backup
 	switch policy.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		be = &fileBackend{dir: constants.BackupDir}
+	case spec.BackupStorageTypeS3:
+		s3cli, err := s3.New()
+		if err != nil {
+			panic(err)
+		}
+		be = &s3Backend{
+			dir: constants.BackupDir,
+			S3:  s3cli,
+		}
 	default:
 		logrus.Fatalf("unsupported storage type: %v", policy.StorageType)
 	}

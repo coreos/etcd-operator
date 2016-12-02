@@ -20,6 +20,7 @@ type BackupStorageType string
 const (
 	BackupStorageTypeDefault          = ""
 	BackupStorageTypePersistentVolume = "PersistentVolume"
+	BackupStorageTypeS3               = "S3"
 )
 
 type BackupPolicy struct {
