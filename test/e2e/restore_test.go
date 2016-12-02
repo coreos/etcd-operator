@@ -25,7 +25,15 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
-func TestClusterRestore(t *testing.T) {
+func TestClusterRestoreSameName(t *testing.T) {
+	testClusterRestore(t, true)
+}
+
+func TestClusterRestoreDifferentName(t *testing.T) {
+	testClusterRestore(t, false)
+}
+
+func testClusterRestore(t *testing.T, sameName bool) {
 	f := framework.Global
 	origEtcd := makeEtcdCluster("test-etcd-", 3)
 	testEtcd, err := createEtcdCluster(f, etcdClusterWithBackup(origEtcd, makeBackupPolicy(false)))
@@ -65,13 +73,21 @@ func TestClusterRestore(t *testing.T) {
 	// waits a bit to make sure resources are finally deleted on APIServer.
 	time.Sleep(5 * time.Second)
 
-	// Restore the previous etcd cluster:
-	// - use the name already generated. We don't need to regenerate again.
-	// - set BackupClusterName to the same name in RestorePolicy.
-	// Then operator will use the existing backup in previous PVC and
-	// restore cluster with the same data.
-	origEtcd.GenerateName = ""
-	origEtcd.Name = testEtcd.Name
+	if sameName {
+		// Restore the etcd cluster of the same name:
+		// - use the name already generated. We don't need to regenerate again.
+		// - set BackupClusterName to the same name in RestorePolicy.
+		// Then operator will use the existing backup in previous PVC and
+		// restore cluster with the same data.
+		origEtcd.GenerateName = ""
+		origEtcd.Name = testEtcd.Name
+	}
+	// It could take very long due to delay of k8s controller detaching the volume
+	waitRestoreTimeout := 180
+	if !sameName {
+		// even longer since it needs to detach the volume twice: additional one for data copy job
+		waitRestoreTimeout = 240
+	}
 	origEtcd = etcdClusterWithRestore(origEtcd, &spec.RestorePolicy{
 		BackupClusterName: testEtcd.Name,
 		StorageType:       spec.BackupStorageTypePersistentVolume,
@@ -85,8 +101,7 @@ func TestClusterRestore(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	// It could take very long due to delay of k8s controller detaching the volume
-	names, err = waitUntilSizeReached(f, testEtcd.Name, 3, 180)
+	names, err = waitUntilSizeReached(f, testEtcd.Name, 3, waitRestoreTimeout)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
