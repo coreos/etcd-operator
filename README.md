@@ -19,6 +19,11 @@ Read [Best Practices](./doc/best_practices.md) for more information on how to us
 - Kubernetes 1.4+
 - etcd 3.0+
 
+## Namespace
+
+The etcd operator only manages the etcd cluster created in the same namespace.
+Users need to create multiple operators in different namespaces to manage etcd clusters in different namespaces.
+
 ## Deploy etcd operator
 
 ```bash
