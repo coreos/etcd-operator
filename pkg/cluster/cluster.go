@@ -134,7 +134,16 @@ func (c *Cluster) prepareBackupAndRestore() error {
 		}
 		fallthrough
 	case backup != nil && restore != nil:
-		// TODO: do a PVC copy if restore.BackupClusterName != cluster.Name
+		if restore != nil && restore.BackupClusterName != c.Name {
+			err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
+			if err != nil {
+				return err
+			}
+			err = k8sutil.CopyVolume(c.KubeCli, restore.BackupClusterName, c.Name, c.Namespace)
+			if err != nil {
+				return err
+			}
+		}
 		err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace)
 		if err != nil {
 			return fmt.Errorf("fail to create backup: %v", err)

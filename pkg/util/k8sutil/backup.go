@@ -29,11 +29,13 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/util/wait"
+	"k8s.io/kubernetes/pkg/watch"
 )
 
 const (
 	storageClassPrefix        = "etcd-operator-backup"
 	BackupPodSelectorAppField = "etcd_backup_tool"
+	fromDirMountDir           = "/mnt/backup/from"
 )
 
 func CreateStorageClass(kubecli *unversioned.Client, pvProvisioner string) error {
@@ -198,6 +200,73 @@ func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 		kubecli.PersistentVolumeClaims(ns).Delete(makePVCName(clusterName))
 	}
 	return nil
+}
+
+func CopyVolume(kubecli *unversioned.Client, fromClusterName, toClusterName, ns string) error {
+	pod := &api.Pod{
+		ObjectMeta: api.ObjectMeta{
+			Name: copyVolumePodName(toClusterName),
+			Labels: map[string]string{
+				"etcd_cluster": toClusterName,
+			},
+		},
+		Spec: api.PodSpec{
+			Containers: []api.Container{
+				{
+					Name:  "copy-backup",
+					Image: "alpine",
+					Command: []string{
+						"/bin/sh",
+						"-c",
+						fmt.Sprintf("cp -r %s/* %s/", fromDirMountDir, constants.BackupDir),
+					},
+					VolumeMounts: []api.VolumeMount{{
+						Name:      "from-dir",
+						MountPath: fromDirMountDir,
+					}, {
+						Name:      "to-dir",
+						MountPath: constants.BackupDir,
+					}},
+				},
+			},
+			RestartPolicy: api.RestartPolicyNever,
+			Volumes: []api.Volume{{
+				Name: "from-dir",
+				VolumeSource: api.VolumeSource{
+					PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{
+						ClaimName: makePVCName(fromClusterName),
+						ReadOnly:  true,
+					},
+				},
+			}, {
+				Name: "to-dir",
+				VolumeSource: api.VolumeSource{
+					PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{
+						ClaimName: makePVCName(toClusterName),
+					},
+				},
+			}},
+		},
+	}
+	if _, err := kubecli.Pods(ns).Create(pod); err != nil {
+		return err
+	}
+
+	w, err := kubecli.Pods(ns).Watch(api.SingleObject(api.ObjectMeta{Name: pod.Name}))
+	if err != nil {
+		return err
+	}
+	// It could take long due to delay of k8s controller detaching the volume
+	_, err = watch.Until(120*time.Second, w, unversioned.PodCompleted)
+	if err != nil {
+		return fmt.Errorf("fail to wait data copy job completed: %v", err)
+	}
+	// Delete the pod to detach the volume from the node
+	return kubecli.Pods(ns).Delete(pod.Name, api.NewDeleteOptions(0))
+}
+
+func copyVolumePodName(clusterName string) string {
+	return clusterName + "-copyvolume"
 }
 
 func makePVCName(clusterName string) string {
