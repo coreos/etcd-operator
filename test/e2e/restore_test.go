@@ -85,7 +85,8 @@ func TestClusterRestore(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	names, err = waitUntilSizeReached(f, testEtcd.Name, 3, 120)
+	// It could take very long due to delay of k8s controller detaching the volume
+	names, err = waitUntilSizeReached(f, testEtcd.Name, 3, 180)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
