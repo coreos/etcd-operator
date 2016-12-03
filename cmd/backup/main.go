@@ -63,12 +63,12 @@ func main() {
 		panic("clusterName not set")
 	}
 
-	s := &spec.BackupPolicy{}
-	bp := os.Getenv(env.BackupPolicy)
-	if err := json.Unmarshal([]byte(bp), s); err != nil {
-		logrus.Fatalf("fail to parse backup policy (%s): %v", bp, err)
+	p := &spec.BackupPolicy{}
+	ps := os.Getenv(env.BackupPolicy)
+	if err := json.Unmarshal([]byte(ps), p); err != nil {
+		logrus.Fatalf("fail to parse backup policy (%s): %v", ps, err)
 	}
 
 	kclient := k8sutil.MustCreateClient(masterHost, false, nil)
-	backup.New(kclient, clusterName, namespace, *s, listenAddr).Run()
+	backup.New(kclient, clusterName, namespace, *p, listenAddr).Run()
 }
