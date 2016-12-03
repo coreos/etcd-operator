@@ -49,7 +49,10 @@ func (sb *s3Backend) save(version string, snapRev int64, rc io.ReadCloser) error
 	if err != nil {
 		return fmt.Errorf("failed to save snapshot: %v", err)
 	}
-
+	_, err = tmpfile.Seek(0, os.SEEK_SET)
+	if err != nil {
+		return err
+	}
 	// S3 put is atomic, so let's go ahead and put the key directly.
 	err = sb.S3.Put(key, tmpfile)
 	if err != nil {
