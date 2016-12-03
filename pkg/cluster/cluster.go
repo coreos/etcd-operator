@@ -144,7 +144,7 @@ func (c *Cluster) prepareBackupAndRestore() error {
 				return err
 			}
 		}
-		err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace)
+		err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup)
 		if err != nil {
 			return fmt.Errorf("fail to create backup: %v", err)
 		}

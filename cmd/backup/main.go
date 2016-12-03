@@ -15,14 +15,18 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 
 	"github.com/coreos/etcd-operator/pkg/backup"
+	"github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/version"
+
+	"github.com/Sirupsen/logrus"
 )
 
 var (
@@ -58,6 +62,13 @@ func main() {
 	if len(clusterName) == 0 {
 		panic("clusterName not set")
 	}
+
+	s := &spec.BackupPolicy{}
+	bp := os.Getenv(env.BackupPolicy)
+	if err := json.Unmarshal([]byte(bp), s); err != nil {
+		logrus.Fatalf("fail to parse backup policy (%s): %v", bp, err)
+	}
+
 	kclient := k8sutil.MustCreateClient(masterHost, false, nil)
-	backup.New(kclient, clusterName, namespace, spec.BackupPolicy{}, listenAddr).Run()
+	backup.New(kclient, clusterName, namespace, *s, listenAddr).Run()
 }
