@@ -271,8 +271,8 @@ A persistent volume claim is created for the backup pod:
 
 ```
 $ kubectl get pvc
-NAME               STATUS    VOLUME                                     CAPACITY   ACCESSMODES   AGE
-pvc-etcd-cluster   Bound     pvc-164d18fe-8797-11e6-a8b4-42010af00002   1Gi        RWO           14m
+NAME                           STATUS    VOLUME                                     CAPACITY   ACCESSMODES   AGE
+etcd-cluster-with-backup-pvc   Bound     pvc-79e39bab-b973-11e6-8ae4-42010af00002   1Gi        RWO           9s
 ```
 
 Let's try to write some data into etcd:
@@ -308,6 +308,11 @@ etcd-cluster-with-backup-0003                1/1       Running   0          3m
 etcd-cluster-with-backup-0004                1/1       Running   0          3m
 etcd-cluster-with-backup-0005                1/1       Running   0          3m
 etcd-cluster-with-backup-backup-tool-e9gkv   1/1       Running   0          22m
+```
+
+Finally, besides destroying the cluster, also cleanup the backup if you don't need it anymore:
+```
+$ k delete pvc etcd-cluster-with-backup-pvc
 ```
 
 Note: There could be a race that it will fall to single member recovery if a pod is recovered before another is deleted.
