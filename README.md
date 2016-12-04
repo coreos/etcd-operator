@@ -4,8 +4,6 @@
 
 **Project status: *alpha*** Not all planned features are completed. The API, spec, status and other user facing objects are subject to change. We do not support backward-compatibility for the alpha releases.
 
-![etcd Operator demo](https://raw.githubusercontent.com/coreos/etcd-operator/master/doc/demo.gif)
-
 etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating their creation and administration:
 
 - [Create and destroy](#create-and-destroy-an-etcd-cluster)
@@ -25,6 +23,10 @@ Read [Best Practices](./doc/best_practices.md) for more information on how to us
 
 The etcd operator only manages the etcd cluster created in the same namespace.
 Users need to create multiple operators in different namespaces to manage etcd clusters in different namespaces.
+
+## Demo
+
+![etcd Operator demo](https://raw.githubusercontent.com/coreos/etcd-operator/master/doc/demo.gif)
 
 ## Deploy etcd operator
 
