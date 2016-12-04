@@ -4,6 +4,8 @@
 
 **Project status: *alpha*** Not all planned features are completed. The API, spec, status and other user facing objects are subject to change. We do not support backward-compatibility for the alpha releases.
 
+![etcd Operator demo](https://raw.githubusercontent.com/coreos/etcd-operator/master/doc/demo.gif)
+
 etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating their creation and administration:
 
 - [Create and destroy](#create-and-destroy-an-etcd-cluster)
