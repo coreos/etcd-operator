@@ -38,6 +38,8 @@ import (
 
 type clusterEventType string
 
+var errBackupUnsetRestoreSet = errors.New("restore policy set but backup policy not")
+
 const (
 	eventDeleteCluster clusterEventType = "Delete"
 	eventModifyCluster clusterEventType = "Modify"
@@ -101,6 +103,9 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 	}
 
 	if err := c.prepareBackupAndRestore(); err != nil {
+		if err == errBackupUnsetRestoreSet {
+			c.logger.Errorf("%v. This is not allowed. Cluster to be dead.", err)
+		}
 		return nil, err
 	}
 
@@ -124,35 +129,40 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 func (c *Cluster) prepareBackupAndRestore() error {
 	backup := c.spec.Backup
 	restore := c.spec.Restore
+
+	if backup == nil {
+		if restore != nil {
+			return errBackupUnsetRestoreSet
+		} else {
+			return nil
+		}
+	}
+
 	switch {
-	case backup == nil && restore != nil:
-		return errors.New("restore policy set but backup policy not. This is not allowed. Cluster to be made dead.")
-	case backup != nil && restore == nil:
+	case restore == nil:
 		err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
 		if err != nil {
 			return err
 		}
-		fallthrough
-	case backup != nil && restore != nil:
-		if restore != nil && restore.BackupClusterName != c.Name {
-			err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
-			if err != nil {
-				return err
-			}
-			err = k8sutil.CopyVolume(c.KubeCli, restore.BackupClusterName, c.Name, c.Namespace)
-			if err != nil {
-				return err
-			}
+	case restore != nil:
+		c.logger.Infof("cluster (%s) will be restored from existing backup (%s)", c.Name, restore.BackupClusterName)
+		if restore.BackupClusterName == c.Name {
+			break
 		}
-		err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup)
+		err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
 		if err != nil {
-			return fmt.Errorf("fail to create backup: %v", err)
+			return err
 		}
-		c.logger.Infof("backup created")
-		if restore != nil {
-			c.logger.Infof("will restore from existing backup if no etcd member running")
+		err = k8sutil.CopyVolume(c.KubeCli, restore.BackupClusterName, c.Name, c.Namespace)
+		if err != nil {
+			return err
 		}
 	}
+	err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup)
+	if err != nil {
+		return fmt.Errorf("fail to create backup: %v", err)
+	}
+	c.logger.Info("backup replica set and service created")
 	return nil
 }
 
