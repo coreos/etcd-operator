@@ -21,9 +21,9 @@ import (
 	"time"
 
 	backupenv "github.com/coreos/etcd-operator/pkg/backup/env"
+	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
@@ -80,7 +80,9 @@ func CreateAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisione
 	}
 	_, err := kubecli.PersistentVolumeClaims(ns).Create(claim)
 	if err != nil {
-		return err
+		if !IsKubernetesResourceAlreadyExistError(err) {
+			return err
+		}
 	}
 
 	err = wait.Poll(4*time.Second, 20*time.Second, func() (bool, error) {
