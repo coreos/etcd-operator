@@ -138,6 +138,16 @@ func (c *Cluster) prepareBackupAndRestore() error {
 		}
 	}
 
+	// We use backup RS to mark that we have done backup creation and even restore process before.
+	// There is a rare race that we have created PVC but not backup RS yet. For this case, we need manual deletion.
+	exist, err := k8sutil.IsBackupReplicaSetExist(c.KubeCli, c.Name, c.Namespace)
+	if err != nil {
+		return err
+	}
+	if exist {
+		return nil
+	}
+
 	switch {
 	case restore == nil:
 		err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
@@ -158,7 +168,7 @@ func (c *Cluster) prepareBackupAndRestore() error {
 			return err
 		}
 	}
-	err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup)
+	err = k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup)
 	if err != nil {
 		return fmt.Errorf("fail to create backup: %v", err)
 	}

@@ -191,6 +191,17 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 	return nil
 }
 
+func IsBackupReplicaSetExist(kubecli *unversioned.Client, clusterName, ns string) (bool, error) {
+	_, err := kubecli.ReplicaSets(ns).Get(MakeBackupName(clusterName))
+	if err != nil {
+		if IsKubernetesResourceNotFoundError(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, cleanup bool) error {
 	name := MakeBackupName(clusterName)
 	err := kubecli.Services(ns).Delete(name)
