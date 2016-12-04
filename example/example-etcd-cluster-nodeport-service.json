@@ -2,11 +2,11 @@
     "kind": "Service",
     "apiVersion": "v1",
     "metadata": {
-        "name": "etcd-cluster-client-service"
+        "name": "example-etcd-cluster-client-service"
     },
     "spec": {
         "selector": {
-            "etcd_cluster": "etcd-cluster",
+            "etcd_cluster": "example-etcd-cluster",
             "app": "etcd"
         },
         "ports": [
