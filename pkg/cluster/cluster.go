@@ -15,7 +15,6 @@
 package cluster
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -37,8 +36,6 @@ import (
 )
 
 type clusterEventType string
-
-var errBackupUnsetRestoreSet = errors.New("restore policy set but backup policy not")
 
 const (
 	eventDeleteCluster clusterEventType = "Delete"
@@ -103,12 +100,15 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 	}
 
 	if isNewCluster {
-		err := c.prepareBackupAndRestore()
-		if err != nil {
-			if err == errBackupUnsetRestoreSet {
-				c.logger.Errorf("%v. This is not allowed. Cluster to be dead.", err)
-			}
+		if err := c.spec.Validate(); err != nil {
+			c.logger.Errorf("invalid cluster spec: %v", err)
 			return nil, err
+		}
+
+		if c.spec.Backup != nil {
+			if err := c.prepareBackupAndRestore(); err != nil {
+				return nil, err
+			}
 		}
 
 		if c.spec.Restore == nil {
@@ -130,40 +130,35 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 }
 
 func (c *Cluster) prepareBackupAndRestore() error {
-	backup := c.spec.Backup
-	restore := c.spec.Restore
+	backup, restore := c.spec.Backup, c.spec.Restore
 
-	if backup == nil {
-		if restore != nil {
-			return errBackupUnsetRestoreSet
-		} else {
-			return nil
-		}
-	}
-
-	switch {
-	case restore == nil:
+	if restore == nil {
 		err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
 		if err != nil {
 			return err
 		}
-	case restore != nil:
-		c.logger.Infof("cluster (%s) will be restored from existing backup (%s)", c.Name, restore.BackupClusterName)
+	} else {
+		c.logger.Infof("restoring cluster from existing backup (%s)", restore.BackupClusterName)
+
 		if restore.BackupClusterName == c.Name {
-			break
-		}
-		err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
-		if err != nil {
-			return err
-		}
-		err = k8sutil.CopyVolume(c.KubeCli, restore.BackupClusterName, c.Name, c.Namespace)
-		if err != nil {
-			return err
+			// TODO: check the existence of the PV. error out if the PV does not exist.
+			c.logger.Infof("recreating the cluster: using the existing PV")
+		} else {
+			c.logger.Infof("cloning the previous cluster (%s): copying data from the existing PV", restore.BackupClusterName)
+
+			err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
+			if err != nil {
+				return err
+			}
+			err = k8sutil.CopyVolume(c.KubeCli, restore.BackupClusterName, c.Name, c.Namespace)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup)
 	if err != nil {
-		return fmt.Errorf("fail to create backup: %v", err)
+		return fmt.Errorf("failed to create backup replica set and service: %v", err)
 	}
 	c.logger.Info("backup replica set and service created")
 	return nil

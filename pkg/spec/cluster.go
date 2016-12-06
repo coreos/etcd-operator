@@ -15,8 +15,14 @@
 package spec
 
 import (
+	"errors"
+
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
+)
+
+var (
+	ErrBackupUnsetRestoreSet = errors.New("spec: backup policy must be set if restore policy is set")
 )
 
 type EtcdCluster struct {
@@ -71,4 +77,11 @@ type RestorePolicy struct {
 	// StorageType specifies the type of storage device to store backup files.
 	// If not set, the default is "PersistentVolume".
 	StorageType BackupStorageType `json:"storageType"`
+}
+
+func (c *ClusterSpec) Validate() error {
+	if c.Backup == nil && c.Restore != nil {
+		return ErrBackupUnsetRestoreSet
+	}
+	return nil
 }
