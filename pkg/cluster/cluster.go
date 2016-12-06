@@ -102,22 +102,25 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		status:  &Status{},
 	}
 
-	if err := c.prepareBackupAndRestore(); err != nil {
-		if err == errBackupUnsetRestoreSet {
-			c.logger.Errorf("%v. This is not allowed. Cluster to be dead.", err)
-		}
-		return nil, err
-	}
-
-	if isNewCluster && c.spec.Restore == nil {
-		// Note: For restore case, we will go through reconcile loop and disaster recovery.
-		if err := c.prepareSeedMember(); err != nil {
+	if isNewCluster {
+		err := c.prepareBackupAndRestore()
+		if err != nil {
+			if err == errBackupUnsetRestoreSet {
+				c.logger.Errorf("%v. This is not allowed. Cluster to be dead.", err)
+			}
 			return nil, err
 		}
-	}
 
-	if err := c.createClientServiceLB(); err != nil {
-		return nil, fmt.Errorf("fail to create client service LB: %v", err)
+		if c.spec.Restore == nil {
+			// Note: For restore case, we will go through reconcile loop and disaster recovery.
+			if err := c.prepareSeedMember(); err != nil {
+				return nil, err
+			}
+		}
+
+		if err := c.createClientServiceLB(); err != nil {
+			return nil, fmt.Errorf("fail to create client service LB: %v", err)
+		}
 	}
 
 	wg.Add(1)
