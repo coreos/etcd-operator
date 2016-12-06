@@ -22,6 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/coreos/etcd-operator/pkg/backup/env"
 )
 
 // S3 represents AWS S3 service.
@@ -34,9 +35,9 @@ type S3 struct {
 // AWS_S3_BUCKET must be set to specify the s3 bucket
 // AWS_REGION can be set to specify the aws region
 func New() (*S3, error) {
-	bucket := os.Getenv("AWS_S3_BUCKET")
+	bucket := os.Getenv(env.AWSS3Bucket)
 	if bucket == "" {
-		return nil, fmt.Errorf("AWS_S3_BUCKET bucket must be set")
+		return nil, fmt.Errorf("%s bucket must be set", env.AWSS3Bucket)
 	}
 
 	client := s3.New(session.New())
