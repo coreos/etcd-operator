@@ -17,4 +17,5 @@ package env
 const (
 	BackupPolicy = "BACKUP_POLICY"
 	AWSS3Bucket  = "AWS_S3_BUCKET"
+	AWSS3Region  = "AWS_S3_REGION"
 )

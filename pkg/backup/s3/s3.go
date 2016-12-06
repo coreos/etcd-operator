@@ -40,7 +40,7 @@ func New() (*S3, error) {
 		return nil, fmt.Errorf("%s bucket must be set", env.AWSS3Bucket)
 	}
 
-	client := s3.New(session.New())
+	client := s3.New(session.New(), &aws.Config{Region: aws.String(env.AWSS3Region)})
 
 	_, err := client.HeadBucket(&s3.HeadBucketInput{Bucket: &bucket})
 	if err != nil {
