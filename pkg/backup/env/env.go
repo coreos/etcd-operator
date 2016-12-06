@@ -14,4 +14,7 @@
 
 package env
 
-const BackupPolicy = "BACKUP_POLICY"
+const (
+	BackupPolicy = "BACKUP_POLICY"
+	AWSS3Bucket  = "AWS_S3_BUCKET"
+)
