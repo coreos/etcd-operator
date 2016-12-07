@@ -1,5 +1,5 @@
-hash: f165bc846f06e491f984e730bb51ef2e067bd073f8102d4ec8f6a094ccdd6d55
-updated: 2016-11-24T11:13:07.282615529-08:00
+hash: 227df8465f42637747058488e6c61b11b9d8355cbd4ae3d9149c420b1fd70bb2
+updated: 2016-12-06T18:52:32.730124302-08:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -9,7 +9,7 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/aws/aws-sdk-go
-  version: c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc
+  version: eb0af7afd2cea3310a21a13e1868644991c5af92
   subpackages:
   - aws
   - aws/awserr
@@ -19,27 +19,23 @@ imports:
   - aws/corehandlers
   - aws/credentials
   - aws/credentials/ec2rolecreds
+  - aws/credentials/endpointcreds
+  - aws/credentials/stscreds
   - aws/defaults
   - aws/ec2metadata
   - aws/request
   - aws/session
+  - aws/signer/v4
   - private/endpoints
-  - private/protocol/ec2query
-  - private/protocol/json/jsonutil
-  - private/protocol/jsonrpc
+  - private/protocol
   - private/protocol/query
   - private/protocol/query/queryutil
   - private/protocol/rest
   - private/protocol/restxml
   - private/protocol/xml/xmlutil
-  - private/signer/v4
   - private/waiter
-  - service/autoscaling
-  - service/ec2
-  - service/ecr
-  - service/elb
-  - service/route53
   - service/s3
+  - service/sts
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
@@ -417,7 +413,7 @@ imports:
   - 1.4/tools/metrics
   - 1.4/transport
 - name: k8s.io/kubernetes
-  version: 5a0a696437ad35c133c0c8493f7e9d22b0f9b81b
+  version: e569a27d02001e343cb68086bc06d47804f62af6
   subpackages:
   - pkg/api
   - pkg/api/endpoints
