@@ -15,7 +15,7 @@ import:
 - package: github.com/xiang90/probing
   version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
 - package: k8s.io/kubernetes
-  version: v1.4.5
+  version: v1.4.6
   subpackages:
   - pkg/api
   - pkg/api/errors
@@ -31,6 +31,9 @@ import:
   - pkg/util/intstr
   - pkg/util/wait
   - pkg/watch
+- package: github.com/aws/aws-sdk-go
+  version: v1.3.0
 - package: github.com/jpillora/go-ogle-analytics
 - package: github.com/coreos/go-semver
   version: v0.2.0
+
