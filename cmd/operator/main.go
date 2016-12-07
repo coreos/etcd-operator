@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/analytics"
 	"github.com/coreos/etcd-operator/pkg/chaos"
+	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/controller"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/version"
@@ -47,6 +48,10 @@ var (
 	caFile           string
 	namespace        string
 
+	awsSecret string
+	awsConfig string
+	s3Bucket  string
+
 	chaosLevel int
 
 	printVersion bool
@@ -67,6 +72,9 @@ func init() {
 	flag.StringVar(&keyFile, "key-file", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to private TLS certificate file.")
 	flag.StringVar(&caFile, "ca-file", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to TLS CA file.")
 	flag.BoolVar(&tlsInsecure, "tls-insecure", false, "- NOT RECOMMENDED FOR PRODUCTION - Don't verify API server's CA certificate.")
+	flag.StringVar(&awsSecret, "aws-secret", "", "")
+	flag.StringVar(&awsConfig, "aws-config", "", "")
+	flag.StringVar(&s3Bucket, "s3-bucket", "", "")
 	// chaos level will be removed once we have a formal tool to inject failures.
 	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the operator.")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
@@ -147,10 +155,15 @@ func newControllerConfig() controller.Config {
 	}
 	kubecli := k8sutil.MustCreateClient(masterHost, tlsInsecure, &tlsConfig)
 	cfg := controller.Config{
-		MasterHost:    masterHost,
-		PVProvisioner: pvProvisioner,
-		Namespace:     namespace,
-		KubeCli:       kubecli,
+		MasterHost: masterHost,
+		Config: cluster.Config{
+			PVProvisioner: pvProvisioner,
+			Namespace:     namespace,
+			KubeCli:       kubecli,
+			AWSSecret:     awsSecret,
+			AWSConfig:     awsConfig,
+			S3Bucket:      s3Bucket,
+		},
 	}
 	if len(cfg.MasterHost) == 0 {
 		logrus.Info("use in cluster client from k8s library")
