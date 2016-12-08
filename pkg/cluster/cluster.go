@@ -53,6 +53,9 @@ type Config struct {
 	Name          string
 	Namespace     string
 	PVProvisioner string
+	AWSSecret     string
+	AWSConfig     string
+	S3Bucket      string
 	KubeCli       *unversioned.Client
 }
 
@@ -156,7 +159,18 @@ func (c *Cluster) prepareBackupAndRestore() error {
 			}
 		}
 	}
-	err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup)
+	podSpec, err := k8sutil.MakeBackupPodSpec(c.Name, c.S3Bucket, c.spec.Backup)
+	if err != nil {
+		return err
+	}
+
+	switch backup.StorageType {
+	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+		podSpec = k8sutil.PodSpecWithPVStorage(podSpec, c.Name)
+	case spec.BackupStorageTypeS3:
+		podSpec = k8sutil.PodSpecWithS3Storage(podSpec, c.AWSSecret, c.AWSConfig)
+	}
+	err = k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, *podSpec)
 	if err != nil {
 		return fmt.Errorf("failed to create backup replica set and service: %v", err)
 	}

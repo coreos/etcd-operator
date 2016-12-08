@@ -32,7 +32,6 @@ import (
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 const (
@@ -70,10 +69,8 @@ type Controller struct {
 }
 
 type Config struct {
-	Namespace     string
-	MasterHost    string
-	KubeCli       *unversioned.Client
-	PVProvisioner string
+	MasterHost string
+	cluster.Config
 }
 
 func (c *Config) validate() error {
@@ -133,13 +130,7 @@ func (c *Controller) Run() error {
 			switch event.Type {
 			case "ADDED":
 				stopC := make(chan struct{})
-				cfg := cluster.Config{
-					Name:          clusterName,
-					Namespace:     c.Namespace,
-					PVProvisioner: c.PVProvisioner,
-					KubeCli:       c.KubeCli,
-				}
-				nc, err := cluster.New(cfg, &event.Object.Spec, stopC, &c.waitCluster)
+				nc, err := cluster.New(c.Config.Config, &event.Object.Spec, stopC, &c.waitCluster)
 				if err != nil {
 					c.logger.Errorf("cluster (%q) is dead: %v", clusterName, err)
 					continue

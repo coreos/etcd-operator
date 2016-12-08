@@ -39,10 +39,15 @@ func New() (*S3, error) {
 	if bucket == "" {
 		return nil, fmt.Errorf("%s bucket must be set", env.AWSS3Bucket)
 	}
+	sess, err := session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
+	if err != nil {
+		return nil, err
+	}
+	client := s3.New(sess)
 
-	client := s3.New(session.New())
-
-	_, err := client.HeadBucket(&s3.HeadBucketInput{Bucket: &bucket})
+	_, err = client.HeadBucket(&s3.HeadBucketInput{Bucket: &bucket})
 	if err != nil {
 		return nil, fmt.Errorf("unable to access bucket %s: %v", bucket, err)
 	}
