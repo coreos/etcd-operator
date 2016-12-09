@@ -102,12 +102,11 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		status:  &Status{},
 	}
 
-	if isNewCluster {
-		if err := c.spec.Validate(); err != nil {
-			c.logger.Errorf("invalid cluster spec: %v", err)
-			return nil, err
-		}
+	if err := c.spec.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid cluster spec: %v", err)
+	}
 
+	if isNewCluster {
 		if c.spec.Backup != nil {
 			if err := c.prepareBackupAndRestore(); err != nil {
 				return nil, err
