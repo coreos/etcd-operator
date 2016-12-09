@@ -136,9 +136,15 @@ func (c *Cluster) prepareBackupAndRestore() error {
 	backup, restore := c.spec.Backup, c.spec.Restore
 
 	if restore == nil {
-		err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
-		if err != nil {
-			return err
+		// we need to do some setup for backup pod.
+		switch backup.StorageType {
+		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+			err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
+			if err != nil {
+				return err
+			}
+		case spec.BackupStorageTypeS3:
+			// TODO: check if bucket/folder exists?
 		}
 	} else {
 		c.logger.Infof("restoring cluster from existing backup (%s)", restore.BackupClusterName)
@@ -147,13 +153,7 @@ func (c *Cluster) prepareBackupAndRestore() error {
 			// TODO: check the existence of the PV. error out if the PV does not exist.
 			c.logger.Infof("recreating the cluster: using the existing PV")
 		} else {
-			c.logger.Infof("cloning the previous cluster (%s): copying data from the existing PV", restore.BackupClusterName)
-
-			err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
-			if err != nil {
-				return err
-			}
-			err = k8sutil.CopyVolume(c.KubeCli, restore.BackupClusterName, c.Name, c.Namespace)
+			err := c.cloneBackupData(restore, backup)
 			if err != nil {
 				return err
 			}
@@ -164,6 +164,24 @@ func (c *Cluster) prepareBackupAndRestore() error {
 		return fmt.Errorf("failed to create backup replica set and service: %v", err)
 	}
 	c.logger.Info("backup replica set and service created")
+	return nil
+}
+
+func (c *Cluster) cloneBackupData(restore *spec.RestorePolicy, backup *spec.BackupPolicy) error {
+	switch backup.StorageType {
+	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+		c.logger.Infof("cloning the previous cluster (%s): copying data from the existing PV", restore.BackupClusterName)
+		err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
+		if err != nil {
+			return err
+		}
+		err = k8sutil.CopyVolume(c.KubeCli, restore.BackupClusterName, c.Name, c.Namespace)
+		if err != nil {
+			return err
+		}
+	case spec.BackupStorageTypeS3:
+		return fmt.Errorf("TODO: support restore type %q", restore.StorageType)
+	}
 	return nil
 }
 
