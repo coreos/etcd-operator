@@ -53,6 +53,9 @@ type Config struct {
 	Name          string
 	Namespace     string
 	PVProvisioner string
+	AWSSecret     string
+	AWSConfig     string
+	S3Bucket      string
 	KubeCli       *unversioned.Client
 }
 
