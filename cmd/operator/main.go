@@ -46,6 +46,9 @@ var (
 	keyFile          string
 	caFile           string
 	namespace        string
+	awsSecret        string
+	awsConfig        string
+	s3Bucket         string
 
 	chaosLevel int
 
@@ -67,6 +70,9 @@ func init() {
 	flag.StringVar(&keyFile, "key-file", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to private TLS certificate file.")
 	flag.StringVar(&caFile, "ca-file", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to TLS CA file.")
 	flag.BoolVar(&tlsInsecure, "tls-insecure", false, "- NOT RECOMMENDED FOR PRODUCTION - Don't verify API server's CA certificate.")
+	flag.StringVar(&awsSecret, "backup-aws-secret", "", "The name of the kube secret object that stores the aws credential file.")
+	flag.StringVar(&awsConfig, "backup-aws-config", "", "The name of the kube configmap object that presents the aws config file.")
+	flag.StringVar(&s3Bucket, "backup-s3-bucket", "", "The name of the aws S3 bucket to store backups.")
 	// chaos level will be removed once we have a formal tool to inject failures.
 	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the operator.")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
@@ -148,8 +154,11 @@ func newControllerConfig() controller.Config {
 	kubecli := k8sutil.MustCreateClient(masterHost, tlsInsecure, &tlsConfig)
 	cfg := controller.Config{
 		MasterHost:    masterHost,
-		PVProvisioner: pvProvisioner,
 		Namespace:     namespace,
+		PVProvisioner: pvProvisioner,
+		AWSSecret:     awsSecret,
+		AWSConfig:     awsConfig,
+		S3Bucket:      s3Bucket,
 		KubeCli:       kubecli,
 	}
 	if len(cfg.MasterHost) == 0 {

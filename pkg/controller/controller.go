@@ -70,10 +70,13 @@ type Controller struct {
 }
 
 type Config struct {
-	Namespace     string
 	MasterHost    string
-	KubeCli       *unversioned.Client
+	Namespace     string
 	PVProvisioner string
+	AWSSecret     string
+	AWSConfig     string
+	S3Bucket      string
+	KubeCli       *unversioned.Client
 }
 
 func (c *Config) validate() error {
@@ -133,13 +136,7 @@ func (c *Controller) Run() error {
 			switch event.Type {
 			case "ADDED":
 				stopC := make(chan struct{})
-				cfg := cluster.Config{
-					Name:          clusterName,
-					Namespace:     c.Namespace,
-					PVProvisioner: c.PVProvisioner,
-					KubeCli:       c.KubeCli,
-				}
-				nc, err := cluster.New(cfg, &event.Object.Spec, stopC, &c.waitCluster)
+				nc, err := cluster.New(c.makeClusterConfig(clusterName), &event.Object.Spec, stopC, &c.waitCluster)
 				if err != nil {
 					c.logger.Errorf("cluster (%q) is dead: %v", clusterName, err)
 					continue
@@ -183,13 +180,7 @@ func (c *Controller) findAllClusters() (string, error) {
 	for _, item := range list.Items {
 		clusterName := item.Name
 		stopC := make(chan struct{})
-		cfg := cluster.Config{
-			Name:          clusterName,
-			Namespace:     c.Namespace,
-			PVProvisioner: c.PVProvisioner,
-			KubeCli:       c.KubeCli,
-		}
-		nc, err := cluster.Restore(cfg, &item.Spec, stopC, &c.waitCluster)
+		nc, err := cluster.Restore(c.makeClusterConfig(clusterName), &item.Spec, stopC, &c.waitCluster)
 		if err != nil {
 			c.logger.Errorf("cluster (%q) is dead: %v", clusterName, err)
 			continue
@@ -198,6 +189,18 @@ func (c *Controller) findAllClusters() (string, error) {
 		c.clusters[clusterName] = nc
 	}
 	return list.ListMeta.ResourceVersion, nil
+}
+
+func (c *Controller) makeClusterConfig(clusterName string) cluster.Config {
+	return cluster.Config{
+		Name:          clusterName,
+		Namespace:     c.Namespace,
+		PVProvisioner: c.PVProvisioner,
+		AWSSecret:     c.AWSSecret,
+		AWSConfig:     c.AWSConfig,
+		S3Bucket:      c.S3Bucket,
+		KubeCli:       c.KubeCli,
+	}
 }
 
 func (c *Controller) initResource() (string, error) {
