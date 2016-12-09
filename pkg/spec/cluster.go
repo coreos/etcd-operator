@@ -44,8 +44,6 @@ type ClusterSpec struct {
 	Version string `json:"version"`
 
 	// Backup defines the policy to backup data of etcd cluster if not nil.
-	// If backup policy is set but restore policy not, and if a previous backup exists,
-	// this cluster would face conflict and fail to start.
 	Backup *BackupPolicy `json:"backup,omitempty"`
 
 	// Restore defines the policy to restore cluster form existing backup if not nil.
