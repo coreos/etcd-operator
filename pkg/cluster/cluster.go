@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
+	"github.com/coreos/etcd-operator/pkg/cluster/backupmanager"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -53,10 +55,8 @@ type Config struct {
 	Name          string
 	Namespace     string
 	PVProvisioner string
-	AWSSecret     string
-	AWSConfig     string
-	S3Bucket      string
-	KubeCli       *unversioned.Client
+	s3config.S3Context
+	KubeCli *unversioned.Client
 }
 
 type Cluster struct {
@@ -135,53 +135,41 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 func (c *Cluster) prepareBackupAndRestore() error {
 	backup, restore := c.spec.Backup, c.spec.Restore
 
+	var bm backupmanager.BackupManager
+	switch backup.StorageType {
+	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+		bm = backupmanager.NewPVBackupManager(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
+	case spec.BackupStorageTypeS3:
+		bm = backupmanager.NewS3BackupManager(c.S3Context)
+	}
+
 	if restore == nil {
-		// we need to do some setup for backup pod.
-		switch backup.StorageType {
-		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-			err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
-			if err != nil {
-				return err
-			}
-		case spec.BackupStorageTypeS3:
-			// TODO: check if bucket/folder exists?
+		if err := bm.Setup(); err != nil {
+			return err
 		}
 	} else {
 		c.logger.Infof("restoring cluster from existing backup (%s)", restore.BackupClusterName)
-
 		if restore.BackupClusterName == c.Name {
-			// TODO: check the existence of the PV. error out if the PV does not exist.
-			c.logger.Infof("recreating the cluster: using the existing PV")
+			// TODO: check the existence of the backup. error out if the backup does not exist.
+			c.logger.Infof("recreating the cluster: using the existing backup")
 		} else {
-			err := c.cloneBackupData(restore, backup)
-			if err != nil {
+			c.logger.Infof("restoring the previous cluster (%s): cloning data from existing backup", restore.BackupClusterName)
+			if err := bm.Clone(restore.BackupClusterName); err != nil {
 				return err
 			}
 		}
 	}
-	err := k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup)
+
+	podSpec, err := k8sutil.MakeBackupPodSpec(c.Name, c.spec.Backup)
+	if err != nil {
+		return err
+	}
+	podSpec = bm.PodSpecWithStorage(podSpec)
+	err = k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, *podSpec)
 	if err != nil {
 		return fmt.Errorf("failed to create backup replica set and service: %v", err)
 	}
 	c.logger.Info("backup replica set and service created")
-	return nil
-}
-
-func (c *Cluster) cloneBackupData(restore *spec.RestorePolicy, backup *spec.BackupPolicy) error {
-	switch backup.StorageType {
-	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-		c.logger.Infof("cloning the previous cluster (%s): copying data from the existing PV", restore.BackupClusterName)
-		err := k8sutil.CreateAndWaitPVC(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
-		if err != nil {
-			return err
-		}
-		err = k8sutil.CopyVolume(c.KubeCli, restore.BackupClusterName, c.Name, c.Namespace)
-		if err != nil {
-			return err
-		}
-	case spec.BackupStorageTypeS3:
-		return fmt.Errorf("TODO: support restore type %q", restore.StorageType)
-	}
 	return nil
 }
 

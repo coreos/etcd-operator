@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/analytics"
+	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -73,10 +74,8 @@ type Config struct {
 	MasterHost    string
 	Namespace     string
 	PVProvisioner string
-	AWSSecret     string
-	AWSConfig     string
-	S3Bucket      string
-	KubeCli       *unversioned.Client
+	s3config.S3Context
+	KubeCli *unversioned.Client
 }
 
 func (c *Config) validate() error {
@@ -196,9 +195,7 @@ func (c *Controller) makeClusterConfig(clusterName string) cluster.Config {
 		Name:          clusterName,
 		Namespace:     c.Namespace,
 		PVProvisioner: c.PVProvisioner,
-		AWSSecret:     c.AWSSecret,
-		AWSConfig:     c.AWSConfig,
-		S3Bucket:      c.S3Bucket,
+		S3Context:     c.S3Context,
 		KubeCli:       c.KubeCli,
 	}
 }
