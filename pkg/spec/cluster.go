@@ -83,5 +83,10 @@ func (c *ClusterSpec) Validate() error {
 	if c.Backup == nil && c.Restore != nil {
 		return ErrBackupUnsetRestoreSet
 	}
+	if c.Backup != nil && c.Restore != nil {
+		if c.Backup.StorageType != c.Restore.StorageType {
+			return errors.New("spec: backup and restore storage types are different")
+		}
+	}
 	return nil
 }
