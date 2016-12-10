@@ -35,7 +35,7 @@ $ kubectl create -f example/deployment.yaml
 deployment "etcd-operator" created
 ```
 
-etcd operator will create a Kubernetes *Third-Party Resource* (TPR) called "etcd-cluster" automatically.
+etcd operator will create a Kubernetes *Third-Party Resource* (TPR) "EtcdCluster" automatically.
 
 ```bash
 $ kubectl get thirdpartyresources
@@ -53,26 +53,24 @@ A 3 member etcd cluster will be created.
 
 ```bash
 $ kubectl get pods
-NAME                             READY     STATUS    RESTARTS   AGE
-etcd-cluster-0000                1/1       Running   0          23s
-etcd-cluster-0001                1/1       Running   0          16s
-etcd-cluster-0002                1/1       Running   0          8s
-```
+NAME                            READY     STATUS    RESTARTS   AGE
+example-etcd-cluster-0000       1/1       Running   0          1m
+example-etcd-cluster-0001       1/1       Running   0          1m
+example-etcd-cluster-0002       1/1       Running   0          1m
 
-```bash
 $ kubectl get services
-NAME                       CLUSTER-IP     EXTERNAL-IP   PORT(S)             AGE
-etcd-cluster-0000          10.0.84.34     <none>        2380/TCP,2379/TCP   37s
-etcd-cluster-0001          10.0.51.78     <none>        2380/TCP,2379/TCP   30s
-etcd-cluster-0002          10.0.140.141   <none>        2380/TCP,2379/TCP   22s
+NAME                        CLUSTER-IP    EXTERNAL-IP   PORT(S)             AGE
+example-etcd-cluster-0000   10.0.6.23     <none>        2380/TCP,2379/TCP   2m
+example-etcd-cluster-0001   10.0.64.204   <none>        2380/TCP,2379/TCP   1m
+example-etcd-cluster-0002   10.0.199.80   <none>        2380/TCP,2379/TCP   1m
 ```
 
 If you are working with [minikube locally](https://github.com/kubernetes/minikube#minikube) create a nodePort service and test out that etcd is responding:
 
 ```bash
-kubectl create -f example/example-etcd-cluster-nodeport-service.json
+$ kubectl create -f example/example-etcd-cluster-nodeport-service.json
 export ETCDCTL_API=3
-export ETCDCTL_ENDPOINTS=$(minikube service etcd-cluster-client-service --url)
+export ETCDCTL_ENDPOINTS=$(minikube service example-etcd-cluster-client-service --url)
 etcdctl put foo bar
 ```
 
@@ -109,7 +107,7 @@ $ cat body.json
   "apiVersion": "coreos.com/v1",
   "kind": "EtcdCluster",
   "metadata": {
-    "name": "etcd-cluster",
+    "name": "example-etcd-cluster",
     "namespace": "default"
   },
   "spec": {
@@ -121,35 +119,19 @@ $ cat body.json
 In another terminal, use the following command to change the cluster size from 3 to 5.
 
 ```
-$ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
-
-{
-   "apiVersion":"coreos.com/v1",
-   "kind":"EtcdCluster",
-   "metadata":{
-      "name":"etcd-cluster",
-      "namespace":"default",
-      "selfLink":"/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster",
-      "uid":"4773679d-86cf-11e6-9086-42010af00002",
-      "resourceVersion":"438492",
-      "creationTimestamp":"2016-09-30T05:32:29Z"
-   },
-   "spec":{
-      "size":5
-   }
-}
+$ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/example-etcd-cluster
 ```
 
 We should see
 
 ```
 $ kubectl get pods
-NAME                             READY     STATUS              RESTARTS   AGE
-etcd-cluster-0000                1/1       Running             0          3m
-etcd-cluster-0001                1/1       Running             0          2m
-etcd-cluster-0002                1/1       Running             0          2m
-etcd-cluster-0003                1/1       Running             0          9s
-etcd-cluster-0004                0/1       ContainerCreating   0          1s
+NAME                            READY     STATUS    RESTARTS   AGE
+example-etcd-cluster-0000       1/1       Running   0          1m
+example-etcd-cluster-0001       1/1       Running   0          1m
+example-etcd-cluster-0002       1/1       Running   0          1m
+example-etcd-cluster-0003       1/1       Running   0          1m
+example-etcd-cluster-0004       1/1       Running   0          1m
 ```
 
 Now we can decrease the size of cluster from 5 back to 3.
@@ -162,7 +144,7 @@ $ cat body.json
   "apiVersion": "coreos.com/v1",
   "kind": "EtcdCluster",
   "metadata": {
-    "name": "etcd-cluster",
+    "name": "example-etcd-cluster",
     "namespace": "default"
   },
   "spec": {
@@ -174,17 +156,17 @@ $ cat body.json
 Apply it to API Server:
 
 ```
-$ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
+$ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/example-etcd-cluster
 ```
 
 We should see that etcd cluster will eventually reduce to 3 pods:
 
 ```
 $ kubectl get pods
-NAME                             READY     STATUS    RESTARTS   AGE
-etcd-cluster-0002                1/1       Running   0          3m
-etcd-cluster-0003                1/1       Running   0          1m
-etcd-cluster-0004                1/1       Running   0          1m
+NAME                            READY     STATUS    RESTARTS   AGE
+example-etcd-cluster-0002       1/1       Running   0          1m
+example-etcd-cluster-0003       1/1       Running   0          1m
+example-etcd-cluster-0004       1/1       Running   0          1m
 ```
 
 ## Member recovery
@@ -201,17 +183,17 @@ $ kubectl create -f example/example-etcd-cluster.yaml
 Wait until all three members are up. Simulate a member failure by deleting a pod:
 
 ```bash
-$ kubectl delete pod etcd-cluster-0000 --now
+$ kubectl delete pod example-etcd-cluster-0000 --now
 ```
 
-The etcd operator will recover the failure by creating a new pod `etcd-cluster-0003`:
+The etcd operator will recover the failure by creating a new pod `example-etcd-cluster-0003`:
 
 ```bash
 $ kubectl get pods
-NAME                READY     STATUS    RESTARTS   AGE
-etcd-cluster-0001   1/1       Running   0          5s
-etcd-cluster-0002   1/1       Running   0          5s
-etcd-cluster-0003   1/1       Running   0          5s
+NAME                            READY     STATUS    RESTARTS   AGE
+example-etcd-cluster-0001       1/1       Running   0          1m
+example-etcd-cluster-0002       1/1       Running   0          1m
+example-etcd-cluster-0003       1/1       Running   0          1m
 ```
 
 Destroy etcd cluster:
@@ -234,8 +216,8 @@ Wait until all three members are up. Then
 $ kubectl delete -f example/deployment.yaml
 deployment "etcd-operator" deleted
 
-$ kubectl delete pod etcd-cluster-0000 --now
-pod "etcd-cluster-0000" deleted
+$ kubectl delete pod example-etcd-cluster-0000 --now
+pod "example-etcd-cluster-0000" deleted
 ```
 
 Then restart the etcd operator. It should recover itself and the etcd clusters it manages.
@@ -245,10 +227,10 @@ $ kubectl create -f example/deployment.yaml
 deployment "etcd-operator" created
 
 $ kubectl get pods
-NAME                READY     STATUS    RESTARTS   AGE
-etcd-cluster-0001   1/1       Running   0          5s
-etcd-cluster-0002   1/1       Running   0          5s
-etcd-cluster-0003   1/1       Running   0          5s
+NAME                            READY     STATUS    RESTARTS   AGE
+example-etcd-cluster-0001       1/1       Running   0          1m
+example-etcd-cluster-0002       1/1       Running   0          1m
+example-etcd-cluster-0003       1/1       Running   0          1m
 ```
 
 ## Disaster recovery
