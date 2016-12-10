@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/analytics"
+	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/chaos"
 	"github.com/coreos/etcd-operator/pkg/controller"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -156,10 +157,12 @@ func newControllerConfig() controller.Config {
 		MasterHost:    masterHost,
 		Namespace:     namespace,
 		PVProvisioner: pvProvisioner,
-		AWSSecret:     awsSecret,
-		AWSConfig:     awsConfig,
-		S3Bucket:      s3Bucket,
-		KubeCli:       kubecli,
+		S3Context: s3config.S3Context{
+			AWSSecret: awsSecret,
+			AWSConfig: awsConfig,
+			S3Bucket:  s3Bucket,
+		},
+		KubeCli: kubecli,
 	}
 	if len(cfg.MasterHost) == 0 {
 		logrus.Info("use in cluster client from k8s library")

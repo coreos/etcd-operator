@@ -21,9 +21,10 @@ import (
 	"time"
 
 	backupenv "github.com/coreos/etcd-operator/pkg/backup/env"
+	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
@@ -38,6 +39,11 @@ import (
 const (
 	storageClassPrefix        = "etcd-operator-backup"
 	BackupPodSelectorAppField = "etcd_backup_tool"
+	backupPVVolName           = "etcd-backup-storage"
+	awsCredentialDir          = "/root/.aws/"
+	awsConfigDir              = "/root/.aws/config/"
+	awsSecretVolName          = "secret-aws"
+	awsConfigVolName          = "config-aws"
 	fromDirMountDir           = "/mnt/backup/from"
 )
 
@@ -104,17 +110,93 @@ func CreateAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisione
 
 var BackupImage = "quay.io/coreos/etcd-operator:latest"
 
-func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, policy *spec.BackupPolicy) error {
+func PodSpecWithPV(ps *api.PodSpec, clusterName string) *api.PodSpec {
+	ps.Containers[0].VolumeMounts = []api.VolumeMount{{
+		Name:      backupPVVolName,
+		MountPath: constants.BackupDir,
+	}}
+	ps.Volumes = []api.Volume{{
+		Name: backupPVVolName,
+		VolumeSource: api.VolumeSource{
+			PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{
+				ClaimName: makePVCName(clusterName),
+			},
+		},
+	}}
+	return ps
+}
+
+func PodSpecWithS3(ps *api.PodSpec, s3Ctx s3config.S3Context) *api.PodSpec {
+	ps.Containers[0].VolumeMounts = []api.VolumeMount{{
+		Name:      awsSecretVolName,
+		MountPath: awsCredentialDir,
+	}, {
+		Name:      awsConfigVolName,
+		MountPath: awsConfigDir,
+	}}
+	ps.Volumes = []api.Volume{{
+		Name: awsSecretVolName,
+		VolumeSource: api.VolumeSource{
+			Secret: &api.SecretVolumeSource{
+				SecretName: s3Ctx.AWSSecret,
+			},
+		},
+	}, {
+		Name: awsConfigVolName,
+		VolumeSource: api.VolumeSource{
+			ConfigMap: &api.ConfigMapVolumeSource{
+				LocalObjectReference: api.LocalObjectReference{
+					Name: s3Ctx.AWSConfig,
+				},
+			},
+		},
+	}}
+	ps.Containers[0].Env = append(ps.Containers[0].Env, api.EnvVar{
+		Name:  backupenv.AWSConfig,
+		Value: awsConfigDir,
+	}, api.EnvVar{
+		Name:  backupenv.AWSS3Bucket,
+		Value: s3Ctx.S3Bucket,
+	})
+	return ps
+}
+
+func MakeBackupPodSpec(clusterName string, policy *spec.BackupPolicy) (*api.PodSpec, error) {
 	bp, err := json.Marshal(policy)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	ps := &api.PodSpec{
+		Containers: []api.Container{
+			{
+				Name:  "backup",
+				Image: BackupImage,
+				Command: []string{
+					"/bin/sh",
+					"-c",
+					"/usr/local/bin/etcd-backup --etcd-cluster=" + clusterName,
+				},
+				Env: []api.EnvVar{{
+					Name:      "MY_POD_NAMESPACE",
+					ValueFrom: &api.EnvVarSource{FieldRef: &api.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+				}, {
+					Name:  backupenv.BackupPolicy,
+					Value: string(bp),
+				}},
+			},
+		},
+	}
+	return ps, nil
+}
+
+func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, ps api.PodSpec) error {
 	labels := map[string]string{
 		"app":          BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
 	}
 	name := MakeBackupName(clusterName)
-	_, err = kubecli.ReplicaSets(ns).Create(&extensions.ReplicaSet{
+	_, err := kubecli.ReplicaSets(ns).Create(&extensions.ReplicaSet{
 		ObjectMeta: api.ObjectMeta{
 			Name: name,
 		},
@@ -125,38 +207,7 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 				ObjectMeta: api.ObjectMeta{
 					Labels: labels,
 				},
-				Spec: api.PodSpec{
-					Containers: []api.Container{
-						{
-							Name:  "backup",
-							Image: BackupImage,
-							Command: []string{
-								"/bin/sh",
-								"-c",
-								"/usr/local/bin/etcd-backup --etcd-cluster=" + clusterName,
-							},
-							Env: []api.EnvVar{{
-								Name:      "MY_POD_NAMESPACE",
-								ValueFrom: &api.EnvVarSource{FieldRef: &api.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
-							}, {
-								Name:  backupenv.BackupPolicy,
-								Value: string(bp),
-							}},
-							VolumeMounts: []api.VolumeMount{{
-								Name:      "etcd-backup-storage",
-								MountPath: constants.BackupDir,
-							}},
-						},
-					},
-					Volumes: []api.Volume{{
-						Name: "etcd-backup-storage",
-						VolumeSource: api.VolumeSource{
-							PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{
-								ClaimName: makePVCName(clusterName),
-							},
-						},
-					}},
-				},
+				Spec: ps,
 			},
 		},
 	})
