@@ -153,7 +153,7 @@ func PodSpecWithS3(ps *api.PodSpec, s3Ctx s3config.S3Context) *api.PodSpec {
 	}}
 	ps.Containers[0].Env = append(ps.Containers[0].Env, api.EnvVar{
 		Name:  backupenv.AWSConfig,
-		Value: awsConfigDir,
+		Value: path.Join(awsConfigDir, "config"),
 	}, api.EnvVar{
 		Name:  backupenv.AWSS3Bucket,
 		Value: s3Ctx.S3Bucket,
