@@ -63,7 +63,7 @@ func (sb *s3Backend) save(version string, snapRev int64, rc io.ReadCloser) error
 }
 
 func (sb *s3Backend) getLatest() (string, io.ReadCloser, error) {
-	keys, err := sb.S3.List("")
+	keys, err := sb.S3.List()
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to list s3 bucket: %v", err)
 	}

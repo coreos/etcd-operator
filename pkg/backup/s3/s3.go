@@ -28,27 +28,36 @@ import (
 // S3 represents AWS S3 service.
 type S3 struct {
 	bucket string
+	prefix string
 	client *s3.S3
 }
 
 // AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set to access AWS services
 // AWS_S3_BUCKET must be set to specify the s3 bucket
 // AWS_REGION can be set to specify the aws region
-func New() (*S3, error) {
+func New(prefix string) (*S3, error) {
 	bucket := os.Getenv(env.AWSS3Bucket)
 	if bucket == "" {
 		return nil, fmt.Errorf("%s bucket must be set", env.AWSS3Bucket)
 	}
 
-	client := s3.New(session.New())
+	sess, err := session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	_, err := client.HeadBucket(&s3.HeadBucketInput{Bucket: &bucket})
+	client := s3.New(sess)
+
+	_, err = client.HeadBucket(&s3.HeadBucketInput{Bucket: &bucket})
 	if err != nil {
 		return nil, fmt.Errorf("unable to access bucket %s: %v", bucket, err)
 	}
 
 	s := &S3{
 		client: client,
+		prefix: prefix,
 		bucket: bucket,
 	}
 	return s, nil
@@ -57,7 +66,7 @@ func New() (*S3, error) {
 func (s *S3) Put(key string, rs io.ReadSeeker) error {
 	_, err := s.client.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
+		Key:    aws.String(s.prefix + key),
 		Body:   rs,
 	})
 
@@ -71,7 +80,7 @@ func (s *S3) Put(key string, rs io.ReadSeeker) error {
 func (s *S3) Get(key string) (io.ReadCloser, error) {
 	resp, err := s.client.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
+		Key:    aws.String(s.prefix + key),
 	})
 	if err != nil {
 		return nil, err
@@ -83,7 +92,7 @@ func (s *S3) Get(key string) (io.ReadCloser, error) {
 func (s *S3) Delete(key string) error {
 	_, err := s.client.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
+		Key:    aws.String(s.prefix + key),
 	})
 
 	if err != nil {
@@ -93,10 +102,10 @@ func (s *S3) Delete(key string) error {
 	return nil
 }
 
-func (s *S3) List(prefix string) ([]string, error) {
+func (s *S3) List() ([]string, error) {
 	resp, err := s.client.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(s.bucket),
-		Prefix: aws.String(prefix),
+		Prefix: aws.String(s.prefix),
 	})
 	if err != nil {
 		return nil, err
@@ -104,7 +113,8 @@ func (s *S3) List(prefix string) ([]string, error) {
 
 	keys := []string{}
 	for _, key := range resp.Contents {
-		keys = append(keys, *key.Key)
+		k := *key.Key
+		keys = append(keys, k[len(s.prefix):])
 	}
 
 	return keys, nil
