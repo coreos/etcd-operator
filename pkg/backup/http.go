@@ -57,7 +57,7 @@ func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
 func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 	fname, rc, err := b.be.getLatest()
 	if err != nil {
-		logrus.Error(err)
+		logrus.Errorf("fail to serve backup: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

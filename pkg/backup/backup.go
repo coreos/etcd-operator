@@ -60,7 +60,8 @@ func New(kclient *unversioned.Client, clusterName, ns string, policy spec.Backup
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		be = &fileBackend{dir: constants.BackupDir}
 	case spec.BackupStorageTypeS3:
-		s3cli, err := s3.New()
+		prefix := clusterName + "/"
+		s3cli, err := s3.New(prefix)
 		if err != nil {
 			panic(err)
 		}
