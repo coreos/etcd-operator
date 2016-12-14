@@ -31,7 +31,7 @@ var Global *Framework
 type Framework struct {
 	KubeClient *unversioned.Client
 	MasterHost string
-	Namespace  *api.Namespace
+	Namespace  string
 }
 
 // Setup setups a test framework and points "Global" to it.
@@ -49,35 +49,20 @@ func Setup() error {
 	if err != nil {
 		return err
 	}
-	var namespace *api.Namespace
-	if *ns != "default" {
-		namespace, err = cli.Namespaces().Create(&api.Namespace{
-			ObjectMeta: api.ObjectMeta{
-				Name: *ns,
-			},
-		})
-	} else {
-		namespace, err = cli.Namespaces().Get("default")
-	}
-	if err != nil {
-		return err
-	}
 
 	Global = &Framework{
 		MasterHost: config.Host,
 		KubeClient: cli,
-		Namespace:  namespace,
+		Namespace:  *ns,
 	}
 	return Global.setup(*opImage)
 }
 
 func Teardown() error {
-	if Global.Namespace.Name != "default" {
-		if err := Global.KubeClient.Namespaces().Delete(Global.Namespace.Name); err != nil {
-			return err
-		}
-	}
 	// TODO: check all deleted and wait
+	if err := Global.KubeClient.Pods(Global.Namespace).Delete("etcd-operator", api.NewDeleteOptions(0)); err != nil {
+		return err
+	}
 	Global = nil
 	logrus.Info("e2e teardown successfully")
 	return nil
@@ -120,11 +105,11 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 		},
 	}
 
-	_, err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace.Name, pod, 60*time.Second)
+	_, err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace, pod, 60*time.Second)
 	if err != nil {
 		return err
 	}
-	err = k8sutil.WaitEtcdTPRReady(f.KubeClient.Client, 5*time.Second, 60*time.Second, f.MasterHost, f.Namespace.Name)
+	err = k8sutil.WaitEtcdTPRReady(f.KubeClient.Client, 5*time.Second, 60*time.Second, f.MasterHost, f.Namespace)
 	if err != nil {
 		return err
 	}

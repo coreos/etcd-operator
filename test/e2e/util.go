@@ -43,7 +43,7 @@ const (
 
 func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Duration) error {
 	return wait.Poll(5*time.Second, timeout, func() (done bool, err error) {
-		podList, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
+		podList, err := f.KubeClient.Pods(f.Namespace).List(api.ListOptions{
 			LabelSelector: labels.SelectorFromSet(map[string]string{
 				"app":          k8sutil.BackupPodSelectorAppField,
 				"etcd_cluster": clusterName,
@@ -65,7 +65,7 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 		"app":          k8sutil.BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
 	}
-	podList, err := f.KubeClient.Pods(f.Namespace.Name).List(api.ListOptions{
+	podList, err := f.KubeClient.Pods(f.Namespace).List(api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(ls),
 	})
 	if err != nil {
@@ -87,7 +87,7 @@ func waitUntilSizeReached(f *framework.Framework, clusterName string, size, time
 func waitSizeReachedWithFilter(f *framework.Framework, clusterName string, size, timeout int, filterPod func(*api.Pod) bool) ([]string, error) {
 	var names []string
 	err := wait.Poll(10*time.Second, time.Duration(timeout)*time.Second, func() (done bool, err error) {
-		podList, err := f.KubeClient.Pods(f.Namespace.Name).List(k8sutil.EtcdPodListOpt(clusterName))
+		podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.EtcdPodListOpt(clusterName))
 		if err != nil {
 			return false, err
 		}
@@ -113,7 +113,7 @@ func waitSizeReachedWithFilter(f *framework.Framework, clusterName string, size,
 
 func killMembers(f *framework.Framework, names ...string) error {
 	for _, name := range names {
-		err := f.KubeClient.Pods(f.Namespace.Name).Delete(name, api.NewDeleteOptions(0))
+		err := f.KubeClient.Pods(f.Namespace).Delete(name, api.NewDeleteOptions(0))
 		if err != nil {
 			return err
 		}
@@ -167,7 +167,7 @@ func createEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdC
 		return nil, err
 	}
 	resp, err := f.KubeClient.Client.Post(
-		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters", f.MasterHost, f.Namespace.Name),
+		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters", f.MasterHost, f.Namespace),
 		"application/json", bytes.NewReader(b))
 	if err != nil {
 		return nil, err
@@ -191,7 +191,7 @@ func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdC
 		return nil, err
 	}
 	req, err := http.NewRequest("PUT",
-		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace.Name, e.Name),
+		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace, e.Name),
 		bytes.NewReader(b))
 	if err != nil {
 		return nil, err
@@ -215,7 +215,7 @@ func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdC
 
 func deleteEtcdCluster(f *framework.Framework, name string) error {
 	fmt.Printf("deleting etcd cluster: %v\n", name)
-	podList, err := f.KubeClient.Pods(f.Namespace.Name).List(k8sutil.EtcdPodListOpt(name))
+	podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.EtcdPodListOpt(name))
 	if err != nil {
 		return err
 	}
@@ -226,7 +226,7 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 		buf := bytes.NewBuffer(nil)
 
 		if pod.Status.Phase == api.PodFailed {
-			if err := getLogs(f.KubeClient, f.Namespace.Name, pod.Name, "etcd", buf); err != nil {
+			if err := getLogs(f.KubeClient, f.Namespace, pod.Name, "etcd", buf); err != nil {
 				return err
 			}
 			fmt.Println(pod.Name, "logs ===")
@@ -236,7 +236,7 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 	}
 
 	buf := bytes.NewBuffer(nil)
-	if err := getLogs(f.KubeClient, f.Namespace.Name, "etcd-operator", "etcd-operator", buf); err != nil {
+	if err := getLogs(f.KubeClient, f.Namespace, "etcd-operator", "etcd-operator", buf); err != nil {
 		return err
 	}
 	fmt.Println("etcd-operator logs ===")
@@ -244,7 +244,7 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 	fmt.Println("etcd-operator logs END ===")
 
 	req, err := http.NewRequest("DELETE",
-		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace.Name, name), nil)
+		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace, name), nil)
 	if err != nil {
 		return err
 	}
