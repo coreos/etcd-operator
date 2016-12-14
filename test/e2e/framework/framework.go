@@ -16,6 +16,7 @@ package framework
 
 import (
 	"flag"
+	"os"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -79,6 +80,10 @@ func (f *Framework) setup(opImage string) error {
 
 func (f *Framework) setupEtcdOperator(opImage string) error {
 	// TODO: unify this and the yaml file in example/
+	cmd := "/usr/local/bin/etcd-operator --analytics=false"
+	if os.Getenv("AWS_TEST_ENABLED") == "true" {
+		cmd += " --backup-aws-secret=aws --backup-aws-config=aws --backup-s3-bucket=jenkins-etcd-operator"
+	}
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
 			Name:   "etcd-operator",
@@ -90,8 +95,7 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 					Name:  "etcd-operator",
 					Image: opImage,
 					Command: []string{
-						"/bin/sh", "-c",
-						"/usr/local/bin/etcd-operator --analytics=false",
+						"/bin/sh", "-c", cmd,
 					},
 					Env: []api.EnvVar{
 						{

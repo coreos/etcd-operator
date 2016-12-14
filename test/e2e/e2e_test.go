@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
@@ -184,10 +185,14 @@ func TestPauseControl(t *testing.T) {
 }
 
 func testDisasterRecovery(t *testing.T, numToKill int) {
+	testDisasterRecoveryWithStorageType(t, numToKill, spec.BackupStorageTypePersistentVolume)
+}
+
+func testDisasterRecoveryWithStorageType(t *testing.T, numToKill int, bt spec.BackupStorageType) {
 	f := framework.Global
 	origEtcd := makeEtcdCluster("test-etcd-", 3)
-	origEtcd = etcdClusterWithBackup(origEtcd, makeBackupPolicy(true))
-	testEtcd, err := createEtcdCluster(f, origEtcd)
+	bp := backupPolicyWithStorageType(makeBackupPolicy(true), bt)
+	testEtcd, err := createEtcdCluster(f, etcdClusterWithBackup(origEtcd, bp))
 	if err != nil {
 		t.Fatal(err)
 	}

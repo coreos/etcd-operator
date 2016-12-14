@@ -35,7 +35,7 @@ export OPERATOR_IMAGE="gcr.io/coreos-k8s-scale-testing/etcd-operator:${GIT_VERSI
 echo "UNIQUE_BUILD_NAME: ${UNIQUE_BUILD_NAME}"
 echo "OPERATOR_IMAGE: ${OPERATOR_IMAGE}"
 echo "TEST_NAMESPACE: ${TEST_NAMESPACE}"
-echo "S3_TEST_ENABLED: ${S3_TEST_ENABLED}"
+echo "AWS_TEST_ENABLED: ${AWS_TEST_ENABLED}"
 
 gcloud docker -a # have docker command access to gcloud 
 
