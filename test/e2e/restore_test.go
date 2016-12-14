@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
@@ -36,7 +37,7 @@ func TestClusterRestoreDifferentName(t *testing.T) {
 func testClusterRestore(t *testing.T, sameName bool) {
 	f := framework.Global
 	origEtcd := makeEtcdCluster("test-etcd-", 3)
-	testEtcd, err := createEtcdCluster(f, etcdClusterWithBackup(origEtcd, makeBackupPolicy(false)))
+	testEtcd, err := createEtcdCluster(f, etcdClusterWithBackup(origEtcd, makeBackupPolicy()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,12 +93,15 @@ func testClusterRestore(t *testing.T, sameName bool) {
 		BackupClusterName: testEtcd.Name,
 		StorageType:       spec.BackupStorageTypePersistentVolume,
 	})
-	testEtcd, err = createEtcdCluster(f, etcdClusterWithBackup(origEtcd, makeBackupPolicy(true)))
+	testEtcd, err = createEtcdCluster(f, etcdClusterWithBackup(origEtcd, makeBackupPolicy()))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
 		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+			t.Fatal(err)
+		}
+		if err := k8sutil.DeletePVC(f.KubeClient, f.Namespace, testEtcd.Name); err != nil {
 			t.Fatal(err)
 		}
 	}()

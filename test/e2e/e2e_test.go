@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
@@ -191,13 +192,16 @@ func testDisasterRecovery(t *testing.T, numToKill int) {
 func testDisasterRecoveryWithStorageType(t *testing.T, numToKill int, bt spec.BackupStorageType) {
 	f := framework.Global
 	origEtcd := makeEtcdCluster("test-etcd-", 3)
-	bp := backupPolicyWithStorageType(makeBackupPolicy(true), bt)
+	bp := backupPolicyWithStorageType(makeBackupPolicy(), bt)
 	testEtcd, err := createEtcdCluster(f, etcdClusterWithBackup(origEtcd, bp))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
 		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+			t.Fatal(err)
+		}
+		if err := k8sutil.DeletePVC(f.KubeClient, f.Namespace, testEtcd.Name); err != nil {
 			t.Fatal(err)
 		}
 		// TODO: add checking of removal of backup pod
