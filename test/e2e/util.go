@@ -146,6 +146,11 @@ func makeBackupPolicy(cleanup bool) *spec.BackupPolicy {
 	}
 }
 
+func backupPolicyWithStorageType(bp *spec.BackupPolicy, bt spec.BackupStorageType) *spec.BackupPolicy {
+	bp.StorageType = bt
+	return bp
+}
+
 func etcdClusterWithBackup(ec *spec.EtcdCluster, backupPolicy *spec.BackupPolicy) *spec.EtcdCluster {
 	ec.Spec.Backup = backupPolicy
 	return ec
