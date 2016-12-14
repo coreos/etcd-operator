@@ -108,6 +108,10 @@ func CreateAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisione
 	return nil
 }
 
+func DeletePVC(kubecli *unversioned.Client, ns, clusterName string) error {
+	return kubecli.PersistentVolumeClaims(ns).Delete(makePVCName(clusterName))
+}
+
 var BackupImage = "quay.io/coreos/etcd-operator:latest"
 
 func PodSpecWithPV(ps *api.PodSpec, clusterName string) *api.PodSpec {
@@ -242,7 +246,7 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 	return nil
 }
 
-func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, cleanup bool) error {
+func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string) error {
 	name := MakeBackupName(clusterName)
 	err := kubecli.Services(ns).Delete(name)
 	if err != nil {
@@ -256,9 +260,6 @@ func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 	})
 	if err != nil {
 		return err
-	}
-	if cleanup {
-		kubecli.PersistentVolumeClaims(ns).Delete(makePVCName(clusterName))
 	}
 	return nil
 }
