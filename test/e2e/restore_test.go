@@ -45,7 +45,7 @@ func testClusterRestore(t *testing.T, sameName bool) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	pod, err := f.KubeClient.Pods(f.Namespace.Name).Get(names[0])
+	pod, err := f.KubeClient.Pods(f.Namespace).Get(names[0])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func testClusterRestore(t *testing.T, sameName bool) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	pod, err = f.KubeClient.Pods(f.Namespace.Name).Get(names[0])
+	pod, err = f.KubeClient.Pods(f.Namespace).Get(names[0])
 	if err != nil {
 		t.Fatal(err)
 	}
