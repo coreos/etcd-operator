@@ -138,11 +138,11 @@ func makeEtcdCluster(genName string, size int) *spec.EtcdCluster {
 
 func makeBackupPolicy(cleanup bool) *spec.BackupPolicy {
 	return &spec.BackupPolicy{
-		SnapshotIntervalInSecond: 60 * 60,
-		MaxSnapshot:              5,
-		VolumeSizeInMB:           512,
-		StorageType:              spec.BackupStorageTypePersistentVolume,
-		CleanupOnClusterDelete:   cleanup,
+		SnapshotIntervalInSecond:      60 * 60,
+		MaxSnapshot:                   5,
+		VolumeSizeInMB:                512,
+		StorageType:                   spec.BackupStorageTypePersistentVolume,
+		CleanupBackupsOnClusterDelete: cleanup,
 	}
 }
 

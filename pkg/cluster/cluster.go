@@ -370,7 +370,7 @@ func (c *Cluster) delete() {
 		}
 	}
 	if c.spec.Backup != nil {
-		k8sutil.DeleteBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup.CleanupOnClusterDelete)
+		k8sutil.DeleteBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup.CleanupBackupsOnClusterDelete)
 	}
 
 	err = c.deleteClientServiceLB()
