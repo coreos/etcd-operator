@@ -362,24 +362,25 @@ func (c *Cluster) delete() {
 
 	pods, err := c.KubeCli.Pods(c.Namespace).List(option)
 	if err != nil {
-		panic(err)
-	}
-	for i := range pods.Items {
-		if err := c.removePodAndService(pods.Items[i].Name); err != nil {
-			panic(err)
+		c.logger.Errorf("cluster deletion: cannot delete any pod due to failure to list: %v", err)
+	} else {
+		for i := range pods.Items {
+			if err := c.removePodAndService(pods.Items[i].Name); err != nil {
+				c.logger.Errorf("cluster deletion: fail to delete (%s)'s pod and svc: %v", pods.Items[i].Name, err)
+			}
 		}
 	}
+
 	if c.bm != nil {
 		err := c.bm.CleanupBackups()
 		if err != nil {
-			panic(err)
+			c.logger.Errorf("cluster deletion: fail to cleanup backups: %v", err)
 		}
 	}
 
 	err = c.deleteClientServiceLB()
 	if err != nil {
-		// todo: do not panic!
-		panic("todo:" + err.Error())
+		c.logger.Errorf("cluster deletion: fail to delete client service LB: %v", err)
 	}
 }
 
