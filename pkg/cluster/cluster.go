@@ -369,7 +369,7 @@ func (c *Cluster) delete() {
 			panic(err)
 		}
 	}
-	if c.spec.Backup != nil {
+	if c.bm != nil {
 		err := c.bm.CleanupBackups()
 		if err != nil {
 			panic(err)
