@@ -8,6 +8,7 @@ _obj
 _test
 _output
 .kube
+.vscode
 
 # Architecture specific extensions/prefixes
 *.[568vq]
