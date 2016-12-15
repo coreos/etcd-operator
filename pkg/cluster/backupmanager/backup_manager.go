@@ -11,6 +11,8 @@ type BackupManager interface {
 	// to creae a new cluster later.
 	// It takes place on restore path.
 	Clone(from string) error
+	// CleanupBackups will remove all backup data from underlying storage, e.g. remove PVC, "dir" in s3 bucket.
+	CleanupBackups() error
 	// PodSpecWithStorage sets the storage related stuff in PodSpec.
 	PodSpecWithStorage(*api.PodSpec) *api.PodSpec
 }

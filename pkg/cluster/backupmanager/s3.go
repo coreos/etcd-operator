@@ -26,6 +26,10 @@ func (bm *s3BackupManager) Setup() error {
 func (bm *s3BackupManager) Clone(from string) error {
 	return fmt.Errorf("TODO: unsupported Cloning previous S3 data")
 }
+func (bm *s3BackupManager) CleanupBackups() error {
+	// TODO: remove S3 "dir"?
+	return nil
+}
 func (bm *s3BackupManager) PodSpecWithStorage(ps *api.PodSpec) *api.PodSpec {
 	return k8sutil.PodSpecWithS3(ps, bm.S3Context)
 }

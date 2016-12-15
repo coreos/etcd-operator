@@ -77,6 +77,7 @@ type Cluster struct {
 	// process runs in.
 	members etcdutil.MemberSet
 
+	bm        backupmanager.BackupManager
 	backupDir string
 }
 
@@ -134,16 +135,15 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 func (c *Cluster) prepareBackupAndRestore() error {
 	backup, restore := c.spec.Backup, c.spec.Restore
 
-	var bm backupmanager.BackupManager
 	switch backup.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-		bm = backupmanager.NewPVBackupManager(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, backup.VolumeSizeInMB)
+		c.bm = backupmanager.NewPVBackupManager(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, *backup)
 	case spec.BackupStorageTypeS3:
-		bm = backupmanager.NewS3BackupManager(c.S3Context)
+		c.bm = backupmanager.NewS3BackupManager(c.S3Context)
 	}
 
 	if restore == nil {
-		if err := bm.Setup(); err != nil {
+		if err := c.bm.Setup(); err != nil {
 			return err
 		}
 	} else {
@@ -153,7 +153,7 @@ func (c *Cluster) prepareBackupAndRestore() error {
 			c.logger.Infof("recreating the cluster: using the existing backup")
 		} else {
 			c.logger.Infof("restoring the previous cluster (%s): cloning data from existing backup", restore.BackupClusterName)
-			if err := bm.Clone(restore.BackupClusterName); err != nil {
+			if err := c.bm.Clone(restore.BackupClusterName); err != nil {
 				return err
 			}
 		}
@@ -163,7 +163,7 @@ func (c *Cluster) prepareBackupAndRestore() error {
 	if err != nil {
 		return err
 	}
-	podSpec = bm.PodSpecWithStorage(podSpec)
+	podSpec = c.bm.PodSpecWithStorage(podSpec)
 	err = k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, *podSpec)
 	if err != nil {
 		return fmt.Errorf("failed to create backup replica set and service: %v", err)
@@ -370,7 +370,10 @@ func (c *Cluster) delete() {
 		}
 	}
 	if c.spec.Backup != nil {
-		k8sutil.DeleteBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, c.spec.Backup.CleanupBackupsOnClusterDelete)
+		err := c.bm.CleanupBackups()
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	err = c.deleteClientServiceLB()
