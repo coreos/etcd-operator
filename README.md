@@ -28,6 +28,9 @@ Users need to create multiple operators in different namespaces to manage etcd c
 
 ![etcd Operator demo](https://raw.githubusercontent.com/coreos/etcd-operator/master/doc/gif/demo.gif)
 
+## Developer Guide
+[Instructions](./doc/devel/development.md) for setting up Developer Environment
+
 ## Deploy etcd operator
 
 ```bash
