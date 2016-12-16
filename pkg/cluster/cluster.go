@@ -94,6 +94,17 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		// TODO: set version in spec in apiserver
 		s.Version = defaultVersion
 	}
+
+	var bm backupmanager.BackupManager
+	if backup := s.Backup; backup != nil {
+		switch backup.StorageType {
+		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+			bm = backupmanager.NewPVBackupManager(config.KubeCli, config.Name, config.Namespace, config.PVProvisioner, *backup)
+		case spec.BackupStorageTypeS3:
+			bm = backupmanager.NewS3BackupManager(config.S3Context)
+		}
+	}
+
 	c := &Cluster{
 		logger:  logrus.WithField("pkg", "cluster").WithField("cluster-name", config.Name),
 		Config:  config,
@@ -101,6 +112,7 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
 		status:  &Status{},
+		bm:      bm,
 	}
 
 	if err := c.spec.Validate(); err != nil {
@@ -135,13 +147,6 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 func (c *Cluster) prepareBackupAndRestore() error {
 	backup, restore := c.spec.Backup, c.spec.Restore
 
-	switch backup.StorageType {
-	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-		c.bm = backupmanager.NewPVBackupManager(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, *backup)
-	case spec.BackupStorageTypeS3:
-		c.bm = backupmanager.NewS3BackupManager(c.S3Context)
-	}
-
 	if restore == nil {
 		if err := c.bm.Setup(); err != nil {
 			return err
@@ -159,7 +164,7 @@ func (c *Cluster) prepareBackupAndRestore() error {
 		}
 	}
 
-	podSpec, err := k8sutil.MakeBackupPodSpec(c.Name, c.spec.Backup)
+	podSpec, err := k8sutil.MakeBackupPodSpec(c.Name, backup)
 	if err != nil {
 		return err
 	}
