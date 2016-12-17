@@ -95,6 +95,11 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		s.Version = defaultVersion
 	}
 
+	err := s.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("invalid cluster spec: %v", err)
+	}
+
 	var bm backupmanager.BackupManager
 	if backup := s.Backup; backup != nil {
 		switch backup.StorageType {
@@ -113,10 +118,6 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		stopCh:  make(chan struct{}),
 		status:  &Status{},
 		bm:      bm,
-	}
-
-	if err := c.spec.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid cluster spec: %v", err)
 	}
 
 	if isNewCluster {
