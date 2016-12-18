@@ -106,7 +106,7 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 			bm = backupmanager.NewPVBackupManager(config.KubeCli, config.Name, config.Namespace, config.PVProvisioner, *backup)
 		case spec.BackupStorageTypeS3:
-			bm = backupmanager.NewS3BackupManager(config.S3Context)
+			bm = backupmanager.NewS3BackupManager(config.S3Context, config.KubeCli, config.Name, config.Namespace, *backup)
 		}
 	}
 
@@ -378,9 +378,9 @@ func (c *Cluster) delete() {
 	}
 
 	if c.bm != nil {
-		err := c.bm.CleanupBackups()
+		err = c.bm.Cleanup()
 		if err != nil {
-			c.logger.Errorf("cluster deletion: fail to cleanup backups: %v", err)
+			c.logger.Errorf("cluster deletion: backup manager fail to cleanup: %v", err)
 		}
 	}
 

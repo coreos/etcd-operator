@@ -242,7 +242,7 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 	return nil
 }
 
-func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, cleanup bool) error {
+func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string) error {
 	name := MakeBackupName(clusterName)
 	err := kubecli.Services(ns).Delete(name)
 	if err != nil {
@@ -257,10 +257,11 @@ func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 	if err != nil {
 		return err
 	}
-	if cleanup {
-		kubecli.PersistentVolumeClaims(ns).Delete(makePVCName(clusterName))
-	}
 	return nil
+}
+
+func DeletePVC(kubecli *unversioned.Client, clusterName, ns string) error {
+	return kubecli.PersistentVolumeClaims(ns).Delete(makePVCName(clusterName))
 }
 
 func CopyVolume(kubecli *unversioned.Client, fromClusterName, toClusterName, ns string) error {
