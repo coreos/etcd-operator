@@ -3,6 +3,7 @@ package backupmanager
 import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
@@ -37,8 +38,15 @@ func (bm *pvBackupManager) Clone(from string) error {
 	return k8sutil.CopyVolume(bm.kubecli, from, bm.clusterName, bm.namespace)
 }
 
-func (bm *pvBackupManager) CleanupBackups() error {
-	return k8sutil.DeleteBackupReplicaSetAndService(bm.kubecli, bm.clusterName, bm.namespace, bm.backupPolicy.CleanupBackupsOnClusterDelete)
+func (bm *pvBackupManager) Cleanup() error {
+	err := k8sutil.DeleteBackupReplicaSetAndService(bm.kubecli, bm.clusterName, bm.namespace)
+	if err != nil {
+		return err
+	}
+	if bm.backupPolicy.CleanupBackupsOnClusterDelete {
+		return k8sutil.DeletePVC(bm.kubecli, bm.clusterName, bm.namespace)
+	}
+	return nil
 }
 
 func (bm *pvBackupManager) PodSpecWithStorage(ps *api.PodSpec) *api.PodSpec {
