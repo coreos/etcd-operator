@@ -38,7 +38,10 @@ func (bm *pvBackupManager) Clone(from string) error {
 }
 
 func (bm *pvBackupManager) CleanupBackups() error {
-	return k8sutil.DeleteBackupReplicaSetAndService(bm.kubecli, bm.clusterName, bm.namespace, bm.backupPolicy.CleanupBackupsOnClusterDelete)
+	if bm.backupPolicy.CleanupBackupsOnClusterDelete {
+		return k8sutil.DeletePVC(bm.kubecli, bm.clusterName, bm.namespace)
+	}
+	return nil
 }
 
 func (bm *pvBackupManager) PodSpecWithStorage(ps *api.PodSpec) *api.PodSpec {

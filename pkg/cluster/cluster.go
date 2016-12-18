@@ -178,6 +178,19 @@ func (c *Cluster) prepareBackupAndRestore() error {
 	return nil
 }
 
+func (c *Cluster) deleteBackup() {
+	err := k8sutil.DeleteBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace)
+	if err != nil {
+		c.logger.Errorf("cluster deletion: fail to delete backup ReplicaSet: %v", err)
+	}
+	c.logger.Infof("backup replica set and service deleted")
+
+	err = c.bm.CleanupBackups()
+	if err != nil {
+		c.logger.Errorf("cluster deletion: fail to cleanup backups: %v", err)
+	}
+}
+
 func (c *Cluster) prepareSeedMember() error {
 	var err error
 	if c.spec.SelfHosted != nil {
@@ -377,16 +390,13 @@ func (c *Cluster) delete() {
 		}
 	}
 
-	if c.bm != nil {
-		err := c.bm.CleanupBackups()
-		if err != nil {
-			c.logger.Errorf("cluster deletion: fail to cleanup backups: %v", err)
-		}
-	}
-
 	err = c.deleteClientServiceLB()
 	if err != nil {
 		c.logger.Errorf("cluster deletion: fail to delete client service LB: %v", err)
+	}
+
+	if c.spec.Backup != nil {
+		c.deleteBackup()
 	}
 }
 
