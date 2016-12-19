@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -61,7 +62,7 @@ func New(kclient *unversioned.Client, clusterName, ns string, policy spec.Backup
 		be = &fileBackend{dir: constants.BackupDir}
 	case spec.BackupStorageTypeS3:
 		prefix := clusterName + "/"
-		s3cli, err := s3.New(prefix)
+		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), prefix)
 		if err != nil {
 			panic(err)
 		}

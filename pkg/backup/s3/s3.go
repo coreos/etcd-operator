@@ -17,7 +17,7 @@ package s3
 import (
 	"fmt"
 	"io"
-	"os"
+	"path"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -32,15 +32,13 @@ type S3 struct {
 	client *s3.S3
 }
 
-// AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set to access AWS services
-// AWS_S3_BUCKET must be set to specify the s3 bucket
-// AWS_REGION can be set to specify the aws region
-func New(prefix string) (*S3, error) {
-	bucket := os.Getenv(env.AWSS3Bucket)
+// Please refer to http://docs.aws.amazon.com/sdk-for-go/api/aws/session/
+// for how to set credentials and configuration when creating a session.
+// Note that we have added SharedConfigEnable in session option.
+func New(bucket, prefix string) (*S3, error) {
 	if bucket == "" {
-		return nil, fmt.Errorf("%s bucket must be set", env.AWSS3Bucket)
+		return nil, fmt.Errorf("env (%s) must be set", env.AWSS3Bucket)
 	}
-
 	sess, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
@@ -103,9 +101,13 @@ func (s *S3) Delete(key string) error {
 }
 
 func (s *S3) List() ([]string, error) {
+	return s.list(s.prefix)
+}
+
+func (s *S3) list(prefix string) ([]string, error) {
 	resp, err := s.client.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(s.bucket),
-		Prefix: aws.String(s.prefix),
+		Prefix: aws.String(prefix),
 	})
 	if err != nil {
 		return nil, err
@@ -114,8 +116,27 @@ func (s *S3) List() ([]string, error) {
 	keys := []string{}
 	for _, key := range resp.Contents {
 		k := *key.Key
-		keys = append(keys, k[len(s.prefix):])
+		keys = append(keys, k[len(prefix):])
 	}
 
 	return keys, nil
+}
+
+func (s *S3) CopyPrefix(from string) error {
+	keys, err := s.list(from)
+	if err != nil {
+		return err
+	}
+	for _, key := range keys {
+		req := &s3.CopyObjectInput{
+			Bucket:     aws.String(s.bucket),
+			Key:        aws.String(path.Join(s.prefix, key)),
+			CopySource: aws.String(path.Join(s.bucket, from, key)),
+		}
+		_, err := s.client.CopyObject(req)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
