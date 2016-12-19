@@ -33,10 +33,15 @@ func TestClusterRestoreDifferentName(t *testing.T) {
 	testClusterRestore(t, false)
 }
 
-func testClusterRestore(t *testing.T, sameName bool) {
+func testClusterRestore(t *testing.T, needDataClone bool) {
+	testClusterRestoreWithStorageType(t, needDataClone, spec.BackupStorageTypePersistentVolume)
+}
+
+func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec.BackupStorageType) {
 	f := framework.Global
 	origEtcd := makeEtcdCluster("test-etcd-", 3)
-	testEtcd, err := createEtcdCluster(f, etcdClusterWithBackup(origEtcd, makeBackupPolicy(false)))
+	testEtcd, err := createEtcdCluster(f,
+		etcdClusterWithBackup(origEtcd, backupPolicyWithStorageType(makeBackupPolicy(false), bt)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,14 +54,7 @@ func testClusterRestore(t *testing.T, sameName bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	etcdcli, err := createEtcdClient(fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	_, err = etcdcli.Put(ctx, etcdKeyFoo, etcdValBar)
-	cancel()
-	etcdcli.Close()
+	err = putDataToEtcd(fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,26 +71,23 @@ func testClusterRestore(t *testing.T, sameName bool) {
 	// waits a bit to make sure resources are finally deleted on APIServer.
 	time.Sleep(5 * time.Second)
 
-	if sameName {
+	if needDataClone {
 		// Restore the etcd cluster of the same name:
 		// - use the name already generated. We don't need to regenerate again.
 		// - set BackupClusterName to the same name in RestorePolicy.
-		// Then operator will use the existing backup in previous PVC and
+		// Then operator will use the existing backup in the same storage and
 		// restore cluster with the same data.
 		origEtcd.GenerateName = ""
 		origEtcd.Name = testEtcd.Name
 	}
-	// It could take very long due to delay of k8s controller detaching the volume
-	waitRestoreTimeout := 180
-	if !sameName {
-		// even longer since it needs to detach the volume twice: additional one for data copy job
-		waitRestoreTimeout = 240
-	}
+	waitRestoreTimeout := calculateClusterRestoreWaitTime(bt, needDataClone)
+
 	origEtcd = etcdClusterWithRestore(origEtcd, &spec.RestorePolicy{
 		BackupClusterName: testEtcd.Name,
-		StorageType:       spec.BackupStorageTypePersistentVolume,
+		StorageType:       bt,
 	})
-	testEtcd, err = createEtcdCluster(f, etcdClusterWithBackup(origEtcd, makeBackupPolicy(true)))
+	testEtcd, err = createEtcdCluster(f,
+		etcdClusterWithBackup(origEtcd, backupPolicyWithStorageType(makeBackupPolicy(true), bt)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +96,7 @@ func testClusterRestore(t *testing.T, sameName bool) {
 			t.Fatal(err)
 		}
 	}()
-	names, err = waitUntilSizeReached(f, testEtcd.Name, 3, waitRestoreTimeout)
+	names, err = waitUntilSizeReached(f, testEtcd.Name, 3, int(waitRestoreTimeout/time.Second))
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -110,11 +105,27 @@ func testClusterRestore(t *testing.T, sameName bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	etcdcli, err = createEtcdClient(fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
+	checkEtcdData(t, fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
+}
+
+func putDataToEtcd(addr string) error {
+	etcdcli, err := createEtcdClient(addr)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	_, err = etcdcli.Put(ctx, etcdKeyFoo, etcdValBar)
+	cancel()
+	etcdcli.Close()
+	return err
+}
+
+func checkEtcdData(t *testing.T, addr string) {
+	etcdcli, err := createEtcdClient(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.Get(ctx, etcdKeyFoo)
 	cancel()
 	etcdcli.Close()
@@ -129,4 +140,20 @@ func testClusterRestore(t *testing.T, sameName bool) {
 			t.Errorf("value want = '%s', get = '%s'", etcdValBar, val)
 		}
 	}
+}
+
+func calculateClusterRestoreWaitTime(bt spec.BackupStorageType, needDataClone bool) time.Duration {
+	var waitTime time.Duration
+	switch bt {
+	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+		// It could take very long due to delay of k8s controller detaching the volume
+		waitTime = 180 * time.Second
+	default:
+		waitTime = 120 * time.Second
+	}
+	if !needDataClone {
+		// Take additional time to clone the data.
+		waitTime += 60 * time.Second
+	}
+	return waitTime
 }

@@ -20,3 +20,17 @@ func TestS3AllDown(t *testing.T) {
 	}
 	testDisasterRecoveryWithStorageType(t, 3, spec.BackupStorageTypeS3)
 }
+
+func TestClusterRestoreS3SameName(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
+	testClusterRestoreWithStorageType(t, true, spec.BackupStorageTypeS3)
+}
+
+func TestClusterRestoreS3DifferentName(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
+	testClusterRestoreWithStorageType(t, false, spec.BackupStorageTypeS3)
+}
