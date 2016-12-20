@@ -77,6 +77,20 @@ func (sb *s3Backend) getLatest() (string, io.ReadCloser, error) {
 	return key, rc, err
 }
 
-func (sb *s3Backend) purge(maxBackupFiles int) {
-	fmt.Println("purge not implemented")
+func (sb *s3Backend) purge(maxBackupFiles int) error {
+	names, err := sb.S3.List()
+	if err != nil {
+		return err
+	}
+	bnames := filterAndSortBackups(names)
+	if len(bnames) < maxBackupFiles {
+		return nil
+	}
+	for i := 0; i < len(bnames)-maxBackupFiles; i++ {
+		err := sb.S3.Delete(bnames[i])
+		if err != nil {
+			logrus.Errorf("fail to delete s3 file (%s): %v", bnames[i], err)
+		}
+	}
+	return nil
 }
