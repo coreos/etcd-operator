@@ -22,6 +22,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/Sirupsen/logrus"
 )
 
 const (
@@ -98,9 +100,9 @@ func (fb *fileBackend) purge(maxBackupFiles int) {
 	for i := 0; i < len(bnames)-maxBackupFiles; i++ {
 		err := os.Remove(path.Join(fb.dir, bnames[i]))
 		if err != nil {
-			log.Printf("failed to remove backup file: %s", bnames[i])
+			logrus.Infof("failed to remove backup file: %s", bnames[i])
 		} else {
-			log.Printf("removed backup file: %s", bnames[i])
+			logrus.Infof("removed backup file: %s", bnames[i])
 		}
 	}
 }
