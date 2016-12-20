@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
@@ -38,7 +39,7 @@ func TestEtcdUpgrade(t *testing.T) {
 		}
 	}()
 
-	_, err = waitSizeReachedWithFilter(f, testEtcd.Name, 3, 60, func(pod *api.Pod) bool {
+	_, err = waitSizeReachedWithFilter(f, testEtcd.Name, 3, 60*time.Second, func(pod *api.Pod) bool {
 		return k8sutil.GetEtcdVersion(pod) == "v3.0.12"
 	})
 	if err != nil {
@@ -51,7 +52,7 @@ func TestEtcdUpgrade(t *testing.T) {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 
-	_, err = waitSizeReachedWithFilter(f, testEtcd.Name, 3, 60, func(pod *api.Pod) bool {
+	_, err = waitSizeReachedWithFilter(f, testEtcd.Name, 3, 60*time.Second, func(pod *api.Pod) bool {
 		return k8sutil.GetEtcdVersion(pod) == "v3.1.0-alpha.1"
 	})
 	if err != nil {

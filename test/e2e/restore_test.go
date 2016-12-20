@@ -45,7 +45,7 @@ func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec
 	if err != nil {
 		t.Fatal(err)
 	}
-	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60)
+	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -96,7 +96,7 @@ func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec
 			t.Fatal(err)
 		}
 	}()
-	names, err = waitUntilSizeReached(f, testEtcd.Name, 3, int(waitRestoreTimeout/time.Second))
+	names, err = waitUntilSizeReached(f, testEtcd.Name, 3, waitRestoreTimeout)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}

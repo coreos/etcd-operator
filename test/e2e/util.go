@@ -80,13 +80,13 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 	return cluster.RequestBackupNow(f.KubeClient.Client, addr)
 }
 
-func waitUntilSizeReached(f *framework.Framework, clusterName string, size, timeout int) ([]string, error) {
+func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, timeout time.Duration) ([]string, error) {
 	return waitSizeReachedWithFilter(f, clusterName, size, timeout, func(*api.Pod) bool { return true })
 }
 
-func waitSizeReachedWithFilter(f *framework.Framework, clusterName string, size, timeout int, filterPod func(*api.Pod) bool) ([]string, error) {
+func waitSizeReachedWithFilter(f *framework.Framework, clusterName string, size int, timeout time.Duration, filterPod func(*api.Pod) bool) ([]string, error) {
 	var names []string
-	err := wait.Poll(10*time.Second, time.Duration(timeout)*time.Second, func() (done bool, err error) {
+	err := wait.Poll(10*time.Second, timeout, func() (done bool, err error) {
 		podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.EtcdPodListOpt(clusterName))
 		if err != nil {
 			return false, err
