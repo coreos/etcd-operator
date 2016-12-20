@@ -22,6 +22,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/Sirupsen/logrus"
 )
 
 const (
@@ -49,6 +51,10 @@ func (fb *fileBackend) save(version string, snapRev int64, rc io.ReadCloser) err
 		os.Remove(tmpfile.Name())
 		return fmt.Errorf("failed to save snapshot: %v", err)
 	}
+	err = tmpfile.Sync()
+	if err != nil {
+		logrus.Warningf("filebackend: failed to sync backup file %s (%v)", filename, err)
+	}
 	tmpfile.Close()
 
 	nextSnapshotName := filepath.Join(fb.dir, filename)
@@ -57,7 +63,8 @@ func (fb *fileBackend) save(version string, snapRev int64, rc io.ReadCloser) err
 		os.Remove(tmpfile.Name())
 		return fmt.Errorf("rename snapshot from %s to %s failed: %v", tmpfile.Name(), nextSnapshotName, err)
 	}
-	log.Printf("saved snapshot %s (size: %d) successfully", nextSnapshotName, n)
+
+	logrus.Infof("saved snapshot %s (size: %d) successfully", nextSnapshotName, n)
 	return nil
 }
 
