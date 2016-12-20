@@ -106,7 +106,10 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 			bm = backupmanager.NewPVBackupManager(config.KubeCli, config.Name, config.Namespace, config.PVProvisioner, *backup)
 		case spec.BackupStorageTypeS3:
-			bm = backupmanager.NewS3BackupManager(config.S3Context)
+			bm, err = backupmanager.NewS3BackupManager(config.S3Context, config.KubeCli, config.Name, config.Namespace)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

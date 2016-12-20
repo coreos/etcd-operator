@@ -141,7 +141,7 @@ func makeBackupPolicy(cleanup bool) *spec.BackupPolicy {
 		SnapshotIntervalInSecond:      60 * 60,
 		MaxSnapshot:                   5,
 		VolumeSizeInMB:                512,
-		StorageType:                   spec.BackupStorageTypePersistentVolume,
+		StorageType:                   spec.BackupStorageTypeDefault,
 		CleanupBackupsOnClusterDelete: cleanup,
 	}
 }
