@@ -41,3 +41,29 @@ func TestFilterAndSortBackups(t *testing.T) {
 		t.Errorf("got = %v, want %v", got, w)
 	}
 }
+
+func TestGetRev(t *testing.T) {
+	tests := []struct {
+		name string
+		rev  int64
+		werr bool
+	}{
+		{makeBackupName("3.0.0", 1), 1, false},
+		{makeBackupName("3.0.0", 8), 8, false},
+		{"3.0.1_badrev_etcd.backup", 0, true}, // bad rev in backup name
+		{"0", 0, true},                        // bad format
+	}
+
+	for i, tt := range tests {
+		rev, err := getRev(tt.name)
+		if rev != tt.rev {
+			t.Errorf("#%d: rev = %d, want %d", i, rev, tt.rev)
+		}
+		if err != nil && !tt.werr {
+			t.Errorf("#%d: err = %v, want nil", i, err)
+		}
+		if err == nil && tt.werr {
+			t.Errorf("#%d: err = %v, want error", i, err)
+		}
+	}
+}
