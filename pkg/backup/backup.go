@@ -91,16 +91,16 @@ func (b *Backup) Run() {
 
 	lastSnapRev := int64(0)
 	interval := constants.DefaultSnapshotInterval
-	if b.policy.SnapshotIntervalInSecond != 0 {
-		interval = time.Duration(b.policy.SnapshotIntervalInSecond) * time.Second
+	if b.policy.BackupIntervalInSecond != 0 {
+		interval = time.Duration(b.policy.BackupIntervalInSecond) * time.Second
 	}
 
 	go func() {
 		for {
 			<-time.After(10 * time.Second)
-			err := b.be.purge(b.policy.MaxSnapshot)
+			err := b.be.purge(b.policy.MaxBackups)
 			if err != nil {
-				logrus.Errorf("fail to purge: %v", err)
+				logrus.Errorf("fail to purge backups: %v", err)
 			}
 		}
 	}()
@@ -144,15 +144,13 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 		logrus.Warning(msg)
 		return lastSnapRev, fmt.Errorf(msg)
 	}
-	member, rev, err := getMemberWithMaxRev(pods)
-	if err != nil {
-		return lastSnapRev, err
-	}
+	member, rev := getMemberWithMaxRev(pods)
 	if member == nil {
 		logrus.Warning("no reachable member")
 		return lastSnapRev, fmt.Errorf("no reachable member")
 	}
-	if rev == lastSnapRev {
+
+	if rev <= lastSnapRev {
 		logrus.Info("skipped creating new backup: no change since last time")
 		return lastSnapRev, nil
 	}
@@ -194,7 +192,7 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	return b.be.save(resp.Version, rev, rc)
 }
 
-func getMemberWithMaxRev(pods []*api.Pod) (*etcdutil.Member, int64, error) {
+func getMemberWithMaxRev(pods []*api.Pod) (*etcdutil.Member, int64) {
 	var member *etcdutil.Member
 	maxRev := int64(0)
 	for _, pod := range pods {
@@ -205,19 +203,22 @@ func getMemberWithMaxRev(pods []*api.Pod) (*etcdutil.Member, int64, error) {
 		}
 		etcdcli, err := clientv3.New(cfg)
 		if err != nil {
-			return nil, 0, fmt.Errorf("failed to create etcd client (%v)", err)
+			logrus.Fatalf("failed to create etcd client (%v)", err)
 		}
 		defer etcdcli.Close()
+
 		ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
 		if err != nil {
-			return nil, 0, fmt.Errorf("etcdcli.Get failed: %v", err)
+			logrus.Warningf("getMaxRev: failed to get revision from member %s (%s)", m.Name, m.ClientAddr())
+			continue
 		}
-		logrus.Infof("member: %s, revision: %d", m.Name, resp.Header.Revision)
+
+		logrus.Infof("getMaxRev: member %s revision (%d)", m.Name, resp.Header.Revision)
 		if resp.Header.Revision > maxRev {
 			maxRev = resp.Header.Revision
 			member = m
 		}
 	}
-	return member, maxRev, nil
+	return member, maxRev
 }
