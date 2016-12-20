@@ -16,11 +16,17 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
+)
+
+const (
+	envParallelTest     = "PARALLEL_TEST"
+	envParallelTestTrue = "true"
 )
 
 func TestCreateCluster(t *testing.T) {
@@ -41,7 +47,17 @@ func TestCreateCluster(t *testing.T) {
 	}
 }
 
-func TestResizeCluster3to5(t *testing.T) {
+func TestResize(t *testing.T) {
+	t.Run("resize etcd cluster", func(t *testing.T) {
+		t.Run("resize 3->5", testResizeCluster3to5)
+		t.Run("resize 5->3", testResizeCluster5to3)
+	})
+}
+
+func testResizeCluster3to5(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	f := framework.Global
 	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3))
 	if err != nil {
@@ -69,7 +85,10 @@ func TestResizeCluster3to5(t *testing.T) {
 	}
 }
 
-func TestResizeCluster5to3(t *testing.T) {
+func testResizeCluster5to3(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	f := framework.Global
 	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 5))
 	if err != nil {
@@ -123,15 +142,28 @@ func TestOneMemberRecovery(t *testing.T) {
 	}
 }
 
-// TestDisasterRecovery2Members tests disaster recovery that
+func TestDisasterRecovery(t *testing.T) {
+	t.Run("disaster recovery", func(t *testing.T) {
+		t.Run("2 members (majority) down", testDisasterRecovery2Members)
+		t.Run("3 members (all) down", testDisasterRecoveryAll)
+	})
+}
+
+// testDisasterRecovery2Members tests disaster recovery that
 // ooperator will make a backup from the left one pod.
-func TestDisasterRecovery2Members(t *testing.T) {
+func testDisasterRecovery2Members(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testDisasterRecovery(t, 2)
 }
 
-// TestDisasterRecoveryAll tests disaster recovery that
+// testDisasterRecoveryAll tests disaster recovery that
 // we should make a backup ahead and ooperator will recover cluster from it.
-func TestDisasterRecoveryAll(t *testing.T) {
+func testDisasterRecoveryAll(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testDisasterRecovery(t, 3)
 }
 

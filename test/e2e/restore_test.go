@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -25,11 +26,24 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
-func TestClusterRestoreSameName(t *testing.T) {
+func TestClusterRestore(t *testing.T) {
+	t.Run("restore cluster from backup", func(t *testing.T) {
+		t.Run("restore from the same name cluster", testClusterRestoreSameName)
+		t.Run("restore from a different name cluster", testClusterRestoreDifferentName)
+	})
+}
+
+func testClusterRestoreSameName(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testClusterRestore(t, true)
 }
 
-func TestClusterRestoreDifferentName(t *testing.T) {
+func testClusterRestoreDifferentName(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testClusterRestore(t, false)
 }
 
