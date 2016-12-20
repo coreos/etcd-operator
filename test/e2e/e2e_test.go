@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -24,8 +25,8 @@ import (
 )
 
 const (
-	envTestInParallel     = "TEST_PARALLEL"
-	envTestInParallelTrue = "true"
+	envParallelTest     = "PARALLEL_TEST"
+	envParallelTestTrue = "true"
 )
 
 func TestCreateCluster(t *testing.T) {
@@ -54,7 +55,9 @@ func TestResize(t *testing.T) {
 }
 
 func testResizeCluster3to5(t *testing.T) {
-	t.Parallel()
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	f := framework.Global
 	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3))
 	if err != nil {
@@ -83,7 +86,9 @@ func testResizeCluster3to5(t *testing.T) {
 }
 
 func testResizeCluster5to3(t *testing.T) {
-	t.Parallel()
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	f := framework.Global
 	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 5))
 	if err != nil {
@@ -147,14 +152,18 @@ func TestDisasterRecovery(t *testing.T) {
 // testDisasterRecovery2Members tests disaster recovery that
 // ooperator will make a backup from the left one pod.
 func testDisasterRecovery2Members(t *testing.T) {
-	t.Parallel()
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testDisasterRecovery(t, 2)
 }
 
 // testDisasterRecoveryAll tests disaster recovery that
 // we should make a backup ahead and ooperator will recover cluster from it.
 func testDisasterRecoveryAll(t *testing.T) {
-	t.Parallel()
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testDisasterRecovery(t, 3)
 }
 

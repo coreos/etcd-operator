@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -33,12 +34,16 @@ func TestClusterRestore(t *testing.T) {
 }
 
 func testClusterRestoreSameName(t *testing.T) {
-	t.Parallel()
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testClusterRestore(t, true)
 }
 
 func testClusterRestoreDifferentName(t *testing.T) {
-	t.Parallel()
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testClusterRestore(t, false)
 }
 

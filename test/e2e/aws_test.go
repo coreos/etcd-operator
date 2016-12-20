@@ -19,12 +19,16 @@ func TestS3DisasterRecovery(t *testing.T) {
 }
 
 func testS3MajorityDown(t *testing.T) {
-	t.Parallel()
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testDisasterRecoveryWithStorageType(t, 2, spec.BackupStorageTypeS3)
 }
 
 func testS3AllDown(t *testing.T) {
-	t.Parallel()
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testDisasterRecoveryWithStorageType(t, 3, spec.BackupStorageTypeS3)
 }
 
@@ -40,11 +44,15 @@ func TestClusterRestoreS3(t *testing.T) {
 }
 
 func testClusterRestoreS3SameName(t *testing.T) {
-	t.Parallel()
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testClusterRestoreWithStorageType(t, true, spec.BackupStorageTypeS3)
 }
 
 func testClusterRestoreS3DifferentName(t *testing.T) {
-	t.Parallel()
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testClusterRestoreWithStorageType(t, false, spec.BackupStorageTypeS3)
 }

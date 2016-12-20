@@ -31,6 +31,7 @@ glide install
 
 GIT_VERSION=$(git rev-parse HEAD)
 export OPERATOR_IMAGE="gcr.io/coreos-k8s-scale-testing/etcd-operator:${GIT_VERSION}"
+export PARALLEL_TEST="true"
 
 echo "UNIQUE_BUILD_NAME: ${UNIQUE_BUILD_NAME}"
 echo "OPERATOR_IMAGE: ${OPERATOR_IMAGE}"
