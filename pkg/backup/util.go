@@ -40,7 +40,11 @@ func makeBackupName(ver string, rev int64) string {
 }
 
 func getRev(name string) (int64, error) {
-	return strconv.ParseInt(strings.SplitN(name, "_", 3)[1], 16, 64)
+	fields := strings.SplitN(name, "_", 3)
+	if len(fields) < 3 {
+		return 0, fmt.Errorf("invalid backup file name: %s", name)
+	}
+	return strconv.ParseInt(fields[1], 16, 64)
 }
 
 func filterAndSortBackups(names []string) []string {
