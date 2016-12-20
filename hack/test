@@ -44,7 +44,7 @@ function build_pass {
 }
 
 function e2e_pass {
-	TEST_PKGS=`go list ./test/... | grep -v framework`
+	TEST_PKGS=`go list ./test/e2e/... | grep -v framework`
 	go test -v ${TEST_PKGS} -timeout 30m --kubeconfig $KUBERNETES_KUBECONFIG_PATH --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
 }
 

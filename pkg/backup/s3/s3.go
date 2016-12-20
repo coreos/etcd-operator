@@ -34,14 +34,11 @@ type S3 struct {
 
 // Please refer to http://docs.aws.amazon.com/sdk-for-go/api/aws/session/
 // for how to set credentials and configuration when creating a session.
-// Note that we have added SharedConfigEnable in session option.
-func New(bucket, prefix string) (*S3, error) {
+func New(bucket, prefix string, option session.Options) (*S3, error) {
 	if bucket == "" {
 		return nil, fmt.Errorf("env (%s) must be set", env.AWSS3Bucket)
 	}
-	sess, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
+	sess, err := session.NewSessionWithOptions(option)
 	if err != nil {
 		return nil, err
 	}

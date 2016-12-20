@@ -38,7 +38,7 @@ type fileBackend struct {
 	dir string
 }
 
-func (fb *fileBackend) save(version string, snapRev int64, rc io.ReadCloser) error {
+func (fb *fileBackend) save(version string, snapRev int64, rc io.Reader) error {
 	filename := makeBackupName(version, snapRev)
 	tmpfile, err := os.OpenFile(filepath.Join(fb.dir, backupTmpDir, filename), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, backupFilePerm)
 	if err != nil {

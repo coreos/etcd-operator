@@ -132,7 +132,7 @@ func TestFileBackendPurge(t *testing.T) {
 			names = append(names, f.Name())
 		}
 		if !reflect.DeepEqual(tt.leftFiles, names) {
-			t.Errorf("#%d: left files, want=%v, get=%v", i, tt.leftFiles, names)
+			t.Errorf("#%d: left files after purge, want=%v, get=%v", i, tt.leftFiles, names)
 		}
 
 		if err := os.RemoveAll(dir); err != nil {
