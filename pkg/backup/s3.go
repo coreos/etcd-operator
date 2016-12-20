@@ -76,3 +76,7 @@ func (sb *s3Backend) getLatest() (string, io.ReadCloser, error) {
 
 	return key, rc, err
 }
+
+func (sb *s3Backend) purge(maxBackupFiles int) {
+	fmt.Println("purge not implemented")
+}

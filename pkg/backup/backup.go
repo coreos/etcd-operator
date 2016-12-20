@@ -94,6 +94,14 @@ func (b *Backup) Run() {
 	if b.policy.SnapshotIntervalInSecond != 0 {
 		interval = time.Duration(b.policy.SnapshotIntervalInSecond) * time.Second
 	}
+
+	go func() {
+		for {
+			<-time.After(10 * time.Second)
+			b.be.purge(b.policy.MaxSnapshot)
+		}
+	}()
+
 	for {
 		var ackchan chan error
 		select {
