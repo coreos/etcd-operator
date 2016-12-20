@@ -22,6 +22,49 @@ import (
 	"testing"
 )
 
+func TestFileBackendGetLatest(t *testing.T) {
+	names := []string{
+		makeBackupName("3.0.4", 12), // ignore version
+		"3.0.1_18_etcd.tmp",         // bad suffix
+		makeBackupName("3.0.1", 3),
+		makeBackupName("3.0.3", 19),
+		makeBackupName("3.0.0", 1),
+		"3.0.1_badbackup_etcd.backup", // bad backup name
+	}
+
+	dir, err := ioutil.TempDir("", "etcd-operator-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fb := &fileBackend{dir}
+	for _, n := range names {
+		err := ioutil.WriteFile(filepath.Join(dir, n), []byte(n), 0600)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	name, rc, err := fb.getLatest()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer rc.Close()
+
+	if name != makeBackupName("3.0.3", 19) {
+		t.Errorf("lastest name = %s, want %s", name, makeBackupName("3.0.3", 19))
+	}
+
+	b, err := ioutil.ReadAll(rc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(b) != makeBackupName("3.0.3", 19) {
+		t.Errorf("content = %s, want %s", string(b), makeBackupName("3.0.3", 19))
+	}
+}
+
 func TestFileBackendPurge(t *testing.T) {
 	tests := []struct {
 		maxFiles  int
