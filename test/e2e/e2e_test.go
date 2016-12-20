@@ -36,7 +36,7 @@ func TestCreateCluster(t *testing.T) {
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 }
@@ -54,7 +54,7 @@ func TestResizeCluster3to5(t *testing.T) {
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 3 members cluster")
@@ -64,7 +64,7 @@ func TestResizeCluster3to5(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 5, 60); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 5, 60*time.Second); err != nil {
 		t.Fatalf("failed to resize to 5 members etcd cluster: %v", err)
 	}
 }
@@ -82,7 +82,7 @@ func TestResizeCluster5to3(t *testing.T) {
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 5, 90); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 5, 90*time.Second); err != nil {
 		t.Fatalf("failed to create 5 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 5 members cluster")
@@ -92,7 +92,7 @@ func TestResizeCluster5to3(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }
@@ -109,7 +109,7 @@ func TestOneMemberRecovery(t *testing.T) {
 		}
 	}()
 
-	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60)
+	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestOneMemberRecovery(t *testing.T) {
 	if err := killMembers(f, names[0]); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }
@@ -149,7 +149,7 @@ func TestPauseControl(t *testing.T) {
 		}
 	}()
 
-	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60)
+	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -167,10 +167,10 @@ func TestPauseControl(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 2, 30); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 2, 30*time.Second); err != nil {
 		t.Fatalf("failed to wait for killed member to die: %v", err)
 	}
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 30); err == nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 30*time.Second); err == nil {
 		t.Fatalf("cluster should not be recovered: control is paused")
 	}
 
@@ -179,7 +179,7 @@ func TestPauseControl(t *testing.T) {
 		t.Fatalf("failed to resume control: %v", err)
 	}
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }
@@ -203,7 +203,7 @@ func testDisasterRecoveryWithStorageType(t *testing.T, numToKill int, bt spec.Ba
 		// TODO: add checking of removal of backup pod
 	}()
 
-	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60)
+	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -227,7 +227,7 @@ func testDisasterRecoveryWithStorageType(t *testing.T, numToKill int, bt spec.Ba
 	if err := killMembers(f, toKill...); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 120); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 120*time.Second); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 	// TODO: add checking of data in etcd

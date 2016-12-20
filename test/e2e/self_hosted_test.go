@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -43,7 +44,7 @@ func TestCreateSelfHostedCluster(t *testing.T) {
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 240); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 240*time.Second); err != nil {
 		t.Fatalf("failed to create 3 members self-hosted etcd cluster: %v", err)
 	}
 }
@@ -107,7 +108,7 @@ func TestCreateSelfHostedClusterWithBootMember(t *testing.T) {
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 120); err != nil {
+	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 120*time.Second); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 }
