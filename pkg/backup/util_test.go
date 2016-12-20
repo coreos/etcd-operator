@@ -73,7 +73,7 @@ func TestGetLatestBackupName(t *testing.T) {
 		makeBackupName("3.0.0", 1),
 		makeBackupName("3.0.1", 12),
 		"3.0.1_18_etcd.tmp",           // bad suffix
-		"3.0.1_badbackup_etcd.backup", //bad backup name
+		"3.0.1_badbackup_etcd.backup", // bad backup name
 	}
 
 	wname := makeBackupName("3.0.1", 12)
