@@ -19,5 +19,5 @@ import "io"
 type backend interface {
 	save(version string, snapRev int64, rc io.ReadCloser) error
 	getLatest() (name string, rc io.ReadCloser, err error)
-	purge(maxBackupFiles int)
+	purge(maxBackupFiles int) error
 }

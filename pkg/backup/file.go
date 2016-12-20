@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -87,10 +86,10 @@ func (fb *fileBackend) getLatest() (string, io.ReadCloser, error) {
 	return fn, f, err
 }
 
-func (fb *fileBackend) purge(maxBackupFiles int) {
+func (fb *fileBackend) purge(maxBackupFiles int) error {
 	files, err := ioutil.ReadDir(fb.dir)
 	if err != nil {
-		return
+		return err
 	}
 
 	var names []string
@@ -100,14 +99,15 @@ func (fb *fileBackend) purge(maxBackupFiles int) {
 
 	bnames := filterAndSortBackups(names)
 	if len(bnames) < maxBackupFiles {
-		return
+		return nil
 	}
 	for i := 0; i < len(bnames)-maxBackupFiles; i++ {
 		err := os.Remove(path.Join(fb.dir, bnames[i]))
 		if err != nil {
-			logrus.Infof("failed to remove backup file: %s", bnames[i])
+			logrus.Errorf("failed to remove backup file (%s): %v", bnames[i], err)
 		} else {
 			logrus.Infof("removed backup file: %s", bnames[i])
 		}
 	}
+	return nil
 }

@@ -98,7 +98,10 @@ func (b *Backup) Run() {
 	go func() {
 		for {
 			<-time.After(10 * time.Second)
-			b.be.purge(b.policy.MaxSnapshot)
+			err := b.be.purge(b.policy.MaxSnapshot)
+			if err != nil {
+				logrus.Errorf("fail to purge: %v", err)
+			}
 		}
 	}()
 
