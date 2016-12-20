@@ -79,3 +79,28 @@ func (fb *fileBackend) getLatest() (string, io.ReadCloser, error) {
 	f, err := os.Open(path.Join(fb.dir, fn))
 	return fn, f, err
 }
+
+func (fb *fileBackend) purge(maxBackupFiles int) {
+	files, err := ioutil.ReadDir(fb.dir)
+	if err != nil {
+		return
+	}
+
+	var names []string
+	for _, f := range files {
+		names = append(names, f.Name())
+	}
+
+	bnames := filterAndSortBackups(names)
+	if len(bnames) < maxBackupFiles {
+		return
+	}
+	for i := 0; i < len(bnames)-maxBackupFiles; i++ {
+		err := os.Remove(path.Join(fb.dir, bnames[i]))
+		if err != nil {
+			log.Printf("failed to remove backup file: %s", bnames[i])
+		} else {
+			log.Printf("removed backup file: %s", bnames[i])
+		}
+	}
+}

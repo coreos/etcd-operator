@@ -16,6 +16,7 @@ package backup
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -23,23 +24,11 @@ import (
 )
 
 func getLatestBackupName(names []string) string {
-	maxRev := int64(0)
-	name := ""
-	for _, n := range names {
-		if !isBackup(n) {
-			continue
-		}
-		rev, err := getRev(n)
-		if err != nil {
-			logrus.Errorf("fail to get rev from backup (%s): %v", n, err)
-			continue
-		}
-		if rev > maxRev {
-			maxRev = rev
-			name = n
-		}
+	bnames := filterAndSortBackups(names)
+	if len(bnames) == 0 {
+		return ""
 	}
-	return name
+	return bnames[len(bnames)-1]
 }
 
 func isBackup(name string) bool {
@@ -52,4 +41,43 @@ func makeBackupName(ver string, rev int64) string {
 
 func getRev(name string) (int64, error) {
 	return strconv.ParseInt(strings.SplitN(name, "_", 3)[1], 16, 64)
+}
+
+func filterAndSortBackups(names []string) []string {
+	bnames := make(backupNames, 0)
+	for _, n := range names {
+		if !isBackup(n) {
+			continue
+		}
+		_, err := getRev(n)
+		if err != nil {
+			logrus.Errorf("fail to get rev from backup (%s): %v", n, err)
+			continue
+		}
+		bnames = append(bnames, n)
+	}
+
+	sort.Sort(bnames)
+	return []string(bnames)
+}
+
+type backupNames []string
+
+func (bn backupNames) Len() int { return len(bn) }
+
+func (bn backupNames) Less(i, j int) bool {
+	ri, err := getRev(bn[i])
+	if err != nil {
+		panic(err)
+	}
+	rj, err := getRev(bn[j])
+	if err != nil {
+		panic(err)
+	}
+
+	return ri < rj
+}
+
+func (bn backupNames) Swap(i, j int) {
+	bn[i], bn[j] = bn[j], bn[i]
 }
