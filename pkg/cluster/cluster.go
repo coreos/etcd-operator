@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
-	"github.com/coreos/etcd-operator/pkg/cluster/backupmanager"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -77,7 +76,7 @@ type Cluster struct {
 	// process runs in.
 	members etcdutil.MemberSet
 
-	bm        backupmanager.BackupManager
+	bm        *backupManager
 	backupDir string
 }
 
@@ -100,21 +99,18 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		return nil, fmt.Errorf("invalid cluster spec: %v", err)
 	}
 
-	var bm backupmanager.BackupManager
-	if backup := s.Backup; backup != nil {
-		switch backup.StorageType {
-		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-			bm = backupmanager.NewPVBackupManager(config.KubeCli, config.Name, config.Namespace, config.PVProvisioner, *backup)
-		case spec.BackupStorageTypeS3:
-			bm, err = backupmanager.NewS3BackupManager(config.S3Context, config.KubeCli, config.Name, config.Namespace)
-			if err != nil {
-				return nil, err
-			}
+	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", config.Name)
+	var bm *backupManager
+	if s.Backup != nil {
+		bm = &backupManager{
+			clusterConfig: config,
+			backupPolicy:  s.Backup,
+			restorePolicy: s.Restore,
+			logger:        lg,
 		}
 	}
-
 	c := &Cluster{
-		logger:  logrus.WithField("pkg", "cluster").WithField("cluster-name", config.Name),
+		logger:  lg,
 		Config:  config,
 		spec:    s,
 		eventCh: make(chan *clusterEvent, 100),
@@ -124,14 +120,15 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 	}
 
 	if isNewCluster {
-		if c.spec.Backup != nil {
-			if err := c.prepareBackupAndRestore(); err != nil {
+		if c.bm != nil {
+			if err := c.bm.setup(); err != nil {
 				return nil, err
 			}
 		}
 
 		if c.spec.Restore == nil {
-			// Note: For restore case, we will go through reconcile loop and disaster recovery.
+			// Note: For restore case, we don't need to create seed member,
+			// and will go through reconcile loop and disaster recovery.
 			if err := c.prepareSeedMember(); err != nil {
 				return nil, err
 			}
@@ -146,52 +143,6 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 	go c.run(stopC, wg)
 
 	return c, nil
-}
-
-func (c *Cluster) prepareBackupAndRestore() error {
-	backup, restore := c.spec.Backup, c.spec.Restore
-
-	if restore == nil {
-		if err := c.bm.Setup(); err != nil {
-			return err
-		}
-	} else {
-		c.logger.Infof("restoring cluster from existing backup (%s)", restore.BackupClusterName)
-		if restore.BackupClusterName == c.Name {
-			// TODO: check the existence of the backup. error out if the backup does not exist.
-			c.logger.Infof("recreating the cluster: using the existing backup")
-		} else {
-			c.logger.Infof("restoring the previous cluster (%s): cloning data from existing backup", restore.BackupClusterName)
-			if err := c.bm.Clone(restore.BackupClusterName); err != nil {
-				return err
-			}
-		}
-	}
-
-	podSpec, err := k8sutil.MakeBackupPodSpec(c.Name, backup)
-	if err != nil {
-		return err
-	}
-	podSpec = c.bm.PodSpecWithStorage(podSpec)
-	err = k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace, *podSpec)
-	if err != nil {
-		return fmt.Errorf("failed to create backup replica set and service: %v", err)
-	}
-	c.logger.Info("backup replica set and service created")
-	return nil
-}
-
-func (c *Cluster) deleteBackup() {
-	err := k8sutil.DeleteBackupReplicaSetAndService(c.KubeCli, c.Name, c.Namespace)
-	if err != nil {
-		c.logger.Errorf("cluster deletion: fail to delete backup ReplicaSet: %v", err)
-	}
-	c.logger.Infof("backup replica set and service deleted")
-
-	err = c.bm.CleanupBackups()
-	if err != nil {
-		c.logger.Errorf("cluster deletion: fail to cleanup backups: %v", err)
-	}
 }
 
 func (c *Cluster) prepareSeedMember() error {
@@ -400,8 +351,11 @@ func (c *Cluster) delete() {
 		c.logger.Errorf("cluster deletion: fail to delete client service LB: %v", err)
 	}
 
-	if c.spec.Backup != nil {
-		c.deleteBackup()
+	if c.bm != nil {
+		err := c.bm.cleanup()
+		if err != nil {
+			c.logger.Errorf("cluster deletion: backup manager failed to cleanup: %v", err)
+		}
 	}
 }
 
