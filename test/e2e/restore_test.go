@@ -37,14 +37,14 @@ func testClusterRestoreSameName(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testClusterRestore(t, true)
+	testClusterRestore(t, false)
 }
 
 func testClusterRestoreDifferentName(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testClusterRestore(t, false)
+	testClusterRestore(t, true)
 }
 
 func testClusterRestore(t *testing.T, needDataClone bool) {
@@ -85,7 +85,7 @@ func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec
 	// waits a bit to make sure resources are finally deleted on APIServer.
 	time.Sleep(5 * time.Second)
 
-	if needDataClone {
+	if !needDataClone {
 		// Restore the etcd cluster of the same name:
 		// - use the name already generated. We don't need to regenerate again.
 		// - set BackupClusterName to the same name in RestorePolicy.
@@ -165,7 +165,7 @@ func calculateClusterRestoreWaitTime(bt spec.BackupStorageType, needDataClone bo
 	default:
 		waitTime = 120 * time.Second
 	}
-	if !needDataClone {
+	if needDataClone {
 		// Take additional time to clone the data.
 		waitTime += 60 * time.Second
 	}
