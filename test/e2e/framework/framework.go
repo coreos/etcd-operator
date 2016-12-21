@@ -16,9 +16,12 @@ package framework
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
@@ -33,6 +36,8 @@ type Framework struct {
 	KubeClient *unversioned.Client
 	MasterHost string
 	Namespace  string
+	S3Cli      *s3.S3
+	S3Bucket   string
 }
 
 // Setup setups a test framework and points "Global" to it.
@@ -73,6 +78,11 @@ func (f *Framework) setup(opImage string) error {
 	if err := f.setupEtcdOperator(opImage); err != nil {
 		logrus.Errorf("fail to setup etcd operator: %v", err)
 		return err
+	}
+	if os.Getenv("AWS_TEST_ENABLED") == "true" {
+		if err := f.setupAWS(); err != nil {
+			return fmt.Errorf("fail to setup aws: %v", err)
+		}
 	}
 	logrus.Info("e2e setup successfully")
 	return nil
@@ -119,5 +129,23 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 	}
 
 	logrus.Info("etcd operator created successfully")
+	return nil
+}
+
+func (f *Framework) setupAWS() error {
+	if err := os.Setenv("AWS_SHARED_CREDENTIALS_FILE", os.Getenv("AWS_CREDENTIAL")); err != nil {
+		return err
+	}
+	if err := os.Setenv("AWS_CONFIG_FILE", os.Getenv("AWS_CONFIG")); err != nil {
+		return err
+	}
+	sess, err := session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
+	if err != nil {
+		return err
+	}
+	f.S3Cli = s3.New(sess)
+	f.S3Bucket = "jenkins-etcd-operator"
 	return nil
 }

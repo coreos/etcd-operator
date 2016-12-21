@@ -58,7 +58,7 @@ func (bm *backupManager) createStorage() (s backupstorage.Storage, err error) {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		s, err = backupstorage.NewPVStorage(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, *b)
 	case spec.BackupStorageTypeS3:
-		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, c.Name, c.Namespace)
+		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, c.Name, c.Namespace, *b)
 	}
 	if err == backupstorage.ErrStorageAlreadyExist {
 		if r := bm.restorePolicy; r != nil && r.BackupClusterName == c.Name {
