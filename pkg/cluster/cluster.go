@@ -101,7 +101,7 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 
 	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", config.Name)
 	var bm *backupManager
-	if s.Backup != nil {
+	if b := s.Backup; b != nil && b.MaxBackups > 0 {
 		bm = &backupManager{
 			clusterConfig: config,
 			backupPolicy:  s.Backup,
