@@ -1,27 +1,25 @@
-package backupmanager
+package backupstorage
 
 import (
 	"io/ioutil"
 	"os"
 
-	"github.com/coreos/etcd-operator/pkg/backup/s3"
+	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/aws/aws-sdk-go/aws/session"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
-type s3BackupManager struct {
+type s3 struct {
 	s3config.S3Context
 	clusterName string
 	namespace   string
 	kubecli     *unversioned.Client
-	s3cli       *s3.S3
+	s3cli       *backups3.S3
 }
 
-func NewS3BackupManager(s3Ctx s3config.S3Context, kubecli *unversioned.Client, clusterName, ns string) (BackupManager, error) {
+func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, clusterName, ns string) (Storage, error) {
 	cm, err := kubecli.ConfigMaps(ns).Get(s3Ctx.AWSConfig)
 	if err != nil {
 		return nil, err
@@ -35,21 +33,24 @@ func NewS3BackupManager(s3Ctx s3config.S3Context, kubecli *unversioned.Client, c
 		return nil, err
 	}
 
-	s3cli, err := s3.New(s3Ctx.S3Bucket, clusterName+"/", session.Options{
+	s3cli, err := backups3.New(s3Ctx.S3Bucket, clusterName+"/", session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	bm := &s3BackupManager{
+	s := &s3{
 		S3Context:   s3Ctx,
 		kubecli:     kubecli,
 		clusterName: clusterName,
 		namespace:   ns,
 		s3cli:       s3cli,
 	}
-	return bm, nil
+	if err := s.setup(); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 func setupS3Env(config, creds []byte) error {
@@ -63,19 +64,16 @@ func setupS3Env(config, creds []byte) error {
 	return ioutil.WriteFile(homedir+"/.aws/credentials", creds, 0600)
 }
 
-func (bm *s3BackupManager) Setup() error {
+func (s *s3) setup() error {
 	// TODO: check if bucket/folder exists?
 	return nil
 }
 
-func (bm *s3BackupManager) Clone(from string) error {
-	return bm.s3cli.CopyPrefix(from)
+func (s *s3) Clone(from string) error {
+	return s.s3cli.CopyPrefix(from)
 }
 
-func (bm *s3BackupManager) CleanupBackups() error {
+func (s *s3) Delete() error {
 	// TODO: remove S3 "dir"?
 	return nil
-}
-func (bm *s3BackupManager) PodSpecWithStorage(ps *api.PodSpec) *api.PodSpec {
-	return k8sutil.PodSpecWithS3(ps, bm.S3Context)
 }
