@@ -71,6 +71,9 @@ func TestS3BackendPurge(t *testing.T) {
 	if !reflect.DeepEqual(leftFiles, names) {
 		t.Errorf("left files after purge, want=%v, get=%v", leftFiles, names)
 	}
+	if err := s3cli.Delete(makeBackupName("3.1.0", 2)); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func randString(l int) string {
