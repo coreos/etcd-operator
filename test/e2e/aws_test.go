@@ -47,12 +47,12 @@ func testClusterRestoreS3SameName(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testClusterRestoreWithStorageType(t, true, spec.BackupStorageTypeS3)
+	testClusterRestoreWithStorageType(t, false, spec.BackupStorageTypeS3)
 }
 
 func testClusterRestoreS3DifferentName(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testClusterRestoreWithStorageType(t, false, spec.BackupStorageTypeS3)
+	testClusterRestoreWithStorageType(t, true, spec.BackupStorageTypeS3)
 }
