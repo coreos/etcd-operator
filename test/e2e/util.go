@@ -28,6 +28,8 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/coreos/etcd/clientv3"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -107,7 +109,16 @@ func checkBackupDeleted(f *framework.Framework, clusterName string, bt spec.Back
 				return false, nil
 			}
 		case spec.BackupStorageTypeS3:
-			// TODO: implement s3 "dir" deletion and checking
+			resp, err := f.S3Cli.ListObjects(&s3.ListObjectsInput{
+				Bucket: aws.String(f.S3Bucket),
+				Prefix: aws.String(clusterName + "/"),
+			})
+			if err != nil {
+				return false, err
+			}
+			if len(resp.Contents) > 0 {
+				return false, nil
+			}
 		}
 		return true, nil
 	})

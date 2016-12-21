@@ -6,6 +6,7 @@ import (
 
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
+	"github.com/coreos/etcd-operator/pkg/spec"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"k8s.io/kubernetes/pkg/client/unversioned"
@@ -13,13 +14,14 @@ import (
 
 type s3 struct {
 	s3config.S3Context
-	clusterName string
-	namespace   string
-	kubecli     *unversioned.Client
-	s3cli       *backups3.S3
+	clusterName  string
+	namespace    string
+	backupPolicy spec.BackupPolicy
+	kubecli      *unversioned.Client
+	s3cli        *backups3.S3
 }
 
-func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, clusterName, ns string) (Storage, error) {
+func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
 	cm, err := kubecli.ConfigMaps(ns).Get(s3Ctx.AWSConfig)
 	if err != nil {
 		return nil, err
@@ -41,11 +43,12 @@ func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, cluster
 	}
 
 	s := &s3{
-		S3Context:   s3Ctx,
-		kubecli:     kubecli,
-		clusterName: clusterName,
-		namespace:   ns,
-		s3cli:       s3cli,
+		S3Context:    s3Ctx,
+		kubecli:      kubecli,
+		clusterName:  clusterName,
+		backupPolicy: p,
+		namespace:    ns,
+		s3cli:        s3cli,
 	}
 	if err := s.setup(); err != nil {
 		return nil, err
@@ -74,6 +77,17 @@ func (s *s3) Clone(from string) error {
 }
 
 func (s *s3) Delete() error {
-	// TODO: remove S3 "dir"?
+	if s.backupPolicy.CleanupBackupsOnClusterDelete {
+		names, err := s.s3cli.List()
+		if err != nil {
+			return err
+		}
+		for _, n := range names {
+			err = s.s3cli.Delete(n)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
