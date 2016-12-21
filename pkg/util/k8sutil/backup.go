@@ -199,6 +199,9 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 	_, err := kubecli.ReplicaSets(ns).Create(&extensions.ReplicaSet{
 		ObjectMeta: api.ObjectMeta{
 			Name: name,
+			Labels: map[string]string{
+				"etcd_cluster": clusterName,
+			},
 		},
 		Spec: extensions.ReplicaSetSpec{
 			Replicas: 1,

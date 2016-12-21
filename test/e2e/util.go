@@ -80,6 +80,39 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 	return cluster.RequestBackupNow(f.KubeClient.Client, addr)
 }
 
+func checkBackupDeleted(f *framework.Framework, clusterName string, bt spec.BackupStorageType) error {
+	return wait.Poll(5*time.Second, 30*time.Second, func() (done bool, err error) {
+		ls := labels.SelectorFromSet(labels.Set{"etcd_cluster": clusterName})
+
+		rl, err := f.KubeClient.ReplicaSets(f.Namespace).List(api.ListOptions{
+			LabelSelector: ls,
+		})
+		if err != nil {
+			return false, err
+		}
+		if len(rl.Items) > 0 {
+			return false, nil
+		}
+		// TODO: check backup pod deleted. There is a graceful deletion that takes too long.
+
+		switch bt {
+		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+			pl, err := f.KubeClient.PersistentVolumeClaims(f.Namespace).List(api.ListOptions{
+				LabelSelector: ls,
+			})
+			if err != nil {
+				return false, err
+			}
+			if len(pl.Items) > 0 {
+				return false, nil
+			}
+		case spec.BackupStorageTypeS3:
+			// TODO: implement s3 "dir" deletion and checking
+		}
+		return true, nil
+	})
+}
+
 func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, timeout time.Duration) ([]string, error) {
 	return waitSizeReachedWithFilter(f, clusterName, size, timeout, func(*api.Pod) bool { return true })
 }

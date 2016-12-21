@@ -232,7 +232,9 @@ func testDisasterRecoveryWithStorageType(t *testing.T, numToKill int, bt spec.Ba
 		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
 			t.Fatal(err)
 		}
-		// TODO: add checking of removal of backup pod
+		if err := checkBackupDeleted(f, testEtcd.Name, bt); err != nil {
+			t.Fatal(err)
+		}
 	}()
 
 	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second)
