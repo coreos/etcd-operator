@@ -10,9 +10,9 @@ The dates below should not be considered authoritative, but rather indicative of
 #### Features
 
 - Backup and recovery
-  - Recover an etcd cluster from a PV backup
-  - Backup an etcd cluster to S3
-  - Recover an etcd cluster from a S3 backup
+  - Recover an etcd cluster from a PV backup -> finished
+  - Backup an etcd cluster to S3 -> finished
+  - Recover an etcd cluster from a S3 backup -> finished
 
 - Operationality
   - Pause/Resume the control for an etcd cluster -> finished
