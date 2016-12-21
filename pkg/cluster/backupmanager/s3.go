@@ -8,6 +8,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
@@ -34,7 +35,9 @@ func NewS3BackupManager(s3Ctx s3config.S3Context, kubecli *unversioned.Client, c
 		return nil, err
 	}
 
-	s3cli, err := s3.New(s3Ctx.S3Bucket, clusterName+"/")
+	s3cli, err := s3.New(s3Ctx.S3Bucket, clusterName+"/", session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
 	if err != nil {
 		return nil, err
 	}

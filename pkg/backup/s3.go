@@ -33,7 +33,7 @@ type s3Backend struct {
 	dir string
 }
 
-func (sb *s3Backend) save(version string, snapRev int64, rc io.ReadCloser) error {
+func (sb *s3Backend) save(version string, snapRev int64, rc io.Reader) error {
 	// make a local file copy of the backup first, since s3 requires io.ReadSeeker.
 	key := makeBackupName(version, snapRev)
 	tmpfile, err := os.OpenFile(filepath.Join(sb.dir, key), os.O_RDWR|os.O_CREATE, backupFilePerm)
