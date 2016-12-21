@@ -43,7 +43,7 @@ const (
 	eventDeleteCluster clusterEventType = "Delete"
 	eventModifyCluster clusterEventType = "Modify"
 
-	defaultVersion = "v3.1.0-alpha.1"
+	defaultVersion = "v3.1.0-rc.1"
 )
 
 type clusterEvent struct {
