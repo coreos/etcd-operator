@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -35,7 +36,6 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	k8sclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/util/wait"
 )
 
 const (
@@ -44,7 +44,7 @@ const (
 )
 
 func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Duration) error {
-	return wait.Poll(5*time.Second, timeout, func() (done bool, err error) {
+	return retryutil.Retry(5*time.Second, int(timeout/(5*time.Second)), func() (done bool, err error) {
 		podList, err := f.KubeClient.Pods(f.Namespace).List(api.ListOptions{
 			LabelSelector: labels.SelectorFromSet(map[string]string{
 				"app":          k8sutil.BackupPodSelectorAppField,
@@ -83,7 +83,7 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 }
 
 func checkBackupDeleted(f *framework.Framework, clusterName string, bt spec.BackupStorageType) error {
-	return wait.Poll(5*time.Second, 30*time.Second, func() (done bool, err error) {
+	return retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
 		ls := labels.SelectorFromSet(labels.Set{"etcd_cluster": clusterName})
 
 		rl, err := f.KubeClient.ReplicaSets(f.Namespace).List(api.ListOptions{
@@ -130,7 +130,7 @@ func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, 
 
 func waitSizeReachedWithFilter(f *framework.Framework, clusterName string, size int, timeout time.Duration, filterPod func(*api.Pod) bool) ([]string, error) {
 	var names []string
-	err := wait.Poll(10*time.Second, timeout, func() (done bool, err error) {
+	err := retryutil.Retry(10*time.Second, int(timeout/(10*time.Second)), func() (done bool, err error) {
 		podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.EtcdPodListOpt(clusterName))
 		if err != nil {
 			return false, err
