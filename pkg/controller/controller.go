@@ -36,7 +36,7 @@ type rawEvent struct {
 
 type Event struct {
 	Type   string
-	Object *spec.EtcdCluster
+	Object *spec.TiDBCluster
 }
 
 type Controller struct {
