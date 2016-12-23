@@ -26,7 +26,6 @@ var seedMapFunc = make(map[MemberType]SeedFunc)
 type MemberSet interface {
 	Diff(other MemberSet) MemberSet
 	Size() int
-	String() string
 	Type() MemberType
 }
 

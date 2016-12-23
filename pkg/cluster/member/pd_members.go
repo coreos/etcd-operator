@@ -33,9 +33,10 @@ type PDMemberSet struct {
 	status    Status
 	MS        map[string]*pdMember
 	Spec      *spec.ClusterSpec
+	kubeCli   *unversioned.Client
 }
 
-func SeedPDMemberset(s *spec.ClusterSpec) (MemberSet, error) {
+func SeedPDMemberset(s *spec.ClusterSpec, kubeCli *unversioned.Client) (MemberSet, error) {
 	pms := &PDMemberSet{
 		Name: "pd",
 		MS:   make(map[string]*pdMember),
@@ -47,7 +48,8 @@ func SeedPDMemberset(s *spec.ClusterSpec) (MemberSet, error) {
 	}
 	pms.MS[m.name] = m
 
-	err := pms.CreatePodAndService(kubeCli*unversioned.Client, fName, nameSpace, s)
+	pms.kubeCli = kubeCli
+	err := pms.CreatePodAndService(fName, nameSpace, s)
 	if err != nil {
 		return nil, err
 	}
@@ -56,13 +58,14 @@ func SeedPDMemberset(s *spec.ClusterSpec) (MemberSet, error) {
 
 func (pms *PDMemberSet) makeFirstMemberName() string {
 	firstMemberName := fmt.Sprintf("%s-%04d", pms.Name, c.IdCounter)
-	c.IdCounter++
+	pms.IdCounter++
 	return fisrtMemberName
 }
 
 func (pms *PDMemberSet) Diff(other MemberSet) {
 	o, ok := other.(*PDMemberSet)
 	if !ok {
+		log.Errorf
 	}
 	s := &PDMemberSet{
 		MS: make(map[string]*pdMember),
@@ -92,9 +95,9 @@ func (pms *PDMemberSet) ClientURLs() []string {
 	return endpoints
 }
 
-func (pms *PDMemberSet) CreatePodAndService(kubeCli *unversioned.Client, memberName string, nameSpace string, s *spec.ClusterSpec) error {
+func (pms *PDMemberSet) CreatePodAndService(memberName string, nameSpace string, s *spec.ClusterSpec) error {
 
-	if _, err := k8sutil.CreatePDMemberService(kubeCli, memberName, pms.Name, namespace); err != nil {
+	if _, err := k8sutil.CreatePDMemberService(pms.kubeCli, memberName, pms.Name, namespace); err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
 		}
@@ -104,7 +107,7 @@ func (pms *PDMemberSet) CreatePodAndService(kubeCli *unversioned.Client, memberN
 		token = uuid.New()
 	}
 	pod := k8sutil.MakePDPod(m, pms.PeerURLPairs(), memberName, state, token, s)
-	_, err := c.KubeCli.Pods(namespace).Create(pod)
+	_, err := pms.KubeCli.Pods(namespace).Create(pod)
 	return err
 }
 
@@ -116,85 +119,11 @@ func (pms *PDMemberSet) addMember(m *pdMember) {
 	pms.MS[m.name] = m
 }
 
-func (pms *PDMemberSet) updateMembers() {}
-
-func (pms *PDMemberSet) reconcile(pods []*api.Pod) {
-	log.Info("PDMemberSet Start reconciling")
-	defer log.Info("PDMemberSet Finish reconciling")
-
-	switch {
-	case len(pods) != pms.spec.Size:
-		running := &PDMemberSet{}
-		for _, pod := range pods {
-			m := &pdMember{Name: pod.Name}
-			//TODO selfhost support
-			running.addMember(m)
-		}
-		return pms.reconcileSize(running)
-	case needUpgrade(pods, c.spec):
-		pms.status.upgradeVersionTo(pms.spec.Version)
-
-		m := pickOneOldMember(pods, pms.spec.Version)
-		return pms.upgradeOneMember(m)
-	default:
-		pms.status.setVersion(pms.spec.Version)
-		return nil
-	}
-}
-
-func (pms *PDMemberSet) reconcileSize(running *PDMemberSet) error {
-	c.logger.Infof("running members: %s", running)
-	if len(pms.MS) == 0 {
-		cfg := clientv3.Config{
-			Endpoints:   running.ClientURLs(),
-			DialTimeout: constants.DefaultDialTimeout,
-		}
-		etcdcli, err := clientv3.New(cfg)
-		if err != nil {
-			return err
-		}
-		defer etcdcli.Close()
-		if err := pms.updateMembers(etcdcli); err != nil {
-			log.Errorf("fail to refresh members: %v", err)
-			return err
-		}
-	}
-
-	c.logger.Infof("Expected membership: %s", c.members)
-
-	unknownMembers := running.Diff(c.members)
-	if unknownMembers.Size() > 0 {
-		c.logger.Infof("Removing unexpected pods:", unknownMembers)
-		for _, m := range unknownMembers {
-			if err := c.removePodAndService(m.Name); err != nil {
-				return err
-			}
-		}
-	}
-	L := running.Diff(unknownMembers)
-
-	if L.Size() == pms.Size() {
-		return c.resize()
-	}
-
-	if L.Size() < pms.Size()/2+1 {
-		c.logger.Infof("Disaster recovery")
-		return c.disasterRecovery(L)
-	}
-
-	log.Infof("Recovering one member")
-	toRecover := pms.Diff(L).PickOne()
-
-	if err := pms.removeMember(toRecover); err != nil {
-		return err
-	}
-	return pms.resize()
-}
-
 func (pms *PDMemberSet) Run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-stopC:
+			wg.Done()
 			return
 		case <-time.After(5 * time.Second):
 			if pms.spec.Paused {
@@ -217,9 +146,9 @@ func (pms *PDMemberSet) Run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			}
 
 			if err := pms.reconcile(running); err != nil {
-				c.logger.Errorf("fail to reconcile: %v", err)
+				log.Errorf("fail to reconcile: %v", err)
 				if isFatalError(err) {
-					c.logger.Errorf("exiting for fatal error: %v", err)
+					log.Errorf("exiting for fatal error: %v", err)
 					return
 				}
 			}
