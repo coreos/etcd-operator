@@ -38,6 +38,8 @@ import (
 
 const (
 	tprName = "etcd-cluster.coreos.com"
+
+	defaultVersion = "v3.1.0-alpha.1"
 )
 
 var (
@@ -131,11 +133,16 @@ func (c *Controller) Run() error {
 
 	go func() {
 		for event := range eventCh {
+			if s := event.Object.Spec; len(s.Version) == 0 {
+				// TODO: set version in spec in apiserver
+				s.Version = defaultVersion
+			}
+
 			clusterName := event.Object.ObjectMeta.Name
 			switch event.Type {
 			case "ADDED":
 				stopC := make(chan struct{})
-				nc, err := cluster.New(c.makeClusterConfig(clusterName), &event.Object.Spec, stopC, &c.waitCluster)
+				nc, err := cluster.New(c.makeClusterConfig(clusterName), event.Object.Spec, stopC, &c.waitCluster)
 				if err != nil {
 					c.logger.Errorf("cluster (%q) is dead: %v", clusterName, err)
 					continue
@@ -150,7 +157,7 @@ func (c *Controller) Run() error {
 					c.logger.Warningf("ignore modification: cluster %q not found (or dead)", clusterName)
 					break
 				}
-				c.clusters[clusterName].Update(&event.Object.Spec)
+				c.clusters[clusterName].Update(event.Object.Spec)
 			case "DELETED":
 				if c.clusters[clusterName] == nil {
 					c.logger.Warningf("ignore deletion: cluster %q not found (or dead)", clusterName)
@@ -179,7 +186,7 @@ func (c *Controller) findAllClusters() (string, error) {
 	for _, item := range list.Items {
 		clusterName := item.Name
 		stopC := make(chan struct{})
-		nc, err := cluster.Restore(c.makeClusterConfig(clusterName), &item.Spec, stopC, &c.waitCluster)
+		nc, err := cluster.Restore(c.makeClusterConfig(clusterName), item.Spec, stopC, &c.waitCluster)
 		if err != nil {
 			c.logger.Errorf("cluster (%q) is dead: %v", clusterName, err)
 			continue

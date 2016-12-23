@@ -41,8 +41,6 @@ type clusterEventType string
 const (
 	eventDeleteCluster clusterEventType = "Delete"
 	eventModifyCluster clusterEventType = "Modify"
-
-	defaultVersion = "v3.1.0-alpha.1"
 )
 
 type clusterEvent struct {
@@ -89,11 +87,6 @@ func Restore(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wait
 }
 
 func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) (*Cluster, error) {
-	if len(s.Version) == 0 {
-		// TODO: set version in spec in apiserver
-		s.Version = defaultVersion
-	}
-
 	err := s.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid cluster spec: %v", err)
@@ -275,9 +268,6 @@ func (c *Cluster) Update(spec *spec.ClusterSpec) {
 	anyInterestedChange := false
 	if (spec.Size != c.spec.Size) || (spec.Paused != c.spec.Paused) {
 		anyInterestedChange = true
-	}
-	if len(spec.Version) == 0 {
-		spec.Version = defaultVersion
 	}
 	if spec.Version != c.spec.Version {
 		anyInterestedChange = true

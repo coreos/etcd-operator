@@ -28,7 +28,7 @@ var (
 type EtcdCluster struct {
 	unversioned.TypeMeta `json:",inline"`
 	api.ObjectMeta       `json:"metadata,omitempty"`
-	Spec                 ClusterSpec `json:"spec"`
+	Spec                 *ClusterSpec `json:"spec"`
 }
 
 type ClusterSpec struct {
