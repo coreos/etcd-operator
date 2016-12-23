@@ -46,14 +46,14 @@ func TestEtcdUpgrade(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	testEtcd = etcdClusterWithVersion(testEtcd, "v3.1.0-alpha.1")
+	testEtcd = etcdClusterWithVersion(testEtcd, "v3.1.0-rc.1")
 
 	if _, err := updateEtcdCluster(f, testEtcd); err != nil {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 
 	_, err = waitSizeReachedWithFilter(f, testEtcd.Name, 3, 60*time.Second, func(pod *api.Pod) bool {
-		return k8sutil.GetEtcdVersion(pod) == "v3.1.0-alpha.1"
+		return k8sutil.GetEtcdVersion(pod) == "v3.1.0-rc.1"
 	})
 	if err != nil {
 		t.Fatalf("failed to wait new version etcd cluster: %v", err)

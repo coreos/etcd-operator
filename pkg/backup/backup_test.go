@@ -39,7 +39,7 @@ func TestBackupVersionCompatiblity(t *testing.T) {
 	}{
 		{"v3.0.15", http.StatusOK},
 		{"v3.0.0", http.StatusOK},
-		{"v3.1.0-alpha.1", http.StatusOK},
+		{"v3.1.0-rc.1", http.StatusOK},
 		{"v3.1.0", http.StatusOK},
 		{"v3.2.0", http.StatusBadRequest},
 		{"v2.3.7", http.StatusBadRequest},
