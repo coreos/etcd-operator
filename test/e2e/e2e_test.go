@@ -254,7 +254,7 @@ func testDisasterRecoveryWithStorageType(t *testing.T, numToKill int, bt spec.Ba
 	}
 	toKill := make([]string, numToKill)
 	for i := 0; i < numToKill; i++ {
-		toKill[i] = names[i]
+		toKill[i] = names[len(names)-i-1]
 	}
 	// TODO: There might be race that ooperator will recover members between
 	// 		these members are deleted individually.
