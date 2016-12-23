@@ -89,7 +89,7 @@ func TestCreateSelfHostedClusterWithBootMember(t *testing.T) {
 		ObjectMeta: api.ObjectMeta{
 			GenerateName: "etcd-test-seed-",
 		},
-		Spec: spec.ClusterSpec{
+		Spec: &spec.ClusterSpec{
 			Size: 3,
 			SelfHosted: &spec.SelfHostedPolicy{
 				BootMemberClientEndpoint: embedCfg.ACUrls[0].String(),
@@ -122,7 +122,7 @@ func makeSelfHostedEnabledCluster(genName string, size int) *spec.EtcdCluster {
 		ObjectMeta: api.ObjectMeta{
 			GenerateName: genName,
 		},
-		Spec: spec.ClusterSpec{
+		Spec: &spec.ClusterSpec{
 			Size:       size,
 			SelfHosted: &spec.SelfHostedPolicy{},
 		},
