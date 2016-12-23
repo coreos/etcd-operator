@@ -1,6 +1,8 @@
 package member
 
 import (
+	"time"
+
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
@@ -111,6 +113,22 @@ func (pms *PDMemberSet) CreatePodAndService(memberName string, nameSpace string,
 	return err
 }
 
+func (pms *PDMemberSet) RemovePodAndService(name string) error {
+	err := pms.KubeCli.Services(pms.Namespace).Delete(name)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	err = pms.KubeCli.Pods(pms.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	return nil
+}
+
 func (pms *PDMemberSet) SetSpec(s *spec.ClusterSpec) {
 	pms.Spec = s
 }
@@ -130,7 +148,7 @@ func (pms *PDMemberSet) Run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				log.Info("control is paused, skipping reconcilation")
 				continue
 			}
-			//TODO
+			//TODO only pull PD pod
 			running, pending, err := k8sutil.pollPods()
 			if err != nil {
 				log.Errorf("fail to poll pods: %v", err)

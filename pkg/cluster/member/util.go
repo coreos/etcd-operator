@@ -5,20 +5,15 @@ import (
 	"strings"
 )
 
-func needUpgrade(pods []*api.Pod, cs *spec.ClusterSpec) bool {
-	return len(pods) == cs.Size && pickOneOldMember(pods, cs.Version) != nil
-}
-
-func pickOneOldMember(pods []*api.Pod, newVersion string) *etcdutil.Member {
+func needUpgrade(pods []*api.Pod, newVersion string) bool {
 	for _, pod := range pods {
-		if k8sutil.GetEtcdVersion(pod) == newVersion {
+		if k8sutil.GetVersion(pod) == newVersion {
 			continue
 		}
-		return &etcdutil.Member{Name: pod.Name}
+		return true
 	}
-	return nil
+	return false
 }
-
 func findID(name string) int {
 	i := strings.LastIndex(name, "-")
 	id, err := strconv.Atoi(name[i+1:])
