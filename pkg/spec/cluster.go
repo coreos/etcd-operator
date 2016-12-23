@@ -25,7 +25,7 @@ var (
 	ErrBackupUnsetRestoreSet = errors.New("spec: backup policy must be set if restore policy is set")
 )
 
-type EtcdCluster struct {
+type TiDBCluster struct {
 	unversioned.TypeMeta `json:",inline"`
 	api.ObjectMeta       `json:"metadata,omitempty"`
 	Spec                 ClusterSpec `json:"spec"`

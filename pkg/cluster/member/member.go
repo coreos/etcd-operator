@@ -10,7 +10,6 @@ const (
 	PD MemberType = iota
 	TIKV
 	TIDB
-	TIDBPUMP
 )
 
 var EnumTypeName = []string{

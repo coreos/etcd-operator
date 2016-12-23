@@ -3,13 +3,18 @@ package cluster
 import (
 	"fmt"
 
-	"github.com/nolouch/tidb-oprator/cluster/member"
-	"github.com/nolouch/tidb-oprator/spec"
+	"github.com/GregoryIan/operator/util/k8sutil"
+	"github.com/GregoryIan/oprator/cluster/member"
+	"github.com/GregoryIan/oprator/spec"
 
+	"github.com/juju/errors"
+	"github.com/ngaut/log"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
 )
+
+const defaultVersion = "rc1"
 
 type clusterEventType string
 
@@ -29,18 +34,12 @@ type Cluster struct {
 
 	Config
 
-	spec      *spec.ClusterSpec
-	idCounter map[MemberType]int
-	eventCh   chan *clusterEvent
-	stopCh    chan struct{}
+	spec    *spec.ClusterSpec
+	eventCh chan *clusterEvent
+	stopCh  chan struct{}
 }
 
-func New(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
-	return new(c, s, stopC, wg, true)
-}
-
-func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
-
+func New(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
 	if len(s.Version) == 0 {
 		s.Version = defaultVersion
 	}
@@ -53,23 +52,21 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		status:  &Status{},
 	}
 
-	c.prepareSeedMember()
+	if err := c.prepareSeedMember(); err != nil {
+		return nil, err
+	}
+	if err := c.createClientServiceLB(); err != nil {
+		return nil, fmt.Errorf("fail to create client service LB: %v", err)
+	}
 
-	wg.Add(1)
 	go c.run(stopC, wg)
 
 	return c, nil
 }
 
 func (c *Cluster) prepareSeedMember() error {
-	ms := member.SeedPDMemSet(s)
-	c.addMemberSet(ms)
-
-}
-
-func (c *Cluster) addMemberSet(ms member.MemberSet) {
-	typ := ms.Type()
-	c.members[typ] = ms
+	c.members, err := member.SeedMemSet(s)
+	return err
 }
 
 func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
@@ -80,6 +77,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		go ms.Run()
 	}
 
+	wg.Add(1)
 	defer func() {
 		if needDeleteCluster {
 			c.logger.Infof("deleting cluster")
@@ -96,14 +94,108 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			return
 		case event := <-c.eventCh:
 			switch event.typ {
-			case eventModifyPD:
-				ms, _ := c.members[PD]
-				ms.SetSepc(event.spec)
-			case eventModifyTiDB:
-			case eventModifyTiKV:
+			case eventModifyCluster:
+				c.logger.Infof("spec update: from: %v to: %v", c.spec, event.spec)
+				c.spec = &event.spec
+				c.splitAndDistributeSpec()
 			case eventDeleteCluster:
 				return
 			}
 		}
 	}
+}
+
+func (c *Cluster) splitAndDistributeSpec() {
+	// ms, _ := c.members[PD]
+	// ms.SetSepc(event.spec)
+}
+
+func (c *Cluster) createClientServiceLB() error {
+	if _, err := k8sutil.CreateService(c.KubeCli, fmt.Sprintf("%s-pd", c.Name), c.Namespace, k8sutil.PD); err != nil {
+		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+			return err
+		}
+	}
+	if _, err := k8sutil.CreateService(c.KubeCli, fmt.Sprintf("%s-tidb", c.Name), c.Namespace, k8sutil.TiDB); err != nil {
+		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Cluster) delete() {
+	option := k8sapi.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			"tidb_cluster": c.Name,
+		}),
+	}
+
+	pods, err := c.KubeCli.Pods(c.Namespace).List(option)
+	if err != nil {
+		log.Errorf("cluster deletion: cannot delete any pod due to failure to list: %v", err)
+	} else {
+		for i := range pods.Items {
+			if err := c.removePodAndService(pods.Items[i].Name); err != nil {
+				log.Errorf("cluster deletion: fail to delete (%s)'s pod and svc: %v", pods.Items[i].Name, err)
+			}
+		}
+	}
+
+	err = c.deleteClientServiceLB()
+	if err != nil {
+		log.Errorf("cluster deletion: fail to delete client service LB: %v", err)
+	}
+}
+
+func (c *Cluster) removePodAndService(name string) error {
+	err := c.KubeCli.Services(c.Namespace).Delete(name)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	err = c.KubeCli.Pods(c.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Cluster) removePodAndService(name string) error {
+	err := c.KubeCli.Services(c.Namespace).Delete(name)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	err = c.KubeCli.Pods(c.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Cluster) deleteClientServiceLB() error {
+	if err := c.deleteClientService(fmt.Sprintf("%s-pd", c.Name)); err != nil {
+		return err
+	}
+
+	return c.deleteClientService(fmt.Sprintf("%s-tidb", c.Name))
+}
+
+func (c *Cluster) deleteClientService(name string) error {
+	err := c.KubeCli.Services(c.Namespace).Delete(name)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+
+	return nil
 }
