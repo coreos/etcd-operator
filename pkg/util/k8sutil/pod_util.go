@@ -33,55 +33,6 @@ var (
 	}
 )
 
-func etcdContainer(commands, version string) api.Container {
-	c := api.Container{
-		// TODO: fix "sleep 5".
-		// Without waiting some time, there is highly probable flakes in network setup.
-		Command: []string{"/bin/sh", "-c", fmt.Sprintf("sleep 5; %s", commands)},
-		Name:    "etcd",
-		Image:   MakeEtcdImage(version),
-		Ports: []api.ContainerPort{
-			{
-				Name:          "server",
-				ContainerPort: int32(2380),
-				Protocol:      api.ProtocolTCP,
-			},
-			{
-				Name:          "client",
-				ContainerPort: int32(2379),
-				Protocol:      api.ProtocolTCP,
-			},
-		},
-		VolumeMounts: []api.VolumeMount{
-			{Name: "etcd-data", MountPath: etcdDir},
-		},
-		Env: []api.EnvVar{envPodIP},
-	}
-
-	return c
-}
-
-func containerWithLivenessProbe(c api.Container, lp *api.Probe) api.Container {
-	c.LivenessProbe = lp
-	return c
-}
-
-func etcdLivenessProbe() *api.Probe {
-	// etcd pod is alive only if a linearizable get succeeds.
-	return &api.Probe{
-		Handler: api.Handler{
-			Exec: &api.ExecAction{
-				Command: []string{"/bin/sh", "-c",
-					"ETCDCTL_API=3 etcdctl get foo"},
-			},
-		},
-		InitialDelaySeconds: 10,
-		TimeoutSeconds:      10,
-		PeriodSeconds:       60,
-		FailureThreshold:    3,
-	}
-}
-
 func PodWithAntiAffinity(pod *api.Pod, clusterName string) *api.Pod {
 	// set pod anti-affinity with the pods that belongs to the same etcd cluster
 	affinity := api.Affinity{
@@ -90,7 +41,7 @@ func PodWithAntiAffinity(pod *api.Pod, clusterName string) *api.Pod {
 				{
 					LabelSelector: &unversionedAPI.LabelSelector{
 						MatchLabels: map[string]string{
-							"etcd_cluster": clusterName,
+							"tidb_cluster": clusterName,
 						},
 					},
 					TopologyKey: "kubernetes.io/hostname",

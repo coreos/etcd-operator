@@ -1,17 +1,3 @@
-// Copyright 2016 The etcd-operator Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package controller
 
 import (
@@ -23,13 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/analytics"
-	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
-	"github.com/coreos/etcd-operator/pkg/cluster"
-	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/GregoryIan/operator/pkg/cluster"
+	"github.com/GregoryIan/operator/pkg/spec"
+	"github.com/GregoryIan/operator/pkg/util/k8sutil"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/ngaut/log"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -37,18 +21,12 @@ import (
 )
 
 const (
-	tprName = "etcd-cluster.coreos.com"
+	tprName = "tidb-cluster.pingcap.com"
 )
 
 var (
-	supportedPVProvisioners = map[string]struct{}{
-		"kubernetes.io/gce-pd":  {},
-		"kubernetes.io/aws-ebs": {},
-	}
-
 	ErrVersionOutdated = errors.New("requested version is outdated in apiserver")
-
-	initRetryWaitTime = 30 * time.Second
+	initRetryWaitTime  = 30 * time.Second
 )
 
 type rawEvent struct {
@@ -62,40 +40,21 @@ type Event struct {
 }
 
 type Controller struct {
-	logger *logrus.Entry
+	MasterHost string
+	Namespace  string
+	KubeCli    *unversioned.Client
 
-	Config
 	clusters    map[string]*cluster.Cluster
 	stopChMap   map[string]chan struct{}
 	waitCluster sync.WaitGroup
 }
 
-type Config struct {
-	MasterHost    string
-	Namespace     string
-	PVProvisioner string
-	s3config.S3Context
-	KubeCli *unversioned.Client
-}
-
-func (c *Config) validate() error {
-	if _, ok := supportedPVProvisioners[c.PVProvisioner]; !ok {
-		return fmt.Errorf(
-			"persistent volume provisioner %s is not supported: options = %v",
-			c.PVProvisioner, supportedPVProvisioners,
-		)
-	}
-	return nil
-}
-
-func New(cfg Config) *Controller {
-	if err := cfg.validate(); err != nil {
-		panic(err)
-	}
+func New(masterHost string, nameSpace string, kubeCli *unversioned.Client) *Controller {
 	return &Controller{
-		logger: logrus.WithField("pkg", "controller"),
+		MasterHost: masterHost,
+		Namespace:  nameSpace,
+		KubeCli:    kubeCli,
 
-		Config:    cfg,
 		clusters:  make(map[string]*cluster.Cluster),
 		stopChMap: map[string]chan struct{}{},
 	}
@@ -112,13 +71,12 @@ func (c *Controller) Run() error {
 		if err == nil {
 			break
 		}
-		c.logger.Errorf("initialization failed: %v", err)
-		c.logger.Infof("retry in %v...", initRetryWaitTime)
+		log.Errorf("initialization failed: %v", err)
+		log.Infof("retry in %v...", initRetryWaitTime)
 		time.Sleep(initRetryWaitTime)
-		// todo: add max retry?
 	}
 
-	c.logger.Infof("starts running from watch version: %s", watchVersion)
+	log.Infof("starts running from watch version: %s", watchVersion)
 
 	defer func() {
 		for _, stopC := range c.stopChMap {
@@ -137,37 +95,43 @@ func (c *Controller) Run() error {
 				stopC := make(chan struct{})
 				nc, err := cluster.New(c.makeClusterConfig(clusterName), &event.Object.Spec, stopC, &c.waitCluster)
 				if err != nil {
-					c.logger.Errorf("cluster (%q) is dead: %v", clusterName, err)
+					log.Errorf("cluster (%q) is dead: %v", clusterName, err)
 					continue
 				}
 
 				c.stopChMap[clusterName] = stopC
 				c.clusters[clusterName] = nc
-
-				analytics.ClusterCreated()
 			case "MODIFIED":
 				if c.clusters[clusterName] == nil {
-					c.logger.Warningf("ignore modification: cluster %q not found (or dead)", clusterName)
+					log.Warningf("ignore modification: cluster %q not found (or dead)", clusterName)
 					break
 				}
 				c.clusters[clusterName].Update(&event.Object.Spec)
 			case "DELETED":
 				if c.clusters[clusterName] == nil {
-					c.logger.Warningf("ignore deletion: cluster %q not found (or dead)", clusterName)
+					log.Warningf("ignore deletion: cluster %q not found (or dead)", clusterName)
 					break
 				}
 				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)
-				analytics.ClusterDeleted()
 			}
 		}
 	}()
 	return <-errCh
 }
 
+type TiDBClusterList struct {
+	unversioned.TypeMeta `json:",inline"`
+	// Standard list metadata
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
+	unversioned.ListMeta `json:"metadata,omitempty"`
+	// Items is a list of third party objects
+	Items []spec.TiDBCluster `json:"items"`
+}
+
 func (c *Controller) findAllClusters() (string, error) {
 	c.logger.Info("finding existing clusters...")
-	resp, err := k8sutil.ListETCDCluster(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client)
+	resp, err := k8sutil.ListTiDBCluster(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client)
 	if err != nil {
 		return "", err
 	}
@@ -181,7 +145,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		stopC := make(chan struct{})
 		nc, err := cluster.Restore(c.makeClusterConfig(clusterName), &item.Spec, stopC, &c.waitCluster)
 		if err != nil {
-			c.logger.Errorf("cluster (%q) is dead: %v", clusterName, err)
+			log.Errorf("cluster (%q) is dead: %v", clusterName, err)
 			continue
 		}
 		c.stopChMap[clusterName] = stopC
@@ -192,11 +156,9 @@ func (c *Controller) findAllClusters() (string, error) {
 
 func (c *Controller) makeClusterConfig(clusterName string) cluster.Config {
 	return cluster.Config{
-		Name:          clusterName,
-		Namespace:     c.Namespace,
-		PVProvisioner: c.PVProvisioner,
-		S3Context:     c.S3Context,
-		KubeCli:       c.KubeCli,
+		Name:      clusterName,
+		Namespace: c.Namespace,
+		KubeCli:   c.KubeCli,
 	}
 }
 
@@ -214,12 +176,6 @@ func (c *Controller) initResource() (string, error) {
 			return "", fmt.Errorf("fail to create TPR: %v", err)
 		}
 	}
-	err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			return "", fmt.Errorf("fail to create storage class: %v", err)
-		}
-	}
 	return watchVersion, nil
 }
 
@@ -231,14 +187,14 @@ func (c *Controller) createTPR() error {
 		Versions: []extensions.APIVersion{
 			{Name: "v1"},
 		},
-		Description: "Managed etcd clusters",
+		Description: "Managed tidb clusters",
 	}
 	_, err := c.KubeCli.ThirdPartyResources().Create(tpr)
 	if err != nil {
 		return err
 	}
 
-	return k8sutil.WaitEtcdTPRReady(c.KubeCli.Client, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
+	return k8sutil.WaitTiDBTPRReady(c.KubeCli.Client, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
 }
 
 func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) {
@@ -254,7 +210,7 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 		defer close(eventCh)
 
 		for {
-			resp, err := k8sutil.WatchETCDCluster(host, ns, httpClient, watchVersion)
+			resp, err := k8sutil.WatchTiDBCluster(host, ns, httpClient, watchVersion)
 			if err != nil {
 				errCh <- err
 				return
@@ -265,32 +221,28 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 				return
 			}
 
-			c.logger.Infof("start watching at %v", watchVersion)
-
+			log.Infof("start watching at %v", watchVersion)
 			decoder := json.NewDecoder(resp.Body)
 			for {
-				ev, st, err := pollEvent(decoder)
-
+				ev, st, err := pollEvent(decoder) // streaming way
 				if err != nil {
-					if err == io.EOF { // apiserver will close stream periodically
-						c.logger.Debug("apiserver closed stream")
+					if err == io.EOF {
+						log.Debug("apiserver closed stream")
 						break
 					}
-
-					c.logger.Errorf("received invalid event from API server: %v", err)
+					log.Errorf("received invalid event from API server: %v", err)
 					errCh <- err
 					return
 				}
 
 				if st != nil {
-					if st.Code == http.StatusGone { // event history is outdated
-						errCh <- ErrVersionOutdated // go to recovery path
+					if st.Code == http.StatusGone {
+						errCh <- ErrVersionOutdated
 						return
 					}
-					c.logger.Fatalf("unexpected status response from API server: %v", st.Message)
+					log.Fatalf("unexpected status response from API server: %v", st.Message)
 				}
-
-				c.logger.Debugf("etcd cluster event: %v %v", ev.Type, ev.Object.Spec)
+				log.Debugf("etcd cluster event: %v %v", ev.Type, ev.Object.Spec)
 
 				watchVersion = ev.Object.ObjectMeta.ResourceVersion
 				eventCh <- ev

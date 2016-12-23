@@ -17,11 +17,6 @@ package constants
 import "time"
 
 const (
-	DefaultDialTimeout      = 5 * time.Second
-	DefaultRequestTimeout   = 5 * time.Second
-	DefaultSnapshotInterval = 1800 * time.Second
-
-	DefaultBackupPodHTTPPort = 19999
-
-	BackupDir = "/var/etcd-backup/data"
+	DefaultDialTimeout    = 5 * time.Second
+	DefaultRequestTimeout = 5 * time.Second
 )
