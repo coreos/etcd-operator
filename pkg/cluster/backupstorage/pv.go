@@ -15,7 +15,7 @@ type pv struct {
 	kubecli       *unversioned.Client
 }
 
-func NewPVStorage(kc *unversioned.Client, cn, ns, pvp string, backupPolicy spec.BackupPolicy) (Storage, error) {
+func NewPVStorage(kc *unversioned.Client, cn, ns, pvp string, backupPolicy spec.BackupPolicy, hasExist bool) (Storage, error) {
 	s := &pv{
 		clusterName:   cn,
 		namespace:     ns,
@@ -23,16 +23,15 @@ func NewPVStorage(kc *unversioned.Client, cn, ns, pvp string, backupPolicy spec.
 		backupPolicy:  backupPolicy,
 		kubecli:       kc,
 	}
-	if err := s.setup(); err != nil {
-		if k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			return s, ErrStorageAlreadyExist
+	if !hasExist {
+		if err := s.create(); err != nil {
+			return nil, err
 		}
-		return nil, err
 	}
 	return s, nil
 }
 
-func (s *pv) setup() error {
+func (s *pv) create() error {
 	return k8sutil.CreateAndWaitPVC(s.kubecli, s.clusterName, s.namespace, s.pvProvisioner, s.backupPolicy.VolumeSizeInMB)
 }
 
