@@ -66,7 +66,7 @@ func (bm *backupManager) createStorage() (s backupstorage.Storage, err error) {
 		}
 		return nil, err
 	}
-	return s, nil
+	return s, err
 }
 
 func (bm *backupManager) runSidecar() error {
