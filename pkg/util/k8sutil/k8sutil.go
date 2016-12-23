@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
@@ -35,7 +36,6 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/watch"
 )
 
@@ -396,7 +396,7 @@ func WatchETCDCluster(host, ns string, httpClient *http.Client, resourceVersion 
 }
 
 func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, host, ns string) error {
-	return wait.Poll(interval, timeout, func() (bool, error) {
+	return retryutil.Retry(interval, int(timeout/interval), func() (bool, error) {
 		resp, err := ListETCDCluster(host, ns, httpClient)
 		if err != nil {
 			return false, err

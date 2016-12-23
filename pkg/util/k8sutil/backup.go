@@ -23,6 +23,7 @@ import (
 	backupenv "github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"k8s.io/kubernetes/pkg/api"
@@ -32,7 +33,6 @@ import (
 	"k8s.io/kubernetes/pkg/apis/storage"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/watch"
 )
 
@@ -89,7 +89,7 @@ func CreateAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisione
 		return err
 	}
 
-	err = wait.Poll(4*time.Second, 20*time.Second, func() (bool, error) {
+	err = retryutil.Retry(4*time.Second, 5, func() (bool, error) {
 		var err error
 		claim, err = kubecli.PersistentVolumeClaims(ns).Get(name)
 		if err != nil {
