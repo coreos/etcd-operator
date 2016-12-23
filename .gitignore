@@ -9,6 +9,7 @@ _test
 _output
 .kube
 .vscode
+.idea
 
 # Architecture specific extensions/prefixes
 *.[568vq]
