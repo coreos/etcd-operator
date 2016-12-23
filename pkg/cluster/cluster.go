@@ -12,15 +12,11 @@ import (
 )
 
 type clusterEventType string
+
 type Config struct {
 	Name      string
 	Namespace string
 	KubeCli   *unversioned.Client
-}
-
-type Status struct {
-	CurrentVersion string `json:"currentVersion"`
-	TargetVersion  string `json:"targetVersion"`
 }
 
 type clusterEvent struct {
@@ -32,8 +28,6 @@ type Cluster struct {
 	members map[MemberType]MemberSet
 
 	Config
-
-	status *Status
 
 	spec      *spec.ClusterSpec
 	idCounter map[MemberType]int
