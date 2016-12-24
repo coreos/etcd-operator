@@ -32,17 +32,32 @@ type backupManager struct {
 	s             backupstorage.Storage
 }
 
-func (bm *backupManager) setup() error {
-	var err error
-	bm.s, err = bm.createStorage()
-	if err != nil {
-		return err
+func newBackupManager(c Config, b *spec.BackupPolicy, r *spec.RestorePolicy, l *logrus.Entry, isNewCluster bool) (*backupManager, error) {
+	bm := &backupManager{
+		clusterConfig: c,
+		backupPolicy:  b,
+		restorePolicy: r,
+		logger:        l,
 	}
+	hasExist := false
+	if !isNewCluster {
+		hasExist = true
+	} else if r != nil && r.BackupClusterName == c.Name {
+		hasExist = true // we will reuse the storage to restore cluster
+	}
+	var err error
+	bm.s, err = bm.setupStorage(hasExist)
+	if err != nil {
+		return nil, err
+	}
+	return bm, nil
+}
 
+func (bm *backupManager) setup() error {
 	if r := bm.restorePolicy; r != nil {
 		bm.logger.Infof("restoring cluster from existing backup (%s)", r.BackupClusterName)
 		if bm.clusterConfig.Name != r.BackupClusterName {
-			if err = bm.s.Clone(r.BackupClusterName); err != nil {
+			if err := bm.s.Clone(r.BackupClusterName); err != nil {
 				return err
 			}
 		}
@@ -51,20 +66,14 @@ func (bm *backupManager) setup() error {
 	return bm.runSidecar()
 }
 
-func (bm *backupManager) createStorage() (s backupstorage.Storage, err error) {
+func (bm *backupManager) setupStorage(hasExist bool) (s backupstorage.Storage, err error) {
 	b, c := bm.backupPolicy, bm.clusterConfig
 
 	switch b.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-		s, err = backupstorage.NewPVStorage(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, *b)
+		s, err = backupstorage.NewPVStorage(c.KubeCli, c.Name, c.Namespace, c.PVProvisioner, *b, hasExist)
 	case spec.BackupStorageTypeS3:
-		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, c.Name, c.Namespace, *b)
-	}
-	if err == backupstorage.ErrStorageAlreadyExist {
-		if r := bm.restorePolicy; r != nil && r.BackupClusterName == c.Name {
-			return s, nil // we will reuse the storage to restore cluster
-		}
-		return nil, err
+		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, c.Name, c.Namespace, *b, hasExist)
 	}
 	return s, err
 }

@@ -21,7 +21,7 @@ type s3 struct {
 	s3cli        *backups3.S3
 }
 
-func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
+func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, clusterName, ns string, p spec.BackupPolicy, hasExist bool) (Storage, error) {
 	cm, err := kubecli.ConfigMaps(ns).Get(s3Ctx.AWSConfig)
 	if err != nil {
 		return nil, err
@@ -50,24 +50,15 @@ func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, cluster
 		namespace:    ns,
 		s3cli:        s3cli,
 	}
-	if err := s.setup(); err != nil {
-		return nil, err
+	if !hasExist {
+		if err := s.create(); err != nil {
+			return nil, err
+		}
 	}
 	return s, nil
 }
 
-func setupS3Env(config, creds []byte) error {
-	homedir := os.Getenv("HOME")
-	if err := os.MkdirAll(homedir+"/.aws", 0700); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(homedir+"/.aws/config", config, 0600); err != nil {
-		return err
-	}
-	return ioutil.WriteFile(homedir+"/.aws/credentials", creds, 0600)
-}
-
-func (s *s3) setup() error {
+func (s *s3) create() error {
 	// TODO: check if bucket/folder exists?
 	return nil
 }
@@ -90,4 +81,15 @@ func (s *s3) Delete() error {
 		}
 	}
 	return nil
+}
+
+func setupS3Env(config, creds []byte) error {
+	homedir := os.Getenv("HOME")
+	if err := os.MkdirAll(homedir+"/.aws", 0700); err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(homedir+"/.aws/config", config, 0600); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(homedir+"/.aws/credentials", creds, 0600)
 }
