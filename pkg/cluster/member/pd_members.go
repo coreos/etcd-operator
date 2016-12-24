@@ -52,21 +52,25 @@ func SeedPDMemberset(kubeCli *unversioned.Client, clusterName, nameSpace string,
 	}
 
 	err := makeSeedPD()
+	if err != nil {
+		return nil, err
+	}
+
 	return pms, nil
 }
 
-func (pms *PDMemberSet) makeSeedPD() error {
+func (pms *PDMemberSet) makeSeedPD() (*pdMember, error) {
 	newMemberName := fmt.Sprintf("%s-pd-%04d", pms.clusterName, pms.idCounter)
 	pms.idCounter++
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
 
-	pod := pms.makeSelfHostedEtcdPod(newMemberName, initialCluster, pms.clusterName, "new", uuid.New(), pms.spec)
-	_, err := k8sutil.CreateAndWaitPod(pms.kubeCli, pms.namespace, pod, 30*time.Second)
+	pod := pms.newPDSeedMember(newMemberName, initialCluster, pms.clusterName, "new", uuid.New(), pms.spec)
+	_, err := CreateAndWaitPod(pms.kubeCli, pms.namespace, pod, 30*time.Second)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	c.logger.Infof("self-hosted cluster created with seed member (%s)", newMemberName)
+	log.Infof("tidb cluster created with seed pd member (%s)", newMemberName)
 	return nil
 }
 
@@ -180,11 +184,11 @@ func (pms *PDMemberSet) Size() {
 	return len(pms.MS)
 }
 
-func (pms *PDMemberSet) makeSelfHostedEtcdPod(name string, initialCluster []string, state, token string) *api.Pod {
-	commands := fmt.Sprintf("/bin/pd --data-dir=/var/tidb-cluster/pd --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
+func (pms *PDMemberSet) newPDSeedMember(name string, initialCluster []string, state, token string) *api.Pod {
+	commands := fmt.Sprintf("/bin/pd --data-dir=%s/pd --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
 		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
-		name, strings.Join(initialCluster, ","), state)
+		tidbClusterDir, name, strings.Join(initialCluster, ","), state)
 
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
@@ -238,10 +242,10 @@ func (pms *PDMemberSet) makeSelfHostedEtcdPod(name string, initialCluster []stri
 
 	SetVersion(pod, pms.spec.Pd.Version, pd)
 
-	pod = PodWithAntiAffinity(pod, clusterName)
+	pod = PodWithAntiAffinity(pod, pms.clusterName)
 
-	if len(cs.NodeSelector) != 0 {
-		pod = PodWithNodeSelector(pod, cs.NodeSelector)
+	if len(pms.spec.NodeSelector) != 0 {
+		pod = PodWithNodeSelector(pod, pms.spec.NodeSelector)
 	}
 
 	return pod

@@ -88,10 +88,6 @@ func GetPodNames(pods []*api.Pod) []string {
 	return res
 }
 
-func MakeImage(version string, tp ServiceType) string {
-	return fmt.Sprintf("%s:%v", imageNames[tp], version)
-}
-
 func PodWithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, peerURLs []string, cs *spec.ClusterSpec) *api.Pod {
 	containerSpec := []api.Container{
 		{

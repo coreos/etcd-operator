@@ -14,7 +14,7 @@ const (
 	TiDB
 )
 
-var StartUpSequence = []MemberType{PD, TiKV, TiDB}
+var StartUpSequence = []MemberType{PD}
 
 func (s MemberType) String() string {
 	switch s {
@@ -44,6 +44,16 @@ func RegisterSeedMemberFunc(typ MemberType, f SeedFunc) {
 	seedMapFunc[typ] = f
 }
 
-func InitSeedMembers() {
-	return seedMapFunc
+func InitSeedMembers(kubeCli *unversioned.Client, clusterName, nameSpace string, s *spec.ClusterSpec) (map[MemberType]*MemberSet, error) {
+	mss := make(map[MemberType]*MemberSet)
+	for _, m := range StartUpSequence {
+		ms, err := seedMapFunc[m](kubeCli, clusterName, nameSpace, s)
+		if err != nil {
+			return nil, err
+		}
+
+		mss[m] = ms
+	}
+
+	return mss, nil
 }
