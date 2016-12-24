@@ -32,8 +32,8 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster := append(c.members.PeerURLPairs(), newMemberName+"="+peerURL)
 
-	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "existing", "", c.spec)
-	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.spec)
+	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "existing", "", c.Spec)
+	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.Spec)
 
 	_, err := c.KubeCli.Pods(c.Namespace).Create(pod)
 	if err != nil {
@@ -74,7 +74,7 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	c.idCounter++
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
 
-	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "new", uuid.New(), c.spec)
+	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "new", uuid.New(), c.Spec)
 	_, err := k8sutil.CreateAndWaitPod(c.KubeCli, c.Namespace, pod, 30*time.Second)
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 }
 
 func (c *Cluster) migrateBootMember() error {
-	endpoint := c.spec.SelfHosted.BootMemberClientEndpoint
+	endpoint := c.Spec.SelfHosted.BootMemberClientEndpoint
 
 	c.logger.Infof("migrating boot member (%s)", endpoint)
 
@@ -110,8 +110,8 @@ func (c *Cluster) migrateBootMember() error {
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster = append(initialCluster, newMemberName+"="+peerURL)
 
-	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "existing", "", c.spec)
-	pod = k8sutil.PodWithAddMemberInitContainer(pod, []string{endpoint}, newMemberName, []string{peerURL}, c.spec)
+	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "existing", "", c.Spec)
+	pod = k8sutil.PodWithAddMemberInitContainer(pod, []string{endpoint}, newMemberName, []string{peerURL}, c.Spec)
 	pod, err = k8sutil.CreateAndWaitPod(c.KubeCli, c.Namespace, pod, 30*time.Second)
 	if err != nil {
 		return err

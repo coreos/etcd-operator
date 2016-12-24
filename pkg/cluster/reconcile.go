@@ -44,24 +44,24 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 	defer c.logger.Infoln("Finish reconciling")
 
 	switch {
-	case len(pods) != c.spec.Size:
+	case len(pods) != c.Spec.Size:
 		running := etcdutil.MemberSet{}
 		for _, pod := range pods {
 			m := &etcdutil.Member{Name: pod.Name}
-			if c.spec.SelfHosted != nil {
+			if c.Spec.SelfHosted != nil {
 				m.ClientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
 				m.PeerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
 			}
 			running.Add(m)
 		}
 		return c.reconcileSize(running)
-	case needUpgrade(pods, c.spec):
-		c.status.upgradeVersionTo(c.spec.Version)
+	case needUpgrade(pods, c.Spec):
+		c.status.upgradeVersionTo(c.Spec.Version)
 
-		m := pickOneOldMember(pods, c.spec.Version)
+		m := pickOneOldMember(pods, c.Spec.Version)
 		return c.upgradeOneMember(m)
 	default:
-		c.status.setVersion(c.spec.Version)
+		c.status.setVersion(c.Spec.Version)
 		return nil
 	}
 }
@@ -129,12 +129,12 @@ func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
 }
 
 func (c *Cluster) resize() error {
-	if c.members.Size() == c.spec.Size {
+	if c.members.Size() == c.Spec.Size {
 		return nil
 	}
 
-	if c.members.Size() < c.spec.Size {
-		if c.spec.SelfHosted != nil {
+	if c.members.Size() < c.Spec.Size {
+		if c.Spec.SelfHosted != nil {
 			return c.addOneSelfHostedMember()
 		}
 
@@ -218,11 +218,11 @@ func removeMember(clientURLs []string, id uint64) error {
 }
 
 func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
-	if c.spec.SelfHosted != nil {
+	if c.Spec.SelfHosted != nil {
 		return errors.New("self-hosted cluster cannot be recovered from disaster")
 	}
 
-	if c.spec.Backup == nil {
+	if c.Spec.Backup == nil {
 		c.logger.Errorf("fail to do disaster recovery: no backup policy has been defined.")
 		return errNoBackupExist
 	}
@@ -242,7 +242,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	} else {
 		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
 		// If so, we can still continue. Otherwise, it's fatal error.
-		exist, err := checkBackupExist(c.KubeCli.RESTClient.Client, k8sutil.MakeBackupHostPort(c.Name), c.spec.Version)
+		exist, err := checkBackupExist(c.KubeCli.RESTClient.Client, k8sutil.MakeBackupHostPort(c.Name), c.Spec.Version)
 		if err != nil {
 			c.logger.Errorln(err)
 			return err
