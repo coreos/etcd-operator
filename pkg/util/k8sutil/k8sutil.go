@@ -40,18 +40,6 @@ import (
 	"k8s.io/kubernetes/pkg/watch"
 )
 
-// ServiceType represents type of the service
-type ServiceType byte
-
-const (
-	// TiDB is the constant ServiceType for tidb-server
-	TiDB ServiceType = iota + 1
-	// TiKV is the constant ServiceType for tikv-server
-	TiKV
-	// PD is the constant ServiceType for pd-server
-	PD
-)
-
 func (s ServiceType) String() string {
 	switch s {
 	case TiDB:
@@ -147,23 +135,94 @@ func CreateService(kclient *unversioned.Client, clusterName, ns string, tp Servi
 	return retSvc, nil
 }
 
-func CreatePDMemberService(kclient *unversioned.Client, pdName, clusterName, ns string) (*api.Service, error) {
-	svc := makePDMemberService(etcdName, clusterName)
-	retSvc, err := kclient.Services(ns).Create(svc)
-	if err != nil {
-		return nil, err
-	}
-	return retSvc, nil
-}
-
-func CreatePDNodePortService(kclient *unversioned.Client, pdName, clusterName, ns string) (*api.Service, error) {
-	svc := makePDNodePortService(pdName, clusterName)
-	return kclient.Services(ns).Create(svc)
-}
-
 func CreateTiDBNodePortService(kclient *unversioned.Client, tidbName, clusterName, ns string) (*api.Service, error) {
-	svc := makePDNodePortService(tidbName, clusterName)
+	svc := makeTiDBNodePortService(tidbName, clusterName)
 	return kclient.Services(ns).Create(svc)
+}
+
+func MakePDPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec) *api.Pod {
+	commands := fmt.Sprintf("/pd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
+		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
+		"--initial-cluster=%s --initial-cluster-state=%s",
+		dataDir, m.Name, m.PeerAddr(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
+	if state == "new" {
+		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
+	}
+	//todo: check living
+	pod := &api.Pod{
+		ObjectMeta: api.ObjectMeta{
+			Name: m.Name,
+			Labels: map[string]string{
+				"app":          "pd",
+				"pd_node":      m.Name,
+				"tidb_cluster": clusterName,
+			},
+			Annotations: map[string]string{},
+		},
+		Spec: api.PodSpec{
+			Containers:    []api.Container{container},
+			RestartPolicy: api.RestartPolicyNever,
+			Volumes: []api.Volume{
+				{Name: "pd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
+			},
+		},
+	}
+
+	SetVersion(pod, cs.Version, PD)
+	if cs.AntiAffinity {
+		pod = PodWithAntiAffinity(pod, clusterName)
+	}
+
+	if len(cs.NodeSelector) != 0 {
+		pod = PodWithNodeSelector(pod, cs.NodeSelector)
+	}
+
+	return pod
+}
+
+func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec) *api.Pod {
+	commands := fmt.Sprintf("/bin/pd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
+		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
+		"--initial-cluster=%s --initial-cluster-state=%s",
+		dataDir, name, strings.Join(initialCluster, ","), state)
+
+	if state == "new" {
+		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
+	}
+
+	pod := &api.Pod{
+		ObjectMeta: api.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"app":          "pd",
+				"pd-node":      name,
+				"tidb_cluster": clusterName,
+			},
+			Annotations: map[string]string{},
+		},
+		Spec: api.PodSpec{
+			Containers: []api.Container{
+				etcdContainer(commands, cs.Pd.Version),
+			},
+			RestartPolicy: api.RestartPolicyAlways,
+			SecurityContext: &api.PodSecurityContext{
+				HostNetwork: true,
+			},
+			Volumes: []api.Volume{
+				{Name: "pd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
+			},
+		},
+	}
+
+	SetVersion(pod, cs.Pd.Version, pd)
+
+	pod = PodWithAntiAffinity(pod, clusterName)
+
+	if len(cs.NodeSelector) != 0 {
+		pod = PodWithNodeSelector(pod, cs.NodeSelector)
+	}
+
+	return pod
 }
 
 func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod, timeout time.Duration) (*api.Pod, error) {
@@ -183,42 +242,6 @@ func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod, time
 	}
 
 	return pod, nil
-}
-
-func makePDMemberService(pdName, clusterName string) *api.Service {
-	labels := map[string]string{
-		"app":          "pd",
-		"pd_node":      pdName,
-		"tidb_cluster": clusterName,
-	}
-	svc := &api.Service{
-		ObjectMeta: api.ObjectMeta{
-			Name:   pdName,
-			Labels: labels,
-			Annotations: map[string]string{
-				annotationPrometheusScrape: "true",
-				annotationPrometheusPort:   "2379",
-			},
-		},
-		Spec: api.ServiceSpec{
-			Ports: []api.ServicePort{
-				{
-					Name:       "server",
-					Port:       2380,
-					TargetPort: intstr.FromInt(2380),
-					Protocol:   api.ProtocolTCP,
-				},
-				{
-					Name:       "client",
-					Port:       2379,
-					TargetPort: intstr.FromInt(2379),
-					Protocol:   api.ProtocolTCP,
-				},
-			},
-			Selector: labels,
-		},
-	}
-	return svc
 }
 
 func makeTiDBService(clusternName string) *api.Service {
@@ -327,46 +350,6 @@ func makeTiDBNodePortService(tidbName, clusterName string) *api.Service {
 		},
 	}
 	return svc
-}
-
-func MakePDPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec) *api.Pod {
-	commands := fmt.Sprintf("/pd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
-		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
-		"--initial-cluster=%s --initial-cluster-state=%s",
-		dataDir, m.Name, m.PeerAddr(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
-	if state == "new" {
-		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
-	}
-	//todo: check living
-	pod := &api.Pod{
-		ObjectMeta: api.ObjectMeta{
-			Name: m.Name,
-			Labels: map[string]string{
-				"app":          "pd",
-				"pd_node":      m.Name,
-				"tidb_cluster": clusterName,
-			},
-			Annotations: map[string]string{},
-		},
-		Spec: api.PodSpec{
-			Containers:    []api.Container{container},
-			RestartPolicy: api.RestartPolicyNever,
-			Volumes: []api.Volume{
-				{Name: "pd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
-			},
-		},
-	}
-
-	SetVersion(pod, cs.Version, PD)
-	if cs.AntiAffinity {
-		pod = PodWithAntiAffinity(pod, clusterName)
-	}
-
-	if len(cs.NodeSelector) != 0 {
-		pod = PodWithNodeSelector(pod, cs.NodeSelector)
-	}
-
-	return pod
 }
 
 func MustGetInClusterMasterHost() string {

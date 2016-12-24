@@ -2,23 +2,32 @@ package member
 
 import (
 	"fmt"
+
+	"github.com/GregoryIan/oprator/spec"
 )
 
 type MemberType int
 
 const (
 	PD MemberType = iota
-	TIKV
-	TIDB
+	TiKV
+	TiDB
 )
 
-var EnumTypeName = []string{
-	PD:   "pd",
-	TIKV: "tikv",
-	TIDB: "tidb",
+var StartUpSequence = []MemberType{PD, TiKV, TiDB}
+
+func (s MemberType) String() string {
+	switch s {
+	case TiDB:
+		return "tidb"
+	case TiKV:
+		return "tikv"
+	case PD:
+		return "pd"
+	}
 }
 
-type SeedFunc func(string) MemberSet
+type SeedFunc func(*unversioned.Client, string, string, *spec.ClusterSpec) MemberSet
 
 var seedMapFunc = make(map[MemberType]SeedFunc)
 
@@ -35,11 +44,6 @@ func RegisterSeedMemberFunc(typ MemberType, f SeedFunc) {
 	seedMapFunc[typ] = f
 }
 
-func SeedMemberSet(typ MemberType, firstMemberName string) (MemberSet, error) {
-	seedFunc, ok := seedMapF[typ]
-	if !ok {
-		return fmt.Errorf("no such memberset type")
-	}
-	ms := seedFunc(firstMemberName)
-	return ms, nil
+func InitSeedMembers() {
+	return seedMapFunc
 }

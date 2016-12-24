@@ -30,7 +30,7 @@ type clusterEvent struct {
 }
 
 type Cluster struct {
-	members map[MemberType]MemberSet
+	members map[member.MemberType]member.MemberSet
 
 	Config
 
@@ -65,18 +65,16 @@ func New(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 }
 
 func (c *Cluster) prepareSeedMember() error {
-	c.members, err := member.SeedMemSet(s)
-	return err
+	members, err := member.InitSeedMembers(c.Name, c.Namespace, c.KubeCli)
+	if err != nil {
+		return err
+	}
+
+	c.members = members
+	return nil
 }
 
 func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
-	needDeleteCluster := true
-
-	for t, ms := range c.members {
-		wg.Add(1)
-		go ms.Run()
-	}
-
 	wg.Add(1)
 	defer func() {
 		if needDeleteCluster {
@@ -87,6 +85,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		wg.Done()
 	}()
 
+	needDeleteCluster := true
 	for {
 		select {
 		case <-stopC:
@@ -103,11 +102,6 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			}
 		}
 	}
-}
-
-func (c *Cluster) splitAndDistributeSpec() {
-	// ms, _ := c.members[PD]
-	// ms.SetSepc(event.spec)
 }
 
 func (c *Cluster) createClientServiceLB() error {

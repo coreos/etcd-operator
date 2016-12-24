@@ -1,6 +1,9 @@
 package member
 
 import (
+	"fmt"
+
+	"github.com/GregoryIan/oprator/spec"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
@@ -28,44 +31,49 @@ func (m *pdMember) peerAddr() string {
 }
 
 type PDMemberSet struct {
-	Name      string
-	IDCounter int
-	status    Status
-	MS        map[string]*pdMember
-	Spec      *spec.ClusterSpec
-	kubeCli   *unversioned.Client
+	clusterName string
+	nameSpace   string
+	idCounter   int
+	ms          map[string]*pdMember
+	spec        *spec.ClusterSpec
+	kubeCli     *unversioned.Client
 }
 
-func SeedPDMemberset(s *spec.ClusterSpec, kubeCli *unversioned.Client) (MemberSet, error) {
+func init() {
+	RegisterSeedMemberFunc(PD, SeedPDMemberset)
+}
+
+func SeedPDMemberset(kubeCli *unversioned.Client, clusterName, nameSpace string, s *spec.ClusterSpec) (MemberSet, error) {
 	pms := &PDMemberSet{
-		Name: "pd",
-		MS:   make(map[string]*pdMember),
+		clusterName: clusterName,
+		nameSpace:   nameSpace,
+		ms:          make(map[string]*pdMember),
+		spec:        s,
 	}
-	fName := ms.makeFirstMemberName()
 
-	m := &pdMember{
-		name: fName,
-	}
-	pms.MS[m.name] = m
-
-	pms.kubeCli = kubeCli
-	err := pms.CreatePodAndService(fName, nameSpace, s)
-	if err != nil {
-		return nil, err
-	}
+	err := makeSeedPD()
 	return pms, nil
 }
 
-func (pms *PDMemberSet) makeFirstMemberName() string {
-	firstMemberName := fmt.Sprintf("%s-%04d", pms.Name, c.IdCounter)
-	pms.IdCounter++
-	return fisrtMemberName
+func (pms *PDMemberSet) makeSeedPD() error {
+	newMemberName := fmt.Sprintf("%s-pd-%04d", pms.clusterName, pms.idCounter)
+	pms.idCounter++
+	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
+
+	pod := pms.makeSelfHostedEtcdPod(newMemberName, initialCluster, pms.clusterName, "new", uuid.New(), pms.spec)
+	_, err := k8sutil.CreateAndWaitPod(pms.kubeCli, pms.namespace, pod, 30*time.Second)
+	if err != nil {
+		return err
+	}
+
+	c.logger.Infof("self-hosted cluster created with seed member (%s)", newMemberName)
+	return nil
 }
 
 func (pms *PDMemberSet) Diff(other MemberSet) {
 	o, ok := other.(*PDMemberSet)
 	if !ok {
-		log.Errorf
+		log.Errorf("other(%v) is not a PDMemberSet", other)
 	}
 	s := &PDMemberSet{
 		MS: make(map[string]*pdMember),
@@ -120,16 +128,13 @@ func (pms *PDMemberSet) addMember(m *pdMember) {
 }
 
 func (pms *PDMemberSet) Run(stopC <-chan struct{}, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
 	for {
 		select {
 		case <-stopC:
-			wg.Done()
 			return
 		case <-time.After(5 * time.Second):
-			if pms.spec.Paused {
-				log.Info("control is paused, skipping reconcilation")
-				continue
-			}
 			//TODO
 			running, pending, err := k8sutil.pollPods()
 			if err != nil {
@@ -160,6 +165,69 @@ func (pms *PDMemberSet) Size() {
 	return len(pms.MS)
 }
 
-func init() {
-	RegisterSeedMemberFunc(PD, SeedPDMemberset)
+func (pms *PDMemberSet) makeSelfHostedEtcdPod(name string, initialCluster []string, state, token string) *api.Pod {
+	commands := fmt.Sprintf("/bin/pd --data-dir=/var/tidb-cluster/pd --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
+		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
+		"--initial-cluster=%s --initial-cluster-state=%s",
+		name, strings.Join(initialCluster, ","), state)
+
+	if state == "new" {
+		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
+	}
+
+	pod := &api.Pod{
+		ObjectMeta: api.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"app":          "pd",
+				"pd-node":      name,
+				"tidb_cluster": pms.clusterName,
+			},
+			Annotations: map[string]string{},
+		},
+		Spec: api.PodSpec{
+			Containers: []api.Container{
+				{
+					// TODO: fix "sleep 5".
+					// Without waiting some time, there is highly probable flakes in network setup.
+					Command: []string{"/bin/sh", "-c", fmt.Sprintf("sleep 5; %s", commands)},
+					Name:    name,
+					Image:   MakeImage(pms.Pd.Version, PD),
+					Ports: []api.ContainerPort{
+						{
+							Name:          "server",
+							ContainerPort: int32(2380),
+							Protocol:      api.ProtocolTCP,
+						},
+						{
+							Name:          "client",
+							ContainerPort: int32(2379),
+							Protocol:      api.ProtocolTCP,
+						},
+					},
+					VolumeMounts: []api.VolumeMount{
+						{Name: "pd-data", MountPath: tidbClusterDir},
+					},
+					Env: []api.EnvVar{envPodIP},
+				},
+			},
+			RestartPolicy: api.RestartPolicyAlways,
+			SecurityContext: &api.PodSecurityContext{
+				HostNetwork: true,
+			},
+			Volumes: []api.Volume{
+				{Name: "pd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
+			},
+		},
+	}
+
+	SetVersion(pod, pms.spec.Pd.Version, pd)
+
+	pod = PodWithAntiAffinity(pod, clusterName)
+
+	if len(cs.NodeSelector) != 0 {
+		pod = PodWithNodeSelector(pod, cs.NodeSelector)
+	}
+
+	return pod
 }
