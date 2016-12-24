@@ -15,19 +15,11 @@ type pdMember struct {
 }
 
 func (m *pdMember) clientAddr() string {
-	if len(m.clientURLs) != 0 {
-		return strings.Join(m.clientURLs, ",")
-	}
-
-	return fmt.Sprintf("http://%s:2379", m.name)
+	return strings.Join(m.clientURLs, ",")
 }
 
 func (m *pdMember) peerAddr() string {
-	if len(m.PeerURLs) != 0 {
-		return strings.Join(m.peerURLs, ",")
-	}
-
-	return fmt.Sprintf("http://%s:2380", m.name)
+	return strings.Join(m.peerURLs, ",")
 }
 
 type PDMemberSet struct {
@@ -43,7 +35,7 @@ func init() {
 	RegisterSeedMemberFunc(PD, SeedPDMemberset)
 }
 
-func SeedPDMemberset(kubeCli *unversioned.Client, clusterName, nameSpace string, s *spec.ClusterSpec) (MemberSet, error) {
+func NewPDMemberset(kubeCli *unversioned.Client, clusterName, nameSpace string, s *spec.ClusterSpec) (MemberSet, error) {
 	pms := &PDMemberSet{
 		clusterName: clusterName,
 		nameSpace:   nameSpace,
@@ -51,7 +43,7 @@ func SeedPDMemberset(kubeCli *unversioned.Client, clusterName, nameSpace string,
 		spec:        s,
 	}
 
-	err := makeSeedPD()
+	err := newSeedMember()
 	if err != nil {
 		return nil, err
 	}
@@ -59,18 +51,62 @@ func SeedPDMemberset(kubeCli *unversioned.Client, clusterName, nameSpace string,
 	return pms, nil
 }
 
-func (pms *PDMemberSet) makeSeedPD() (*pdMember, error) {
+func (pms *PDMemberSet) newSeedMember() (*pdMember, error) {
 	newMemberName := fmt.Sprintf("%s-pd-%04d", pms.clusterName, pms.idCounter)
 	pms.idCounter++
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
 
-	pod := pms.newPDSeedMember(newMemberName, initialCluster, pms.clusterName, "new", uuid.New(), pms.spec)
+	pod := pms.makePDMember(newMemberName, initialCluster, pms.clusterName, "new", uuid.New(), pms.spec)
 	_, err := CreateAndWaitPod(pms.kubeCli, pms.namespace, pod, 30*time.Second)
 	if err != nil {
 		return nil, err
 	}
 
 	log.Infof("tidb cluster created with seed pd member (%s)", newMemberName)
+	return nil
+}
+
+func (pms *PDMemberSet) AddOneMember() error {
+	newMemberName := fmt.Sprintf("%s-pd-%04d", pms.clusterName, pms.idCounter)
+	pms.idCounter++
+
+	peerURL := "http://$(MY_POD_IP):2380"
+	initialCluster := append(pms.PeerURLPairs(), newMemberName+"="+peerURL)
+
+	pod := pms.makePDMember(newMemberName, initialCluster, c.Name, "existing", "", pms.spec)
+	pod = PodWithAddMemberInitContainer(pod, pms.ClientURLs(), newMemberName, []string{peerURL}, c.spec)
+
+	_, err := pms.KubeCli.Pods(pms.namespace).Create(pod)
+	if err != nil {
+		return err
+	}
+	// wait for the new pod to start and add itself into the etcd cluster.
+	cfg := clientv3.Config{
+		Endpoints:   c.members.ClientURLs(),
+		DialTimeout: constants.DefaultDialTimeout,
+	}
+	etcdcli, err := clientv3.New(cfg)
+	if err != nil {
+		return err
+	}
+	defer etcdcli.Close()
+
+	oldN := c.members.Size()
+	// TODO: do not wait forever.
+	for {
+		err = pms.updateMembers(etcdcli)
+		// TODO: check error type to determine the etcd member is not ready.
+		if err != nil && c.members != nil {
+			log.Errorf("failed to list pd members for update: %v", err)
+			return err
+		}
+		if pms.Size() > oldN {
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
+
+	log.Infof("added a pd member (%s)", newMemberName)
 	return nil
 }
 
@@ -93,7 +129,7 @@ func (pms *PDMemberSet) Diff(other MemberSet) {
 
 func (pms *PDMemberSet) PeerURLPairs() []string {
 	ps := make([]string, 0)
-	for _, m := range pms.MS {
+	for _, m := range pms.ms {
 		ps = append(ps, fmt.Sprintf("%s=%s", m.name, m.peerAddr()))
 	}
 	return ps
@@ -101,35 +137,13 @@ func (pms *PDMemberSet) PeerURLPairs() []string {
 
 func (pms *PDMemberSet) ClientURLs() []string {
 	endpoints := make([]string, 0, len(pms.MS))
-	for _, m := range pms.MS {
+	for _, m := range pms.ms {
 		endpoints = append(endpoints, m.clientAddr())
 	}
 	return endpoints
 }
 
-func (pms *PDMemberSet) CreatePodAndService(memberName string, nameSpace string, s *spec.ClusterSpec) error {
-
-	if _, err := k8sutil.CreatePDMemberService(pms.kubeCli, memberName, pms.Name, namespace); err != nil {
-		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			return err
-		}
-	}
-	token := ""
-	if state == "new" {
-		token = uuid.New()
-	}
-	pod := k8sutil.MakePDPod(m, pms.PeerURLPairs(), memberName, state, token, s)
-	_, err := pms.KubeCli.Pods(namespace).Create(pod)
-	return err
-}
-
-func (pms *PDMemberSet) RemovePodAndService(name string) error {
-	err := pms.KubeCli.Services(pms.Namespace).Delete(name)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-	}
+func (pms *PDMemberSet) RemovePod(name string) error {
 	err = pms.KubeCli.Pods(pms.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
@@ -143,48 +157,11 @@ func (pms *PDMemberSet) SetSpec(s *spec.ClusterSpec) {
 	pms.Spec = s
 }
 
-func (pms *PDMemberSet) addMember(m *pdMember) {
-	pms.MS[m.name] = m
-}
-
-func (pms *PDMemberSet) Run(stopC <-chan struct{}, wg *sync.WaitGroup) {
-	wg.Add(1)
-	defer wg.Done()
-	for {
-		select {
-		case <-stopC:
-			return
-		case <-time.After(5 * time.Second):
-			running, pending, err := k8sutil.pollPods()
-			if err != nil {
-				log.Errorf("fail to poll pods: %v", err)
-				continue
-			}
-			if len(pending) > 0 {
-				log.Info("skip reconciliation: running (%v), pending (%v)", k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
-				continue
-			}
-			//TODO  alert
-			if running == 0 {
-
-			}
-
-			if err := pms.reconcile(running); err != nil {
-				log.Errorf("fail to reconcile: %v", err)
-				if isFatalError(err) {
-					log.Errorf("exiting for fatal error: %v", err)
-					return
-				}
-			}
-		}
-	}
-}
-
 func (pms *PDMemberSet) Size() {
 	return len(pms.MS)
 }
 
-func (pms *PDMemberSet) newPDSeedMember(name string, initialCluster []string, state, token string) *api.Pod {
+func (pms *PDMemberSet) makeMember(name string, initialCluster []string, state, token string) *api.Pod {
 	commands := fmt.Sprintf("/bin/pd --data-dir=%s/pd --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
 		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
@@ -230,10 +207,7 @@ func (pms *PDMemberSet) newPDSeedMember(name string, initialCluster []string, st
 					Env: []api.EnvVar{envPodIP},
 				},
 			},
-			RestartPolicy: api.RestartPolicyAlways,
-			SecurityContext: &api.PodSecurityContext{
-				HostNetwork: true,
-			},
+			RestartPolicy: api.RestartPolicyNever,
 			Volumes: []api.Volume{
 				{Name: "pd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
 			},
@@ -241,7 +215,6 @@ func (pms *PDMemberSet) newPDSeedMember(name string, initialCluster []string, st
 	}
 
 	SetVersion(pod, pms.spec.Pd.Version, pd)
-
 	pod = PodWithAntiAffinity(pod, pms.clusterName)
 
 	if len(pms.spec.NodeSelector) != 0 {

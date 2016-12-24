@@ -10,8 +10,6 @@ type MemberType int
 
 const (
 	PD MemberType = iota
-	TiKV
-	TiDB
 )
 
 var StartUpSequence = []MemberType{PD}
