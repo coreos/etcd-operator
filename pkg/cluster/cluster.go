@@ -45,24 +45,25 @@ const (
 
 type clusterEvent struct {
 	typ  clusterEventType
-	spec *spec.ClusterSpec
+	spec spec.ClusterSpec
 }
 
 type Config struct {
+	Name          string
+	Namespace     string
 	PVProvisioner string
 	s3config.S3Context
 	KubeCli *unversioned.Client
 }
 
-// TODO: better rename to ClusterManager
 type Cluster struct {
 	logger *logrus.Entry
 
 	Config
 
-	*spec.EtcdCluster
-
 	status *Status
+
+	spec *spec.ClusterSpec
 
 	idCounter int
 	eventCh   chan *clusterEvent
@@ -77,37 +78,36 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(c Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
-	return new(c, e, stopC, wg, true)
+func New(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
+	return new(c, s, stopC, wg, true)
 }
 
-func Restore(c Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
-	return new(c, e, stopC, wg, false)
+func Restore(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
+	return new(c, s, stopC, wg, false)
 }
 
-func new(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) (*Cluster, error) {
-	err := e.Spec.Validate()
+func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) (*Cluster, error) {
+	err := s.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid cluster spec: %v", err)
 	}
 
-	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", e.Name)
+	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", config.Name)
 	var bm *backupManager
-
-	if b := e.Spec.Backup; b != nil && b.MaxBackups > 0 {
-		bm, err = newBackupManager(config, e, lg, isNewCluster)
+	if b := s.Backup; b != nil && b.MaxBackups > 0 {
+		bm, err = newBackupManager(config, s.Backup, s.Restore, lg, isNewCluster)
 		if err != nil {
 			return nil, err
 		}
 	}
 	c := &Cluster{
-		logger:      lg,
-		Config:      config,
-		EtcdCluster: e,
-		eventCh:     make(chan *clusterEvent, 100),
-		stopCh:      make(chan struct{}),
-		status:      &Status{},
-		bm:          bm,
+		logger:  lg,
+		Config:  config,
+		spec:    s,
+		eventCh: make(chan *clusterEvent, 100),
+		stopCh:  make(chan struct{}),
+		status:  &Status{},
+		bm:      bm,
 	}
 
 	if isNewCluster {
@@ -117,7 +117,7 @@ func new(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 			}
 		}
 
-		if c.Spec.Restore == nil {
+		if c.spec.Restore == nil {
 			// Note: For restore case, we don't need to create seed member,
 			// and will go through reconcile loop and disaster recovery.
 			if err := c.prepareSeedMember(); err != nil {
@@ -138,8 +138,8 @@ func new(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 
 func (c *Cluster) prepareSeedMember() error {
 	var err error
-	if sh := c.Spec.SelfHosted; sh != nil {
-		if len(sh.BootMemberClientEndpoint) == 0 {
+	if c.spec.SelfHosted != nil {
+		if len(c.spec.SelfHosted.BootMemberClientEndpoint) == 0 {
 			err = c.newSelfHostedSeedMember()
 		} else {
 			err = c.migrateBootMember()
@@ -184,13 +184,13 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			switch event.typ {
 			case eventModifyCluster:
 				// TODO: we can't handle another upgrade while an upgrade is in progress
-				c.logger.Infof("spec update: from: %v to: %v", c.Spec, event.spec)
-				c.Spec = event.spec
+				c.logger.Infof("spec update: from: %v to: %v", c.spec, event.spec)
+				c.spec = &event.spec
 			case eventDeleteCluster:
 				return
 			}
 		case <-time.After(5 * time.Second):
-			if c.Spec.Paused {
+			if c.spec.Paused {
 				c.logger.Infof("control is paused, skipping reconcilation")
 				continue
 			}
@@ -262,17 +262,18 @@ func (c *Cluster) restoreSeedMember() error {
 	return c.startSeedMember(true)
 }
 
-func (c *Cluster) Update(e *spec.EtcdCluster) {
+func (c *Cluster) Update(spec *spec.ClusterSpec) {
 	anyInterestedChange := false
-	spec := e.Spec
-	switch {
-	case spec.Size != c.Spec.Size, spec.Paused != c.Spec.Paused, spec.Version != c.Spec.Version:
+	if (spec.Size != c.spec.Size) || (spec.Paused != c.spec.Paused) {
+		anyInterestedChange = true
+	}
+	if spec.Version != c.spec.Version {
 		anyInterestedChange = true
 	}
 	if anyInterestedChange {
 		c.send(&clusterEvent{
 			typ:  eventModifyCluster,
-			spec: e.Spec,
+			spec: *spec,
 		})
 	}
 }
@@ -376,9 +377,9 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	if state == "new" {
 		token = uuid.New()
 	}
-	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.Name, state, token, c.Spec)
+	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.Name, state, token, c.spec)
 	if needRecovery {
-		k8sutil.AddRecoveryToPod(pod, c.Name, m.Name, token, c.Spec)
+		k8sutil.AddRecoveryToPod(pod, c.Name, m.Name, token, c.spec)
 	}
 	_, err := c.KubeCli.Pods(c.Namespace).Create(pod)
 	return err
