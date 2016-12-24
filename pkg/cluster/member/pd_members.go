@@ -119,6 +119,22 @@ func (pms *PDMemberSet) CreatePodAndService(memberName string, nameSpace string,
 	return err
 }
 
+func (pms *PDMemberSet) RemovePodAndService(name string) error {
+	err := pms.KubeCli.Services(pms.Namespace).Delete(name)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	err = pms.KubeCli.Pods(pms.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	return nil
+}
+
 func (pms *PDMemberSet) SetSpec(s *spec.ClusterSpec) {
 	pms.Spec = s
 }
@@ -135,7 +151,6 @@ func (pms *PDMemberSet) Run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		case <-stopC:
 			return
 		case <-time.After(5 * time.Second):
-			//TODO
 			running, pending, err := k8sutil.pollPods()
 			if err != nil {
 				log.Errorf("fail to poll pods: %v", err)
