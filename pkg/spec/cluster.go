@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/meta/metatypes"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 )
 
@@ -31,6 +32,19 @@ type EtcdCluster struct {
 	api.ObjectMeta       `json:"metadata,omitempty"`
 	Spec                 *ClusterSpec   `json:"spec"`
 	Status               *ClusterStatus `json:"status"`
+}
+
+func (e *EtcdCluster) AsOwner() metatypes.OwnerReference {
+	trueVar := true
+	// TODO: In 1.5 this is gonna be "k8s.io/kubernetes/pkg/apis/meta/v1"
+	// Both api.OwnerReference and metatypes.OwnerReference are combined into that.
+	return metatypes.OwnerReference{
+		APIVersion: e.APIVersion,
+		Kind:       e.Kind,
+		Name:       e.Name,
+		UID:        e.UID,
+		Controller: &trueVar,
+	}
 }
 
 type ClusterSpec struct {

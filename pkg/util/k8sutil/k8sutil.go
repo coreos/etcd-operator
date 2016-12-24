@@ -30,6 +30,8 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/meta"
+	"k8s.io/kubernetes/pkg/api/meta/metatypes"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	k8sv1api "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/restclient"
@@ -143,8 +145,7 @@ func MakeBackupName(clusterName string) string {
 	return fmt.Sprintf("%s-backup-tool", clusterName)
 }
 
-func CreateEtcdMemberService(kclient *unversioned.Client, etcdName, clusterName, ns string) (*api.Service, error) {
-	svc := makeEtcdMemberService(etcdName, clusterName)
+func CreateEtcdMemberService(kclient *unversioned.Client, ns string, svc *api.Service) (*api.Service, error) {
 	retSvc, err := kclient.Services(ns).Create(svc)
 	if err != nil {
 		return nil, err
@@ -152,8 +153,9 @@ func CreateEtcdMemberService(kclient *unversioned.Client, etcdName, clusterName,
 	return retSvc, nil
 }
 
-func CreateEtcdService(kclient *unversioned.Client, clusterName, ns string) (*api.Service, error) {
+func CreateEtcdService(kclient *unversioned.Client, clusterName, ns string, owner metatypes.OwnerReference) (*api.Service, error) {
 	svc := makeEtcdService(clusterName)
+	addOwnerRefToObject(svc.GetObjectMeta(), owner)
 	retSvc, err := kclient.Services(ns).Create(svc)
 	if err != nil {
 		return nil, err
@@ -206,7 +208,7 @@ func makeEtcdService(clusterName string) *api.Service {
 }
 
 // TODO: converge the port logic with member ClientAddr() and PeerAddr()
-func makeEtcdMemberService(etcdName, clusterName string) *api.Service {
+func MakeEtcdMemberService(etcdName, clusterName string, owner metatypes.OwnerReference) *api.Service {
 	labels := map[string]string{
 		"app":          "etcd",
 		"etcd_node":    etcdName,
@@ -239,6 +241,7 @@ func makeEtcdMemberService(etcdName, clusterName string) *api.Service {
 			Selector: labels,
 		},
 	}
+	addOwnerRefToObject(svc.GetObjectMeta(), owner)
 	return svc
 }
 
@@ -247,7 +250,11 @@ func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string, cs *spec.Cl
 		makeRestoreInitContainerSpec(MakeBackupHostPort(clusterName), name, token, cs.Version)
 }
 
-func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec) *api.Pod {
+func addOwnerRefToObject(o meta.Object, r metatypes.OwnerReference) {
+	o.SetOwnerReferences(append(o.GetOwnerReferences(), r))
+}
+
+func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec, owner metatypes.OwnerReference) *api.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
@@ -284,7 +291,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 	if len(cs.NodeSelector) != 0 {
 		pod = PodWithNodeSelector(pod, cs.NodeSelector)
 	}
-
+	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
 }
 

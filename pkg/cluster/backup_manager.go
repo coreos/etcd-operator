@@ -17,10 +17,12 @@ package cluster
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/cluster/backupstorage"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
+	"github.com/Sirupsen/logrus"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 type backupManager struct {
@@ -89,11 +91,35 @@ func (bm *backupManager) runSidecar() error {
 	case spec.BackupStorageTypeS3:
 		podSpec = k8sutil.PodSpecWithS3(podSpec, c.S3Context)
 	}
-	err = k8sutil.CreateBackupReplicaSetAndService(c.KubeCli, cl.Name, cl.Namespace, *podSpec)
-	if err != nil {
-		return fmt.Errorf("failed to create backup replica set and service: %v", err)
+	if err = bm.createBackupReplicaSet(*podSpec); err != nil {
+		return fmt.Errorf("failed to create backup replica set: %v", err)
+	}
+	if err = bm.createBackupService(); err != nil {
+		return fmt.Errorf("failed to create backup service: %v", err)
 	}
 	bm.logger.Info("backup replica set and service created")
+	return nil
+}
+
+func (bm *backupManager) createBackupReplicaSet(podSpec api.PodSpec) error {
+	rs := k8sutil.MakeBackupReplicaSet(bm.cluster.Name, podSpec, bm.cluster.AsOwner())
+	_, err := bm.config.KubeCli.ReplicaSets(bm.cluster.Namespace).Create(rs)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (bm *backupManager) createBackupService() error {
+	svc := k8sutil.MakeBackupService(bm.cluster.Name, bm.cluster.AsOwner())
+	_, err := bm.config.KubeCli.Services(bm.cluster.Namespace).Create(svc)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+			return err
+		}
+	}
 	return nil
 }
 
