@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
 	"github.com/coreos/etcd/clientv3"
 	"github.com/pborman/uuid"
 )
@@ -33,6 +34,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	initialCluster := append(c.members.PeerURLPairs(), newMemberName+"="+peerURL)
 
 	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "existing", "", c.Spec)
+	pod = k8sutil.PodWithOwnerRef(pod, c.makeOwnerRef())
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.Spec)
 
 	_, err := c.KubeCli.Pods(c.Namespace).Create(pod)
@@ -75,6 +77,7 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
 
 	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "new", uuid.New(), c.Spec)
+	pod = k8sutil.PodWithOwnerRef(pod, c.makeOwnerRef())
 	_, err := k8sutil.CreateAndWaitPod(c.KubeCli, c.Namespace, pod, 30*time.Second)
 	if err != nil {
 		return err
@@ -112,6 +115,7 @@ func (c *Cluster) migrateBootMember() error {
 
 	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "existing", "", c.Spec)
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, []string{endpoint}, newMemberName, []string{peerURL}, c.Spec)
+	pod = k8sutil.PodWithOwnerRef(pod, c.makeOwnerRef())
 	pod, err = k8sutil.CreateAndWaitPod(c.KubeCli, c.Namespace, pod, 30*time.Second)
 	if err != nil {
 		return err

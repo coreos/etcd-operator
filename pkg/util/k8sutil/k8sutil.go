@@ -284,6 +284,11 @@ func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string, cs *spec.Cl
 		makeRestoreInitContainerSpec(MakeBackupHostPort(clusterName), name, token, cs.Version)
 }
 
+func PodWithOwnerRef(pod *api.Pod, o api.OwnerReference) *api.Pod {
+	pod.OwnerReferences[0] = o
+	return pod
+}
+
 func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec) *api.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+

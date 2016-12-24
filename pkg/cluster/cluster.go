@@ -377,11 +377,24 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 		token = uuid.New()
 	}
 	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.Name, state, token, c.Spec)
+	pod = k8sutil.PodWithOwnerRef(pod, c.makeOwnerRef())
 	if needRecovery {
 		k8sutil.AddRecoveryToPod(pod, c.Name, m.Name, token, c.Spec)
 	}
 	_, err := c.KubeCli.Pods(c.Namespace).Create(pod)
 	return err
+}
+
+func (c *Cluster) makeOwnerRef() k8sapi.OwnerReference {
+	trueVar := true
+	// TODO: in 1.5 this is gonna be "k8s.io/kubernetes/pkg/apis/meta/v1"
+	return k8sapi.OwnerReference{
+		APIVersion: c.EtcdCluster.APIVersion,
+		Kind:       c.EtcdCluster.Kind,
+		Name:       c.EtcdCluster.Name,
+		UID:        c.EtcdCluster.UID,
+		Controller: &trueVar,
+	}
 }
 
 func (c *Cluster) removePodAndService(name string) error {
@@ -412,6 +425,9 @@ func (c *Cluster) pollPods() ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
 		pod := &podList.Items[i]
 		switch pod.Status.Phase {
 		case k8sapi.PodRunning:
+			if pod.OwnerReferences[0].UID != c.UID {
+				continue
+			}
 			running = append(running, pod)
 		case k8sapi.PodPending:
 			pending = append(pending, pod)
