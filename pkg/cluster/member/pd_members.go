@@ -110,6 +110,33 @@ func (pms *PDMemberSet) AddOneMember() error {
 	return nil
 }
 
+func (pms *PDMemberSet) UpdateMembers(etcdcli *clientv3.Client) error {
+	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	resp, err := cli.MemberList(ctx)
+	if err != nil {
+		return err
+	}
+	pms = &pdMemberSet{}
+	for _, m := range resp.Members {
+		if len(m.Name) == 0 {
+			pms.MS = nil
+			return fmt.Errorf("the name of member (%x) is empty. Not ready yet. Will retry later", m.ID)
+		}
+		id := findID(m.Name)
+		if id+1 > pms.idCounter {
+			pms.idCounter = id + 1
+		}
+
+		pms.ms[m.Name] = &pdMember{
+			Name:       m.Name,
+			ID:         m.ID,
+			ClientURLs: m.ClientURLs,
+			PeerURLs:   m.PeerURLs,
+		}
+	}
+	return nil
+}
+
 func (pms *PDMemberSet) Diff(other MemberSet) {
 	o, ok := other.(*PDMemberSet)
 	if !ok {
@@ -143,14 +170,15 @@ func (pms *PDMemberSet) ClientURLs() []string {
 	return endpoints
 }
 
-func (pms *PDMemberSet) RemovePod(name string) error {
-	err = pms.KubeCli.Pods(pms.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
+func (pms *PDMemberSet) Remove(name string) {
+	delete(pms.ms, name)
+}
+
+func (pms *PDMemberSet) PickOne() *pdMember {
+	for _, m := range pms.ms {
+		return m
 	}
-	return nil
+	panic("empty")
 }
 
 func (pms *PDMemberSet) SetSpec(s *spec.ClusterSpec) {
