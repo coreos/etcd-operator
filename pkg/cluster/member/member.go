@@ -16,10 +16,6 @@ var StartUpSequence = []MemberType{PD}
 
 func (s MemberType) String() string {
 	switch s {
-	case TiDB:
-		return "tidb"
-	case TiKV:
-		return "tikv"
 	case PD:
 		return "pd"
 	}
@@ -30,9 +26,14 @@ type SeedFunc func(*unversioned.Client, string, string, *spec.ClusterSpec) Membe
 var seedMapFunc = make(map[MemberType]SeedFunc)
 
 type MemberSet interface {
+	Add(*api.Pod)
+	AddOneMember()
 	Diff(other MemberSet) MemberSet
+	PickOne()
+	Remove(string)
 	Size() int
-	Type() MemberType
+	SetSpec(*spec.ClusterSpec)
+	UpdateMembers(*clientv3.Client)
 }
 
 func RegisterSeedMemberFunc(typ MemberType, f SeedFunc) {
@@ -54,4 +55,11 @@ func InitSeedMembers(kubeCli *unversioned.Client, clusterName, nameSpace string,
 	}
 
 	return mss, nil
+}
+
+func GetEmptyMemberSet(tp MemberType) MemberSet {
+	switch {
+	case PD:
+		return &PDMemberSet{ms: make(map[string]*pdMember)}
+	}
 }

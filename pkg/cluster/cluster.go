@@ -100,6 +100,31 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			case eventDeleteCluster:
 				return
 			}
+		case <-time.After(5 * time.Second):
+			if c.spec.Paused {
+				log.Infof("control is paused, skipping reconcilation")
+				continue
+			}
+
+			for _, memberTp := range member.StartUpSequence {
+				// todo: go func
+				running, pending, err := c.pollPods(memberTp)
+				if err != nil {
+					log.Errorf("fail to poll memberType: %v pods: %v", memberTp, err)
+					continue
+				}
+				if len(pending) > 0 {
+					log.Infof("skip reconciliation: memberType: %v running (%v), pending (%v)", memberTp, member.GetPodNames(running), member.GetPodNames(pending))
+					continue
+				}
+				if len(running) == 0 {
+					log.Warningf(fmt.Sprintf("all memberType: %v pods are dead. Trying to recover from a previous backup", memberTp))
+					panic(fmt.Sprintf("all memberType: %v pods are dead. Trying to recover from a previous backup", memberTp))
+				}
+				if err := c.reconcile(running, op); err != nil {
+					log.Errorf("fail to reconcile: %v", err)
+				}
+			}
 		}
 	}
 }
@@ -192,4 +217,25 @@ func (c *Cluster) deleteClientService(name string) error {
 	}
 
 	return nil
+}
+
+func (c *Cluster) pollPods(tp member.MemberType) ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
+	podList, err := c.KubeCli.Pods(c.Namespace).List(member.PodListOpt(c.Name, tp))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to list running ServiceType: %v pods: %v", op, err)
+	}
+
+	var running []*k8sapi.Pod
+	var pending []*k8sapi.Pod
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		switch pod.Status.Phase {
+		case k8sapi.PodRunning:
+			running = append(running, pod)
+		case k8sapi.PodPending:
+			pending = append(pending, pod)
+		}
+	}
+
+	return running, pending, nil
 }

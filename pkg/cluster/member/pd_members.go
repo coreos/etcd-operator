@@ -4,22 +4,23 @@ import (
 	"fmt"
 
 	"github.com/GregoryIan/oprator/spec"
+	"github.com/juju/errors"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 type pdMember struct {
-	name       string
-	id         uint64
-	perrURLs   []string
-	clientURLs []string
+	Name       string
+	ID         uint64
+	PerrURLs   []string
+	ClientURLs []string
 }
 
 func (m *pdMember) clientAddr() string {
-	return strings.Join(m.clientURLs, ",")
+	return strings.Join(m.ClientURLs, ",")
 }
 
 func (m *pdMember) peerAddr() string {
-	return strings.Join(m.peerURLs, ",")
+	return strings.Join(m.PeerURLs, ",")
 }
 
 type PDMemberSet struct {
@@ -64,6 +65,13 @@ func (pms *PDMemberSet) newSeedMember() (*pdMember, error) {
 
 	log.Infof("tidb cluster created with seed pd member (%s)", newMemberName)
 	return nil
+}
+
+func (pms *PDMemberSet) Add(pd *api.Pod) {
+	m := &PDMember{name: pod.Name}
+	m.clientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
+	m.peerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
+	pms.ms[pm.name] = m
 }
 
 func (pms *PDMemberSet) AddOneMember() error {
@@ -185,7 +193,7 @@ func (pms *PDMemberSet) SetSpec(s *spec.ClusterSpec) {
 	pms.Spec = s
 }
 
-func (pms *PDMemberSet) Size() {
+func (pms *PDMemberSet) Size() int64 {
 	return len(pms.MS)
 }
 

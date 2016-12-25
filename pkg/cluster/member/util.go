@@ -20,6 +20,40 @@ var (
 	}
 )
 
+func isNonConsistent(size, localSize int, tp MemberType) bool {
+	switch {
+	case PD:
+		return size < localSize/2+1
+	}
+}
+
+func NotEqualPodSize(size int, s *spec.ClusterSpec, tp MemberType) {
+	switch {
+	case PD:
+		return size != s.Pd.Size
+	}
+
+	return false
+}
+
+func GetSpecVersion(s *spec.ClusterSpec, tp MemberType) string {
+	switch {
+	case PD:
+		return s.Pd.Version
+	}
+
+	return ""
+}
+
+func GetSpecSize(s *spec.ClusterSpec, tp MemberType) string {
+	switch {
+	case PD:
+		return s.Pd.Size
+	}
+
+	return 0
+}
+
 func GetVersion(pod *api.Pod, tp ServiceType) string {
 	return pod.Annotations[fmt.Sprintf("%s.version", tp)]
 }
@@ -218,6 +252,25 @@ func makeTiDBNodePortService(tidbName, clusterName string) *api.Service {
 	return svc
 }
 
+func removeMember(clientURLs []string, id uint64, tp MemberType) error {
+	cfg := clientv3.Config{
+		Endpoints:   clientURLs,
+		DialTimeout: constants.DefaultDialTimeout,
+	}
+	etcdcli, err := clientv3.New(cfg)
+	if err != nil {
+		return err
+	}
+	defer etcdcli.Close()
+
+	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	switch {
+	case PD:
+		_, err = etcdcli.Cluster.MemberRemove(ctx, id)
+	}
+	return err
+}
+
 func PodWithNodeSelector(p *api.Pod, ns map[string]string) *api.Pod {
 	p.Spec.NodeSelector = ns
 	return p
@@ -234,4 +287,13 @@ func findID(name string) int {
 		panic(fmt.Sprintf("TODO: fail to extract valid ID from name (%s): %v", name, err))
 	}
 	return id
+}
+
+func PodListOpt(clusterName string, tp MemberType) api.ListOptions {
+	return api.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			"tidb_cluster": clusterName,
+			"app":          tp.String(),
+		}),
+	}
 }

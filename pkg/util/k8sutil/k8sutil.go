@@ -128,12 +128,3 @@ func WaitTiDBTPRReady(httpClient *http.Client, interval, timeout time.Duration, 
 		}
 	})
 }
-
-func PodListOpt(clusterName string, op ServiceType) api.ListOptions {
-	return api.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"tidb_cluster": clusterName,
-			"app":          op.String(),
-		}),
-	}
-}
