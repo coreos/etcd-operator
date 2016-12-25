@@ -55,3 +55,7 @@ func InitSeedMembers(kubeCli *unversioned.Client, clusterName, nameSpace string,
 
 	return mss, nil
 }
+
+func GetMemberSet(typ MemberType) (set MemberSet){
+	return new pdMember();
+}

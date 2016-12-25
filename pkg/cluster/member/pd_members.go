@@ -45,7 +45,7 @@ func NewPDMemberset(kubeCli *unversioned.Client, clusterName, nameSpace string, 
 
 	err := newSeedMember()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	return pms, nil

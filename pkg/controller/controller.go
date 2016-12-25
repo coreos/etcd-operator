@@ -222,14 +222,17 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 			}
 
 			log.Infof("start watching at %v", watchVersion)
+
 			decoder := json.NewDecoder(resp.Body)
 			for {
 				ev, st, err := pollEvent(decoder) // streaming way
+
 				if err != nil {
 					if err == io.EOF {
 						log.Debug("apiserver closed stream")
 						break
 					}
+
 					log.Errorf("received invalid event from API server: %v", err)
 					errCh <- err
 					return
@@ -242,6 +245,7 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 					}
 					log.Fatalf("unexpected status response from API server: %v", st.Message)
 				}
+
 				log.Debugf("etcd cluster event: %v %v", ev.Type, ev.Object.Spec)
 
 				watchVersion = ev.Object.ObjectMeta.ResourceVersion
