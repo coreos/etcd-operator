@@ -44,13 +44,11 @@ const (
 )
 
 type clusterEvent struct {
-	typ  clusterEventType
-	spec spec.ClusterSpec
+	typ     clusterEventType
+	cluster *spec.EtcdCluster
 }
 
 type Config struct {
-	Name          string
-	Namespace     string
 	PVProvisioner string
 	s3config.S3Context
 	KubeCli *unversioned.Client
@@ -59,11 +57,11 @@ type Config struct {
 type Cluster struct {
 	logger *logrus.Entry
 
-	Config
+	config Config
+
+	cluster *spec.EtcdCluster
 
 	status *Status
-
-	spec *spec.ClusterSpec
 
 	idCounter int
 	eventCh   chan *clusterEvent
@@ -78,32 +76,33 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
-	return new(c, s, stopC, wg, true)
+func New(c Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
+	return new(c, e, stopC, wg, true)
 }
 
-func Restore(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
-	return new(c, s, stopC, wg, false)
+func Restore(c Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
+	return new(c, e, stopC, wg, false)
 }
 
-func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) (*Cluster, error) {
-	err := s.Validate()
+func new(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) (*Cluster, error) {
+	err := e.Spec.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid cluster spec: %v", err)
 	}
 
-	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", config.Name)
+	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", e.Name)
 	var bm *backupManager
-	if b := s.Backup; b != nil && b.MaxBackups > 0 {
-		bm, err = newBackupManager(config, s.Backup, s.Restore, lg, isNewCluster)
+
+	if b := e.Spec.Backup; b != nil && b.MaxBackups > 0 {
+		bm, err = newBackupManager(config, e, lg, isNewCluster)
 		if err != nil {
 			return nil, err
 		}
 	}
 	c := &Cluster{
 		logger:  lg,
-		Config:  config,
-		spec:    s,
+		config:  config,
+		cluster: e,
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
 		status:  &Status{},
@@ -117,7 +116,7 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 			}
 		}
 
-		if c.spec.Restore == nil {
+		if c.cluster.Spec.Restore == nil {
 			// Note: For restore case, we don't need to create seed member,
 			// and will go through reconcile loop and disaster recovery.
 			if err := c.prepareSeedMember(); err != nil {
@@ -138,8 +137,8 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 
 func (c *Cluster) prepareSeedMember() error {
 	var err error
-	if c.spec.SelfHosted != nil {
-		if len(c.spec.SelfHosted.BootMemberClientEndpoint) == 0 {
+	if sh := c.cluster.Spec.SelfHosted; sh != nil {
+		if len(sh.BootMemberClientEndpoint) == 0 {
 			err = c.newSelfHostedSeedMember()
 		} else {
 			err = c.migrateBootMember()
@@ -184,13 +183,13 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			switch event.typ {
 			case eventModifyCluster:
 				// TODO: we can't handle another upgrade while an upgrade is in progress
-				c.logger.Infof("spec update: from: %v to: %v", c.spec, event.spec)
-				c.spec = &event.spec
+				c.logger.Infof("spec update: from: %v to: %v", c.cluster.Spec, event.cluster.Spec)
+				c.cluster = event.cluster
 			case eventDeleteCluster:
 				return
 			}
 		case <-time.After(5 * time.Second):
-			if c.spec.Paused {
+			if c.cluster.Spec.Paused {
 				c.logger.Infof("control is paused, skipping reconcilation")
 				continue
 			}
@@ -239,7 +238,7 @@ func isFatalError(err error) bool {
 }
 
 func (c *Cluster) makeSeedMember() *etcdutil.Member {
-	etcdName := fmt.Sprintf("%s-%04d", c.Name, c.idCounter)
+	etcdName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.idCounter)
 	return &etcdutil.Member{Name: etcdName}
 }
 
@@ -262,18 +261,17 @@ func (c *Cluster) restoreSeedMember() error {
 	return c.startSeedMember(true)
 }
 
-func (c *Cluster) Update(spec *spec.ClusterSpec) {
+func (c *Cluster) Update(e *spec.EtcdCluster) {
 	anyInterestedChange := false
-	if (spec.Size != c.spec.Size) || (spec.Paused != c.spec.Paused) {
-		anyInterestedChange = true
-	}
-	if spec.Version != c.spec.Version {
+	s1, s2 := e.Spec, c.cluster.Spec
+	switch {
+	case s1.Size != s2.Size, s1.Paused != s2.Paused, s1.Version != s2.Version:
 		anyInterestedChange = true
 	}
 	if anyInterestedChange {
 		c.send(&clusterEvent{
-			typ:  eventModifyCluster,
-			spec: *spec,
+			typ:     eventModifyCluster,
+			cluster: e,
 		})
 	}
 }
@@ -318,12 +316,12 @@ func findID(name string) int {
 func (c *Cluster) delete() {
 	option := k8sapi.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"etcd_cluster": c.Name,
+			"etcd_cluster": c.cluster.Name,
 			"app":          "etcd",
 		}),
 	}
 
-	pods, err := c.KubeCli.Pods(c.Namespace).List(option)
+	pods, err := c.config.KubeCli.Pods(c.cluster.Namespace).List(option)
 	if err != nil {
 		c.logger.Errorf("cluster deletion: cannot delete any pod due to failure to list: %v", err)
 	} else {
@@ -348,7 +346,7 @@ func (c *Cluster) delete() {
 }
 
 func (c *Cluster) createClientServiceLB() error {
-	if _, err := k8sutil.CreateEtcdService(c.KubeCli, c.Name, c.Namespace); err != nil {
+	if _, err := k8sutil.CreateEtcdService(c.config.KubeCli, c.cluster.Name, c.cluster.Namespace); err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
 		}
@@ -357,7 +355,7 @@ func (c *Cluster) createClientServiceLB() error {
 }
 
 func (c *Cluster) deleteClientServiceLB() error {
-	err := c.KubeCli.Services(c.Namespace).Delete(c.Name)
+	err := c.config.KubeCli.Services(c.cluster.Namespace).Delete(c.cluster.Name)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
@@ -368,7 +366,7 @@ func (c *Cluster) deleteClientServiceLB() error {
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
 	// TODO: remove garbage service. Because we will fail after service created before pods created.
-	if _, err := k8sutil.CreateEtcdMemberService(c.KubeCli, m.Name, c.Name, c.Namespace); err != nil {
+	if _, err := k8sutil.CreateEtcdMemberService(c.config.KubeCli, m.Name, c.cluster.Name, c.cluster.Namespace); err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
 		}
@@ -377,22 +375,22 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	if state == "new" {
 		token = uuid.New()
 	}
-	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.Name, state, token, c.spec)
+	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.cluster.Name, state, token, c.cluster.Spec)
 	if needRecovery {
-		k8sutil.AddRecoveryToPod(pod, c.Name, m.Name, token, c.spec)
+		k8sutil.AddRecoveryToPod(pod, c.cluster.Name, m.Name, token, c.cluster.Spec)
 	}
-	_, err := c.KubeCli.Pods(c.Namespace).Create(pod)
+	_, err := c.config.KubeCli.Pods(c.cluster.Namespace).Create(pod)
 	return err
 }
 
 func (c *Cluster) removePodAndService(name string) error {
-	err := c.KubeCli.Services(c.Namespace).Delete(name)
+	err := c.config.KubeCli.Services(c.cluster.Namespace).Delete(name)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
 	}
-	err = c.KubeCli.Pods(c.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
+	err = c.config.KubeCli.Pods(c.cluster.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
@@ -402,7 +400,7 @@ func (c *Cluster) removePodAndService(name string) error {
 }
 
 func (c *Cluster) pollPods() ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
-	podList, err := c.KubeCli.Pods(c.Namespace).List(k8sutil.EtcdPodListOpt(c.Name))
+	podList, err := c.config.KubeCli.Pods(c.cluster.Namespace).List(k8sutil.EtcdPodListOpt(c.cluster.Name))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)
 	}
