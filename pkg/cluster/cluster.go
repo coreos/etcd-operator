@@ -71,7 +71,6 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 			c.members[tp] = member.GetEmptyMemberSet(tp)
 		}
 	}
-
 	member.SplitAndDistributeSpec(s, c.spec, c.members)
 
 	go c.run(stopC, wg)

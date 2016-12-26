@@ -42,14 +42,13 @@ func init() {
 	RegisterSeedMemberFunc(PD, NewPDMemberset)
 }
 
-func NewPDMemberset(kubeCli *unversioned.Client, clusterName, namespace string, s *spec.ClusterSpec) (MemberSet, error) {
+func newPDMemberset(kubeCli *unversioned.Client, clusterName, namespace string, s *spec.ClusterSpec) (MemberSet, error) {
 	pms := &PDMemberSet{
 		clusterName: clusterName,
 		namespace:   namespace,
 		members:     make(map[string]*pdMember),
 		spec:        s.PD,
 	}
-
 	err := pms.newSeedMember()
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -292,7 +291,7 @@ func (pms *PDMemberSet) makePDMember(name string, initialCluster []string, state
 	SetVersion(pod, version, PD)
 	pod = PodWithAntiAffinity(pod, pms.clusterName)
 
-	if pms.spec.NodeSelector != nil && len(pms.spec.NodeSelector) != 0 {
+	if len(pms.spec.NodeSelector) != 0 {
 		pod = PodWithNodeSelector(pod, pms.spec.NodeSelector)
 	}
 

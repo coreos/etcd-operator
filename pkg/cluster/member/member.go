@@ -68,6 +68,7 @@ func RegisterSeedMemberFunc(typ MemberType, f SeedFunc) {
 	seedMapFunc[typ] = f
 }
 
+// InitSeedMembers initializes tidb cluster, contains only one server for each member type
 func InitSeedMembers(kubeCli *unversioned.Client, clusterName, nameSpace string, s *spec.ClusterSpec) (map[MemberType]MemberSet, error) {
 	mss := make(map[MemberType]MemberSet)
 	for _, m := range ServiceAdjustSequence {

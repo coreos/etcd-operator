@@ -30,11 +30,15 @@ var (
 	}
 )
 
+// SplitAndDistributeSpec split the cluster's spec into mulitiple services' spec
 func SplitAndDistributeSpec(news, olds *spec.ClusterSpec, ms map[MemberType]MemberSet) {
 	for _, tp := range ServiceAdjustSequence {
 		switch tp {
 		case PD:
 			if news.PD != nil {
+				if len(news.PD.Version) == 0 {
+					news.PD.Version = defaultVersion
+				}
 				olds.PD = news.PD
 				ms[PD].SetSpec(news.PD)
 			}

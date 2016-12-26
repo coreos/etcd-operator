@@ -23,7 +23,6 @@ type ServiceSpec struct {
 	Size         int               `json:"size"`
 	Version      string            `json:"version"`
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	AntiAffinity bool              `json:"antiAffinity"`
 }
 
 // ClusterSpec contains details of tidb-cluster spec
