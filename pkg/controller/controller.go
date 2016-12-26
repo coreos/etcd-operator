@@ -174,16 +174,12 @@ func (c *Controller) Run() error {
 
 func (c *Controller) findAllClusters() (string, error) {
 	c.logger.Info("finding existing clusters...")
-	resp, err := k8sutil.ListETCDCluster(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client)
+	clusters, rv, err := c.getClustersFromTPR()
 	if err != nil {
 		return "", err
 	}
-	d := json.NewDecoder(resp.Body)
-	list := &EtcdClusterList{}
-	if err := d.Decode(list); err != nil {
-		return "", err
-	}
-	for _, item := range list.Items {
+
+	for _, item := range clusters {
 		clusterName := item.Name
 		stopC := make(chan struct{})
 		nc, err := cluster.Restore(c.makeClusterConfig(clusterName), item.Spec, stopC, &c.waitCluster)
@@ -194,7 +190,21 @@ func (c *Controller) findAllClusters() (string, error) {
 		c.stopChMap[clusterName] = stopC
 		c.clusters[clusterName] = nc
 	}
-	return list.ListMeta.ResourceVersion, nil
+
+	return rv, nil
+}
+
+func (c *Controller) getClustersFromTPR() ([]spec.EtcdCluster, string, error) {
+	resp, err := k8sutil.ListETCDCluster(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client)
+	if err != nil {
+		return nil, "", err
+	}
+	d := json.NewDecoder(resp.Body)
+	clusters := &EtcdClusterList{}
+	if err := d.Decode(clusters); err != nil {
+		return nil, "", err
+	}
+	return clusters.Items, clusters.ResourceVersion, nil
 }
 
 func (c *Controller) makeClusterConfig(clusterName string) cluster.Config {
