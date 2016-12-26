@@ -28,7 +28,8 @@ var (
 type EtcdCluster struct {
 	unversioned.TypeMeta `json:",inline"`
 	api.ObjectMeta       `json:"metadata,omitempty"`
-	Spec                 *ClusterSpec `json:"spec"`
+	Spec                 *ClusterSpec   `json:"spec"`
+	Status               *ClusterStatus `json:"status"`
 }
 
 type ClusterSpec struct {
@@ -89,4 +90,18 @@ func (c *ClusterSpec) Validate() error {
 		}
 	}
 	return nil
+}
+
+type ClusterStatus struct {
+	CurrentVersion string `json:"currentVersion"`
+	TargetVersion  string `json:"targetVersion"`
+}
+
+func (cs *ClusterStatus) UpgradeVersionTo(v string) {
+	cs.TargetVersion = v
+}
+
+func (cs *ClusterStatus) SetVersion(v string) {
+	cs.TargetVersion = ""
+	cs.CurrentVersion = v
 }

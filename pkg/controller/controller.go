@@ -211,7 +211,9 @@ func (c *Controller) makeClusterConfig() cluster.Config {
 	return cluster.Config{
 		PVProvisioner: c.PVProvisioner,
 		S3Context:     c.S3Context,
-		KubeCli:       c.KubeCli,
+
+		MasterHost: c.MasterHost,
+		KubeCli:    c.KubeCli,
 	}
 }
 

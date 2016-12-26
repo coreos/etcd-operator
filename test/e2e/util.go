@@ -235,7 +235,7 @@ func createEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdC
 }
 
 func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
-	return k8sutil.UpdateClusterTPRObject(f.KubeClient, f.MasterHost, f.Namespace, e)
+	return k8sutil.UpdateClusterTPRObjectUnconditionally(f.KubeClient, f.MasterHost, f.Namespace, e)
 }
 
 func deleteEtcdCluster(f *framework.Framework, name string) error {
