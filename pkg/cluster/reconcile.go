@@ -252,12 +252,11 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 		}
 	}
 
-	for _, m := range left {
-		err := c.removePodAndService(m.Name)
-		if err != nil {
-			return err
-		}
+	err := c.deleteAllPodsAndServices()
+	if err != nil {
+		return err
 	}
+
 	c.members = nil
 	return c.restoreSeedMember()
 }
