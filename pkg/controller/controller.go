@@ -148,7 +148,7 @@ func (c *Controller) findAllClusters() (string, error) {
 	for _, item := range list.Items {
 		clusterName := item.Name
 		stopC := make(chan struct{})
-		nc, err := cluster.New(c.makeClusterConfig(clusterName), &item.Spec, stopC, &c.waitCluster)
+		nc, err := cluster.Restore(c.makeClusterConfig(clusterName), &item.Spec, stopC, &c.waitCluster)
 		if err != nil {
 			log.Errorf("cluster (%q) is dead: %v", clusterName, err)
 			continue

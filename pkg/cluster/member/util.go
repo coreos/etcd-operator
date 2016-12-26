@@ -55,15 +55,6 @@ func IsNonConsistent(size, localSize int, tp MemberType) bool {
 	return true
 }
 
-func GetSpecVersion(s *spec.ClusterSpec, tp MemberType) string {
-	switch tp {
-	case PD:
-		return s.PD.Version
-	}
-
-	return ""
-}
-
 func GetSpecSize(s *spec.ClusterSpec, tp MemberType) int {
 	switch tp {
 	case PD:
@@ -83,14 +74,6 @@ func SetVersion(pod *api.Pod, version string, tp MemberType) {
 
 func MakeImage(version string, tp MemberType) string {
 	return fmt.Sprintf("pingcap/%s:%v", tp, version)
-}
-
-func GetPodNames(pods []*api.Pod) []string {
-	res := []string{}
-	for _, p := range pods {
-		res = append(res, p.Name)
-	}
-	return res
 }
 
 func CreatePDService(kclient *unversioned.Client, clusterName, ns string) (*api.Service, error) {

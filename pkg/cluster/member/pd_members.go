@@ -39,7 +39,7 @@ type PDMemberSet struct {
 }
 
 func init() {
-	RegisterSeedMemberFunc(PD, NewPDMemberset)
+	RegisterSeedMemberFunc(PD, newPDMemberset)
 }
 
 func newPDMemberset(kubeCli *unversioned.Client, clusterName, namespace string, s *spec.ClusterSpec) (MemberSet, error) {

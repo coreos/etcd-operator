@@ -46,7 +46,6 @@ func (c *Cluster) reconcileSize(running member.MemberSet, tp member.MemberType) 
 	}
 
 	log.Infof("Expected membership: %s", c.members[tp])
-
 	unknownMembers := running.Diff(c.members[tp])
 	if unknownMembers.Size() > 0 {
 		log.Infof("Removing unexpected pods:", unknownMembers)

@@ -120,17 +120,18 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 
 			for _, memberTp := range member.ServiceAdjustSequence {
 				// todo: go func
+				// query the pods and its' state that in kubernetes
 				running, pending, err := c.pollPods(memberTp)
 				if err != nil {
 					log.Errorf("fail to poll memberType: %v pods: %v", memberTp, err)
 					continue
 				}
 				if len(pending) > 0 {
-					log.Infof("skip reconciliation: memberType: %v running (%v), pending (%v)", memberTp, member.GetPodNames(running), member.GetPodNames(pending))
+					log.Infof("skip reconciliation: memberType: %v running (%v), pending (%v)", memberTp, util.GetPodNames(running), util.GetPodNames(pending))
 					continue
 				}
 				if len(running) == 0 {
-					log.Fatalf("all memberType: %v pods are dead. Trying to recover from a previous backup", memberTp)
+					log.Fatalf("all memberType: %v pods are dead.", memberTp)
 				}
 				if err := c.reconcile(running, memberTp); err != nil {
 					log.Errorf("fail to reconcile: %v", err)
@@ -151,10 +152,7 @@ func (c *Cluster) createClientServiceLB() error {
 }
 
 func (c *Cluster) Update(spec *spec.ClusterSpec) {
-	c.send(&clusterEvent{
-		typ:  eventModifyCluster,
-		spec: *spec,
-	})
+	c.send(&clusterEvent{typ: eventModifyCluster, spec: *spec})
 }
 
 func (c *Cluster) Delete() {
@@ -182,40 +180,19 @@ func (c *Cluster) delete() {
 		log.Errorf("cluster deletion: cannot delete any pod due to failure to list: %v", err)
 	} else {
 		for i := range pods.Items {
-			if err := c.removePodAndService(pods.Items[i].Name); err != nil {
+			if err := c.removePod(pods.Items[i].Name); err != nil {
 				log.Errorf("cluster deletion: fail to delete (%s)'s pod and svc: %v", pods.Items[i].Name, err)
 			}
 		}
 	}
 
-	err = c.deleteClientServiceLB()
-	if err != nil {
+	c.deleteClientServiceLB()
+}
+
+func (c *Cluster) deleteClientServiceLB() {
+	if err := c.deleteClientService(fmt.Sprintf("%s-pd", c.Name)); err != nil {
 		log.Errorf("cluster deletion: fail to delete client service LB: %v", err)
 	}
-}
-
-func (c *Cluster) removePodAndService(name string) error {
-	err := c.KubeCli.Services(c.Namespace).Delete(name)
-	if err != nil {
-		if !util.IsKubernetesResourceNotFoundError(err) {
-			return errors.Trace(err)
-		}
-	}
-	err = c.KubeCli.Pods(c.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
-	if err != nil {
-		if !util.IsKubernetesResourceNotFoundError(err) {
-			return errors.Trace(err)
-		}
-	}
-	return nil
-}
-
-func (c *Cluster) deleteClientServiceLB() error {
-	if err := c.deleteClientService(fmt.Sprintf("%s-pd", c.Name)); err != nil {
-		return errors.Trace(err)
-	}
-
-	return c.deleteClientService(fmt.Sprintf("%s-tidb", c.Name))
 }
 
 func (c *Cluster) deleteClientService(name string) error {

@@ -7,12 +7,22 @@ import (
 	"time"
 
 	"github.com/juju/errors"
+	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/wait"
 )
+
+// GetPodNames returns the pods' name
+func GetPodNames(pods []*api.Pod) []string {
+	res := []string{}
+	for _, p := range pods {
+		res = append(res, p.Name)
+	}
+	return res
+}
 
 func MustGetInClusterMasterHost() string {
 	cfg, err := restclient.InClusterConfig()
