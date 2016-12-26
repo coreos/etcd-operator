@@ -15,6 +15,7 @@
 package cluster
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -184,7 +185,18 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			switch event.typ {
 			case eventModifyCluster:
 				// TODO: we can't handle another upgrade while an upgrade is in progress
-				c.logger.Infof("spec update: from: %v to: %v", c.spec, event.spec)
+				prevs, err := json.MarshalIndent(c.spec, "", "    ")
+				if err != nil {
+					panic(err)
+				}
+				news, err := json.MarshalIndent(event.spec, "", "    ")
+				if err != nil {
+					panic(err)
+				}
+				c.logger.Info("spec updated:")
+				c.logger.Infof("old spec: \n%s\n", string(prevs))
+				c.logger.Infof("new spec: \n%s\n", string(news))
+
 				c.spec = &event.spec
 			case eventDeleteCluster:
 				return
