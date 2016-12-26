@@ -40,16 +40,16 @@ type MemberSet interface {
 	Add(*api.Pod)
 	AddOneMember() error
 	Diff(other MemberSet) MemberSet
+	GetSpec() *spec.ServiceSpec
+	Members() []*Member
+	NeedUpgrade([]*api.Pod) bool
+	NotEqualPodSize(int) bool
 	PickOne() *Member
+	PickOneOldMember(pods []*api.Pod) *Member
 	Remove(string)
 	Size() int
 	SetSpec(*spec.ServiceSpec)
 	UpdateMembers(pd.Client) error
-	NeedUpgrade([]*api.Pod) bool
-	NotEqualPodSize(int) bool
-	PickOneOldMember(pods []*api.Pod) *Member
-	Members() []*Member
-	GetSpec() *spec.ServiceSpec
 }
 
 type Member struct {
