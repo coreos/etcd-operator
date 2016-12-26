@@ -34,6 +34,7 @@ import (
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/selection"
 )
 
 type clusterEventType string
@@ -111,6 +112,10 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 	}
 
 	if isNewCluster {
+		if err := c.deleteAllPodsAndServices(); err != nil {
+			return nil, err
+		}
+
 		if c.bm != nil {
 			if err := c.bm.setup(); err != nil {
 				return nil, err
@@ -316,22 +321,9 @@ func findID(name string) int {
 }
 
 func (c *Cluster) delete() {
-	option := k8sapi.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"etcd_cluster": c.Name,
-			"app":          "etcd",
-		}),
-	}
-
-	pods, err := c.KubeCli.Pods(c.Namespace).List(option)
+	err := c.deleteAllPodsAndServices()
 	if err != nil {
-		c.logger.Errorf("cluster deletion: cannot delete any pod due to failure to list: %v", err)
-	} else {
-		for i := range pods.Items {
-			if err := c.removePodAndService(pods.Items[i].Name); err != nil {
-				c.logger.Errorf("cluster deletion: fail to delete (%s)'s pod and svc: %v", pods.Items[i].Name, err)
-			}
-		}
+		c.logger.Errorf("cluster deletion: fail to delete all pods and services: %v", err)
 	}
 
 	err = c.deleteClientServiceLB()
@@ -354,6 +346,51 @@ func (c *Cluster) createClientServiceLB() error {
 		}
 	}
 	return nil
+}
+
+func (c *Cluster) deleteAllPodsAndServices() error {
+	var rtnErr error //as far as possible to delete more things, then return error in the end
+
+	r, err := labels.NewRequirement("etcd_node", selection.Exists, nil)
+	if err != nil {
+		return err
+	}
+	ls := labels.SelectorFromSet(map[string]string{
+		"etcd_cluster": c.Name,
+		"app":          "etcd",
+	}).Add(*r)
+
+	svcs, err := c.KubeCli.Services(c.Namespace).List(k8sapi.ListOptions{
+		LabelSelector: ls,
+	})
+	if err != nil {
+		c.logger.Errorf("cannot delete any svc due to failure to list: %v", err)
+		rtnErr = err
+	} else {
+		for i := range svcs.Items {
+			if err := c.removeService(svcs.Items[i].Name); err != nil {
+				c.logger.Errorf("fail to delete (%s)'s svc: %v", svcs.Items[i].Name, err)
+				rtnErr = err
+			}
+		}
+	}
+
+	pods, err := c.KubeCli.Pods(c.Namespace).List(k8sapi.ListOptions{
+		LabelSelector: ls,
+	})
+	if err != nil {
+		c.logger.Errorf("cannot delete any pod due to failure to list: %v", err)
+		rtnErr = err
+	} else {
+		for i := range pods.Items {
+			if err := c.removePod(pods.Items[i].Name); err != nil {
+				c.logger.Errorf("fail to delete (%s)'s pod: %v", pods.Items[i].Name, err)
+				rtnErr = err
+			}
+		}
+	}
+
+	return rtnErr
 }
 
 func (c *Cluster) deleteClientServiceLB() error {
@@ -386,14 +423,26 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 }
 
 func (c *Cluster) removePodAndService(name string) error {
-	err := c.KubeCli.Services(c.Namespace).Delete(name)
-	if err != nil {
+	if err := c.removeService(name); err != nil {
+		return err
+	}
+	if err := c.removePod(name); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Cluster) removePod(name string) error {
+	if err := c.KubeCli.Pods(c.Namespace).Delete(name, k8sapi.NewDeleteOptions(0)); err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
 	}
-	err = c.KubeCli.Pods(c.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
-	if err != nil {
+	return nil
+}
+
+func (c *Cluster) removeService(name string) error {
+	if err := c.KubeCli.Services(c.Namespace).Delete(name); err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
