@@ -2,11 +2,12 @@ package cluster
 
 import (
 	"fmt"
+	"sync"
+	"time"
 
-	"github.com/GregoryIan/operator/util/k8sutil"
-	"github.com/GregoryIan/oprator/cluster/member"
-	"github.com/GregoryIan/oprator/spec"
-
+	"github.com/GregoryIan/operator/pkg/cluster/member"
+	"github.com/GregoryIan/operator/pkg/spec"
+	"github.com/GregoryIan/operator/pkg/util"
 	"github.com/juju/errors"
 	"github.com/ngaut/log"
 	k8sapi "k8s.io/kubernetes/pkg/api"
@@ -14,9 +15,12 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 )
 
-const defaultVersion = "rc1"
-
 type clusterEventType string
+
+const (
+	eventDeleteCluster clusterEventType = "Delete"
+	eventModifyCluster clusterEventType = "Modify"
+)
 
 type Config struct {
 	Name      string
@@ -40,34 +44,30 @@ type Cluster struct {
 }
 
 func New(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
-	if len(s.Version) == 0 {
-		s.Version = defaultVersion
-	}
-
 	c := &Cluster{
 		Config:  config,
 		spec:    s,
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
-		status:  &Status{},
 	}
 
 	if err := c.prepareSeedMember(); err != nil {
-		return nil, err
+		return nil, errors.Trace(err)
 	}
 	if err := c.createClientServiceLB(); err != nil {
-		return nil, fmt.Errorf("fail to create client service LB: %v", err)
+		return nil, errors.Errorf("fail to create client service LB: %v", err)
 	}
 
+	member.SplitAndDistributeSpec(s, c.spec, c.members)
 	go c.run(stopC, wg)
 
 	return c, nil
 }
 
 func (c *Cluster) prepareSeedMember() error {
-	members, err := member.InitSeedMembers(c.Name, c.Namespace, c.KubeCli)
+	members, err := member.InitSeedMembers(c.KubeCli, c.Name, c.Namespace, c.spec)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	c.members = members
@@ -75,17 +75,17 @@ func (c *Cluster) prepareSeedMember() error {
 }
 
 func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
+	needDeleteCluster := true
 	wg.Add(1)
 	defer func() {
 		if needDeleteCluster {
-			c.logger.Infof("deleting cluster")
+			log.Infof("deleting cluster")
 			c.delete()
 		}
 		close(c.stopCh)
 		wg.Done()
 	}()
 
-	needDeleteCluster := true
 	for {
 		select {
 		case <-stopC:
@@ -94,9 +94,8 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		case event := <-c.eventCh:
 			switch event.typ {
 			case eventModifyCluster:
-				c.logger.Infof("spec update: from: %v to: %v", c.spec, event.spec)
-				c.spec = &event.spec
-				c.splitAndDistributeSpec()
+				log.Infof("spec update: from: %v to: %v", c.spec, event.spec)
+				member.SplitAndDistributeSpec(&event.spec, c.spec, c.members)
 			case eventDeleteCluster:
 				return
 			}
@@ -106,7 +105,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				continue
 			}
 
-			for _, memberTp := range member.StartUpSequence {
+			for _, memberTp := range member.ServiceAdjustSequence {
 				// todo: go func
 				running, pending, err := c.pollPods(memberTp)
 				if err != nil {
@@ -118,10 +117,9 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 					continue
 				}
 				if len(running) == 0 {
-					log.Warningf(fmt.Sprintf("all memberType: %v pods are dead. Trying to recover from a previous backup", memberTp))
-					panic(fmt.Sprintf("all memberType: %v pods are dead. Trying to recover from a previous backup", memberTp))
+					log.Fatalf("all memberType: %v pods are dead. Trying to recover from a previous backup", memberTp)
 				}
-				if err := c.reconcile(running, op); err != nil {
+				if err := c.reconcile(running, memberTp); err != nil {
 					log.Errorf("fail to reconcile: %v", err)
 				}
 			}
@@ -130,18 +128,39 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 }
 
 func (c *Cluster) createClientServiceLB() error {
-	if _, err := k8sutil.CreateService(c.KubeCli, fmt.Sprintf("%s-pd", c.Name), c.Namespace, k8sutil.PD); err != nil {
-		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			return err
-		}
-	}
-	if _, err := k8sutil.CreateService(c.KubeCli, fmt.Sprintf("%s-tidb", c.Name), c.Namespace, k8sutil.TiDB); err != nil {
-		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			return err
+	if _, err := member.CreatePDService(c.KubeCli, fmt.Sprintf("%s-pd", c.Name), c.Namespace); err != nil {
+		if !util.IsKubernetesResourceAlreadyExistError(err) {
+			return errors.Trace(err)
 		}
 	}
 
 	return nil
+}
+
+func (c *Cluster) Update(spec *spec.ClusterSpec) {
+	anyInterestedChange := false
+	if (spec.Paused != c.spec.Paused) || member.IsSpecChange(spec, c.members) {
+		anyInterestedChange = true
+	}
+	if anyInterestedChange {
+		c.send(&clusterEvent{
+			typ:  eventModifyCluster,
+			spec: *spec,
+		})
+	}
+}
+
+func (c *Cluster) Delete() {
+	c.send(&clusterEvent{typ: eventDeleteCluster})
+}
+
+func (c *Cluster) send(ev *clusterEvent) {
+	select {
+	case c.eventCh <- ev:
+	case <-c.stopCh:
+	default:
+		panic("TODO: too many events queued...")
+	}
 }
 
 func (c *Cluster) delete() {
@@ -171,30 +190,14 @@ func (c *Cluster) delete() {
 func (c *Cluster) removePodAndService(name string) error {
 	err := c.KubeCli.Services(c.Namespace).Delete(name)
 	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
+		if !util.IsKubernetesResourceNotFoundError(err) {
+			return errors.Trace(err)
 		}
 	}
 	err = c.KubeCli.Pods(c.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
 	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *Cluster) removePodAndService(name string) error {
-	err := c.KubeCli.Services(c.Namespace).Delete(name)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-	}
-	err = c.KubeCli.Pods(c.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
+		if !util.IsKubernetesResourceNotFoundError(err) {
+			return errors.Trace(err)
 		}
 	}
 	return nil
@@ -202,7 +205,7 @@ func (c *Cluster) removePodAndService(name string) error {
 
 func (c *Cluster) deleteClientServiceLB() error {
 	if err := c.deleteClientService(fmt.Sprintf("%s-pd", c.Name)); err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	return c.deleteClientService(fmt.Sprintf("%s-tidb", c.Name))
@@ -211,8 +214,8 @@ func (c *Cluster) deleteClientServiceLB() error {
 func (c *Cluster) deleteClientService(name string) error {
 	err := c.KubeCli.Services(c.Namespace).Delete(name)
 	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
+		if !util.IsKubernetesResourceNotFoundError(err) {
+			return errors.Trace(err)
 		}
 	}
 
@@ -222,7 +225,7 @@ func (c *Cluster) deleteClientService(name string) error {
 func (c *Cluster) pollPods(tp member.MemberType) ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
 	podList, err := c.KubeCli.Pods(c.Namespace).List(member.PodListOpt(c.Name, tp))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to list running ServiceType: %v pods: %v", op, err)
+		return nil, nil, fmt.Errorf("failed to list running ServiceType: %v pods: %v", tp, err)
 	}
 
 	var running []*k8sapi.Pod

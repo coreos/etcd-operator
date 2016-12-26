@@ -2,7 +2,6 @@ package controller
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,8 +10,8 @@ import (
 
 	"github.com/GregoryIan/operator/pkg/cluster"
 	"github.com/GregoryIan/operator/pkg/spec"
-	"github.com/GregoryIan/operator/pkg/util/k8sutil"
-
+	"github.com/GregoryIan/operator/pkg/util"
+	"github.com/juju/errors"
 	"github.com/ngaut/log"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
@@ -25,15 +24,18 @@ const (
 )
 
 var (
+	// ErrVersionOutdated represents the error whose requested version is outdated in apiserver
 	ErrVersionOutdated = errors.New("requested version is outdated in apiserver")
 	initRetryWaitTime  = 30 * time.Second
 )
 
+// raw event struct from k8s' api-server
 type rawEvent struct {
 	Type   string
 	Object json.RawMessage
 }
 
+// Event describes the new modification spec
 type Event struct {
 	Type   string
 	Object *spec.TiDBCluster
@@ -92,6 +94,7 @@ func (c *Controller) Run() error {
 			clusterName := event.Object.ObjectMeta.Name
 			switch event.Type {
 			case "ADDED":
+				log.Infof("ADDED clustername %s, spec %+v", clusterName, *event.Object.Spec.PD)
 				stopC := make(chan struct{})
 				nc, err := cluster.New(c.makeClusterConfig(clusterName), &event.Object.Spec, stopC, &c.waitCluster)
 				if err != nil {
@@ -102,12 +105,14 @@ func (c *Controller) Run() error {
 				c.stopChMap[clusterName] = stopC
 				c.clusters[clusterName] = nc
 			case "MODIFIED":
+				log.Infof("MODIFIED clustername %s, spec %+v", clusterName, event.Object.Spec)
 				if c.clusters[clusterName] == nil {
 					log.Warningf("ignore modification: cluster %q not found (or dead)", clusterName)
 					break
 				}
 				c.clusters[clusterName].Update(&event.Object.Spec)
 			case "DELETED":
+				log.Infof("DELETED clustername %s, spec %+v", clusterName, event.Object.Spec)
 				if c.clusters[clusterName] == nil {
 					log.Warningf("ignore deletion: cluster %q not found (or dead)", clusterName)
 					break
@@ -121,29 +126,29 @@ func (c *Controller) Run() error {
 }
 
 type TiDBClusterList struct {
-	unversioned.TypeMeta `json:",inline"`
+	unversionedAPI.TypeMeta `json:",inline"`
 	// Standard list metadata
 	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
-	unversioned.ListMeta `json:"metadata,omitempty"`
+	unversionedAPI.ListMeta `json:"metadata,omitempty"`
 	// Items is a list of third party objects
 	Items []spec.TiDBCluster `json:"items"`
 }
 
 func (c *Controller) findAllClusters() (string, error) {
-	c.logger.Info("finding existing clusters...")
-	resp, err := k8sutil.ListTiDBCluster(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client)
+	log.Info("finding existing clusters...")
+	resp, err := util.ListTiDBCluster(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client)
 	if err != nil {
 		return "", err
 	}
 	d := json.NewDecoder(resp.Body)
-	list := &EtcdClusterList{}
+	list := &TiDBClusterList{}
 	if err := d.Decode(list); err != nil {
 		return "", err
 	}
 	for _, item := range list.Items {
 		clusterName := item.Name
 		stopC := make(chan struct{})
-		nc, err := cluster.Restore(c.makeClusterConfig(clusterName), &item.Spec, stopC, &c.waitCluster)
+		nc, err := cluster.New(c.makeClusterConfig(clusterName), &item.Spec, stopC, &c.waitCluster)
 		if err != nil {
 			log.Errorf("cluster (%q) is dead: %v", clusterName, err)
 			continue
@@ -166,14 +171,14 @@ func (c *Controller) initResource() (string, error) {
 	watchVersion := "0"
 	err := c.createTPR()
 	if err != nil {
-		if k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+		if util.IsKubernetesResourceAlreadyExistError(err) {
 			// TPR has been initialized before. We need to recover existing cluster.
 			watchVersion, err = c.findAllClusters()
 			if err != nil {
 				return "", err
 			}
 		} else {
-			return "", fmt.Errorf("fail to create TPR: %v", err)
+			return "", errors.Errorf("fail to create TPR: %v", err)
 		}
 	}
 	return watchVersion, nil
@@ -194,7 +199,7 @@ func (c *Controller) createTPR() error {
 		return err
 	}
 
-	return k8sutil.WaitTiDBTPRReady(c.KubeCli.Client, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
+	return util.WaitTiDBTPRReady(c.KubeCli.Client, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
 }
 
 func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) {
@@ -210,7 +215,7 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 		defer close(eventCh)
 
 		for {
-			resp, err := k8sutil.WatchTiDBCluster(host, ns, httpClient, watchVersion)
+			resp, err := util.WatchTiDBCluster(host, ns, httpClient, watchVersion)
 			if err != nil {
 				errCh <- err
 				return
@@ -276,7 +281,7 @@ func pollEvent(decoder *json.Decoder) (*Event, *unversionedAPI.Status, error) {
 
 	ev := &Event{
 		Type:   re.Type,
-		Object: &spec.EtcdCluster{},
+		Object: &spec.TiDBCluster{},
 	}
 	err = json.Unmarshal(re.Object, ev.Object)
 	if err != nil {

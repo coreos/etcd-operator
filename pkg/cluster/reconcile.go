@@ -1,10 +1,11 @@
 package cluster
 
 import (
-	"fmt"
-
+	"github.com/GregoryIan/operator/pkg/cluster/member"
+	"github.com/GregoryIan/operator/pkg/util"
 	"github.com/juju/errors"
 	"github.com/ngaut/log"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 func (c *Cluster) reconcile(pods []*api.Pod, tp member.MemberType) error {
@@ -12,27 +13,24 @@ func (c *Cluster) reconcile(pods []*api.Pod, tp member.MemberType) error {
 	defer log.Infof("Finish reconciling %s", tp)
 
 	switch {
-	case member.NotEqualPodSize(len(pods), c.spec, tp):
+	case c.members[tp].NotEqualPodSize(len(pods)):
 		running := member.GetEmptyMemberSet(tp)
 		for _, pod := range pods {
 			running.Add(pod)
 		}
 		return c.reconcileSize(running, tp)
-	case needUpgrade(pods, c.Spec):
-		c.status.upgradeVersionTo(c.Spec.Version)
-
-		name := pickOneOldMember(pods, c.Spec.Version)
-		return c.upgradeOneMember(m)
+	case c.members[tp].NeedUpgrade(pods):
+		m := c.members[tp].PickOneOldMember(pods)
+		return c.upgradeOneMember(m, tp)
 	default:
 		return nil
 	}
 }
 
-func (c *Cluster) reconcileSize(running, tp member.MemberType) error {
-	var ms member.MemberSet
+func (c *Cluster) reconcileSize(running member.MemberSet, tp member.MemberType) error {
 	log.Infof("running members: %s", running)
-	if localMember.Size() == 0 {
-		cfg := clientv3.Config{
+	if c.members[tp].Size() == 0 {
+		/*cfg := clientv3.Config{
 			Endpoints:   running.ClientURLs(),
 			DialTimeout: constants.DefaultDialTimeout,
 		}
@@ -44,15 +42,15 @@ func (c *Cluster) reconcileSize(running, tp member.MemberType) error {
 		if err := c.members[tp].updateMembers(etcdcli); err != nil {
 			log.Errorf("fail to refresh members: %v", err)
 			return err
-		}
+		}*/
 	}
 
 	log.Infof("Expected membership: %s", c.members[tp])
 
 	unknownMembers := running.Diff(c.members[tp])
 	if unknownMembers.Size() > 0 {
-		c.logger.Infof("Removing unexpected pods:", unknownMembers)
-		for _, m := range unknownMembers.MS {
+		log.Infof("Removing unexpected pods:", unknownMembers)
+		for _, m := range unknownMembers.Members() {
 			if err := c.removePod(m.Name); err != nil {
 				return err
 			}
@@ -64,14 +62,14 @@ func (c *Cluster) reconcileSize(running, tp member.MemberType) error {
 		return c.resize(tp)
 	}
 
-	if member.isNonConsistent(L.Size(), c.members[tp].Size(), tp) {
+	if member.IsNonConsistent(L.Size(), c.members[tp].Size(), tp) {
 		log.Fatal("Disaster recovery")
 	}
 
 	log.Infof("Recovering one member")
 	toRecover := c.members[tp].Diff(L).PickOne()
 
-	if err := c.removeMember(toRecover.ID, toRecover.Name); err != nil {
+	if err := c.removeMember(toRecover.ID, toRecover.Name, tp); err != nil {
 		return err
 	}
 	return c.resize(tp)
@@ -83,7 +81,7 @@ func (c *Cluster) resize(tp member.MemberType) error {
 		return nil
 	}
 
-	if c.members[tp].Size() < c.size {
+	if c.members[tp].Size() < size {
 		return c.members[tp].AddOneMember()
 	}
 
@@ -91,66 +89,46 @@ func (c *Cluster) resize(tp member.MemberType) error {
 }
 
 func (c *Cluster) removeOneMember(tp member.MemberType) error {
-	return c.removeMember(c.members[tp].PickOne())
+	m := c.members[tp].PickOne()
+	return c.removeMember(m.ID, m.Name, tp)
 }
 
-func (c *Cluster) removeMember(id int, name string, tp member.MemberType) error {
-	err := member.removeMember(c.members[tp].ClientURLs(), toRemove.ID, tp)
+func (c *Cluster) removeMember(id uint64, name string, tp member.MemberType) error {
+	ms, _ := c.members[member.PD].(*member.PDMemberSet)
+	err := member.RemoveMember(ms.ClientURLs(), id, tp)
 	if err != nil {
-		switch err {
-		case rpctypes.ErrMemberNotFound:
-			log.Infof("etcd member (%v) has been removed", name)
-		default:
-			log.Errorf("fail to remove etcd member (%v): %v", name, err)
-			return err
-		}
+		return errors.Trace(err)
 	}
-	c.members.Remove(name)
+	c.members[tp].Remove(name)
 	if err := c.removePod(name); err != nil {
-		return err
+		return errors.Trace(err)
 	}
-	c.logger.Infof("removed member (%v) with ID (%d)", name, id)
+	log.Infof("removed member (%v) with ID (%d)", name, id)
 	return nil
 }
 
 func (c *Cluster) removePod(name string) error {
-	err = c.KubeCli.Pods(c.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
+	err := c.KubeCli.Pods(c.Namespace).Delete(name, api.NewDeleteOptions(0))
 	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
+		if !util.IsKubernetesResourceNotFoundError(err) {
+			return errors.Trace(err)
 		}
 	}
 	return nil
 }
 
-func (c *Cluster) upgradeOneMember(name, newVersion string) error {
-	pod, err := c.KubeCli.Pods(c.Namespace).Get(name)
+func (c *Cluster) upgradeOneMember(m *member.Member, tp member.MemberType) error {
+	pod, err := c.KubeCli.Pods(c.Namespace).Get(m.Name)
 	if err != nil {
-		return errors.Errorf("fail to get pod (%s): %v", name, err)
+		return errors.Errorf("fail to get pod (%s): %v", m.Name, err)
 	}
-	log.Infof("upgrading the etcd member %v from %s to %s", name, member.GetVersion(pod), newVersion)
-	pod.Spec.Containers[0].Image = member.MakeImage(newVersion, tp)
-	member.SetVersion(pod, newVersion)
+	log.Infof("upgrading the etcd member %v from %s to %s", m.Name, member.GetVersion(pod, tp), m.Version)
+	pod.Spec.Containers[0].Image = member.MakeImage(m.Version, tp)
+	member.SetVersion(pod, m.Version, tp)
 	_, err = c.KubeCli.Pods(c.Namespace).Update(pod)
 	if err != nil {
-		return errors.Errorf("fail to update the etcd member (%s): %v", name, err)
+		return errors.Errorf("fail to update the etcd member (%s): %v", m.Name, err)
 	}
-	log.Infof("finished upgrading the etcd member %v", name)
+	log.Infof("finished upgrading the etcd member %v", m.Name)
 	return nil
-}
-
-func needUpgrade(pods []*api.Pod, cs *spec.ClusterSpec, tp member.MemberType) bool {
-	newVersion := member.GetSpecVersion(cs, tp)
-	return !member.NotEqualPodSize(len(pods), cs, tp) && newVersion != "" && pickOneOldMemberName(pods, newVersion) != ""
-}
-
-func pickOneOldMemberName(pods []*api.Pod, newVersion string) string {
-	for _, pod := range pods {
-		if member.GetVersion(pod) == newVersion {
-			continue
-		}
-		return pod.Name
-	}
-
-	return ""
 }
