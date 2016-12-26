@@ -43,7 +43,15 @@ type Cluster struct {
 	stopCh  chan struct{}
 }
 
-func New(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
+func New(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
+	return new(c, s, stopC, wg, true)
+}
+
+func Restore(c Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
+	return new(c, s, stopC, wg, false)
+}
+
+func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) (*Cluster, error) {
 	c := &Cluster{
 		Config:  config,
 		spec:    s,
@@ -51,16 +59,22 @@ func New(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		stopCh:  make(chan struct{}),
 	}
 
-	if err := c.prepareSeedMember(); err != nil {
-		return nil, errors.Trace(err)
-	}
-	if err := c.createClientServiceLB(); err != nil {
-		return nil, errors.Errorf("fail to create client service LB: %v", err)
+	if isNewCluster {
+		if err := c.prepareSeedMember(); err != nil {
+			return nil, errors.Trace(err)
+		}
+		if err := c.createClientServiceLB(); err != nil {
+			return nil, errors.Errorf("fail to create client service LB: %v", err)
+		}
+	} else {
+		for _, tp := range member.ServiceAdjustSequence {
+			c.members[tp] = member.GetEmptyMemberSet(tp)
+		}
 	}
 
 	member.SplitAndDistributeSpec(s, c.spec, c.members)
-	go c.run(stopC, wg)
 
+	go c.run(stopC, wg)
 	return c, nil
 }
 
@@ -138,16 +152,10 @@ func (c *Cluster) createClientServiceLB() error {
 }
 
 func (c *Cluster) Update(spec *spec.ClusterSpec) {
-	anyInterestedChange := false
-	if (spec.Paused != c.spec.Paused) || member.IsSpecChange(spec, c.members) {
-		anyInterestedChange = true
-	}
-	if anyInterestedChange {
-		c.send(&clusterEvent{
-			typ:  eventModifyCluster,
-			spec: *spec,
-		})
-	}
+	c.send(&clusterEvent{
+		typ:  eventModifyCluster,
+		spec: *spec,
+	})
 }
 
 func (c *Cluster) Delete() {

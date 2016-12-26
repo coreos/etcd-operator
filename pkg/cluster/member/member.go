@@ -40,7 +40,6 @@ type MemberSet interface {
 	Add(*api.Pod)
 	AddOneMember() error
 	Diff(other MemberSet) MemberSet
-	GetSpec() *spec.ServiceSpec
 	Members() []*Member
 	NeedUpgrade([]*api.Pod) bool
 	NotEqualPodSize(int) bool

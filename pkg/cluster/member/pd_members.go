@@ -198,10 +198,6 @@ func (pms *PDMemberSet) SetSpec(s *spec.ServiceSpec) {
 	pms.spec = s
 }
 
-func (pms *PDMemberSet) GetSpec() *spec.ServiceSpec {
-	return pms.spec
-}
-
 func (pms *PDMemberSet) Size() int {
 	return len(pms.members)
 }

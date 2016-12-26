@@ -42,24 +42,6 @@ func SplitAndDistributeSpec(news, olds *spec.ClusterSpec, ms map[MemberType]Memb
 	}
 }
 
-func IsSpecChange(s *spec.ClusterSpec, ms map[MemberType]MemberSet) bool {
-	for _, tp := range ServiceAdjustSequence {
-		switch tp {
-		case PD:
-			if s.PD != nil {
-				sp := ms[tp].GetSpec()
-				if len(s.PD.Version) == 0 {
-					s.PD.Version = defaultVersion
-				}
-				if sp.Size != s.PD.Size || sp.Version != s.PD.Version {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
 func IsNonConsistent(size, localSize int, tp MemberType) bool {
 	switch tp {
 	case PD:
