@@ -235,31 +235,7 @@ func createEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdC
 }
 
 func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
-	b, err := json.Marshal(e)
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("PUT",
-		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace, e.Name),
-		bytes.NewReader(b))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := f.KubeClient.Client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status: %v", resp.Status)
-	}
-	decoder := json.NewDecoder(resp.Body)
-	nspec := &spec.EtcdCluster{}
-	if err := decoder.Decode(nspec); err != nil {
-		return nil, err
-	}
-	return nspec, nil
+	return k8sutil.UpdateClusterTPRObject(f.KubeClient, f.MasterHost, f.Namespace, e)
 }
 
 func deleteEtcdCluster(f *framework.Framework, name string) error {
