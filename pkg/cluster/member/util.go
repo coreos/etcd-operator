@@ -1,11 +1,21 @@
 package member
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
-	"k8s.io/kubernetes/pkg/util/wait"
+	"github.com/GregoryIan/operator/pkg/spec"
+	"github.com/juju/errors"
+	"k8s.io/kubernetes/pkg/api"
+	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
+	k8sv1api "k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/util/intstr"
+	"k8s.io/kubernetes/pkg/watch"
 )
 
 var (
@@ -20,41 +30,64 @@ var (
 	}
 )
 
-func isNonConsistent(size, localSize int, tp MemberType) bool {
-	switch {
-	case PD:
-		return size < localSize/2+1
+func SplitAndDistributeSpec(news, olds *spec.ClusterSpec, ms map[MemberType]MemberSet) {
+	for _, tp := range ServiceAdjustSequence {
+		switch tp {
+		case PD:
+			if news.PD != nil {
+				olds.PD = news.PD
+				ms[PD].SetSpec(news.PD)
+			}
+		}
 	}
 }
 
-func NotEqualPodSize(size int, s *spec.ClusterSpec, tp MemberType) {
-	switch {
-	case PD:
-		return size != s.Pd.Size
+func IsSpecChange(s *spec.ClusterSpec, ms map[MemberType]MemberSet) bool {
+	for _, tp := range ServiceAdjustSequence {
+		switch tp {
+		case PD:
+			if s.PD != nil {
+				sp := ms[tp].GetSpec()
+				if len(s.PD.Version) == 0 {
+					s.PD.Version = defaultVersion
+				}
+				if sp.Size != s.PD.Size || sp.Version != s.PD.Version {
+					return true
+				}
+			}
+		}
 	}
-
 	return false
 }
 
-func GetSpecVersion(s *spec.ClusterSpec, tp MemberType) string {
-	switch {
+func IsNonConsistent(size, localSize int, tp MemberType) bool {
+	switch tp {
 	case PD:
-		return s.Pd.Version
+		return size < localSize/2+1
+	}
+
+	return true
+}
+
+func GetSpecVersion(s *spec.ClusterSpec, tp MemberType) string {
+	switch tp {
+	case PD:
+		return s.PD.Version
 	}
 
 	return ""
 }
 
-func GetSpecSize(s *spec.ClusterSpec, tp MemberType) string {
-	switch {
+func GetSpecSize(s *spec.ClusterSpec, tp MemberType) int {
+	switch tp {
 	case PD:
-		return s.Pd.Size
+		return s.PD.Size
 	}
 
 	return 0
 }
 
-func GetVersion(pod *api.Pod, tp ServiceType) string {
+func GetVersion(pod *api.Pod, tp MemberType) string {
 	return pod.Annotations[fmt.Sprintf("%s.version", tp)]
 }
 
@@ -74,16 +107,20 @@ func GetPodNames(pods []*api.Pod) []string {
 	return res
 }
 
-func CreateTiDBNodePortService(kclient *unversioned.Client, tidbName, clusterName, ns string) (*api.Service, error) {
-	svc := makeTiDBNodePortService(tidbName, clusterName)
-	return kclient.Services(ns).Create(svc)
+func CreatePDService(kclient *unversioned.Client, clusterName, ns string) (*api.Service, error) {
+	svc := makePDService(clusterName)
+	retSvc, err := kclient.Services(ns).Create(svc)
+	if err != nil {
+		return nil, err
+	}
+	return retSvc, nil
 }
 
-func PodWithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, peerURLs []string, cs *spec.ClusterSpec) *api.Pod {
+func PodWithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, peerURLs []string, cs *spec.ServiceSpec) *api.Pod {
 	containerSpec := []api.Container{
 		{
 			Name:  "add-member",
-			Image: MakeEtcdImage(cs.Version),
+			Image: MakeImage(cs.Version, PD),
 			Command: []string{
 				"/bin/sh", "-c",
 				fmt.Sprintf("pdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), name, strings.Join(peerURLs, ",")),
@@ -127,27 +164,27 @@ func PodWithAntiAffinity(pod *api.Pod, clusterName string) *api.Pod {
 
 func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod, timeout time.Duration) (*api.Pod, error) {
 	if _, err := kclient.Pods(ns).Create(pod); err != nil {
-		return nil, err
+		return nil, errors.Trace(err)
 	}
 	// TODO: cleanup pod on failure
 	w, err := kclient.Pods(ns).Watch(api.SingleObject(api.ObjectMeta{Name: pod.Name}))
 	if err != nil {
-		return nil, err
+		return nil, errors.Trace(err)
 	}
 	_, err = watch.Until(timeout, w, unversioned.PodRunning)
 
 	pod, err = kclient.Pods(ns).Get(pod.Name)
 	if err != nil {
-		return nil, err
+		return nil, errors.Trace(err)
 	}
 
 	return pod, nil
 }
 
-func makeTiDBService(clusternName string) *api.Service {
+func makeTiDBService(clusterName string) *api.Service {
 	labels := map[string]string{
 		"app":          "tidb",
-		"tidb_clsuetr": clusternName,
+		"tidb_clsuetr": clusterName,
 	}
 
 	svc := &api.Service{
@@ -167,6 +204,8 @@ func makeTiDBService(clusternName string) *api.Service {
 			Selector: labels,
 		},
 	}
+
+	return svc
 }
 
 func makePDService(clusterName string) *api.Service {
@@ -194,72 +233,14 @@ func makePDService(clusterName string) *api.Service {
 	return svc
 }
 
-func makePDNodePortService(pdName, clusterName string) *api.Service {
-	labels := map[string]string{
-		"pd_node":      pdName,
-		"tidb_cluster": clusterName,
-	}
-	svc := &api.Service{
-		ObjectMeta: api.ObjectMeta{
-			Name:   pdName + "-nodeport",
-			Labels: labels,
-		},
-		Spec: api.ServiceSpec{
-			Ports: []api.ServicePort{
-				{
-					Name:       "server",
-					Port:       2380,
-					TargetPort: intstr.FromInt(2380),
-					Protocol:   api.ProtocolTCP,
-				},
-				{
-					Name:       "client",
-					Port:       2379,
-					TargetPort: intstr.FromInt(2379),
-					Protocol:   api.ProtocolTCP,
-				},
-			},
-			Type:     api.ServiceTypeNodePort,
-			Selector: labels,
-		},
-	}
-	return svc
-}
-
-func makeTiDBNodePortService(tidbName, clusterName string) *api.Service {
-	labels := map[string]string{
-		"tidb_node":    tidbName,
-		"tidb_cluster": clusterName,
-	}
-	svc := &api.Service{
-		ObjectMeta: api.ObjectMeta{
-			Name:   tidbName + "-nodeport",
-			Labels: labels,
-		},
-		Spec: api.ServiceSpec{
-			Ports: []api.ServicePort{
-				{
-					Name:       "mysql-client",
-					Port:       4000,
-					TargetPort: intstr.FromInt(4000),
-					Protocol:   api.ProtocolTCP,
-				},
-			},
-			Type:     api.ServiceTypeNodePort,
-			Selector: labels,
-		},
-	}
-	return svc
-}
-
-func removeMember(clientURLs []string, id uint64, tp MemberType) error {
-	cfg := clientv3.Config{
+func RemoveMember(clientURLs []string, id uint64, tp MemberType) error {
+	/*cfg := clientv3.Config{
 		Endpoints:   clientURLs,
 		DialTimeout: constants.DefaultDialTimeout,
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 	defer etcdcli.Close()
 
@@ -268,16 +249,13 @@ func removeMember(clientURLs []string, id uint64, tp MemberType) error {
 	case PD:
 		_, err = etcdcli.Cluster.MemberRemove(ctx, id)
 	}
-	return err
+	return errors.Trace(err)*/
+	return nil
 }
 
 func PodWithNodeSelector(p *api.Pod, ns map[string]string) *api.Pod {
 	p.Spec.NodeSelector = ns
 	return p
-}
-
-func needUpgrade(pods []*api.Pod, cs *spec.ClusterSpec) bool {
-	return len(pods) == cs.Size && pickOneOldMember(pods, cs.Version) != nil
 }
 
 func findID(name string) int {

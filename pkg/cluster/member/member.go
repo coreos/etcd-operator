@@ -1,9 +1,14 @@
 package member
 
 import (
-	"fmt"
+	"time"
 
-	"github.com/GregoryIan/oprator/spec"
+	"github.com/GregoryIan/operator/pkg/spec"
+	"github.com/juju/errors"
+	"github.com/ngaut/log"
+	"github.com/pingcap/pd/pd-client"
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 type MemberType int
@@ -12,43 +17,64 @@ const (
 	PD MemberType = iota
 )
 
-var StartUpSequence = []MemberType{PD}
+const (
+	DefaultDialTimeout    = 5 * time.Second
+	DefaultRequestTimeout = 5 * time.Second
+
+	defaultVersion = "rc1"
+)
+
+var ServiceAdjustSequence = []MemberType{PD}
 
 func (s MemberType) String() string {
 	switch s {
 	case PD:
 		return "pd"
 	}
+
+	panic("can't reach here")
+	return ""
 }
-
-type SeedFunc func(*unversioned.Client, string, string, *spec.ClusterSpec) MemberSet
-
-var seedMapFunc = make(map[MemberType]SeedFunc)
 
 type MemberSet interface {
 	Add(*api.Pod)
-	AddOneMember()
+	AddOneMember() error
 	Diff(other MemberSet) MemberSet
-	PickOne()
+	PickOne() *Member
 	Remove(string)
 	Size() int
-	SetSpec(*spec.ClusterSpec)
-	UpdateMembers(*clientv3.Client)
+	SetSpec(*spec.ServiceSpec)
+	UpdateMembers(pd.Client) error
+	NeedUpgrade([]*api.Pod) bool
+	NotEqualPodSize(int) bool
+	PickOneOldMember(pods []*api.Pod) *Member
+	Members() []*Member
+	GetSpec() *spec.ServiceSpec
 }
+
+type Member struct {
+	Name    string
+	ID      uint64
+	Version string
+}
+
+type SeedFunc func(*unversioned.Client, string, string, *spec.ClusterSpec) (MemberSet, error)
+
+var seedMapFunc = make(map[MemberType]SeedFunc)
 
 func RegisterSeedMemberFunc(typ MemberType, f SeedFunc) {
 	if _, ok := seedMapFunc[typ]; ok {
-		return fmt.Errorf("already exists")
+		log.Fatal("Member: Register called twice %s", typ)
 	}
 	seedMapFunc[typ] = f
 }
 
-func InitSeedMembers(kubeCli *unversioned.Client, clusterName, nameSpace string, s *spec.ClusterSpec) (map[MemberType]*MemberSet, error) {
-	mss := make(map[MemberType]*MemberSet)
-	for _, m := range StartUpSequence {
+func InitSeedMembers(kubeCli *unversioned.Client, clusterName, nameSpace string, s *spec.ClusterSpec) (map[MemberType]MemberSet, error) {
+	mss := make(map[MemberType]MemberSet)
+	for _, m := range ServiceAdjustSequence {
 		ms, err := seedMapFunc[m](kubeCli, clusterName, nameSpace, s)
 		if err != nil {
-			return nil, err
+			return nil, errors.Trace(err)
 		}
 
 		mss[m] = ms
@@ -58,8 +84,11 @@ func InitSeedMembers(kubeCli *unversioned.Client, clusterName, nameSpace string,
 }
 
 func GetEmptyMemberSet(tp MemberType) MemberSet {
-	switch {
+	switch tp {
 	case PD:
-		return &PDMemberSet{ms: make(map[string]*pdMember)}
+		return &PDMemberSet{members: make(map[string]*pdMember)}
 	}
+
+	panic("can't reach here")
+	return nil
 }

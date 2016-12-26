@@ -2,76 +2,82 @@ package member
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
-	"github.com/GregoryIan/oprator/spec"
+	"github.com/GregoryIan/operator/pkg/spec"
 	"github.com/juju/errors"
+	"github.com/ngaut/log"
+	"github.com/pborman/uuid"
+	"github.com/pingcap/pd/pd-client"
+	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 type pdMember struct {
-	Name       string
-	ID         uint64
-	PerrURLs   []string
-	ClientURLs []string
+	name       string
+	id         uint64
+	peerURLs   []string
+	clientURLs []string
 }
 
 func (m *pdMember) clientAddr() string {
-	return strings.Join(m.ClientURLs, ",")
+	return strings.Join(m.clientURLs, ",")
 }
 
 func (m *pdMember) peerAddr() string {
-	return strings.Join(m.PeerURLs, ",")
+	return strings.Join(m.peerURLs, ",")
 }
 
 type PDMemberSet struct {
 	clusterName string
-	nameSpace   string
+	namespace   string
 	idCounter   int
-	ms          map[string]*pdMember
-	spec        *spec.ClusterSpec
+	members     map[string]*pdMember
+	spec        *spec.ServiceSpec
 	kubeCli     *unversioned.Client
 }
 
 func init() {
-	RegisterSeedMemberFunc(PD, SeedPDMemberset)
+	RegisterSeedMemberFunc(PD, NewPDMemberset)
 }
 
-func NewPDMemberset(kubeCli *unversioned.Client, clusterName, nameSpace string, s *spec.ClusterSpec) (MemberSet, error) {
+func NewPDMemberset(kubeCli *unversioned.Client, clusterName, namespace string, s *spec.ClusterSpec) (MemberSet, error) {
 	pms := &PDMemberSet{
 		clusterName: clusterName,
-		nameSpace:   nameSpace,
-		ms:          make(map[string]*pdMember),
-		spec:        s,
+		namespace:   namespace,
+		members:     make(map[string]*pdMember),
+		spec:        s.PD,
 	}
 
-	err := newSeedMember()
+	err := pms.newSeedMember()
 	if err != nil {
-		return nil, err
+		return nil, errors.Trace(err)
 	}
 
 	return pms, nil
 }
 
-func (pms *PDMemberSet) newSeedMember() (*pdMember, error) {
+func (pms *PDMemberSet) newSeedMember() error {
 	newMemberName := fmt.Sprintf("%s-pd-%04d", pms.clusterName, pms.idCounter)
 	pms.idCounter++
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
 
-	pod := pms.makePDMember(newMemberName, initialCluster, pms.clusterName, "new", uuid.New(), pms.spec)
+	pod := pms.makePDMember(newMemberName, initialCluster, "new", uuid.New())
 	_, err := CreateAndWaitPod(pms.kubeCli, pms.namespace, pod, 30*time.Second)
 	if err != nil {
-		return nil, err
+		return errors.Trace(err)
 	}
 
 	log.Infof("tidb cluster created with seed pd member (%s)", newMemberName)
 	return nil
 }
 
-func (pms *PDMemberSet) Add(pd *api.Pod) {
-	m := &PDMember{name: pod.Name}
+func (pms *PDMemberSet) Add(pod *api.Pod) {
+	m := &pdMember{name: pod.Name}
 	m.clientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
 	m.peerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
-	pms.ms[pm.name] = m
+	pms.members[pod.Name] = m
 }
 
 func (pms *PDMemberSet) AddOneMember() error {
@@ -81,30 +87,26 @@ func (pms *PDMemberSet) AddOneMember() error {
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster := append(pms.PeerURLPairs(), newMemberName+"="+peerURL)
 
-	pod := pms.makePDMember(newMemberName, initialCluster, c.Name, "existing", "", pms.spec)
-	pod = PodWithAddMemberInitContainer(pod, pms.ClientURLs(), newMemberName, []string{peerURL}, c.spec)
+	pod := pms.makePDMember(newMemberName, initialCluster, "existing", "")
+	pod = PodWithAddMemberInitContainer(pod, pms.ClientURLs(), newMemberName, []string{peerURL}, pms.spec)
 
-	_, err := pms.KubeCli.Pods(pms.namespace).Create(pod)
+	_, err := pms.kubeCli.Pods(pms.namespace).Create(pod)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 	// wait for the new pod to start and add itself into the etcd cluster.
-	cfg := clientv3.Config{
-		Endpoints:   c.members.ClientURLs(),
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
+	cli, err := pd.NewClient(pms.ClientURLs())
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
-	defer etcdcli.Close()
+	defer cli.Close()
 
-	oldN := c.members.Size()
+	oldN := pms.Size()
 	// TODO: do not wait forever.
 	for {
-		err = pms.updateMembers(etcdcli)
+		err = pms.UpdateMembers(cli)
 		// TODO: check error type to determine the etcd member is not ready.
-		if err != nil && c.members != nil {
+		if err != nil && pms.members != nil {
 			log.Errorf("failed to list pd members for update: %v", err)
 			return err
 		}
@@ -118,45 +120,45 @@ func (pms *PDMemberSet) AddOneMember() error {
 	return nil
 }
 
-func (pms *PDMemberSet) UpdateMembers(etcdcli *clientv3.Client) error {
-	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+func (pms *PDMemberSet) UpdateMembers(cli pd.Client) error {
+	/*ctx, _ := context.WithTimeout(context.Background(), DefaultRequestTimeout)
 	resp, err := cli.MemberList(ctx)
 	if err != nil {
 		return err
 	}
-	pms = &pdMemberSet{}
+	pms.members = make(map[string]*pdMember)
 	for _, m := range resp.Members {
 		if len(m.Name) == 0 {
-			pms.MS = nil
-			return fmt.Errorf("the name of member (%x) is empty. Not ready yet. Will retry later", m.ID)
+			pms.members = nil
+			return errors.Errorf("the name of member (%x) is empty. Not ready yet. Will retry later", m.ID)
 		}
 		id := findID(m.Name)
 		if id+1 > pms.idCounter {
 			pms.idCounter = id + 1
 		}
 
-		pms.ms[m.Name] = &pdMember{
-			Name:       m.Name,
-			ID:         m.ID,
-			ClientURLs: m.ClientURLs,
-			PeerURLs:   m.PeerURLs,
+		pms.members[m.Name] = &pdMember{
+			name:       m.Name,
+			id:         m.ID,
+			clientURLs: m.ClientURLs,
+			peerURLs:   m.PeerURLs,
 		}
-	}
+	}*/
 	return nil
 }
 
-func (pms *PDMemberSet) Diff(other MemberSet) {
+func (pms *PDMemberSet) Diff(other MemberSet) MemberSet {
 	o, ok := other.(*PDMemberSet)
 	if !ok {
 		log.Errorf("other(%v) is not a PDMemberSet", other)
 	}
 	s := &PDMemberSet{
-		MS: make(map[string]*pdMember),
+		members: make(map[string]*pdMember),
 	}
 
-	for n, m := range pms.MS {
-		if _, ok := o.MS[n]; !ok {
-			s.MS[n] = m
+	for n, m := range pms.members {
+		if _, ok := o.members[n]; !ok {
+			s.members[n] = m
 		}
 	}
 	return s
@@ -164,40 +166,76 @@ func (pms *PDMemberSet) Diff(other MemberSet) {
 
 func (pms *PDMemberSet) PeerURLPairs() []string {
 	ps := make([]string, 0)
-	for _, m := range pms.ms {
+	for _, m := range pms.members {
 		ps = append(ps, fmt.Sprintf("%s=%s", m.name, m.peerAddr()))
 	}
 	return ps
 }
 
 func (pms *PDMemberSet) ClientURLs() []string {
-	endpoints := make([]string, 0, len(pms.MS))
-	for _, m := range pms.ms {
+	endpoints := make([]string, 0, len(pms.members))
+	for _, m := range pms.members {
 		endpoints = append(endpoints, m.clientAddr())
 	}
 	return endpoints
 }
 
 func (pms *PDMemberSet) Remove(name string) {
-	delete(pms.ms, name)
+	delete(pms.members, name)
 }
 
-func (pms *PDMemberSet) PickOne() *pdMember {
-	for _, m := range pms.ms {
-		return m
+func (pms *PDMemberSet) PickOne() *Member {
+	for _, m := range pms.members {
+		return &Member{
+			Name: m.name,
+			ID:   m.id,
+		}
 	}
 	panic("empty")
 }
 
-func (pms *PDMemberSet) SetSpec(s *spec.ClusterSpec) {
-	pms.Spec = s
+func (pms *PDMemberSet) SetSpec(s *spec.ServiceSpec) {
+	pms.spec = s
 }
 
-func (pms *PDMemberSet) Size() int64 {
-	return len(pms.MS)
+func (pms *PDMemberSet) GetSpec() *spec.ServiceSpec {
+	return pms.spec
 }
 
-func (pms *PDMemberSet) makeMember(name string, initialCluster []string, state, token string) *api.Pod {
+func (pms *PDMemberSet) Size() int {
+	return len(pms.members)
+}
+
+func (pms *PDMemberSet) NeedUpgrade(pods []*api.Pod) bool {
+	return !pms.NotEqualPodSize(len(pods)) && pms.PickOneOldMember(pods) != nil
+}
+
+func (pms *PDMemberSet) NotEqualPodSize(size int) bool {
+	return size != pms.spec.Size
+}
+
+func (pms *PDMemberSet) PickOneOldMember(pods []*api.Pod) *Member {
+	for _, pod := range pods {
+		if GetVersion(pod, PD) == pms.spec.Version {
+			continue
+		}
+		return &Member{Name: pod.Name, Version: pms.spec.Version}
+	}
+	return nil
+}
+
+func (pms *PDMemberSet) Members() []*Member {
+	var members = make([]*Member, len(pms.members))
+	index := 0
+	for _, m := range pms.members {
+		members[index] = &Member{Name: m.name}
+		index++
+	}
+
+	return members
+}
+
+func (pms *PDMemberSet) makePDMember(name string, initialCluster []string, state, token string) *api.Pod {
 	commands := fmt.Sprintf("/bin/pd --data-dir=%s/pd --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
 		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
@@ -205,6 +243,11 @@ func (pms *PDMemberSet) makeMember(name string, initialCluster []string, state, 
 
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
+	}
+
+	version := defaultVersion
+	if pms.spec != nil && len(pms.spec.Version) > 0 {
+		version = pms.spec.Version
 	}
 
 	pod := &api.Pod{
@@ -224,7 +267,7 @@ func (pms *PDMemberSet) makeMember(name string, initialCluster []string, state, 
 					// Without waiting some time, there is highly probable flakes in network setup.
 					Command: []string{"/bin/sh", "-c", fmt.Sprintf("sleep 5; %s", commands)},
 					Name:    name,
-					Image:   MakeImage(pms.Pd.Version, PD),
+					Image:   MakeImage(version, PD),
 					Ports: []api.ContainerPort{
 						{
 							Name:          "server",
@@ -250,10 +293,10 @@ func (pms *PDMemberSet) makeMember(name string, initialCluster []string, state, 
 		},
 	}
 
-	SetVersion(pod, pms.spec.Pd.Version, pd)
+	SetVersion(pod, version, PD)
 	pod = PodWithAntiAffinity(pod, pms.clusterName)
 
-	if len(pms.spec.NodeSelector) != 0 {
+	if pms.spec.NodeSelector != nil && len(pms.spec.NodeSelector) != 0 {
 		pod = PodWithNodeSelector(pod, pms.spec.NodeSelector)
 	}
 
