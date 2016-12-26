@@ -43,25 +43,26 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 	c.logger.Infoln("Start reconciling")
 	defer c.logger.Infoln("Finish reconciling")
 
+	sp := c.cluster.Spec
 	switch {
-	case len(pods) != c.spec.Size:
+	case len(pods) != sp.Size:
 		running := etcdutil.MemberSet{}
 		for _, pod := range pods {
 			m := &etcdutil.Member{Name: pod.Name}
-			if c.spec.SelfHosted != nil {
+			if sp.SelfHosted != nil {
 				m.ClientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
 				m.PeerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
 			}
 			running.Add(m)
 		}
 		return c.reconcileSize(running)
-	case needUpgrade(pods, c.spec):
-		c.status.upgradeVersionTo(c.spec.Version)
+	case needUpgrade(pods, sp):
+		c.status.upgradeVersionTo(sp.Version)
 
-		m := pickOneOldMember(pods, c.spec.Version)
+		m := pickOneOldMember(pods, sp.Version)
 		return c.upgradeOneMember(m)
 	default:
-		c.status.setVersion(c.spec.Version)
+		c.status.setVersion(sp.Version)
 		return nil
 	}
 }
@@ -129,12 +130,12 @@ func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
 }
 
 func (c *Cluster) resize() error {
-	if c.members.Size() == c.spec.Size {
+	if c.members.Size() == c.cluster.Spec.Size {
 		return nil
 	}
 
-	if c.members.Size() < c.spec.Size {
-		if c.spec.SelfHosted != nil {
+	if c.members.Size() < c.cluster.Spec.Size {
+		if c.cluster.Spec.SelfHosted != nil {
 			return c.addOneSelfHostedMember()
 		}
 
@@ -155,7 +156,7 @@ func (c *Cluster) addOneMember() error {
 	}
 	defer etcdcli.Close()
 
-	newMemberName := fmt.Sprintf("%s-%04d", c.Name, c.idCounter)
+	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.idCounter)
 	newMember := &etcdutil.Member{Name: newMemberName}
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
@@ -218,11 +219,11 @@ func removeMember(clientURLs []string, id uint64) error {
 }
 
 func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
-	if c.spec.SelfHosted != nil {
+	if c.cluster.Spec.SelfHosted != nil {
 		return errors.New("self-hosted cluster cannot be recovered from disaster")
 	}
 
-	if c.spec.Backup == nil {
+	if c.cluster.Spec.Backup == nil {
 		c.logger.Errorf("fail to do disaster recovery: no backup policy has been defined.")
 		return errNoBackupExist
 	}
@@ -230,7 +231,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	backupNow := false
 	if len(left) > 0 {
 		c.logger.Infof("pods are still running (%v). Will try to make a latest backup from one of them.", left)
-		err := RequestBackupNow(c.KubeCli.RESTClient.Client, k8sutil.MakeBackupHostPort(c.Name))
+		err := RequestBackupNow(c.config.KubeCli.RESTClient.Client, k8sutil.MakeBackupHostPort(c.cluster.Name))
 		if err != nil {
 			c.logger.Errorln(err)
 		} else {
@@ -242,7 +243,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	} else {
 		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
 		// If so, we can still continue. Otherwise, it's fatal error.
-		exist, err := checkBackupExist(c.KubeCli.RESTClient.Client, k8sutil.MakeBackupHostPort(c.Name), c.spec.Version)
+		exist, err := checkBackupExist(c.config.KubeCli.RESTClient.Client, k8sutil.MakeBackupHostPort(c.cluster.Name), c.cluster.Spec.Version)
 		if err != nil {
 			c.logger.Errorln(err)
 			return err

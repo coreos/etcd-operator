@@ -26,16 +26,16 @@ import (
 )
 
 func (c *Cluster) addOneSelfHostedMember() error {
-	newMemberName := fmt.Sprintf("%s-%04d", c.Name, c.idCounter)
+	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.idCounter)
 	c.idCounter++
 
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster := append(c.members.PeerURLPairs(), newMemberName+"="+peerURL)
 
-	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "existing", "", c.spec)
-	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.spec)
+	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Name, "existing", "", c.cluster.Spec)
+	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.cluster.Spec)
 
-	_, err := c.KubeCli.Pods(c.Namespace).Create(pod)
+	_, err := c.config.KubeCli.Pods(c.cluster.Namespace).Create(pod)
 	if err != nil {
 		return err
 	}
@@ -70,12 +70,12 @@ func (c *Cluster) addOneSelfHostedMember() error {
 }
 
 func (c *Cluster) newSelfHostedSeedMember() error {
-	newMemberName := fmt.Sprintf("%s-%04d", c.Name, c.idCounter)
+	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.idCounter)
 	c.idCounter++
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
 
-	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "new", uuid.New(), c.spec)
-	_, err := k8sutil.CreateAndWaitPod(c.KubeCli, c.Namespace, pod, 30*time.Second)
+	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Name, "new", uuid.New(), c.cluster.Spec)
+	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Namespace, pod, 30*time.Second)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 }
 
 func (c *Cluster) migrateBootMember() error {
-	endpoint := c.spec.SelfHosted.BootMemberClientEndpoint
+	endpoint := c.cluster.Spec.SelfHosted.BootMemberClientEndpoint
 
 	c.logger.Infof("migrating boot member (%s)", endpoint)
 
@@ -104,15 +104,15 @@ func (c *Cluster) migrateBootMember() error {
 	}
 
 	// create the  member inside Kubernetes for migration
-	newMemberName := fmt.Sprintf("%s-%04d", c.Name, c.idCounter)
+	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.idCounter)
 	c.idCounter++
 
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster = append(initialCluster, newMemberName+"="+peerURL)
 
-	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.Name, "existing", "", c.spec)
-	pod = k8sutil.PodWithAddMemberInitContainer(pod, []string{endpoint}, newMemberName, []string{peerURL}, c.spec)
-	pod, err = k8sutil.CreateAndWaitPod(c.KubeCli, c.Namespace, pod, 30*time.Second)
+	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Name, "existing", "", c.cluster.Spec)
+	pod = k8sutil.PodWithAddMemberInitContainer(pod, []string{endpoint}, newMemberName, []string{peerURL}, c.cluster.Spec)
+	pod, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Namespace, pod, 30*time.Second)
 	if err != nil {
 		return err
 	}
