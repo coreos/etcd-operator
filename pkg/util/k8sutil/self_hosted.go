@@ -21,9 +21,10 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/meta/metatypes"
 )
 
-func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec) *api.Pod {
+func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec, owner metatypes.OwnerReference) *api.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
 		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
@@ -66,6 +67,6 @@ func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, st
 	if len(cs.NodeSelector) != 0 {
 		pod = PodWithNodeSelector(pod, cs.NodeSelector)
 	}
-
+	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
 }

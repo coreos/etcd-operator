@@ -27,6 +27,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/meta/metatypes"
 	"k8s.io/kubernetes/pkg/api/resource"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -190,13 +191,18 @@ func MakeBackupPodSpec(clusterName string, policy *spec.BackupPolicy) (*api.PodS
 	return ps, nil
 }
 
-func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string, ps api.PodSpec) error {
+func backupNameAndLabel(clusterName string) (string, map[string]string) {
 	labels := map[string]string{
 		"app":          BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
 	}
 	name := MakeBackupName(clusterName)
-	_, err := kubecli.ReplicaSets(ns).Create(&extensions.ReplicaSet{
+	return name, labels
+}
+
+func MakeBackupReplicaSet(clusterName string, ps api.PodSpec, owner metatypes.OwnerReference) *extensions.ReplicaSet {
+	name, labels := backupNameAndLabel(clusterName)
+	rs := &extensions.ReplicaSet{
 		ObjectMeta: api.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
@@ -213,13 +219,13 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 				Spec: ps,
 			},
 		},
-	})
-	if err != nil {
-		if !IsKubernetesResourceAlreadyExistError(err) {
-			return err
-		}
 	}
+	addOwnerRefToObject(rs.GetObjectMeta(), owner)
+	return rs
+}
 
+func MakeBackupService(clusterName string, owner metatypes.OwnerReference) *api.Service {
+	name, labels := backupNameAndLabel(clusterName)
 	svc := &api.Service{
 		ObjectMeta: api.ObjectMeta{
 			Name:   name,
@@ -237,12 +243,8 @@ func CreateBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 			Selector: labels,
 		},
 	}
-	if _, err := kubecli.Services(ns).Create(svc); err != nil {
-		if !IsKubernetesResourceAlreadyExistError(err) {
-			return err
-		}
-	}
-	return nil
+	addOwnerRefToObject(svc.GetObjectMeta(), owner)
+	return svc
 }
 
 func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string) error {

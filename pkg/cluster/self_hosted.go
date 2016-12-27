@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
 	"github.com/coreos/etcd/clientv3"
 	"github.com/pborman/uuid"
 )
@@ -32,7 +33,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster := append(c.members.PeerURLPairs(), newMemberName+"="+peerURL)
 
-	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Name, "existing", "", c.cluster.Spec)
+	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.cluster.Spec)
 
 	_, err := c.config.KubeCli.Pods(c.cluster.Namespace).Create(pod)
@@ -74,7 +75,7 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	c.idCounter++
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
 
-	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Name, "new", uuid.New(), c.cluster.Spec)
+	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Name, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
 	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Namespace, pod, 30*time.Second)
 	if err != nil {
 		return err
@@ -110,7 +111,7 @@ func (c *Cluster) migrateBootMember() error {
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster = append(initialCluster, newMemberName+"="+peerURL)
 
-	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Name, "existing", "", c.cluster.Spec)
+	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, []string{endpoint}, newMemberName, []string{peerURL}, c.cluster.Spec)
 	pod, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Namespace, pod, 30*time.Second)
 	if err != nil {

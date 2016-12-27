@@ -376,7 +376,7 @@ func (c *Cluster) delete() {
 }
 
 func (c *Cluster) createClientServiceLB() error {
-	if _, err := k8sutil.CreateEtcdService(c.config.KubeCli, c.cluster.Name, c.cluster.Namespace); err != nil {
+	if _, err := k8sutil.CreateEtcdService(c.config.KubeCli, c.cluster.Name, c.cluster.Namespace, c.cluster.AsOwner()); err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
 		}
@@ -396,7 +396,8 @@ func (c *Cluster) deleteClientServiceLB() error {
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
 	// TODO: remove garbage service. Because we will fail after service created before pods created.
-	if _, err := k8sutil.CreateEtcdMemberService(c.config.KubeCli, m.Name, c.cluster.Name, c.cluster.Namespace); err != nil {
+	svc := k8sutil.MakeEtcdMemberService(m.Name, c.cluster.Name, c.cluster.AsOwner())
+	if _, err := k8sutil.CreateEtcdMemberService(c.config.KubeCli, c.cluster.Namespace, svc); err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
 		}
@@ -405,7 +406,8 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	if state == "new" {
 		token = uuid.New()
 	}
-	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.cluster.Name, state, token, c.cluster.Spec)
+
+	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.cluster.Name, state, token, c.cluster.Spec, c.cluster.AsOwner())
 	if needRecovery {
 		k8sutil.AddRecoveryToPod(pod, c.cluster.Name, m.Name, token, c.cluster.Spec)
 	}
