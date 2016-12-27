@@ -24,6 +24,8 @@ import (
 
 var (
 	ErrBackupUnsetRestoreSet = errors.New("spec: backup policy must be set if restore policy is set")
+
+	FailedReasonNoBackup = "all members are failed, no backup for recovery"
 )
 
 type EtcdCluster struct {
@@ -138,6 +140,14 @@ type ClusterStatus struct {
 	TargetVersion string `json:"targetVersion"`
 }
 
+func (cs *ClusterStatus) SetPhaseRunning() {
+	cs.Phase = ClusterPhaseRunning
+}
+
+func (cs *ClusterStatus) SetPhaseFailed() {
+	cs.Phase = ClusterPhaseFailed
+}
+
 func (cs *ClusterStatus) UpgradeVersionTo(v string) {
 	cs.TargetVersion = v
 }
@@ -145,6 +155,10 @@ func (cs *ClusterStatus) UpgradeVersionTo(v string) {
 func (cs *ClusterStatus) SetVersion(v string) {
 	cs.TargetVersion = ""
 	cs.CurrentVersion = v
+}
+
+func (cs *ClusterStatus) SetReason(r string) {
+	cs.Reason = r
 }
 
 func (cs *ClusterStatus) AppendScalingUpCondition() {
