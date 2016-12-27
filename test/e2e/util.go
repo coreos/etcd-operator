@@ -247,12 +247,13 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 	fmt.Println("etcd pods ======")
 	for i := range podList.Items {
 		pod := &podList.Items[i]
-		fmt.Printf("pod (%v): status (%v)\n", pod.Name, pod.Status.Phase)
+		fmt.Printf("pod (%v): status (%v), cmd (%v)\n", pod.Name, pod.Status.Phase, pod.Spec.Containers[0].Command)
 		buf := bytes.NewBuffer(nil)
 
 		if pod.Status.Phase == api.PodFailed {
 			if err := getLogs(f.KubeClient, f.Namespace, pod.Name, "etcd", buf); err != nil {
-				return err
+				fmt.Printf("fail to get (%s)'s log: %v", pod.Name, err)
+				continue
 			}
 			fmt.Println(pod.Name, "logs ===")
 			fmt.Println(buf.String())
