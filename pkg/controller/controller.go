@@ -152,20 +152,29 @@ func (c *Controller) Run() error {
 				c.clusters[clusterName] = nc
 
 				analytics.ClusterCreated()
+				clustersCreated.Inc()
+				clustersTotal.Inc()
+
 			case "MODIFIED":
 				if c.clusters[clusterName] == nil {
 					c.logger.Warningf("ignore modification: cluster %q not found (or dead)", clusterName)
 					break
 				}
+
 				c.clusters[clusterName].Update(event.Object)
+				clustersModified.Inc()
+
 			case "DELETED":
 				if c.clusters[clusterName] == nil {
 					c.logger.Warningf("ignore deletion: cluster %q not found (or dead)", clusterName)
 					break
 				}
+
 				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)
 				analytics.ClusterDeleted()
+				clustersDeleted.Inc()
+				clustersTotal.Dec()
 			}
 		}
 	}()
