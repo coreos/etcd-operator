@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/meta/metatypes"
+	metatypes "k8s.io/kubernetes/pkg/api/meta/metatypes"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 )
 
@@ -143,6 +143,9 @@ type ClusterStatus struct {
 	Phase  ClusterPhase `json:"phase"`
 	Reason string       `json:"reason"`
 
+	// ControlPuased indicates the operator pauses the control of the cluster.
+	ControlPaused bool `json:"controlPaused"`
+
 	// Condition keeps ten most recent cluster conditions
 	Conditions []ClusterCondition `json:"conditions"`
 
@@ -161,6 +164,14 @@ func (cs *ClusterStatus) SetPhaseRunning() {
 
 func (cs *ClusterStatus) SetPhaseFailed() {
 	cs.Phase = ClusterPhaseFailed
+}
+
+func (cs *ClusterStatus) PauseControl() {
+	cs.ControlPaused = true
+}
+
+func (cs *ClusterStatus) Control() {
+	cs.ControlPaused = false
 }
 
 func (cs *ClusterStatus) UpgradeVersionTo(v string) {
