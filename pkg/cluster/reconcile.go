@@ -3,8 +3,10 @@ package cluster
 import (
 	"github.com/GregoryIan/operator/pkg/cluster/member"
 	"github.com/GregoryIan/operator/pkg/util"
+	"github.com/GregoryIan/operator/pkg/util/pdutil"
 	"github.com/juju/errors"
 	"github.com/ngaut/log"
+
 	"k8s.io/kubernetes/pkg/api"
 )
 
@@ -42,6 +44,11 @@ func (c *Cluster) reconcileSize(running member.MemberSet, tp member.MemberType) 
 			log.Errorf("fail to refresh members: %v", err)
 			return err
 		}*/
+		pdcli := pdutil.New(c.members[member.PD].(*member.PDMemberSet).ClientURLs())
+		if err := c.members[tp].UpdateMembers(pdcli); err != nil {
+			log.Errorf("fail to refresh members: %v", err)
+
+		}
 	}
 
 	unknownMembers := running.Diff(c.members[tp])

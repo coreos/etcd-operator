@@ -4,9 +4,10 @@ import (
 	"time"
 
 	"github.com/GregoryIan/operator/pkg/spec"
+	"github.com/GregoryIan/operator/pkg/util/pdutil"
 	"github.com/juju/errors"
 	"github.com/ngaut/log"
-	"github.com/pingcap/pd/pd-client"
+
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
@@ -48,7 +49,7 @@ type MemberSet interface {
 	Remove(string)
 	Size() int
 	SetSpec(*spec.ServiceSpec)
-	UpdateMembers(pd.Client) error
+	UpdateMembers(*pdutil.Client) error
 }
 
 type Member struct {

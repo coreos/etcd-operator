@@ -6,16 +6,15 @@ import (
 	"time"
 
 	"github.com/GregoryIan/operator/pkg/spec"
+	"github.com/GregoryIan/operator/pkg/util/pdutil"
 	"github.com/juju/errors"
 	"github.com/ngaut/log"
-	"github.com/pingcap/pd/pd-client"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 type pdMember struct {
 	name       string
-	id         uint64
 	peerURLs   []string
 	clientURLs []string
 }
@@ -94,11 +93,7 @@ func (pms *PDMemberSet) AddOneMember() error {
 	}
 	log.Fatal("finish create pod!")
 	// wait for the new pod to start and add itself into the etcd cluster.
-	cli, err := pd.NewClient(pms.ClientURLs())
-	if err != nil {
-		return errors.Trace(err)
-	}
-	defer cli.Close()
+	cli := pdutil.New(pms.ClientURLs())
 
 	oldN := pms.Size()
 	// TODO: do not wait forever.
@@ -119,30 +114,24 @@ func (pms *PDMemberSet) AddOneMember() error {
 	return nil
 }
 
-func (pms *PDMemberSet) UpdateMembers(cli pd.Client) error {
-	/*ctx, _ := context.WithTimeout(context.Background(), DefaultRequestTimeout)
-	resp, err := cli.MemberList(ctx)
+func (pms *PDMemberSet) UpdateMembers(cli *pdutil.Client) error {
+	resp, err := cli.PDMemberList()
 	if err != nil {
 		return err
 	}
-	pms.members = make(map[string]*pdMember)
-	for _, m := range resp.Members {
-		if len(m.Name) == 0 {
-			pms.members = nil
-			return errors.Errorf("the name of member (%x) is empty. Not ready yet. Will retry later", m.ID)
-		}
-		id := findID(m.Name)
-		if id+1 > pms.idCounter {
-			pms.idCounter = id + 1
-		}
 
-		pms.members[m.Name] = &pdMember{
-			name:       m.Name,
-			id:         m.ID,
-			clientURLs: m.ClientURLs,
-			peerURLs:   m.PeerURLs,
+	pms.members = make(map[string]*pdMember)
+	for _, m := range resp {
+		if len(*m.Name) == 0 {
+			pms.members = nil
+			return errors.Errorf("the name of member (%s) is empty. Not ready yet. Will retry later", *m.Name)
 		}
-	}*/
+		pms.members[*m.Name] = &pdMember{
+			name:       *m.Name,
+			clientURLs: m.ClientUrls,
+			peerURLs:   m.PeerUrls,
+		}
+	}
 	return nil
 }
 
@@ -187,7 +176,6 @@ func (pms *PDMemberSet) PickOne() *Member {
 	for _, m := range pms.members {
 		return &Member{
 			Name: m.name,
-			ID:   m.id,
 		}
 	}
 	panic("empty")
