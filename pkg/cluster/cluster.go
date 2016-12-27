@@ -55,6 +55,7 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 	c := &Cluster{
 		Config:  config,
 		spec:    s,
+		members: make(map[member.MemberType]member.MemberSet),
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
 	}
@@ -68,10 +69,12 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 		}
 	} else {
 		for _, tp := range member.ServiceAdjustSequence {
-			c.members[tp] = member.GetEmptyMemberSet(tp)
+			c.members[tp] = member.GetEmptyMemberSet(c.KubeCli, c.Name, c.Namespace, tp)
 		}
 	}
+
 	member.SplitAndDistributeSpec(s, c.spec, c.members)
+	log.Fatal("init over!")
 
 	go c.run(stopC, wg)
 	return c, nil
@@ -126,11 +129,12 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 					log.Errorf("fail to poll memberType: %v pods: %v", memberTp, err)
 					continue
 				}
+
 				if len(pending) > 0 {
 					log.Infof("skip reconciliation: memberType: %v running (%v), pending (%v)", memberTp, util.GetPodNames(running), util.GetPodNames(pending))
 					continue
 				}
-				if len(running) == 0 {
+				if len(running) == 0 && c.members[memberTp].Size() > 0 {
 					log.Fatalf("all memberType: %v pods are dead.", memberTp)
 				}
 				if err := c.reconcile(running, memberTp); err != nil {
@@ -147,7 +151,6 @@ func (c *Cluster) createClientServiceLB() error {
 			return errors.Trace(err)
 		}
 	}
-
 	return nil
 }
 

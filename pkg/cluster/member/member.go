@@ -83,10 +83,15 @@ func InitSeedMembers(kubeCli *unversioned.Client, clusterName, nameSpace string,
 	return mss, nil
 }
 
-func GetEmptyMemberSet(tp MemberType) MemberSet {
+func GetEmptyMemberSet(kubeCli *unversioned.Client, clusterName, namespace string, tp MemberType) MemberSet {
 	switch tp {
 	case PD:
-		return &PDMemberSet{members: make(map[string]*pdMember)}
+		return &PDMemberSet{
+			clusterName: clusterName,
+			namespace:   namespace,
+			kubeCli:     kubeCli,
+			members:     make(map[string]*pdMember),
+		}
 	}
 
 	panic("can't reach here")

@@ -48,6 +48,7 @@ func newPDMemberset(kubeCli *unversioned.Client, clusterName, namespace string, 
 		namespace:   namespace,
 		members:     make(map[string]*pdMember),
 		spec:        s.PD,
+		kubeCli:     kubeCli,
 	}
 	err := pms.newSeedMember()
 	if err != nil {
@@ -93,6 +94,7 @@ func (pms *PDMemberSet) AddOneMember() error {
 	if err != nil {
 		return errors.Trace(err)
 	}
+	log.Fatal("finish create pod!")
 	// wait for the new pod to start and add itself into the etcd cluster.
 	cli, err := pd.NewClient(pms.ClientURLs())
 	if err != nil {

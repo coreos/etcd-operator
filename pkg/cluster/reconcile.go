@@ -14,7 +14,7 @@ func (c *Cluster) reconcile(pods []*api.Pod, tp member.MemberType) error {
 
 	switch {
 	case c.members[tp].NotEqualPodSize(len(pods)):
-		running := member.GetEmptyMemberSet(tp)
+		running := member.GetEmptyMemberSet(c.KubeCli, c.Name, c.Namespace, tp)
 		for _, pod := range pods {
 			running.Add(pod)
 		}
@@ -28,7 +28,6 @@ func (c *Cluster) reconcile(pods []*api.Pod, tp member.MemberType) error {
 }
 
 func (c *Cluster) reconcileSize(running member.MemberSet, tp member.MemberType) error {
-	log.Infof("running members: %s", running)
 	if c.members[tp].Size() == 0 {
 		/*cfg := clientv3.Config{
 			Endpoints:   running.ClientURLs(),
@@ -45,7 +44,6 @@ func (c *Cluster) reconcileSize(running member.MemberSet, tp member.MemberType) 
 		}*/
 	}
 
-	log.Infof("Expected membership: %s", c.members[tp])
 	unknownMembers := running.Diff(c.members[tp])
 	if unknownMembers.Size() > 0 {
 		log.Infof("Removing unexpected pods:", unknownMembers)
