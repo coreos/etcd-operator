@@ -43,9 +43,13 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 	c.logger.Infoln("Start reconciling")
 	defer c.logger.Infoln("Finish reconciling")
 
+	size := len(pods)
+	c.status.Size = size
+
 	sp := c.cluster.Spec
+
 	switch {
-	case len(pods) != sp.Size:
+	case size != sp.Size:
 		running := etcdutil.MemberSet{}
 		for _, pod := range pods {
 			m := &etcdutil.Member{Name: pod.Name}
@@ -55,14 +59,26 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 			}
 			running.Add(m)
 		}
+
+		switch {
+		case size < sp.Size:
+			c.status.AppendScalingUpCondition()
+		case size > sp.Size:
+			c.status.AppendScalingDownCondition()
+		}
+
 		return c.reconcileSize(running)
+
 	case needUpgrade(pods, sp):
 		c.status.UpgradeVersionTo(sp.Version)
 
 		m := pickOneOldMember(pods, sp.Version)
 		return c.upgradeOneMember(m)
+
 	default:
 		c.status.SetVersion(sp.Version)
+		c.status.SetReadyCondition()
+
 		return nil
 	}
 }
