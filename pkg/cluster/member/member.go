@@ -37,15 +37,15 @@ func (s MemberType) String() string {
 }
 
 type MemberSet interface {
-	Add(*api.Pod)
-	AddOneMember() error
 	Diff(other MemberSet) MemberSet
 	Members() []*Member
 	NeedUpgrade([]*api.Pod) bool
+	NewOneMember() error
 	NotEqualPodSize(int) bool
 	PickOne() *Member
 	PickOneOldMember(pods []*api.Pod) *Member
-	Remove(string)
+	RemoveMemberShip(string)
+	RestoreFromPods([]*api.Pod)
 	Size() int
 	SetSpec(*spec.ServiceSpec)
 	UpdateMembers(pd.Client) error

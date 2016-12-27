@@ -57,6 +57,16 @@ func newPDMemberset(kubeCli *unversioned.Client, clusterName, namespace string, 
 	return pms, nil
 }
 
+func (pms *PDMemberSet) RestoreFromPods(pods []*api.Pod) {
+	pms.members = make(map[string]*pdMember)
+	for _, pod := range pods {
+		m := &pdMember{name: pod.Name}
+		m.clientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
+		m.peerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
+		pms.members[pod.Name] = m
+	}
+}
+
 func (pms *PDMemberSet) newSeedMember() error {
 	newMemberName := fmt.Sprintf("%s-pd-%04d", pms.clusterName, pms.idCounter)
 	pms.idCounter++
@@ -72,14 +82,7 @@ func (pms *PDMemberSet) newSeedMember() error {
 	return nil
 }
 
-func (pms *PDMemberSet) Add(pod *api.Pod) {
-	m := &pdMember{name: pod.Name}
-	m.clientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
-	m.peerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
-	pms.members[pod.Name] = m
-}
-
-func (pms *PDMemberSet) AddOneMember() error {
+func (pms *PDMemberSet) NewOneMember() error {
 	newMemberName := fmt.Sprintf("%s-pd-%04d", pms.clusterName, pms.idCounter)
 	pms.idCounter++
 	peerURL := "http://$(MY_POD_IP):2380"
@@ -179,7 +182,7 @@ func (pms *PDMemberSet) ClientURLs() []string {
 	return endpoints
 }
 
-func (pms *PDMemberSet) Remove(name string) {
+func (pms *PDMemberSet) RemoveMemberShip(name string) {
 	delete(pms.members, name)
 }
 
