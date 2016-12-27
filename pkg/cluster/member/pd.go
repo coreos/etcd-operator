@@ -75,6 +75,7 @@ func (pms *PDMemberSet) Add(pod *api.Pod) {
 	m := &pdMember{name: pod.Name}
 	m.clientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
 	m.peerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
+
 	pms.members[pod.Name] = m
 }
 
@@ -85,7 +86,7 @@ func (pms *PDMemberSet) AddOneMember() error {
 	initialCluster := append(pms.PeerURLPairs(), newMemberName+"="+peerURL)
 
 	pod := pms.makePDMember(newMemberName, initialCluster)
-	pod = PodWithAddMemberInitContainer(pod, pms.ClientURLs(), newMemberName, []string{peerURL}, pms.spec)
+	//	pod = PodWithAddMemberInitContainer(pod, pms.ClientURLs(), newMemberName, []string{peerURL}, pms.spec)
 
 	_, err := pms.kubeCli.Pods(pms.namespace).Create(pod)
 	if err != nil {
@@ -132,6 +133,7 @@ func (pms *PDMemberSet) UpdateMembers(cli *pdutil.Client) error {
 			peerURLs:   m.PeerUrls,
 		}
 	}
+	log.Infof("get member %+v", resp)
 	return nil
 }
 

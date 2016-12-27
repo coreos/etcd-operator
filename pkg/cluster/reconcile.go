@@ -11,7 +11,7 @@ import (
 )
 
 func (c *Cluster) reconcile(pods []*api.Pod, tp member.MemberType) error {
-	log.Info("Start reconciling %s", tp)
+	log.Infof("Start reconciling %s", tp)
 	defer log.Infof("Finish reconciling %s", tp)
 
 	switch {
@@ -31,23 +31,10 @@ func (c *Cluster) reconcile(pods []*api.Pod, tp member.MemberType) error {
 
 func (c *Cluster) reconcileSize(running member.MemberSet, tp member.MemberType) error {
 	if c.members[tp].Size() == 0 {
-		/*cfg := clientv3.Config{
-			Endpoints:   running.ClientURLs(),
-			DialTimeout: constants.DefaultDialTimeout,
-		}
-		etcdcli, err := clientv3.New(cfg)
-		if err != nil {
-			return err
-		}
-		defer etcdcli.Close()
-		if err := c.members[tp].updateMembers(etcdcli); err != nil {
-			log.Errorf("fail to refresh members: %v", err)
-			return err
-		}*/
-		pdcli := pdutil.New(c.members[member.PD].(*member.PDMemberSet).ClientURLs())
+		pdcli := pdutil.New(running.(*member.PDMemberSet).ClientURLs())
 		if err := c.members[tp].UpdateMembers(pdcli); err != nil {
 			log.Errorf("fail to refresh members: %v", err)
-
+			return err
 		}
 	}
 
@@ -72,7 +59,7 @@ func (c *Cluster) reconcileSize(running member.MemberSet, tp member.MemberType) 
 
 	log.Infof("Recovering one member")
 	toRecover := c.members[tp].Diff(L).PickOne()
-	if err := c.removeMember(toRecover.ID, toRecover.Name, tp); err != nil {
+	if err := c.removeMember(toRecover.Name, tp); err != nil {
 		return err
 	}
 	return c.resize(tp)
@@ -93,12 +80,12 @@ func (c *Cluster) resize(tp member.MemberType) error {
 
 func (c *Cluster) removeOneMember(tp member.MemberType) error {
 	m := c.members[tp].PickOne()
-	return c.removeMember(m.ID, m.Name, tp)
+	return c.removeMember(m.Name, tp)
 }
 
-func (c *Cluster) removeMember(id uint64, name string, tp member.MemberType) error {
+func (c *Cluster) removeMember(name string, tp member.MemberType) error {
 	ms, _ := c.members[member.PD].(*member.PDMemberSet)
-	err := member.RemoveMember(ms.ClientURLs(), id, tp)
+	err := member.RemoveMember(ms.ClientURLs(), name, tp)
 	if err != nil {
 		return errors.Trace(err)
 	}
@@ -106,7 +93,7 @@ func (c *Cluster) removeMember(id uint64, name string, tp member.MemberType) err
 	if err := c.removePod(name); err != nil {
 		return errors.Trace(err)
 	}
-	log.Infof("removed member (%v) with ID (%d)", name, id)
+	log.Infof("removed member (%v)", name)
 	return nil
 }
 

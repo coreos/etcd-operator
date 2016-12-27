@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/GregoryIan/operator/pkg/spec"
+	"github.com/GregoryIan/operator/pkg/util/pdutil"
 	"github.com/juju/errors"
+
 	"k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	k8sv1api "k8s.io/kubernetes/pkg/api/v1"
@@ -202,24 +204,19 @@ func makePDService(clusterName string) *api.Service {
 	return svc
 }
 
-func RemoveMember(clientURLs []string, id uint64, tp MemberType) error {
+func RemoveMember(clientURLs []string, name string, tp MemberType) error {
+	var err error
 	/*cfg := clientv3.Config{
 		Endpoints:   clientURLs,
 		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
-	if err != nil {
-		return errors.Trace(err)
-	}
-	defer etcdcli.Close()
+	}*/
+	cli := pdutil.New(clientURLs)
 
-	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	switch {
+	switch tp {
 	case PD:
-		_, err = etcdcli.Cluster.MemberRemove(ctx, id)
+		err = cli.PDMemberRemove(name)
 	}
-	return errors.Trace(err)*/
-	return nil
+	return errors.Trace(err)
 }
 
 func PodWithNodeSelector(p *api.Pod, ns map[string]string) *api.Pod {
