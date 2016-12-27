@@ -16,6 +16,7 @@ package spec
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
@@ -172,6 +173,25 @@ func (cs *ClusterStatus) AppendScalingUpCondition() {
 func (cs *ClusterStatus) AppendScalingDownCondition() {
 	c := ClusterCondition{
 		Type:           ClusterConditionScalingDown,
+		TransitionTime: time.Now(),
+	}
+	cs.appendCondition(c)
+}
+
+func (cs *ClusterStatus) AppendRecoveringCondition() {
+	c := ClusterCondition{
+		Type:           ClusterConditionRecovering,
+		TransitionTime: time.Now(),
+	}
+	cs.appendCondition(c)
+}
+
+func (cs *ClusterStatus) AppendUpgradingCondition(to string) {
+	reason := fmt.Sprintf("upgrading cluster version to %v", to)
+
+	c := ClusterCondition{
+		Type:           ClusterConditionUpgrading,
+		Reason:         reason,
 		TransitionTime: time.Now(),
 	}
 	cs.appendCondition(c)
