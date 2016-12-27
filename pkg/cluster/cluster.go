@@ -16,6 +16,7 @@ package cluster
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,7 +52,9 @@ type clusterEvent struct {
 type Config struct {
 	PVProvisioner string
 	s3config.S3Context
-	KubeCli *unversioned.Client
+
+	MasterHost string
+	KubeCli    *unversioned.Client
 }
 
 type Cluster struct {
@@ -61,11 +64,12 @@ type Cluster struct {
 
 	cluster *spec.EtcdCluster
 
-	status *Status
-
+	// in memory state of the cluster
+	status    *spec.ClusterStatus
 	idCounter int
-	eventCh   chan *clusterEvent
-	stopCh    chan struct{}
+
+	eventCh chan *clusterEvent
+	stopCh  chan struct{}
 
 	// members repsersents the members in the etcd cluster.
 	// the name of the member is the the name of the pod the member
@@ -105,7 +109,7 @@ func new(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 		cluster: e,
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
-		status:  &Status{},
+		status:  &spec.ClusterStatus{},
 		bm:      bm,
 	}
 
@@ -222,6 +226,15 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				if isFatalError(err) {
 					c.logger.Errorf("exiting for fatal error: %v", err)
 					return
+				}
+			}
+
+			if !reflect.DeepEqual(c.cluster.Status, c.status) {
+				newCluster := c.cluster
+				newCluster.Status = c.status
+				newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli, c.config.MasterHost, c.cluster.GetNamespace(), newCluster)
+				if err == nil {
+					c.cluster = newCluster
 				}
 			}
 		}

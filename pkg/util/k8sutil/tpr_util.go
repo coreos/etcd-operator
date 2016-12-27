@@ -32,7 +32,17 @@ func UpdateClusterTPRObject(k8s *unversioned.Client, host, ns string, e *spec.Et
 	if len(e.ResourceVersion) == 0 {
 		return nil, errors.New("k8sutil: resource version is not provided")
 	}
+	return updateClusterTPRObject(k8s, host, ns, e)
+}
 
+// UpdateClusterTPRObjectUnconditionally updates the given TPR object.
+// This should only be used in tests.
+func UpdateClusterTPRObjectUnconditionally(k8s *unversioned.Client, host, ns string, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+	e.ResourceVersion = ""
+	return updateClusterTPRObject(k8s, host, ns, e)
+}
+
+func updateClusterTPRObject(k8s *unversioned.Client, host, ns string, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
 	b, err := json.Marshal(e)
 	if err != nil {
 		return nil, err
