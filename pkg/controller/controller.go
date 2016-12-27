@@ -52,7 +52,6 @@ type Controller struct {
 }
 
 func New(masterHost string, nameSpace string, kubeCli *unversioned.Client) *Controller {
-	fmt.Println(nameSpace)
 	return &Controller{
 		MasterHost: masterHost,
 		Namespace:  nameSpace,
