@@ -161,11 +161,6 @@ func CreateEtcdService(kclient *unversioned.Client, clusterName, ns string) (*ap
 	return retSvc, nil
 }
 
-func CreateEtcdNodePortService(kclient *unversioned.Client, etcdName, clusterName, ns string) (*api.Service, error) {
-	svc := makeEtcdNodePortService(etcdName, clusterName)
-	return kclient.Services(ns).Create(svc)
-}
-
 func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod, timeout time.Duration) (*api.Pod, error) {
 	if _, err := kclient.Pods(ns).Create(pod); err != nil {
 		return nil, err
@@ -241,38 +236,6 @@ func makeEtcdMemberService(etcdName, clusterName string) *api.Service {
 					Protocol:   api.ProtocolTCP,
 				},
 			},
-			Selector: labels,
-		},
-	}
-	return svc
-}
-
-func makeEtcdNodePortService(etcdName, clusterName string) *api.Service {
-	labels := map[string]string{
-		"etcd_node":    etcdName,
-		"etcd_cluster": clusterName,
-	}
-	svc := &api.Service{
-		ObjectMeta: api.ObjectMeta{
-			Name:   etcdName + "-nodeport",
-			Labels: labels,
-		},
-		Spec: api.ServiceSpec{
-			Ports: []api.ServicePort{
-				{
-					Name:       "server",
-					Port:       2380,
-					TargetPort: intstr.FromInt(2380),
-					Protocol:   api.ProtocolTCP,
-				},
-				{
-					Name:       "client",
-					Port:       2379,
-					TargetPort: intstr.FromInt(2379),
-					Protocol:   api.ProtocolTCP,
-				},
-			},
-			Type:     api.ServiceTypeNodePort,
 			Selector: labels,
 		},
 	}
