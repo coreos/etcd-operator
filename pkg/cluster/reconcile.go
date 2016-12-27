@@ -60,16 +60,10 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 			running.Add(m)
 		}
 
-		switch {
-		case size < sp.Size:
-			c.status.AppendScalingUpCondition()
-		case size > sp.Size:
-			c.status.AppendScalingDownCondition()
-		}
-
 		return c.reconcileSize(running)
 
 	case needUpgrade(pods, sp):
+		c.status.AppendUpgradingCondition(sp.Version)
 		c.status.UpgradeVersionTo(sp.Version)
 
 		m := pickOneOldMember(pods, sp.Version)
@@ -162,6 +156,8 @@ func (c *Cluster) resize() error {
 }
 
 func (c *Cluster) addOneMember() error {
+	c.status.AppendScalingUpCondition()
+
 	cfg := clientv3.Config{
 		Endpoints:   c.members.ClientURLs(),
 		DialTimeout: constants.DefaultDialTimeout,
@@ -193,6 +189,8 @@ func (c *Cluster) addOneMember() error {
 }
 
 func (c *Cluster) removeOneMember() error {
+	c.status.AppendScalingDownCondition()
+
 	return c.removeMember(c.members.PickOne())
 }
 
@@ -235,6 +233,8 @@ func removeMember(clientURLs []string, id uint64) error {
 }
 
 func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
+	c.status.AppendRecoveringCondition()
+
 	if c.cluster.Spec.SelfHosted != nil {
 		return errors.New("self-hosted cluster cannot be recovered from disaster")
 	}

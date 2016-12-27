@@ -27,6 +27,8 @@ import (
 )
 
 func (c *Cluster) addOneSelfHostedMember() error {
+	c.status.AppendScalingUpCondition()
+
 	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.idCounter)
 	c.idCounter++
 
