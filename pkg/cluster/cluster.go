@@ -16,6 +16,7 @@ package cluster
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/clientv3"
@@ -176,7 +178,26 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		}
 		close(c.stopCh)
 		wg.Done()
+
+		c.status.SetPhaseFailed()
+		// best effort to mark the cluster as failed
+
+		f := func() (bool, error) {
+			for {
+				err := c.updateStatus()
+				if err != nil {
+					c.logger.Warningf("failed to update TPR status: %v", err)
+					return false, nil
+				}
+				return true, nil
+			}
+		}
+
+		retryutil.Retry(5*time.Second, math.MaxInt64, f)
+
 	}()
+
+	c.status.SetPhaseRunning()
 
 	for {
 		select {
@@ -213,7 +234,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				if err != nil {
 					if err == errNoBackupExist {
 						c.logger.Error("cluster cannot be recovered: all members are dead and there is no backup")
-						c.logger.Warning("TODO: mark cluster dead if no backup for disaster recovery.")
+						c.status.SetReason(spec.FailedReasonNoBackup)
 						return
 					}
 					c.logger.Errorf("fail to recover. Will retry later: %v", err)
@@ -229,13 +250,9 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				}
 			}
 
-			if !reflect.DeepEqual(c.cluster.Status, c.status) {
-				newCluster := c.cluster
-				newCluster.Status = c.status
-				newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli, c.config.MasterHost, c.cluster.GetNamespace(), newCluster)
-				if err == nil {
-					c.cluster = newCluster
-				}
+			err = c.updateStatus()
+			if err != nil {
+				c.logger.Warningf("failed to update TPR status: %v", err)
 			}
 		}
 	}
@@ -431,4 +448,20 @@ func (c *Cluster) pollPods() ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
 	}
 
 	return running, pending, nil
+}
+
+func (c *Cluster) updateStatus() error {
+	if reflect.DeepEqual(c.cluster.Status, c.status) {
+		return nil
+	}
+
+	newCluster := c.cluster
+	newCluster.Status = c.status
+	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli, c.config.MasterHost, c.cluster.GetNamespace(), newCluster)
+	if err != nil {
+		return err
+	}
+
+	c.cluster = newCluster
+	return nil
 }
