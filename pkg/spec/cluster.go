@@ -146,3 +146,44 @@ func (cs *ClusterStatus) SetVersion(v string) {
 	cs.TargetVersion = ""
 	cs.CurrentVersion = v
 }
+
+func (cs *ClusterStatus) AppendScalingUpCondition() {
+	c := ClusterCondition{
+		Type:           ClusterConditionScalingUp,
+		TransitionTime: time.Now(),
+	}
+	cs.appendCondition(c)
+}
+
+func (cs *ClusterStatus) AppendScalingDownCondition() {
+	c := ClusterCondition{
+		Type:           ClusterConditionScalingDown,
+		TransitionTime: time.Now(),
+	}
+	cs.appendCondition(c)
+}
+
+func (cs *ClusterStatus) SetReadyCondition() {
+	c := ClusterCondition{
+		Type:           ClusterConditionReady,
+		TransitionTime: time.Now(),
+	}
+
+	if len(cs.Conditions) == 0 {
+		cs.appendCondition(c)
+		return
+	}
+
+	lastc := cs.Conditions[len(cs.Conditions)-1]
+	if lastc.Type == ClusterConditionReady {
+		return
+	}
+	cs.appendCondition(c)
+}
+
+func (cs *ClusterStatus) appendCondition(c ClusterCondition) {
+	cs.Conditions = append(cs.Conditions, c)
+	if len(cs.Conditions) > 10 {
+		cs.Conditions = cs.Conditions[1:]
+	}
+}
