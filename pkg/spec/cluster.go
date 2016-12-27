@@ -16,6 +16,7 @@ package spec
 
 import (
 	"errors"
+	"time"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -92,9 +93,49 @@ func (c *ClusterSpec) Validate() error {
 	return nil
 }
 
+type ClusterPhase string
+
+const (
+	ClusterPhaseRunning = "Running"
+	ClusterPhaseFailed  = "Failed"
+)
+
+type ClusterCondition struct {
+	Type ClusterConditionType `json:"type"`
+
+	Reason string `json:"reason"`
+
+	TransitionTime time.Time `json:"transitionTime"`
+}
+
+type ClusterConditionType string
+
+const (
+	ClusterConditionReady = "Ready"
+
+	ClusterConditionRecovering = "Recovering"
+
+	ClusterConditionScalingUp   = "ScalingUp"
+	ClusterConditionScalingDown = "ScalingDown"
+
+	ClusterConditionUpgrading = "Upgrading"
+)
+
 type ClusterStatus struct {
+	// Phase is the cluster running phase
+	Phase  ClusterPhase `json:"phase"`
+	Reason string       `json:"reason"`
+
+	// Condition keeps ten most recent cluster conditions
+	Conditions []ClusterCondition `json:"conditions"`
+
+	// Size is the current size of the cluster
+	Size int `json:"size"`
+	// CurrentVersion is the current cluster version
 	CurrentVersion string `json:"currentVersion"`
-	TargetVersion  string `json:"targetVersion"`
+	// TargetVersion is the version the cluster upgrading to.
+	// If the cluster is not upgrading, TargetVersion is empty.
+	TargetVersion string `json:"targetVersion"`
 }
 
 func (cs *ClusterStatus) UpgradeVersionTo(v string) {
