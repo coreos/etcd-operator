@@ -8,7 +8,6 @@ import (
 	"github.com/GregoryIan/operator/pkg/spec"
 	"github.com/juju/errors"
 	"github.com/ngaut/log"
-	"github.com/pborman/uuid"
 	"github.com/pingcap/pd/pd-client"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
@@ -63,7 +62,7 @@ func (pms *PDMemberSet) newSeedMember() error {
 	pms.idCounter++
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
 
-	pod := pms.makePDMember(newMemberName, initialCluster, "new", uuid.New())
+	pod := pms.makePDMember(newMemberName, initialCluster)
 	_, err := CreateAndWaitPod(pms.kubeCli, pms.namespace, pod, 30*time.Second)
 	if err != nil {
 		return errors.Trace(err)
@@ -83,11 +82,10 @@ func (pms *PDMemberSet) Add(pod *api.Pod) {
 func (pms *PDMemberSet) AddOneMember() error {
 	newMemberName := fmt.Sprintf("%s-pd-%04d", pms.clusterName, pms.idCounter)
 	pms.idCounter++
-
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster := append(pms.PeerURLPairs(), newMemberName+"="+peerURL)
 
-	pod := pms.makePDMember(newMemberName, initialCluster, "existing", "")
+	pod := pms.makePDMember(newMemberName, initialCluster)
 	pod = PodWithAddMemberInitContainer(pod, pms.ClientURLs(), newMemberName, []string{peerURL}, pms.spec)
 
 	_, err := pms.kubeCli.Pods(pms.namespace).Create(pod)
@@ -232,15 +230,11 @@ func (pms *PDMemberSet) Members() []*Member {
 	return members
 }
 
-func (pms *PDMemberSet) makePDMember(name string, initialCluster []string, state, token string) *api.Pod {
-	commands := fmt.Sprintf("/bin/pd --data-dir=%s/pd --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
-		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
-		"--initial-cluster=%s --initial-cluster-state=%s",
-		tidbClusterDir, name, strings.Join(initialCluster, ","), state)
-
-	if state == "new" {
-		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
-	}
+func (pms *PDMemberSet) makePDMember(name string, initialCluster []string) *api.Pod {
+	commands := fmt.Sprintf("/pd-server --data-dir=%s/pd --name=%s --advertise-peer-urls=http://$(MY_POD_IP):2380 "+
+		"--peer-urls=http://$(MY_POD_IP):2380 --client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
+		"--initial-cluster=%s",
+		tidbClusterDir, name, strings.Join(initialCluster, ","))
 
 	version := defaultVersion
 	if pms.spec != nil && len(pms.spec.Version) > 0 {
@@ -283,7 +277,7 @@ func (pms *PDMemberSet) makePDMember(name string, initialCluster []string, state
 					Env: []api.EnvVar{envPodIP},
 				},
 			},
-			RestartPolicy: api.RestartPolicyNever,
+			RestartPolicy: api.RestartPolicyAlways,
 			Volumes: []api.Volume{
 				{Name: "pd-data", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
 			},

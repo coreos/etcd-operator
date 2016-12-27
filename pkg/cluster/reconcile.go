@@ -66,6 +66,7 @@ func (c *Cluster) reconcileSize(running member.MemberSet, tp member.MemberType) 
 	log.Infof("Recovering one member")
 	toRecover := c.members[tp].Diff(L).PickOne()
 
+	// c.members[tp].Diff(running)? then pick one that not in running? or merge the code into upper diff?
 	if err := c.removeMember(toRecover.ID, toRecover.Name, tp); err != nil {
 		return err
 	}

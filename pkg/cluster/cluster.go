@@ -74,7 +74,6 @@ func new(config Config, s *spec.ClusterSpec, stopC <-chan struct{}, wg *sync.Wai
 	}
 
 	member.SplitAndDistributeSpec(s, c.spec, c.members)
-	log.Fatal("init over!")
 
 	go c.run(stopC, wg)
 	return c, nil

@@ -9,7 +9,6 @@ import (
 
 	"github.com/GregoryIan/operator/pkg/spec"
 	"github.com/juju/errors"
-	"github.com/ngaut/log"
 	"k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	k8sv1api "k8s.io/kubernetes/pkg/api/v1"
@@ -133,8 +132,6 @@ func PodWithAntiAffinity(pod *api.Pod, clusterName string) *api.Pod {
 }
 
 func CreateAndWaitPod(kclient *unversioned.Client, ns string, pod *api.Pod, timeout time.Duration) (*api.Pod, error) {
-	log.Info("hahahahahha")
-	log.Infof("kube client %+v, namespace %s, pod %+v", kclient, ns, pod)
 	if _, err := kclient.Pods(ns).Create(pod); err != nil {
 		return nil, errors.Trace(err)
 	}
