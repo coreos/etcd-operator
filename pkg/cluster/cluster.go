@@ -133,6 +133,12 @@ func new(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 		if err := c.createClientServiceLB(); err != nil {
 			return nil, fmt.Errorf("fail to create client service LB: %v", err)
 		}
+	} else {
+		if c.bm != nil {
+			if err := c.bm.verifyBackupSetup(); err != nil {
+				return nil, fmt.Errorf("fail to verify backup's setup: %v", err)
+			}
+		}
 	}
 
 	wg.Add(1)
