@@ -204,7 +204,7 @@ func (c *Controller) findAllClusters() (string, error) {
 }
 
 func (c *Controller) getClustersFromTPR() ([]spec.EtcdCluster, string, error) {
-	resp, err := k8sutil.ListETCDCluster(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client)
+	resp, err := k8sutil.ListClusters(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client)
 	if err != nil {
 		return nil, "", err
 	}
@@ -280,7 +280,7 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 		defer close(eventCh)
 
 		for {
-			resp, err := k8sutil.WatchETCDCluster(host, ns, httpClient, watchVersion)
+			resp, err := k8sutil.WatchClusters(host, ns, httpClient, watchVersion)
 			if err != nil {
 				errCh <- err
 				return

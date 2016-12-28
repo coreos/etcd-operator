@@ -20,13 +20,44 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 var ErrTPRObjectNotFound = errors.New("TPR object not found")
+
+func ListClusters(host, ns string, httpClient *http.Client) (*http.Response, error) {
+	return httpClient.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters",
+		host, ns))
+}
+
+func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
+	return httpClient.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters?watch=true&resourceVersion=%s",
+		host, ns, resourceVersion))
+}
+
+func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, host, ns string) error {
+	return retryutil.Retry(interval, int(timeout/interval), func() (bool, error) {
+		resp, err := ListClusters(host, ns, httpClient)
+		if err != nil {
+			return false, err
+		}
+		defer resp.Body.Close()
+
+		switch resp.StatusCode {
+		case http.StatusOK:
+			return true, nil
+		case http.StatusNotFound: // not set up yet. wait.
+			return false, nil
+		default:
+			return false, fmt.Errorf("invalid status code: %v", resp.Status)
+		}
+	})
+}
 
 // UpdateClusterTPRObject updates the given TPR object.
 // ResourceVersion of the object MUST be set or update will fail.
