@@ -26,6 +26,8 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
+var ErrTPRObjectNotFound = errors.New("TPR object not found")
+
 // UpdateClusterTPRObject updates the given TPR object.
 // ResourceVersion of the object MUST be set or update will fail.
 func UpdateClusterTPRObject(k8s *unversioned.Client, host, ns string, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
@@ -61,7 +63,11 @@ func updateClusterTPRObject(k8s *unversioned.Client, host, ns string, e *spec.Et
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	switch resp.StatusCode {
+	case http.StatusOK:
+	case http.StatusNotFound:
+		return nil, ErrTPRObjectNotFound
+	default:
 		return nil, fmt.Errorf("unexpected status: %v", resp.Status)
 	}
 

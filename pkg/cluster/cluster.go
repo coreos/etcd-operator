@@ -185,7 +185,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		f := func() (bool, error) {
 			for {
 				err := c.updateStatus()
-				if err != nil {
+				if err != nil && err != k8sutil.ErrTPRObjectNotFound {
 					c.logger.Warningf("cluster delete: failed to update TPR status: %v", err)
 					return false, nil
 				}
