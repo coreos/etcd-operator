@@ -156,7 +156,7 @@ func (c *Cluster) resize() error {
 }
 
 func (c *Cluster) addOneMember() error {
-	c.status.AppendScalingUpCondition()
+	c.status.AppendScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
 
 	cfg := clientv3.Config{
 		Endpoints:   c.members.ClientURLs(),
@@ -189,7 +189,7 @@ func (c *Cluster) addOneMember() error {
 }
 
 func (c *Cluster) removeOneMember() error {
-	c.status.AppendScalingDownCondition()
+	c.status.AppendScalingDownCondition(c.members.Size(), c.cluster.Spec.Size)
 
 	return c.removeMember(c.members.PickOne())
 }
