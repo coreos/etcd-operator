@@ -215,8 +215,11 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			}
 		case <-time.After(5 * time.Second):
 			if c.cluster.Spec.Paused {
+				c.status.PauseControl()
 				c.logger.Infof("control is paused, skipping reconcilation")
 				continue
+			} else {
+				c.status.Control()
 			}
 
 			running, pending, err := c.pollPods()
