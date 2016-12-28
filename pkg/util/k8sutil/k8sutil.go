@@ -26,7 +26,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
-	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
@@ -353,35 +352,6 @@ func IsKubernetesResourceNotFoundError(err error) bool {
 		return true
 	}
 	return false
-}
-
-func ListETCDCluster(host, ns string, httpClient *http.Client) (*http.Response, error) {
-	return httpClient.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters",
-		host, ns))
-}
-
-func WatchETCDCluster(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
-	return httpClient.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters?watch=true&resourceVersion=%s",
-		host, ns, resourceVersion))
-}
-
-func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, host, ns string) error {
-	return retryutil.Retry(interval, int(timeout/interval), func() (bool, error) {
-		resp, err := ListETCDCluster(host, ns, httpClient)
-		if err != nil {
-			return false, err
-		}
-		defer resp.Body.Close()
-
-		switch resp.StatusCode {
-		case http.StatusOK:
-			return true, nil
-		case http.StatusNotFound: // not set up yet. wait.
-			return false, nil
-		default:
-			return false, fmt.Errorf("invalid status code: %v", resp.Status)
-		}
-	})
 }
 
 func EtcdPodListOpt(clusterName string) api.ListOptions {
