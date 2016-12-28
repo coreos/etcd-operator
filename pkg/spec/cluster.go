@@ -187,17 +187,19 @@ func (cs *ClusterStatus) SetReason(r string) {
 	cs.Reason = r
 }
 
-func (cs *ClusterStatus) AppendScalingUpCondition() {
+func (cs *ClusterStatus) AppendScalingUpCondition(from, to int) {
 	c := ClusterCondition{
 		Type:           ClusterConditionScalingUp,
+		Reason:         scalingReason(from, to),
 		TransitionTime: time.Now(),
 	}
 	cs.appendCondition(c)
 }
 
-func (cs *ClusterStatus) AppendScalingDownCondition() {
+func (cs *ClusterStatus) AppendScalingDownCondition(from, to int) {
 	c := ClusterCondition{
 		Type:           ClusterConditionScalingDown,
+		Reason:         scalingReason(from, to),
 		TransitionTime: time.Now(),
 	}
 	cs.appendCondition(c)
@@ -245,4 +247,8 @@ func (cs *ClusterStatus) appendCondition(c ClusterCondition) {
 	if len(cs.Conditions) > 10 {
 		cs.Conditions = cs.Conditions[1:]
 	}
+}
+
+func scalingReason(from, to int) string {
+	return fmt.Sprintf("Current cluster size: %d, desired cluster size: %d", from, to)
 }
