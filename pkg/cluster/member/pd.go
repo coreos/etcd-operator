@@ -56,11 +56,21 @@ func newPDMemberset(kubeCli *unversioned.Client, clusterName, namespace string, 
 	return pms, nil
 }
 
+func (pms *PDMemberSet) RestoreFromPods(pods []*api.Pod) {
+	pms.members = make(map[string]*pdMember)
+	for _, pod := range pods {
+		m := &pdMember{name: pod.Name}
+		m.clientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
+		m.peerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
+		pms.members[pod.Name] = m
+	}
+}
+
 func (pms *PDMemberSet) newSeedMember() error {
 	newMemberName := fmt.Sprintf("%s-pd-%04d", pms.clusterName, pms.idCounter)
 	pms.idCounter++
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
-
+	log.Debugf("Seed PD Member,pd memset clientURLs:%+v", pms.ClientURLs())
 	pod := pms.makePDMember(newMemberName, initialCluster)
 	_, err := CreateAndWaitPod(pms.kubeCli, pms.namespace, pod, 30*time.Second)
 	if err != nil {
@@ -79,11 +89,11 @@ func (pms *PDMemberSet) Add(pod *api.Pod) {
 	pms.members[pod.Name] = m
 }
 
-func (pms *PDMemberSet) AddOneMember() error {
+func (pms *PDMemberSet) NewOneMember() error {
 	newMemberName := fmt.Sprintf("%s-pd-%04d", pms.clusterName, pms.idCounter)
 	pms.idCounter++
-	peerURL := "http://$(MY_POD_IP):2380"
-	initialCluster := append(pms.PeerURLPairs(), newMemberName+"="+peerURL)
+	clientURL := "http://$(MY_POD_IP):2379"
+	initialCluster := append(pms.ClientURLs(), clientURL)
 
 	pod := pms.makePDMember(newMemberName, initialCluster)
 	//	pod = PodWithAddMemberInitContainer(pod, pms.ClientURLs(), newMemberName, []string{peerURL}, pms.spec)
@@ -92,7 +102,6 @@ func (pms *PDMemberSet) AddOneMember() error {
 	if err != nil {
 		return errors.Trace(err)
 	}
-	log.Fatal("finish create pod!")
 	// wait for the new pod to start and add itself into the etcd cluster.
 	cli := pdutil.New(pms.ClientURLs())
 
@@ -127,6 +136,11 @@ func (pms *PDMemberSet) UpdateMembers(cli *pdutil.Client) error {
 			pms.members = nil
 			return errors.Errorf("the name of member (%s) is empty. Not ready yet. Will retry later", *m.Name)
 		}
+		id := findID(*m.Name)
+		if id > pms.idCounter {
+			pms.idCounter = id + 1
+		}
+
 		pms.members[*m.Name] = &pdMember{
 			name:       *m.Name,
 			clientURLs: m.ClientUrls,
@@ -170,7 +184,7 @@ func (pms *PDMemberSet) ClientURLs() []string {
 	return endpoints
 }
 
-func (pms *PDMemberSet) Remove(name string) {
+func (pms *PDMemberSet) RemoveMemberShip(name string) {
 	delete(pms.members, name)
 }
 
@@ -221,10 +235,18 @@ func (pms *PDMemberSet) Members() []*Member {
 }
 
 func (pms *PDMemberSet) makePDMember(name string, initialCluster []string) *api.Pod {
-	commands := fmt.Sprintf("/pd-server --data-dir=%s/pd --name=%s --advertise-peer-urls=http://$(MY_POD_IP):2380 "+
+	var commands string
+	commands = fmt.Sprintf("/pd-server --data-dir=%s/pd --name=%s --advertise-peer-urls=http://$(MY_POD_IP):2380 "+
 		"--peer-urls=http://$(MY_POD_IP):2380 --client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
 		"--initial-cluster=%s",
 		tidbClusterDir, name, strings.Join(initialCluster, ","))
+
+	if len(pms.ClientURLs()) != 0 {
+		commands = fmt.Sprintf("/pd-server --data-dir=%s/pd --name=%s --advertise-peer-urls=http://$(MY_POD_IP):2380 "+
+			"--peer-urls=http://$(MY_POD_IP):2380 --client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
+			"--join=%s",
+			tidbClusterDir, name, strings.Join(initialCluster, ","))
+	}
 
 	version := defaultVersion
 	if pms.spec != nil && len(pms.spec.Version) > 0 {

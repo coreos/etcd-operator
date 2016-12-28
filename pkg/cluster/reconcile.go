@@ -15,11 +15,11 @@ func (c *Cluster) reconcile(pods []*api.Pod, tp member.MemberType) error {
 	defer log.Infof("Finish reconciling %s", tp)
 
 	switch {
+	// determine whether the length of running pod and spec is equal?
+	// if not, reconcile the size;
 	case c.members[tp].NotEqualPodSize(len(pods)):
 		running := member.GetEmptyMemberSet(c.KubeCli, c.Name, c.Namespace, tp)
-		for _, pod := range pods {
-			running.Add(pod)
-		}
+		running.RestoreFromPods(pods)
 		return c.reconcileSize(running, tp)
 	case c.members[tp].NeedUpgrade(pods):
 		m := c.members[tp].PickOneOldMember(pods)
@@ -30,6 +30,7 @@ func (c *Cluster) reconcile(pods []*api.Pod, tp member.MemberType) error {
 }
 
 func (c *Cluster) reconcileSize(running member.MemberSet, tp member.MemberType) error {
+	// if members' size == 0, update members from pd; it's pd views
 	if c.members[tp].Size() == 0 {
 		pdcli := pdutil.New(running.(*member.PDMemberSet).ClientURLs())
 		if err := c.members[tp].UpdateMembers(pdcli); err != nil {
@@ -38,6 +39,7 @@ func (c *Cluster) reconcileSize(running member.MemberSet, tp member.MemberType) 
 		}
 	}
 
+	// find the pods that not in members, then delete them
 	unknownMembers := running.Diff(c.members[tp])
 	if unknownMembers.Size() > 0 {
 		log.Infof("Removing unexpected pods:", unknownMembers)
@@ -47,16 +49,19 @@ func (c *Cluster) reconcileSize(running member.MemberSet, tp member.MemberType) 
 			}
 		}
 	}
+	// L is the running pod that also in members
 	L := running.Diff(unknownMembers)
-
 	if L.Size() == c.members[tp].Size() {
 		return c.resize(tp)
 	}
 
+	// determine whether the cluster is not consistent
 	if member.IsNonConsistent(L.Size(), c.members[tp].Size(), tp) {
 		log.Fatal("Disaster recovery")
 	}
 
+	// deal the condition that some pod is dead or removed, but membership isn't deleted
+	// len(members) > len(L)
 	log.Infof("Recovering one member")
 	toRecover := c.members[tp].Diff(L).PickOne()
 	if err := c.removeMember(toRecover.Name, tp); err != nil {
@@ -70,9 +75,8 @@ func (c *Cluster) resize(tp member.MemberType) error {
 	if c.members[tp].Size() == size {
 		return nil
 	}
-
 	if c.members[tp].Size() < size {
-		return c.members[tp].AddOneMember()
+		return c.members[tp].NewOneMember()
 	}
 
 	return c.removeOneMember(tp)
@@ -89,7 +93,7 @@ func (c *Cluster) removeMember(name string, tp member.MemberType) error {
 	if err != nil {
 		return errors.Trace(err)
 	}
-	c.members[tp].Remove(name)
+	c.members[tp].RemoveMemberShip(name)
 	if err := c.removePod(name); err != nil {
 		return errors.Trace(err)
 	}
