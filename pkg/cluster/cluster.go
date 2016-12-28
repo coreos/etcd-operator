@@ -364,6 +364,7 @@ func (c *Cluster) delete() {
 			}
 		}
 	}
+	c.logger.Info("cluster delete: pods and services are deleted")
 
 	err = c.deleteClientServiceLB()
 	if err != nil {
