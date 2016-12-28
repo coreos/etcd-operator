@@ -186,7 +186,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			for {
 				err := c.updateStatus()
 				if err != nil {
-					c.logger.Warningf("failed to update TPR status: %v", err)
+					c.logger.Warningf("cluster delete: failed to update TPR status: %v", err)
 					return false, nil
 				}
 				return true, nil
