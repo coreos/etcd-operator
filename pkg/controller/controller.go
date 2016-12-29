@@ -142,9 +142,8 @@ func (c *Controller) Run() error {
 			switch event.Type {
 			case "ADDED":
 				stopC := make(chan struct{})
-				nc, err := cluster.New(c.makeClusterConfig(), event.Object, stopC, &c.waitCluster)
-				if err != nil {
-					c.logger.Errorf("cluster (%q) is dead: %v", clusterName, err)
+				nc := cluster.New(c.makeClusterConfig(), event.Object, stopC, &c.waitCluster)
+				if nc == nil {
 					continue
 				}
 
@@ -191,9 +190,8 @@ func (c *Controller) findAllClusters() (string, error) {
 	for _, item := range clusters {
 		clusterName := item.Name
 		stopC := make(chan struct{})
-		nc, err := cluster.Restore(c.makeClusterConfig(), &item, stopC, &c.waitCluster)
-		if err != nil {
-			c.logger.Errorf("cluster (%q) is dead: %v", clusterName, err)
+		nc := cluster.New(c.makeClusterConfig(), &item, stopC, &c.waitCluster)
+		if nc == nil {
 			continue
 		}
 		c.stopChMap[clusterName] = stopC

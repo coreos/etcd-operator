@@ -113,8 +113,9 @@ func (c *ClusterSpec) Validate() error {
 type ClusterPhase string
 
 const (
-	ClusterPhaseRunning = "Running"
-	ClusterPhaseFailed  = "Failed"
+	ClusterPhaseCreating = "Creating"
+	ClusterPhaseRunning  = "Running"
+	ClusterPhaseFailed   = "Failed"
 )
 
 type ClusterCondition struct {
@@ -158,12 +159,8 @@ type ClusterStatus struct {
 	TargetVersion string `json:"targetVersion"`
 }
 
-func (cs *ClusterStatus) SetPhaseRunning() {
-	cs.Phase = ClusterPhaseRunning
-}
-
-func (cs *ClusterStatus) SetPhaseFailed() {
-	cs.Phase = ClusterPhaseFailed
+func (cs *ClusterStatus) SetPhase(p ClusterPhase) {
+	cs.Phase = p
 }
 
 func (cs *ClusterStatus) PauseControl() {
