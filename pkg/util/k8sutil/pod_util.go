@@ -27,7 +27,8 @@ var (
 		Name: "MY_POD_IP",
 		ValueFrom: &api.EnvVarSource{
 			FieldRef: &api.ObjectFieldSelector{
-				FieldPath: "status.podIP",
+				APIVersion: "v1",
+				FieldPath:  "status.podIP",
 			},
 		},
 	}
