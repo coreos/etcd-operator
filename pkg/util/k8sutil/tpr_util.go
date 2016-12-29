@@ -28,7 +28,10 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
-var ErrTPRObjectNotFound = errors.New("TPR object not found")
+var (
+	ErrTPRObjectNotFound        = errors.New("TPR object not found")
+	ErrTPRObjectVersionConflict = errors.New("TPR object's resource version conflicts")
+)
 
 func ListClusters(host, ns string, httpClient *http.Client) (*http.Response, error) {
 	return httpClient.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters",
@@ -57,6 +60,26 @@ func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, 
 			return false, fmt.Errorf("invalid status code: %v", resp.Status)
 		}
 	})
+}
+
+func GetClusterTPRObject(k8s *unversioned.Client, host, ns, name string) (*spec.EtcdCluster, error) {
+	req, err := http.NewRequest(http.MethodGet,
+		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", host, ns, name), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := k8s.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	decoder := json.NewDecoder(resp.Body)
+	cluster := &spec.EtcdCluster{}
+	if err := decoder.Decode(cluster); err != nil {
+		return nil, err
+	}
+	return cluster, nil
 }
 
 // UpdateClusterTPRObject updates the given TPR object.
@@ -98,15 +121,17 @@ func updateClusterTPRObject(k8s *unversioned.Client, host, ns string, e *spec.Et
 	case http.StatusOK:
 	case http.StatusNotFound:
 		return nil, ErrTPRObjectNotFound
+	case http.StatusConflict:
+		return nil, ErrTPRObjectVersionConflict
 	default:
 		return nil, fmt.Errorf("unexpected status: %v", resp.Status)
 	}
 
 	decoder := json.NewDecoder(resp.Body)
-	nspec := &spec.EtcdCluster{}
-	if err := decoder.Decode(nspec); err != nil {
+	cluster := &spec.EtcdCluster{}
+	if err := decoder.Decode(cluster); err != nil {
 		return nil, err
 	}
 
-	return nspec, nil
+	return cluster, nil
 }

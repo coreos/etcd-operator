@@ -179,22 +179,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		close(c.stopCh)
 		wg.Done()
 
-		c.status.SetPhaseFailed()
-		// best effort to mark the cluster as failed
-
-		f := func() (bool, error) {
-			for {
-				err := c.updateStatus()
-				if err != nil && err != k8sutil.ErrTPRObjectNotFound {
-					c.logger.Warningf("cluster delete: failed to update TPR status: %v", err)
-					return false, nil
-				}
-				return true, nil
-			}
-		}
-
-		retryutil.Retry(5*time.Second, math.MaxInt64, f)
-
+		c.reportFailedStatus()
 	}()
 
 	c.status.SetPhaseRunning()
@@ -474,4 +459,25 @@ func (c *Cluster) updateStatus() error {
 
 	c.cluster = newCluster
 	return nil
+}
+
+func (c *Cluster) reportFailedStatus() error {
+	f := func() (bool, error) {
+		c.status.SetPhaseFailed()
+		err := c.updateStatus()
+		switch err {
+		case nil, k8sutil.ErrTPRObjectNotFound:
+			return true, nil
+		case k8sutil.ErrTPRObjectVersionConflict:
+			cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli, c.config.MasterHost, c.cluster.Namespace, c.cluster.Name)
+			if err != nil {
+				c.logger.Warningf("reportFailedStatus: fail to get latest version: %v", err)
+				return false, nil
+			}
+			c.cluster = cl
+		}
+		return false, nil
+	}
+
+	return retryutil.Retry(5*time.Second, math.MaxInt64, f)
 }
