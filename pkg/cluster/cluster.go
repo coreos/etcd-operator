@@ -37,6 +37,7 @@ import (
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/selection"
 )
 
 type clusterEventType string
@@ -356,6 +357,11 @@ func (c *Cluster) delete() {
 		c.logger.Errorf("cluster deletion: fail to delete client service LB: %v", err)
 	}
 
+	err = c.deleteUnusedServices()
+	if err != nil {
+		c.logger.Errorf("cluster deletion: fail to delete unused services: %v", err)
+	}
+
 	if c.bm != nil {
 		err := c.bm.cleanup()
 		if err != nil {
@@ -378,6 +384,34 @@ func (c *Cluster) deleteClientServiceLB() error {
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
+		}
+	}
+	return nil
+}
+
+func (c *Cluster) deleteUnusedServices() error {
+	s := labels.SelectorFromSet(map[string]string{
+		"etcd_cluster": c.Name,
+		"app":          "etcd",
+	})
+	r, err := labels.NewRequirement("etcd_node", selection.Exists, nil)
+	if err != nil {
+		return err
+	}
+
+	svcs, err := c.KubeCli.Services(c.Namespace).List(k8sapi.ListOptions{
+		LabelSelector: s.Add(*r),
+	})
+	if err != nil {
+		return err
+	}
+
+	for i := range svcs.Items {
+		svc := svcs.Items[i]
+		if err := c.KubeCli.Services(c.Namespace).Delete(svc.Name); err != nil {
+			if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+				c.logger.Errorf("cluster deletion: fail to delete (%s)'s svc: %v", svc.Name, err)
+			}
 		}
 	}
 	return nil

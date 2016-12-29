@@ -275,6 +275,12 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 			return err
 		}
 	}
+
+	err := c.deleteUnusedServices()
+	if err != nil {
+		c.logger.Errorln(err)
+	}
+
 	c.members = nil
 	return c.restoreSeedMember()
 }
