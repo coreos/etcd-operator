@@ -63,7 +63,6 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 		return c.reconcileSize(running)
 
 	case needUpgrade(pods, sp):
-		c.status.AppendUpgradingCondition(sp.Version)
 		c.status.UpgradeVersionTo(sp.Version)
 
 		m := pickOneOldMember(pods, sp.Version)
