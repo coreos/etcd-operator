@@ -21,7 +21,7 @@ type s3 struct {
 	s3cli        *backups3.S3
 }
 
-func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, clusterName, ns string, p spec.BackupPolicy, hasExist bool) (Storage, error) {
+func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
 	cm, err := kubecli.ConfigMaps(ns).Get(s3Ctx.AWSConfig)
 	if err != nil {
 		return nil, err
@@ -50,15 +50,10 @@ func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, cluster
 		namespace:    ns,
 		s3cli:        s3cli,
 	}
-	if !hasExist {
-		if err := s.create(); err != nil {
-			return nil, err
-		}
-	}
 	return s, nil
 }
 
-func (s *s3) create() error {
+func (s *s3) Create() error {
 	// TODO: check if bucket/folder exists?
 	return nil
 }

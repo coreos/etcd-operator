@@ -15,6 +15,7 @@
 package cluster
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -82,29 +83,8 @@ type Cluster struct {
 	backupDir string
 }
 
-func New(c Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
-	return new(c, e, stopC, wg, true)
-}
-
-func Restore(c Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup) (*Cluster, error) {
-	return new(c, e, stopC, wg, false)
-}
-
-func new(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup, isNewCluster bool) (*Cluster, error) {
-	err := e.Spec.Validate()
-	if err != nil {
-		return nil, fmt.Errorf("invalid cluster spec: %v", err)
-	}
-
+func New(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
 	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", e.Name)
-	var bm *backupManager
-
-	if b := e.Spec.Backup; b != nil && b.MaxBackups > 0 {
-		bm, err = newBackupManager(config, e, lg, isNewCluster)
-		if err != nil {
-			return nil, err
-		}
-	}
 	c := &Cluster{
 		logger:  lg,
 		config:  config,
@@ -112,33 +92,81 @@ func new(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
 		status:  &spec.ClusterStatus{},
-		bm:      bm,
 	}
 
-	if isNewCluster {
-		if c.bm != nil {
-			if err := c.bm.setup(); err != nil {
-				return nil, err
+	err := c.setup()
+	if err != nil {
+		c.logger.Errorf("fail to setup: %v", err)
+		if c.status.Phase != spec.ClusterPhaseFailed {
+			c.status.SetReason(err.Error())
+			c.status.SetPhase(spec.ClusterPhaseFailed)
+			if err := c.updateStatus(); err != nil {
+				c.logger.Errorf("failed to update cluster phase (%v): %v", spec.ClusterPhaseFailed, err)
 			}
 		}
-
-		if c.cluster.Spec.Restore == nil {
-			// Note: For restore case, we don't need to create seed member,
-			// and will go through reconcile loop and disaster recovery.
-			if err := c.prepareSeedMember(); err != nil {
-				return nil, err
-			}
-		}
-
-		if err := c.createClientServiceLB(); err != nil {
-			return nil, fmt.Errorf("fail to create client service LB: %v", err)
-		}
+		return nil
 	}
 
 	wg.Add(1)
 	go c.run(stopC, wg)
+	return c
+}
 
-	return c, nil
+func (c *Cluster) setup() error {
+	err := c.cluster.Spec.Validate()
+	if err != nil {
+		return fmt.Errorf("invalid cluster spec: %v", err)
+	}
+
+	var shouldCreateCluster bool
+	switch c.status.Phase {
+	case "":
+		shouldCreateCluster = true
+	case spec.ClusterPhaseCreating:
+		return errors.New("cluster creation was attempted before but failed")
+	case spec.ClusterPhaseRunning:
+		shouldCreateCluster = false
+	case spec.ClusterPhaseFailed:
+		return errors.New("cluster already failed")
+	}
+
+	if b := c.cluster.Spec.Backup; b != nil && b.MaxBackups > 0 {
+		c.bm, err = newBackupManager(c.config, c.cluster, c.logger)
+		if err != nil {
+			return err
+		}
+	}
+
+	if shouldCreateCluster {
+		return c.create()
+	}
+	return nil
+}
+
+func (c *Cluster) create() error {
+	c.status.SetPhase(spec.ClusterPhaseCreating)
+	if err := c.updateStatus(); err != nil {
+		return fmt.Errorf("failed to update cluster phase (%v): %v", spec.ClusterPhaseCreating, err)
+	}
+
+	if c.bm != nil {
+		if err := c.bm.setup(); err != nil {
+			return err
+		}
+	}
+
+	if c.cluster.Spec.Restore == nil {
+		// Note: For restore case, we don't need to create seed member,
+		// and will go through reconcile loop and disaster recovery.
+		if err := c.prepareSeedMember(); err != nil {
+			return err
+		}
+	}
+
+	if err := c.createClientServiceLB(); err != nil {
+		return fmt.Errorf("fail to create client service LB: %v", err)
+	}
+	return nil
 }
 
 func (c *Cluster) prepareSeedMember() error {
@@ -182,7 +210,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		c.reportFailedStatus()
 	}()
 
-	c.status.SetPhaseRunning()
+	c.status.SetPhase(spec.ClusterPhaseRunning)
 
 	for {
 		select {
@@ -461,9 +489,9 @@ func (c *Cluster) updateStatus() error {
 	return nil
 }
 
-func (c *Cluster) reportFailedStatus() error {
+func (c *Cluster) reportFailedStatus() {
 	f := func() (bool, error) {
-		c.status.SetPhaseFailed()
+		c.status.SetPhase(spec.ClusterPhaseFailed)
 		err := c.updateStatus()
 		switch err {
 		case nil, k8sutil.ErrTPRObjectNotFound:
@@ -471,13 +499,14 @@ func (c *Cluster) reportFailedStatus() error {
 		case k8sutil.ErrTPRObjectVersionConflict:
 			cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli, c.config.MasterHost, c.cluster.Namespace, c.cluster.Name)
 			if err != nil {
-				c.logger.Warningf("reportFailedStatus: fail to get latest version: %v", err)
+				c.logger.Warningf("report status: fail to get latest version: %v", err)
 				return false, nil
 			}
 			c.cluster = cl
 		}
+		c.logger.Warningf("report status: fail to update: %v", err)
 		return false, nil
 	}
 
-	return retryutil.Retry(5*time.Second, math.MaxInt64, f)
+	retryutil.Retry(5*time.Second, math.MaxInt64, f)
 }

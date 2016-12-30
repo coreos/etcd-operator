@@ -33,28 +33,49 @@ type backupManager struct {
 	s       backupstorage.Storage
 }
 
-func newBackupManager(c Config, cl *spec.EtcdCluster, l *logrus.Entry, isNewCluster bool) (*backupManager, error) {
+func newBackupManager(c Config, cl *spec.EtcdCluster, l *logrus.Entry) (*backupManager, error) {
 	bm := &backupManager{
 		config:  c,
 		cluster: cl,
 		logger:  l,
 	}
-	hasExist := false
-	if !isNewCluster {
-		hasExist = true
-	} else if r := cl.Spec.Restore; r != nil && r.BackupClusterName == cl.Name {
-		hasExist = true // we will reuse the storage to restore cluster
-	}
 	var err error
-	bm.s, err = bm.setupStorage(hasExist)
+	bm.s, err = bm.setupStorage()
 	if err != nil {
 		return nil, err
 	}
 	return bm, nil
 }
 
+// setupStorage will only set up the necessary structs in order for backup manager to
+// use the storage. It doesn't creates the actual storage here.
+// We also need to check some restore logic in setup().
+func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
+	cl, c := bm.cluster, bm.config
+
+	b := cl.Spec.Backup
+	switch b.StorageType {
+	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Name, cl.Namespace, c.PVProvisioner, *b)
+	case spec.BackupStorageTypeS3:
+		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, cl.Name, cl.Namespace, *b)
+	}
+	return s, err
+}
+
 func (bm *backupManager) setup() error {
-	if r := bm.cluster.Spec.Restore; r != nil {
+	r := bm.cluster.Spec.Restore
+	restoreSameNameCluster := r != nil && r.BackupClusterName == bm.cluster.Name
+
+	// There is only one case that we don't need to create underlying storage.
+	// That is, the storage already exists and we are restoring cluster from it.
+	if !restoreSameNameCluster {
+		if err := bm.s.Create(); err != nil {
+			return err
+		}
+	}
+
+	if r != nil {
 		bm.logger.Infof("restoring cluster from existing backup (%s)", r.BackupClusterName)
 		if bm.cluster.Name != r.BackupClusterName {
 			if err := bm.s.Clone(r.BackupClusterName); err != nil {
@@ -64,19 +85,6 @@ func (bm *backupManager) setup() error {
 	}
 
 	return bm.runSidecar()
-}
-
-func (bm *backupManager) setupStorage(hasExist bool) (s backupstorage.Storage, err error) {
-	cl, c := bm.cluster, bm.config
-
-	b := cl.Spec.Backup
-	switch b.StorageType {
-	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Name, cl.Namespace, c.PVProvisioner, *b, hasExist)
-	case spec.BackupStorageTypeS3:
-		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, cl.Name, cl.Namespace, *b, hasExist)
-	}
-	return s, err
 }
 
 func (bm *backupManager) runSidecar() error {
