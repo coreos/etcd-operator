@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -68,18 +69,16 @@ func GetClusterTPRObject(k8s *unversioned.Client, host, ns, name string) (*spec.
 	if err != nil {
 		return nil, err
 	}
+
 	resp, err := k8s.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	decoder := json.NewDecoder(resp.Body)
-	cluster := &spec.EtcdCluster{}
-	if err := decoder.Decode(cluster); err != nil {
-		return nil, err
+	if resp.StatusCode != http.StatusOK {
+		return nil, toTPRError(resp.StatusCode)
 	}
-	return cluster, nil
+	return readOutCluster(resp.Body)
 }
 
 // UpdateClusterTPRObject updates the given TPR object.
@@ -116,22 +115,28 @@ func updateClusterTPRObject(k8s *unversioned.Client, host, ns string, e *spec.Et
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-	case http.StatusNotFound:
-		return nil, ErrTPRObjectNotFound
-	case http.StatusConflict:
-		return nil, ErrTPRObjectVersionConflict
-	default:
-		return nil, fmt.Errorf("unexpected status: %v", resp.Status)
+	if resp.StatusCode != http.StatusOK {
+		return nil, toTPRError(resp.StatusCode)
 	}
+	return readOutCluster(resp.Body)
+}
 
-	decoder := json.NewDecoder(resp.Body)
+func toTPRError(code int) error {
+	switch code {
+	case http.StatusNotFound:
+		return ErrTPRObjectNotFound
+	case http.StatusConflict:
+		return ErrTPRObjectVersionConflict
+	default:
+		return fmt.Errorf("unexpected status code: %v", code)
+	}
+}
+
+func readOutCluster(r io.Reader) (*spec.EtcdCluster, error) {
+	decoder := json.NewDecoder(r)
 	cluster := &spec.EtcdCluster{}
 	if err := decoder.Decode(cluster); err != nil {
 		return nil, err
 	}
-
 	return cluster, nil
 }
