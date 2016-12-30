@@ -24,6 +24,10 @@ import (
 	"k8s.io/kubernetes/pkg/api/meta/metatypes"
 )
 
+const (
+	shouldCheckpointAnnotation = "checkpointer.alpha.coreos.com/checkpoint" // = "true"
+)
+
 func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec, owner metatypes.OwnerReference) *api.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
 		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
@@ -42,7 +46,9 @@ func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, st
 				"etcd_node":    name,
 				"etcd_cluster": clusterName,
 			},
-			Annotations: map[string]string{},
+			Annotations: map[string]string{
+				shouldCheckpointAnnotation: "true",
+			},
 		},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
