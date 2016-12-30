@@ -18,11 +18,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
-	"github.com/coreos/etcd/clientv3"
 	"github.com/pborman/uuid"
 )
 
@@ -43,23 +41,16 @@ func (c *Cluster) addOneSelfHostedMember() error {
 		return err
 	}
 	// wait for the new pod to start and add itself into the etcd cluster.
-	cfg := clientv3.Config{
-		Endpoints:   c.members.ClientURLs(),
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
-	if err != nil {
-		return err
-	}
-	defer etcdcli.Close()
-
-	oldN := c.members.Size()
 	// TODO: do not wait forever.
+	oldN := c.members.Size()
 	for {
-		err = c.updateMembers(etcdcli)
+		err = c.updateMembers(c.members)
 		// TODO: check error type to determine the etcd member is not ready.
-		if err != nil && c.members != nil {
-			c.logger.Errorf("failed to list members for update: %v", err)
+		if err != nil {
+			c.logger.Errorf("add self hosted member: fail to update members: %v", err)
+			if err == errMemberNotReady {
+				continue
+			}
 			return err
 		}
 		if c.members.Size() > oldN {

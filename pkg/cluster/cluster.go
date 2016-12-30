@@ -26,15 +26,12 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/coreos/etcd/clientv3"
 	"github.com/pborman/uuid"
-	"golang.org/x/net/context"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
@@ -216,6 +213,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 
 	c.status.SetPhase(spec.ClusterPhaseRunning)
 
+	var rerr error
 	for {
 		select {
 		case <-stopC:
@@ -262,16 +260,25 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				continue // Back-off, either on normal recovery or error.
 			}
 
-			if err := c.reconcile(running); err != nil {
-				c.logger.Errorf("fail to reconcile: %v", err)
-				if isFatalError(err) {
-					c.logger.Errorf("exiting for fatal error: %v", err)
+			// TODO: The case "c.members = nil" only happens on creating seed member.
+			//       We should just set the member directly if successful.
+			if rerr != nil || c.members == nil {
+				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted))
+				if rerr != nil {
+					c.logger.Errorf("failed to update members: %v", rerr)
+					continue
+				}
+			}
+			rerr = c.reconcile(running)
+			if rerr != nil {
+				c.logger.Errorf("failed to reconcile: %v", rerr)
+				if isFatalError(rerr) {
+					c.logger.Errorf("exiting for fatal error: %v", rerr)
 					return
 				}
 			}
 
-			err = c.updateStatus()
-			if err != nil {
+			if err := c.updateStatus(); err != nil {
 				c.logger.Warningf("failed to update TPR status: %v", err)
 			}
 		}
@@ -324,33 +331,6 @@ func (c *Cluster) Update(e *spec.EtcdCluster) {
 			cluster: e,
 		})
 	}
-}
-
-func (c *Cluster) updateMembers(etcdcli *clientv3.Client) error {
-	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	resp, err := etcdcli.MemberList(ctx)
-	if err != nil {
-		return err
-	}
-	c.members = etcdutil.MemberSet{}
-	for _, m := range resp.Members {
-		if len(m.Name) == 0 {
-			c.members = nil
-			return fmt.Errorf("the name of member (%x) is empty. Not ready yet. Will retry later", m.ID)
-		}
-		id := findID(m.Name)
-		if id+1 > c.idCounter {
-			c.idCounter = id + 1
-		}
-
-		c.members[m.Name] = &etcdutil.Member{
-			Name:       m.Name,
-			ID:         m.ID,
-			ClientURLs: m.ClientURLs,
-			PeerURLs:   m.PeerURLs,
-		}
-	}
-	return nil
 }
 
 func findID(name string) int {
