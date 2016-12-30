@@ -50,17 +50,7 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 
 	switch {
 	case size != sp.Size:
-		running := etcdutil.MemberSet{}
-		for _, pod := range pods {
-			m := &etcdutil.Member{Name: pod.Name}
-			if sp.SelfHosted != nil {
-				m.ClientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
-				m.PeerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
-			}
-			running.Add(m)
-		}
-
-		return c.reconcileSize(running)
+		return c.reconcileSize(podsToMemberSet(pods, c.cluster.Spec.SelfHosted))
 
 	case needUpgrade(pods, sp):
 		c.status.UpgradeVersionTo(sp.Version)
@@ -77,12 +67,8 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 }
 
 // reconcileSize reconciles
-// - the members in the cluster view with running pods in Kubernetes.
-// - the members and expect size of cluster.
-//
-// Definitions:
-// - running pods in k8s cluster
-// - members in etcd-operator knowledge
+// - running pods on k8s and cluster membership
+// - cluster membership and expected size of etcd cluster
 // Steps:
 // 1. Remove all pods from running set that does not belong to member set.
 // 2. L consist of remaining pods of runnings
@@ -91,27 +77,11 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 // 5. Add one missing member. END.
 func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
 	c.logger.Infof("running members: %s", running)
-	if len(c.members) == 0 {
-		cfg := clientv3.Config{
-			Endpoints:   running.ClientURLs(),
-			DialTimeout: constants.DefaultDialTimeout,
-		}
-		etcdcli, err := clientv3.New(cfg)
-		if err != nil {
-			return err
-		}
-		defer etcdcli.Close()
-		if err := c.updateMembers(etcdcli); err != nil {
-			c.logger.Errorf("fail to refresh members: %v", err)
-			return err
-		}
-	}
-
-	c.logger.Infof("Expected membership: %s", c.members)
+	c.logger.Infof("cluster membership: %s", c.members)
 
 	unknownMembers := running.Diff(c.members)
 	if unknownMembers.Size() > 0 {
-		c.logger.Infof("Removing unexpected pods:", unknownMembers)
+		c.logger.Infof("removing unexpected pods:", unknownMembers)
 		for _, m := range unknownMembers {
 			if err := c.removePodAndService(m.Name); err != nil {
 				return err
