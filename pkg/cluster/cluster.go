@@ -118,8 +118,12 @@ func (c *Cluster) setup() error {
 		return fmt.Errorf("invalid cluster spec: %v", err)
 	}
 
+	var phase spec.ClusterPhase
+	if c.cluster.Status != nil {
+		phase = c.cluster.Status.Phase
+	}
 	var shouldCreateCluster bool
-	switch c.status.Phase {
+	switch phase {
 	case "":
 		shouldCreateCluster = true
 	case spec.ClusterPhaseCreating:
