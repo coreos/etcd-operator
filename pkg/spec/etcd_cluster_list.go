@@ -12,19 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package controller
+package spec
 
 import (
-	"github.com/coreos/etcd-operator/pkg/spec"
-
 	"k8s.io/kubernetes/pkg/api/unversioned"
 )
 
+// EtcdClusterList is a list of etcd clusters.
 type EtcdClusterList struct {
 	unversioned.TypeMeta `json:",inline"`
 	// Standard list metadata
 	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	unversioned.ListMeta `json:"metadata,omitempty"`
 	// Items is a list of third party objects
-	Items []spec.EtcdCluster `json:"items"`
+	Items []EtcdCluster `json:"items"`
 }

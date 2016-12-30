@@ -123,7 +123,7 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 	if err != nil {
 		return err
 	}
-	err = k8sutil.WaitEtcdTPRReady(f.KubeClient.Client, 5*time.Second, 60*time.Second, f.MasterHost, f.Namespace)
+	err = k8sutil.WaitEtcdTPRReady(f.KubeClient, 5*time.Second, 60*time.Second, f.MasterHost, f.Namespace)
 	if err != nil {
 		return err
 	}

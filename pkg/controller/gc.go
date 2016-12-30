@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
 	"github.com/Sirupsen/logrus"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
@@ -9,13 +11,11 @@ import (
 )
 
 type gc struct {
-	// reference to parent controller
-	controller *Controller
-
 	logger *logrus.Entry
 
-	k8s *unversioned.Client
-	ns  string
+	k8s        *unversioned.Client
+	masterHost string
+	ns         string
 }
 
 // collectCluster collects resources that matches cluster lable, but
@@ -31,16 +31,16 @@ func (gc *gc) collectCluster(cluster string, clusterUID types.UID) error {
 	return gc.collectResources(option, map[types.UID]bool{clusterUID: true})
 }
 
-// fullyCollect collects resources that are created by the controller,
-// but does not belong to any running etcd clusters.
+// fullyCollect collects resources that were created before,
+// but does not belong to any current running clusters.
 func (gc *gc) fullyCollect() error {
-	clusters, _, err := gc.controller.getClustersFromTPR()
+	clusters, err := k8sutil.GetClusterList(gc.k8s, gc.masterHost, gc.ns)
 	if err != nil {
 		return err
 	}
 
 	clusterUIDSet := make(map[types.UID]bool)
-	for _, c := range clusters {
+	for _, c := range clusters.Items {
 		clusterUIDSet[c.GetUID()] = true
 	}
 

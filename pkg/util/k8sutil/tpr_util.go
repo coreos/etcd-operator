@@ -34,19 +34,33 @@ var (
 	ErrTPRObjectVersionConflict = errors.New("TPR object's resource version conflicts")
 )
 
-func ListClusters(host, ns string, httpClient *http.Client) (*http.Response, error) {
-	return httpClient.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters",
-		host, ns))
-}
-
 func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
 	return httpClient.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters?watch=true&resourceVersion=%s",
 		host, ns, resourceVersion))
 }
 
-func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, host, ns string) error {
+func GetClusterList(k8s *unversioned.Client, host, ns string) (*spec.EtcdClusterList, error) {
+	resp, err := httpGetClusterList(k8s.Client, host, ns)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, toTPRError(resp.StatusCode)
+	}
+
+	d := json.NewDecoder(resp.Body)
+	clusters := &spec.EtcdClusterList{}
+	if err := d.Decode(clusters); err != nil {
+		return nil, err
+	}
+	return clusters, nil
+}
+
+func WaitEtcdTPRReady(k8s *unversioned.Client, interval, timeout time.Duration, host, ns string) error {
 	return retryutil.Retry(interval, int(timeout/interval), func() (bool, error) {
-		resp, err := ListClusters(host, ns, httpClient)
+		resp, err := httpGetClusterList(k8s.Client, host, ns)
 		if err != nil {
 			return false, err
 		}
@@ -61,6 +75,11 @@ func WaitEtcdTPRReady(httpClient *http.Client, interval, timeout time.Duration, 
 			return false, fmt.Errorf("invalid status code: %v", resp.Status)
 		}
 	})
+}
+
+func httpGetClusterList(httpcli *http.Client, host, ns string) (*http.Response, error) {
+	return httpcli.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters",
+		host, ns))
 }
 
 func GetClusterTPRObject(k8s *unversioned.Client, host, ns, name string) (*spec.EtcdCluster, error) {
