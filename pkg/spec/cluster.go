@@ -213,8 +213,8 @@ func (cs *ClusterStatus) AppendRecoveringCondition() {
 	cs.appendCondition(c)
 }
 
-func (cs *ClusterStatus) AppendUpgradingCondition(to string) {
-	reason := fmt.Sprintf("upgrading cluster version to %v", to)
+func (cs *ClusterStatus) AppendUpgradingCondition(to string, member string) {
+	reason := fmt.Sprintf("upgrading cluster member %s version to %v", member, to)
 
 	c := ClusterCondition{
 		Type:           ClusterConditionUpgrading,

@@ -22,6 +22,8 @@ import (
 )
 
 func (c *Cluster) upgradeOneMember(m *etcdutil.Member) error {
+	c.status.AppendUpgradingCondition(c.cluster.Spec.Version, m.Name)
+
 	pod, err := c.config.KubeCli.Pods(c.cluster.Namespace).Get(m.Name)
 	if err != nil {
 		return fmt.Errorf("fail to get pod (%s): %v", m.Name, err)
