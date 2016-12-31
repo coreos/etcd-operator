@@ -265,7 +265,13 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			if rerr != nil || c.members == nil {
 				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted))
 				if rerr != nil {
-					c.logger.Errorf("failed to update members: %v", rerr)
+					c.logger.Errorf("failed to update members: %v. Will retry update members...", rerr)
+					if rerr == errMemberNotReady {
+						err := c.handleUnreadyMember(running)
+						if err != nil {
+							c.logger.Errorf("fail to handle unready member: %v", err)
+						}
+					}
 					continue
 				}
 			}

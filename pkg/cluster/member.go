@@ -16,14 +16,17 @@ package cluster
 
 import (
 	"errors"
-
-	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+	"net/url"
+	"strings"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+
+	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"k8s.io/kubernetes/pkg/api"
 )
 
-var errMemberNotReady = errors.New("etcd member's Name is empty. It's not ready yet.")
+var errMemberNotReady = errors.New("etcd member's Name is empty. It's not ready")
 
 func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	resp, err := etcdutil.ListMembers(known.ClientURLs())
@@ -33,7 +36,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	members := etcdutil.MemberSet{}
 	for _, m := range resp.Members {
 		if len(m.Name) == 0 {
-			c.logger.Errorf("member (%x): %v. Will retry later...", m.ID, errMemberNotReady)
+			c.logger.Errorf("member (%v): %v", m.PeerURLs[0], errMemberNotReady)
 			return errMemberNotReady
 		}
 		id := findID(m.Name)
@@ -52,6 +55,46 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	return nil
 }
 
+func (c *Cluster) handleUnreadyMember(running []*api.Pod) error {
+	known := podsToMemberSet(running, c.cluster.Spec.SelfHosted)
+	resp, err := etcdutil.ListMembers(known.ClientURLs())
+	if err != nil {
+		return err
+	}
+	for _, m := range resp.Members {
+		if len(m.Name) != 0 {
+			continue
+		}
+		found, err := isRunningMember(m, known, c.cluster.Spec.SelfHosted)
+		if err != nil {
+			return err
+		}
+		// If this is not found from running pods, we probably failed to
+		// create pod for this member.
+		if !found {
+			c.logger.Infof("handle unready: removing member (%v) not being found in running pods", m.PeerURLs[0])
+			return etcdutil.RemoveMember(known.ClientURLs(), m.ID)
+		}
+	}
+	return errors.New("didn't found any not ready member again. Will retry reconcile later...")
+}
+
+func isRunningMember(m *etcdserverpb.Member, running etcdutil.MemberSet, selfHosted *spec.SelfHostedPolicy) (bool, error) {
+	if selfHosted != nil {
+		return false, errors.New("TODO: handle self hosted unready member")
+	}
+	n, err := nameFromPeerURL(m.PeerURLs[0])
+	if err != nil {
+		return false, err
+	}
+	for _, p := range running {
+		if n == p.Name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func podsToMemberSet(pods []*api.Pod, selfHosted *spec.SelfHostedPolicy) etcdutil.MemberSet {
 	members := etcdutil.MemberSet{}
 	for _, pod := range pods {
@@ -63,4 +106,12 @@ func podsToMemberSet(pods []*api.Pod, selfHosted *spec.SelfHostedPolicy) etcduti
 		members.Add(m)
 	}
 	return members
+}
+
+func nameFromPeerURL(pu string) (string, error) {
+	u, err := url.Parse(pu)
+	if err != nil {
+		return "", err
+	}
+	return strings.Split(u.Host, ":")[0], nil
 }
