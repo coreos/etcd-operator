@@ -32,10 +32,6 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 )
 
-var (
-	errNoBackupExist = errors.New("No backup exist for a disaster recovery")
-)
-
 // reconcile reconciles cluster current state to desired state specified by spec.
 // - it tries to reconcile the cluster to desired size.
 // - if the cluster needs for upgrade, it tries to upgrade old member one by one.

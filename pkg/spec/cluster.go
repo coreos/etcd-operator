@@ -26,8 +26,6 @@ import (
 
 var (
 	ErrBackupUnsetRestoreSet = errors.New("spec: backup policy must be set if restore policy is set")
-
-	FailedReasonNoBackup = "all members are failed, no backup for recovery"
 )
 
 type EtcdCluster struct {
