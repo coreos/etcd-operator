@@ -43,14 +43,14 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 	c.logger.Infoln("Start reconciling")
 	defer c.logger.Infoln("Finish reconciling")
 
-	size := len(pods)
-	c.status.Size = size
+	c.status.Size = c.members.Size()
 
 	sp := c.cluster.Spec
-
+	running := podsToMemberSet(pods, c.cluster.Spec.SelfHosted)
+	unknownMembers := running.Diff(c.members)
 	switch {
-	case size != sp.Size:
-		return c.reconcileSize(podsToMemberSet(pods, c.cluster.Spec.SelfHosted))
+	case unknownMembers.Size() > 0 || c.members.Size() != sp.Size:
+		return c.reconcileMembers(running, unknownMembers)
 
 	case needUpgrade(pods, sp):
 		c.status.UpgradeVersionTo(sp.Version)
@@ -66,7 +66,7 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 	}
 }
 
-// reconcileSize reconciles
+// reconcileMembers reconciles
 // - running pods on k8s and cluster membership
 // - cluster membership and expected size of etcd cluster
 // Steps:
@@ -75,11 +75,10 @@ func (c *Cluster) reconcile(pods []*api.Pod) error {
 // 3. If L = members, the current state matches the membership state. END.
 // 4. If len(L) < len(members)/2 + 1, quorum lost. Go to recovery process.
 // 5. Add one missing member. END.
-func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
+func (c *Cluster) reconcileMembers(running, unknownMembers etcdutil.MemberSet) error {
 	c.logger.Infof("running members: %s", running)
 	c.logger.Infof("cluster membership: %s", c.members)
 
-	unknownMembers := running.Diff(c.members)
 	if unknownMembers.Size() > 0 {
 		c.logger.Infof("removing unexpected pods:", unknownMembers)
 		for _, m := range unknownMembers {
