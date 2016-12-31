@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/pborman/uuid"
 )
 
@@ -41,22 +42,23 @@ func (c *Cluster) addOneSelfHostedMember() error {
 		return err
 	}
 	// wait for the new pod to start and add itself into the etcd cluster.
-	// TODO: do not wait forever.
 	oldN := c.members.Size()
-	for {
+	err = retryutil.Retry(5*time.Second, 10, func() (bool, error) {
 		err = c.updateMembers(c.members)
-		// TODO: check error type to determine the etcd member is not ready.
 		if err != nil {
 			c.logger.Errorf("add self hosted member: fail to update members: %v", err)
 			if err == errMemberNotReady {
-				continue
+				return false, nil
 			}
-			return err
+			return false, err
 		}
 		if c.members.Size() > oldN {
-			break
+			return true, nil
 		}
-		time.Sleep(5 * time.Second)
+		return false, nil
+	})
+	if err != nil {
+		return err
 	}
 
 	c.logger.Infof("added a self-hosted member (%s)", newMemberName)
