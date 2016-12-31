@@ -37,3 +37,20 @@ func ListMembers(endpoints []string) (*clientv3.MemberListResponse, error) {
 	etcdcli.Close()
 	return resp, err
 }
+
+func RemoveMember(clientURLs []string, id uint64) error {
+	cfg := clientv3.Config{
+		Endpoints:   clientURLs,
+		DialTimeout: constants.DefaultDialTimeout,
+	}
+	etcdcli, err := clientv3.New(cfg)
+	if err != nil {
+		return err
+	}
+	defer etcdcli.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	_, err = etcdcli.Cluster.MemberRemove(ctx, id)
+	cancel()
+	return err
+}

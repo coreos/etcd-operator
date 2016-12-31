@@ -162,7 +162,7 @@ func (c *Cluster) removeOneMember() error {
 }
 
 func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
-	err := removeMember(c.members.ClientURLs(), toRemove.ID)
+	err := etcdutil.RemoveMember(c.members.ClientURLs(), toRemove.ID)
 	if err != nil {
 		switch err {
 		case rpctypes.ErrMemberNotFound:
@@ -177,25 +177,6 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 		return err
 	}
 	c.logger.Infof("removed member (%v) with ID (%d)", toRemove.Name, toRemove.ID)
-	return nil
-}
-
-// TODO: move removeMember to etcdutil
-func removeMember(clientURLs []string, id uint64) error {
-	cfg := clientv3.Config{
-		Endpoints:   clientURLs,
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
-	if err != nil {
-		return err
-	}
-	defer etcdcli.Close()
-
-	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	if _, err = etcdcli.Cluster.MemberRemove(ctx, id); err != nil {
-		return err
-	}
 	return nil
 }
 
