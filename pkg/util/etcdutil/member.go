@@ -69,6 +69,20 @@ func (ms MemberSet) Diff(other MemberSet) MemberSet {
 	return diff
 }
 
+// IsEqual tells whether two member sets are equal by checking
+// - they have the same set of members and member equality are judged by Name only.
+func (ms MemberSet) IsEqual(other MemberSet) bool {
+	if ms.Size() != other.Size() {
+		return false
+	}
+	for n := range ms {
+		if _, ok := other[n]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func (ms MemberSet) Size() int {
 	return len(ms)
 }
