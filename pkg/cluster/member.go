@@ -15,15 +15,11 @@
 package cluster
 
 import (
-	"errors"
-
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 
 	"k8s.io/kubernetes/pkg/api"
 )
-
-var errMemberNotReady = errors.New("etcd member's Name is empty. It's not ready yet.")
 
 func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	resp, err := etcdutil.ListMembers(known.ClientURLs())
@@ -32,14 +28,23 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	}
 	members := etcdutil.MemberSet{}
 	for _, m := range resp.Members {
-		if len(m.Name) == 0 {
-			c.logger.Errorf("member (%x): %v. Will retry later...", m.ID, errMemberNotReady)
-			return errMemberNotReady
+		var name string
+		if c.cluster.Spec.SelfHosted != nil {
+			name = m.Name
+			if len(name) == 0 {
+				c.logger.Errorf("member peerURL (%s): %v", m.PeerURLs[0], errUnexpectedUnreadyMember)
+				return errUnexpectedUnreadyMember
+			}
+		} else {
+			name, err = etcdutil.MemberNameFromPeerURL(m.PeerURLs[0])
+			if err != nil {
+				c.logger.Errorf("invalid member peerURL (%s): %v", m.PeerURLs[0], err)
+				return errInvalidMemberName
+			}
 		}
-		name := m.Name
 		ct, err := etcdutil.GetCounterFromMemberName(name)
 		if err != nil {
-			c.logger.Errorf("fail to parse counter from name (%s): %v", name, err)
+			c.logger.Errorf("invalid member name (%s): %v", name, err)
 			return errInvalidMemberName
 		}
 		if ct+1 > c.memberCounter {

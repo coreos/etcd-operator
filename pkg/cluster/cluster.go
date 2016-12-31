@@ -284,7 +284,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 
 func isFatalError(err error) bool {
 	switch err {
-	case errNoBackupExist:
+	case errNoBackupExist, errInvalidMemberName, errUnexpectedUnreadyMember:
 		return true
 	default:
 		return false
