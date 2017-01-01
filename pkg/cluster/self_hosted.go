@@ -28,8 +28,8 @@ import (
 func (c *Cluster) addOneSelfHostedMember() error {
 	c.status.AppendScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
 
-	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.idCounter)
-	c.idCounter++
+	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.memberCounter)
+	c.memberCounter++
 
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster := append(c.members.PeerURLPairs(), newMemberName+"="+peerURL)
@@ -66,8 +66,8 @@ func (c *Cluster) addOneSelfHostedMember() error {
 }
 
 func (c *Cluster) newSelfHostedSeedMember() error {
-	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.idCounter)
-	c.idCounter++
+	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.memberCounter)
+	c.memberCounter++
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
 
 	pod := k8sutil.MakeSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Name, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
@@ -100,8 +100,8 @@ func (c *Cluster) migrateBootMember() error {
 	}
 
 	// create the  member inside Kubernetes for migration
-	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.idCounter)
-	c.idCounter++
+	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.memberCounter)
+	c.memberCounter++
 
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster = append(initialCluster, newMemberName+"="+peerURL)
