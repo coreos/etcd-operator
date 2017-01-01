@@ -16,6 +16,7 @@ package etcdutil
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -125,4 +126,20 @@ func (ms MemberSet) ClientURLs() []string {
 		endpoints = append(endpoints, m.ClientAddr())
 	}
 	return endpoints
+}
+
+func GetCounterFromMemberName(name string) (int, error) {
+	i := strings.LastIndex(name, "-")
+	if i == -1 || i+1 >= len(name) {
+		return 0, fmt.Errorf("name (%s) does not contain '-' or anything after", name)
+	}
+	c, err := strconv.Atoi(name[i+1:])
+	if err != nil {
+		return 0, err
+	}
+	return c, nil
+}
+
+func CreateMemberName(clusterName string, member int) string {
+	return fmt.Sprintf("%s-%04d", clusterName, member)
 }

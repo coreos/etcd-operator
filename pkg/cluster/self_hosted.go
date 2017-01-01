@@ -28,7 +28,7 @@ import (
 func (c *Cluster) addOneSelfHostedMember() error {
 	c.status.AppendScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
 
-	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.memberCounter)
+	newMemberName := etcdutil.CreateMemberName(c.cluster.Name, c.memberCounter)
 	c.memberCounter++
 
 	peerURL := "http://$(MY_POD_IP):2380"

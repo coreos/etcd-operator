@@ -37,13 +37,13 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 			return errMemberNotReady
 		}
 		name := m.Name
-		id, err := findID(name)
+		ct, err := etcdutil.GetCounterFromMemberName(name)
 		if err != nil {
-			c.logger.Errorf("fail to parse ID from name (%s): %v", name, err)
+			c.logger.Errorf("fail to parse counter from name (%s): %v", name, err)
 			return errInvalidMemberName
 		}
-		if id+1 > c.memberCounter {
-			c.memberCounter = id + 1
+		if ct+1 > c.memberCounter {
+			c.memberCounter = ct + 1
 		}
 
 		members[name] = &etcdutil.Member{
