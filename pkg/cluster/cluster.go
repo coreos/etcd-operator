@@ -293,6 +293,15 @@ func isFatalError(err error) bool {
 	}
 }
 
+func findID(name string) (int, error) {
+	i := strings.LastIndex(name, "-")
+	id, err := strconv.Atoi(name[i+1:])
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
 func (c *Cluster) makeSeedMember() *etcdutil.Member {
 	etcdName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.idCounter)
 	return &etcdutil.Member{Name: etcdName}
@@ -330,16 +339,6 @@ func (c *Cluster) Update(e *spec.EtcdCluster) {
 			cluster: e,
 		})
 	}
-}
-
-func findID(name string) int {
-	i := strings.LastIndex(name, "-")
-	id, err := strconv.Atoi(name[i+1:])
-	if err != nil {
-		// TODO: do not panic for single cluster error
-		panic(fmt.Sprintf("TODO: fail to extract valid ID from name (%s): %v", name, err))
-	}
-	return id
 }
 
 func (c *Cluster) delete() {

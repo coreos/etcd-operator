@@ -17,9 +17,9 @@ package cluster
 import (
 	"errors"
 
+	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"k8s.io/kubernetes/pkg/api"
 )
 
@@ -36,13 +36,18 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 			c.logger.Errorf("member (%x): %v. Will retry later...", m.ID, errMemberNotReady)
 			return errMemberNotReady
 		}
-		id := findID(m.Name)
+		name := m.Name
+		id, err := findID(name)
+		if err != nil {
+			c.logger.Errorf("fail to parse ID from name (%s): %v", name, err)
+			return errInvalidMemberName
+		}
 		if id+1 > c.idCounter {
 			c.idCounter = id + 1
 		}
 
-		members[m.Name] = &etcdutil.Member{
-			Name:       m.Name,
+		members[name] = &etcdutil.Member{
+			Name:       name,
 			ID:         m.ID,
 			ClientURLs: m.ClientURLs,
 			PeerURLs:   m.PeerURLs,
