@@ -42,8 +42,8 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 			c.logger.Errorf("fail to parse ID from name (%s): %v", name, err)
 			return errInvalidMemberName
 		}
-		if id+1 > c.idCounter {
-			c.idCounter = id + 1
+		if id+1 > c.memberCounter {
+			c.memberCounter = id + 1
 		}
 
 		members[name] = &etcdutil.Member{

@@ -65,8 +65,8 @@ type Cluster struct {
 	cluster *spec.EtcdCluster
 
 	// in memory state of the cluster
-	status    *spec.ClusterStatus
-	idCounter int
+	status        *spec.ClusterStatus
+	memberCounter int
 
 	eventCh chan *clusterEvent
 	stopCh  chan struct{}
@@ -303,7 +303,7 @@ func findID(name string) (int, error) {
 }
 
 func (c *Cluster) makeSeedMember() *etcdutil.Member {
-	etcdName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.idCounter)
+	etcdName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.memberCounter)
 	return &etcdutil.Member{Name: etcdName}
 }
 
@@ -313,7 +313,7 @@ func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 		c.logger.Errorf("failed to create seed member (%s): %v", m.Name, err)
 		return err
 	}
-	c.idCounter++
+	c.memberCounter++
 	c.logger.Infof("cluster created with seed member (%s)", m.Name)
 	return nil
 }
