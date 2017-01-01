@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"math"
 	"reflect"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -293,17 +291,8 @@ func isFatalError(err error) bool {
 	}
 }
 
-func findID(name string) (int, error) {
-	i := strings.LastIndex(name, "-")
-	id, err := strconv.Atoi(name[i+1:])
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
-}
-
 func (c *Cluster) makeSeedMember() *etcdutil.Member {
-	etcdName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.memberCounter)
+	etcdName := etcdutil.CreateMemberName(c.cluster.Name, c.memberCounter)
 	return &etcdutil.Member{Name: etcdName}
 }
 

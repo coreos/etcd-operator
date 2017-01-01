@@ -131,7 +131,7 @@ func (c *Cluster) addOneMember() error {
 	}
 	defer etcdcli.Close()
 
-	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Name, c.memberCounter)
+	newMemberName := etcdutil.CreateMemberName(c.cluster.Name, c.memberCounter)
 	newMember := &etcdutil.Member{Name: newMemberName}
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
