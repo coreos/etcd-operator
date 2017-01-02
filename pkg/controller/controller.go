@@ -182,12 +182,12 @@ func (c *Controller) Run() error {
 
 func (c *Controller) findAllClusters() (string, error) {
 	c.logger.Info("finding existing clusters...")
-	clusters, rv, err := c.getClustersFromTPR()
+	clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli, c.Config.MasterHost, c.Config.Namespace)
 	if err != nil {
 		return "", err
 	}
 
-	for _, item := range clusters {
+	for _, item := range clusterList.Items {
 		clusterName := item.Name
 		stopC := make(chan struct{})
 		nc := cluster.New(c.makeClusterConfig(), &item, stopC, &c.waitCluster)
@@ -198,20 +198,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		c.clusters[clusterName] = nc
 	}
 
-	return rv, nil
-}
-
-func (c *Controller) getClustersFromTPR() ([]spec.EtcdCluster, string, error) {
-	resp, err := k8sutil.ListClusters(c.MasterHost, c.Namespace, c.KubeCli.RESTClient.Client)
-	if err != nil {
-		return nil, "", err
-	}
-	d := json.NewDecoder(resp.Body)
-	clusters := &EtcdClusterList{}
-	if err := d.Decode(clusters); err != nil {
-		return nil, "", err
-	}
-	return clusters.Items, clusters.ResourceVersion, nil
+	return clusterList.ResourceVersion, nil
 }
 
 func (c *Controller) makeClusterConfig() cluster.Config {
@@ -262,7 +249,7 @@ func (c *Controller) createTPR() error {
 		return err
 	}
 
-	return k8sutil.WaitEtcdTPRReady(c.KubeCli.Client, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
+	return k8sutil.WaitEtcdTPRReady(c.KubeCli, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
 }
 
 func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) {
