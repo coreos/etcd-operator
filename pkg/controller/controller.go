@@ -80,7 +80,7 @@ type Config struct {
 	KubeCli *unversioned.Client
 }
 
-func (c *Config) validate() error {
+func (c *Config) Validate() error {
 	if _, ok := supportedPVProvisioners[c.PVProvisioner]; !ok {
 		return fmt.Errorf(
 			"persistent volume provisioner %s is not supported: options = %v",
@@ -91,9 +91,6 @@ func (c *Config) validate() error {
 }
 
 func New(cfg Config) *Controller {
-	if err := cfg.validate(); err != nil {
-		panic(err)
-	}
 	return &Controller{
 		logger: logrus.WithField("pkg", "controller"),
 

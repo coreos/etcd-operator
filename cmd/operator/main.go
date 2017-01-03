@@ -128,12 +128,14 @@ func main() {
 }
 
 func run(stop <-chan struct{}) {
+	cfg := newControllerConfig()
+	if err := cfg.Validate(); err != nil {
+		logrus.Fatalf("invalid operator config: %v", err)
+	}
+
+	startChaos(context.Background(), cfg.KubeCli, cfg.Namespace, chaosLevel)
+
 	for {
-		ctx, cancel := context.WithCancel(context.Background())
-
-		cfg := newControllerConfig()
-		startChaos(ctx, cfg.KubeCli, cfg.Namespace, chaosLevel)
-
 		c := controller.New(cfg)
 		err := c.Run()
 		switch err {
@@ -141,8 +143,6 @@ func run(stop <-chan struct{}) {
 		default:
 			logrus.Fatalf("controller Run() ended with failure: %v", err)
 		}
-
-		cancel()
 	}
 }
 
