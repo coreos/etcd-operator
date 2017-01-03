@@ -130,12 +130,12 @@ func (c *Cluster) reconcileSize(running etcdutil.MemberSet) error {
 		return c.disasterRecovery(L)
 	}
 
-	c.logger.Infof("Recovering one member")
-	toRecover := c.members.Diff(L).PickOne()
+	c.logger.Infof("replacing one dead member with a new member")
 
-	if err := c.removeMember(toRecover); err != nil {
+	if err := c.removeDeadMember(c.members.Diff(L).PickOne()); err != nil {
 		return err
 	}
+
 	return c.resize()
 }
 
@@ -192,6 +192,13 @@ func (c *Cluster) removeOneMember() error {
 	c.status.AppendScalingDownCondition()
 
 	return c.removeMember(c.members.PickOne())
+}
+
+func (c *Cluster) removeDeadMember(toRemove *etcdutil.Member) error {
+	c.logger.Infof("removing dead member %q", toRemove.Name)
+	c.status.AppendRemovingDeadMember(toRemove.Name)
+
+	return c.removeMember(toRemove)
 }
 
 func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {

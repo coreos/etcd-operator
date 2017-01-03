@@ -130,6 +130,8 @@ type ClusterConditionType string
 const (
 	ClusterConditionReady = "Ready"
 
+	ClusterConditionRemovingDeadMember = "RemovingDeadMember"
+
 	ClusterConditionRecovering = "Recovering"
 
 	ClusterConditionScalingUp   = "ScalingUp"
@@ -216,6 +218,17 @@ func (cs *ClusterStatus) AppendUpgradingCondition(to string) {
 
 	c := ClusterCondition{
 		Type:           ClusterConditionUpgrading,
+		Reason:         reason,
+		TransitionTime: time.Now(),
+	}
+	cs.appendCondition(c)
+}
+
+func (cs *ClusterStatus) AppendRemovingDeadMember(name string) {
+	reason := fmt.Sprintf("removing dead member %s", name)
+
+	c := ClusterCondition{
+		Type:           ClusterConditionRemovingDeadMember,
 		Reason:         reason,
 		TransitionTime: time.Now(),
 	}
