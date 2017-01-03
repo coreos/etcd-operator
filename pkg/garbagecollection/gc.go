@@ -24,6 +24,8 @@ import (
 	"k8s.io/kubernetes/pkg/types"
 )
 
+var pkgLogger = logrus.WithField("pkg", "gc")
+
 type GC struct {
 	logger *logrus.Entry
 
@@ -32,9 +34,9 @@ type GC struct {
 	ns         string
 }
 
-func New(k8s *unversioned.Client, masterHost, ns string, l *logrus.Entry) *GC {
+func New(k8s *unversioned.Client, masterHost, ns string) *GC {
 	return &GC{
-		logger:     l,
+		logger:     pkgLogger,
 		k8s:        k8s,
 		masterHost: masterHost,
 		ns:         ns,
@@ -106,6 +108,7 @@ func (gc *GC) collectPods(option k8sapi.ListOptions, runningSet map[types.UID]bo
 			if err != nil {
 				return err
 			}
+			gc.logger.Infof("deleted pod (%v)", p.GetName())
 		}
 	}
 	return nil
@@ -127,6 +130,7 @@ func (gc *GC) collectServices(option k8sapi.ListOptions, runningSet map[types.UI
 			if err != nil {
 				return err
 			}
+			gc.logger.Infof("deleted service (%v)", srv.GetName())
 		}
 	}
 
@@ -149,6 +153,7 @@ func (gc *GC) collectReplicaSet(option k8sapi.ListOptions, runningSet map[types.
 			if err != nil {
 				return err
 			}
+			gc.logger.Infof("deleted replica set (%s)", rs.GetName())
 		}
 	}
 
