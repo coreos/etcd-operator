@@ -16,10 +16,16 @@ package etcdutil
 
 import (
 	"context"
+	"errors"
+	"net/url"
+	"regexp"
+	"strings"
 
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd/clientv3"
 )
+
+var validPeerURL = regexp.MustCompile(`^\w+:\/\/[\w\.\-]+(:\d+)?$`)
 
 func ListMembers(endpoints []string) (*clientv3.MemberListResponse, error) {
 	cfg := clientv3.Config{
@@ -53,4 +59,16 @@ func RemoveMember(clientURLs []string, id uint64) error {
 	_, err = etcdcli.Cluster.MemberRemove(ctx, id)
 	cancel()
 	return err
+}
+
+func MemberNameFromPeerURL(pu string) (string, error) {
+	// url.Parse has very loose validation. We do our own validation.
+	if !validPeerURL.MatchString(pu) {
+		return "", errors.New("invalid PeerURL format")
+	}
+	u, err := url.Parse(pu)
+	if err != nil {
+		return "", err
+	}
+	return strings.Split(u.Host, ":")[0], nil
 }

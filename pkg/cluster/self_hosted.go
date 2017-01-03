@@ -16,6 +16,7 @@ package cluster
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -43,11 +44,11 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	}
 	// wait for the new pod to start and add itself into the etcd cluster.
 	oldN := c.members.Size()
-	err = retryutil.Retry(5*time.Second, 10, func() (bool, error) {
+	err = retryutil.Retry(5*time.Second, math.MaxInt64, func() (bool, error) {
 		err = c.updateMembers(c.members)
 		if err != nil {
 			c.logger.Errorf("add self hosted member: fail to update members: %v", err)
-			if err == errMemberNotReady {
+			if err == errUnexpectedUnreadyMember {
 				return false, nil
 			}
 			return false, err
