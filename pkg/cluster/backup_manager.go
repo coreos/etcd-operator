@@ -109,6 +109,11 @@ func (bm *backupManager) runSidecar() error {
 	return nil
 }
 
+func (bm *backupManager) verifyBackupSetup() error {
+	_, err := bm.config.KubeCli.Services(bm.cluster.Namespace).Get(k8sutil.MakeBackupName(bm.cluster.Name))
+	return err
+}
+
 func (bm *backupManager) createBackupReplicaSet(podSpec api.PodSpec) error {
 	rs := k8sutil.MakeBackupReplicaSet(bm.cluster.Name, podSpec, bm.cluster.AsOwner())
 	_, err := bm.config.KubeCli.ReplicaSets(bm.cluster.Namespace).Create(rs)

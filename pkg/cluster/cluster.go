@@ -152,6 +152,12 @@ func (c *Cluster) create() error {
 		if err := c.bm.setup(); err != nil {
 			return err
 		}
+	} else {
+		if c.bm != nil {
+			if err := c.bm.verifyBackupSetup(); err != nil {
+				return nil, fmt.Errorf("fail to verify backup's setup: %v", err)
+			}
+		}
 	}
 
 	if c.cluster.Spec.Restore == nil {
