@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/chaos"
 	"github.com/coreos/etcd-operator/pkg/controller"
+	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/version"
 
@@ -50,6 +51,7 @@ var (
 	awsSecret        string
 	awsConfig        string
 	s3Bucket         string
+	gcInterval       time.Duration
 
 	chaosLevel int
 
@@ -77,6 +79,7 @@ func init() {
 	// chaos level will be removed once we have a formal tool to inject failures.
 	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the operator.")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
+	flag.DurationVar(&gcInterval, "gc-interval", 10*time.Minute, "GC interval")
 	flag.Parse()
 
 	namespace = os.Getenv("MY_POD_NAMESPACE")
@@ -133,6 +136,8 @@ func run(stop <-chan struct{}) {
 		logrus.Fatalf("invalid operator config: %v", err)
 	}
 
+	go periodicFullGC(cfg.KubeCli, cfg.MasterHost, cfg.Namespace, gcInterval)
+
 	startChaos(context.Background(), cfg.KubeCli, cfg.Namespace, chaosLevel)
 
 	for {
@@ -169,6 +174,19 @@ func newControllerConfig() controller.Config {
 		cfg.MasterHost = k8sutil.MustGetInClusterMasterHost()
 	}
 	return cfg
+}
+
+func periodicFullGC(k8s *unversioned.Client, host, ns string, d time.Duration) {
+	gc := garbagecollection.New(k8s, host, ns)
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	for {
+		<-timer.C
+		err := gc.FullyCollect()
+		if err != nil {
+			logrus.Warningf("failed to cleanup resources: %v", err)
+		}
+	}
 }
 
 func startChaos(ctx context.Context, k8s *unversioned.Client, ns string, chaosLevel int) {

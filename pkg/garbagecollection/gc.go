@@ -53,9 +53,9 @@ func (gc *GC) CollectCluster(cluster string, clusterUID types.UID) error {
 	return gc.collectResources(k8sutil.ClusterListOpt(cluster), map[types.UID]bool{clusterUID: true})
 }
 
-// fullyCollect collects resources that were created before,
+// FullyCollect collects resources that were created before,
 // but does not belong to any current running clusters.
-func (gc *GC) fullyCollect() error {
+func (gc *GC) FullyCollect() error {
 	clusters, err := k8sutil.GetClusterList(gc.k8s, gc.masterHost, gc.ns)
 	if err != nil {
 		return err
