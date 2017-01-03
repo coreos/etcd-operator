@@ -89,7 +89,7 @@ func New(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
 		status:  &spec.ClusterStatus{},
-		gc:      garbagecollection.New(config.KubeCli, config.MasterHost, e.Namespace, lg),
+		gc:      garbagecollection.New(config.KubeCli, config.MasterHost, e.Namespace),
 	}
 
 	err := c.setup()
