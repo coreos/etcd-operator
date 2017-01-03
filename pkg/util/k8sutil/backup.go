@@ -207,6 +207,7 @@ func MakeBackupReplicaSet(clusterName string, ps api.PodSpec, owner metatypes.Ow
 			Name: name,
 			Labels: map[string]string{
 				"etcd_cluster": clusterName,
+				"app":          "etcd",
 			},
 		},
 		Spec: extensions.ReplicaSetSpec{
