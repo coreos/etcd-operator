@@ -39,6 +39,9 @@ import (
 )
 
 const (
+	envParallelTest     = "PARALLEL_TEST"
+	envParallelTestTrue = "true"
+
 	etcdKeyFoo = "foo"
 	etcdValBar = "bar"
 )

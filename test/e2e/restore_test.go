@@ -33,6 +33,17 @@ func TestClusterRestore(t *testing.T) {
 	})
 }
 
+func TestClusterRestoreS3(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
+
+	t.Run("restore cluster from backup on S3", func(t *testing.T) {
+		t.Run("restore from the same name cluster", testClusterRestoreS3SameName)
+		t.Run("restore from a different name cluster", testClusterRestoreS3DifferentName)
+	})
+}
+
 func testClusterRestoreSameName(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
@@ -170,4 +181,18 @@ func calculateClusterRestoreWaitTime(bt spec.BackupStorageType, needDataClone bo
 		waitTime += 60 * time.Second
 	}
 	return waitTime
+}
+
+func testClusterRestoreS3SameName(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
+	testClusterRestoreWithStorageType(t, false, spec.BackupStorageTypeS3)
+}
+
+func testClusterRestoreS3DifferentName(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
+	testClusterRestoreWithStorageType(t, true, spec.BackupStorageTypeS3)
 }

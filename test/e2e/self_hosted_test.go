@@ -31,7 +31,17 @@ import (
 	"github.com/coreos/etcd/pkg/netutil"
 )
 
-func TestCreateSelfHostedCluster(t *testing.T) {
+func TestSelfHosted(t *testing.T) {
+	t.Run("self hosted", func(t *testing.T) {
+		t.Run("create self hosted cluster from scratch", testCreateSelfHostedCluster)
+		t.Run("migrate boot member to self hosted cluster", testCreateSelfHostedClusterWithBootMember)
+	})
+}
+
+func testCreateSelfHostedCluster(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	f := framework.Global
 	testEtcd, err := createEtcdCluster(f, makeSelfHostedEnabledCluster("test-etcd-", 3))
 	if err != nil {
@@ -49,7 +59,10 @@ func TestCreateSelfHostedCluster(t *testing.T) {
 	}
 }
 
-func TestCreateSelfHostedClusterWithBootMember(t *testing.T) {
+func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	dir := path.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
 	os.RemoveAll(dir)
 	defer os.RemoveAll(dir)
