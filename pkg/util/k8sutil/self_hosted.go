@@ -52,7 +52,7 @@ func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, st
 		},
 		Spec: api.PodSpec{
 			Containers: []api.Container{
-				etcdContainer(commands, cs.Version),
+				etcdContainer(commands, cs),
 			},
 			// Self-hosted etcd pod need to endure node restart.
 			// If we set it to Never, the pod won't restart. If etcd won't come up, nor does other k8s API components.

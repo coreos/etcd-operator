@@ -60,6 +60,9 @@ type ClusterSpec struct {
 	// equal to the expected version.
 	Version string `json:"version"`
 
+	// Image is the name of the docker image used for pods created by the etcd controller.
+	Image string `json:"image,omitempty"`
+
 	// Backup defines the policy to backup data of etcd cluster if not nil.
 	// If backup policy is set but restore policy not, and if a previous backup exists,
 	// this cluster would face conflict and fail to start.
