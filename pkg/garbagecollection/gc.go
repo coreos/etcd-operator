@@ -1,4 +1,18 @@
-package controller
+// Copyright 2017 The etcd-operator Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package garbagecollection
 
 import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -10,7 +24,7 @@ import (
 	"k8s.io/kubernetes/pkg/types"
 )
 
-type gc struct {
+type GC struct {
 	logger *logrus.Entry
 
 	k8s        *unversioned.Client
@@ -18,9 +32,18 @@ type gc struct {
 	ns         string
 }
 
-// collectCluster collects resources that matches cluster lable, but
+func New(k8s *unversioned.Client, masterHost, ns string, l *logrus.Entry) *GC {
+	return &GC{
+		logger:     l,
+		k8s:        k8s,
+		masterHost: masterHost,
+		ns:         ns,
+	}
+}
+
+// CollectCluster collects resources that matches cluster lable, but
 // does not belong to the cluster with given clusterUID
-func (gc *gc) collectCluster(cluster string, clusterUID types.UID) error {
+func (gc *GC) CollectCluster(cluster string, clusterUID types.UID) error {
 	option := k8sapi.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"etcd_cluster": cluster,
@@ -33,7 +56,7 @@ func (gc *gc) collectCluster(cluster string, clusterUID types.UID) error {
 
 // fullyCollect collects resources that were created before,
 // but does not belong to any current running clusters.
-func (gc *gc) fullyCollect() error {
+func (gc *GC) fullyCollect() error {
 	clusters, err := k8sutil.GetClusterList(gc.k8s, gc.masterHost, gc.ns)
 	if err != nil {
 		return err
@@ -53,7 +76,7 @@ func (gc *gc) fullyCollect() error {
 	return gc.collectResources(option, clusterUIDSet)
 }
 
-func (gc *gc) collectResources(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectResources(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
 	if err := gc.collectPods(option, runningSet); err != nil {
 		return err
 	}
@@ -67,7 +90,7 @@ func (gc *gc) collectResources(option k8sapi.ListOptions, runningSet map[types.U
 	return nil
 }
 
-func (gc *gc) collectPods(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectPods(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
 	pods, err := gc.k8s.Pods(gc.ns).List(option)
 	if err != nil {
 		return err
@@ -88,7 +111,7 @@ func (gc *gc) collectPods(option k8sapi.ListOptions, runningSet map[types.UID]bo
 	return nil
 }
 
-func (gc *gc) collectServices(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectServices(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
 	srvs, err := gc.k8s.Services(gc.ns).List(option)
 	if err != nil {
 		return err
@@ -110,7 +133,7 @@ func (gc *gc) collectServices(option k8sapi.ListOptions, runningSet map[types.UI
 	return nil
 }
 
-func (gc *gc) collectReplicaSet(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectReplicaSet(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
 	rss, err := gc.k8s.ReplicaSets(gc.ns).List(option)
 	if err != nil {
 		return err
