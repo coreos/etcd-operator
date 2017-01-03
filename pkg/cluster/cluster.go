@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
+	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -32,7 +33,6 @@ import (
 	"github.com/pborman/uuid"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/labels"
 )
 
 type clusterEventType string
@@ -76,6 +76,8 @@ type Cluster struct {
 
 	bm        *backupManager
 	backupDir string
+
+	gc *garbagecollection.GC
 }
 
 func New(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
@@ -87,6 +89,7 @@ func New(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
 		status:  &spec.ClusterStatus{},
+		gc:      garbagecollection.New(config.KubeCli, config.MasterHost, e.Namespace, lg),
 	}
 
 	err := c.setup()
@@ -145,7 +148,11 @@ func (c *Cluster) setup() error {
 func (c *Cluster) create() error {
 	c.status.SetPhase(spec.ClusterPhaseCreating)
 	if err := c.updateStatus(); err != nil {
-		return fmt.Errorf("failed to update cluster phase (%v): %v", spec.ClusterPhaseCreating, err)
+		return fmt.Errorf("cluster create: failed to update cluster phase (%v): %v", spec.ClusterPhaseCreating, err)
+	}
+
+	if err := c.gc.CollectCluster(c.cluster.Name, c.cluster.UID); err != nil {
+		return fmt.Errorf("cluster create: failed to clean up conflict resources: %v", err)
 	}
 
 	if c.bm != nil {
@@ -163,7 +170,7 @@ func (c *Cluster) create() error {
 	}
 
 	if err := c.createClientServiceLB(); err != nil {
-		return fmt.Errorf("fail to create client service LB: %v", err)
+		return fmt.Errorf("cluster create: fail to create client service LB: %v", err)
 	}
 	return nil
 }
@@ -331,28 +338,8 @@ func (c *Cluster) Update(e *spec.EtcdCluster) {
 }
 
 func (c *Cluster) delete() {
-	option := k8sapi.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"etcd_cluster": c.cluster.Name,
-			"app":          "etcd",
-		}),
-	}
-
-	pods, err := c.config.KubeCli.Pods(c.cluster.Namespace).List(option)
-	if err != nil {
-		c.logger.Errorf("cluster deletion: cannot delete any pod due to failure to list: %v", err)
-	} else {
-		for i := range pods.Items {
-			if err := c.removePodAndService(pods.Items[i].Name); err != nil {
-				c.logger.Errorf("cluster deletion: fail to delete (%s)'s pod and svc: %v", pods.Items[i].Name, err)
-			}
-		}
-	}
-	c.logger.Info("cluster delete: pods and services are deleted")
-
-	err = c.deleteClientServiceLB()
-	if err != nil {
-		c.logger.Errorf("cluster deletion: fail to delete client service LB: %v", err)
+	if err := c.gc.CollectCluster(c.cluster.Name, c.cluster.UID); err != nil {
+		c.logger.Errorf("cluster delete: fail to clean up resources %v", err)
 	}
 
 	if c.bm != nil {
