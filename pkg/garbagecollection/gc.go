@@ -98,7 +98,7 @@ func (gc *GC) collectPods(option k8sapi.ListOptions, runningSet map[types.UID]bo
 
 	for _, p := range pods.Items {
 		if len(p.OwnerReferences) == 0 {
-			gc.logger.Warningf("failed to check pod %s", p.GetName())
+			gc.logger.Warningf("failed to check pod %s: no owner", p.GetName())
 			continue
 		}
 		if !runningSet[p.OwnerReferences[0].UID] {
@@ -119,7 +119,7 @@ func (gc *GC) collectServices(option k8sapi.ListOptions, runningSet map[types.UI
 
 	for _, srv := range srvs.Items {
 		if len(srv.OwnerReferences) == 0 {
-			gc.logger.Warningf("failed to check srv %s", srv.GetName())
+			gc.logger.Warningf("failed to check service %s: no owner", srv.GetName())
 			continue
 		}
 		if !runningSet[srv.OwnerReferences[0].UID] {
@@ -141,7 +141,7 @@ func (gc *GC) collectReplicaSet(option k8sapi.ListOptions, runningSet map[types.
 
 	for _, rs := range rss.Items {
 		if len(rs.OwnerReferences) == 0 {
-			gc.logger.Warningf("failed to check replica set %s", rs.GetName())
+			gc.logger.Warningf("failed to check replica set %s: no owner", rs.GetName())
 			continue
 		}
 		if !runningSet[rs.OwnerReferences[0].UID] {
