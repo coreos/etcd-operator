@@ -115,26 +115,6 @@ func MakeBackupHostPort(clusterName string) string {
 	return fmt.Sprintf("%s:%d", MakeBackupName(clusterName), constants.DefaultBackupPodHTTPPort)
 }
 
-func PodWithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, peerURLs []string, cs *spec.ClusterSpec) *api.Pod {
-	containerSpec := []api.Container{
-		{
-			Name:  "add-member",
-			Image: MakeEtcdImage(cs.Version),
-			Command: []string{
-				"/bin/sh", "-c",
-				fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), name, strings.Join(peerURLs, ",")),
-			},
-			Env: []api.EnvVar{envPodIP},
-		},
-	}
-	b, err := json.Marshal(containerSpec)
-	if err != nil {
-		panic(err)
-	}
-	p.Annotations[k8sv1api.PodInitContainersAnnotationKey] = string(b)
-	return p
-}
-
 func PodWithNodeSelector(p *api.Pod, ns map[string]string) *api.Pod {
 	p.Spec.NodeSelector = ns
 	return p

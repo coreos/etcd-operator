@@ -22,17 +22,6 @@ import (
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 )
 
-var (
-	envPodIP = api.EnvVar{
-		Name: "MY_POD_IP",
-		ValueFrom: &api.EnvVarSource{
-			FieldRef: &api.ObjectFieldSelector{
-				FieldPath: "status.podIP",
-			},
-		},
-	}
-)
-
 func etcdContainer(commands, version string) api.Container {
 	c := api.Container{
 		// TODO: fix "sleep 5".
@@ -55,7 +44,6 @@ func etcdContainer(commands, version string) api.Container {
 		VolumeMounts: []api.VolumeMount{
 			{Name: "etcd-data", MountPath: etcdDir},
 		},
-		Env: []api.EnvVar{envPodIP},
 	}
 
 	return c
