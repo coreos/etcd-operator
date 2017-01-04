@@ -354,7 +354,7 @@ func IsKubernetesResourceNotFoundError(err error) bool {
 	return false
 }
 
-func EtcdPodListOpt(clusterName string) api.ListOptions {
+func ClusterListOpt(clusterName string) api.ListOptions {
 	return api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"etcd_cluster": clusterName,
