@@ -417,7 +417,7 @@ func (c *Cluster) pollPods() ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 		if len(pod.OwnerReferences) < 1 {
-			c.logger.Warning("pollPods: ignore pod %v: no owner", pod.Name)
+			c.logger.Warningf("pollPods: ignore pod %v: no owner", pod.Name)
 			continue
 		}
 		if pod.OwnerReferences[0].UID != c.cluster.UID {
