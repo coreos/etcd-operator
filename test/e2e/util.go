@@ -134,7 +134,7 @@ func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, 
 func waitSizeReachedWithFilter(f *framework.Framework, clusterName string, size int, timeout time.Duration, filterPod func(*api.Pod) bool) ([]string, error) {
 	var names []string
 	err := retryutil.Retry(10*time.Second, int(timeout/(10*time.Second)), func() (done bool, err error) {
-		podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.EtcdPodListOpt(clusterName))
+		podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.ClusterListOpt(clusterName))
 		if err != nil {
 			return false, err
 		}
@@ -243,7 +243,7 @@ func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdC
 
 func deleteEtcdCluster(f *framework.Framework, name string) error {
 	fmt.Printf("deleting etcd cluster: %v\n", name)
-	podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.EtcdPodListOpt(name))
+	podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.ClusterListOpt(name))
 	if err != nil {
 		return err
 	}

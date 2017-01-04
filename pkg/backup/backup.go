@@ -129,7 +129,7 @@ func (b *Backup) Run() {
 }
 
 func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
-	podList, err := b.kclient.Pods(b.namespace).List(k8sutil.EtcdPodListOpt(b.clusterName))
+	podList, err := b.kclient.Pods(b.namespace).List(k8sutil.ClusterListOpt(b.clusterName))
 	if err != nil {
 		return lastSnapRev, err
 	}
