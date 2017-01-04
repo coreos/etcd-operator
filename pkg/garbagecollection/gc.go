@@ -50,14 +50,7 @@ func New(k8s *unversioned.Client, masterHost, ns string) *GC {
 // CollectCluster collects resources that matches cluster lable, but
 // does not belong to the cluster with given clusterUID
 func (gc *GC) CollectCluster(cluster string, clusterUID types.UID) error {
-	option := k8sapi.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"etcd_cluster": cluster,
-			"app":          "etcd",
-		}),
-	}
-
-	return gc.collectResources(option, map[types.UID]bool{clusterUID: true})
+	return gc.collectResources(k8sutil.ClusterListOpt(cluster), map[types.UID]bool{clusterUID: true})
 }
 
 // fullyCollect collects resources that were created before,
