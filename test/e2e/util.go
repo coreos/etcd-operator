@@ -85,48 +85,6 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 	return cluster.RequestBackupNow(f.KubeClient.Client, addr)
 }
 
-func checkBackupDeleted(f *framework.Framework, clusterName string, bt spec.BackupStorageType) error {
-	return retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		ls := labels.SelectorFromSet(labels.Set{"etcd_cluster": clusterName})
-
-		rl, err := f.KubeClient.ReplicaSets(f.Namespace).List(api.ListOptions{
-			LabelSelector: ls,
-		})
-		if err != nil {
-			return false, err
-		}
-		if len(rl.Items) > 0 {
-			return false, nil
-		}
-		// TODO: check backup pod deleted. There is a graceful deletion that takes too long.
-
-		switch bt {
-		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-			pl, err := f.KubeClient.PersistentVolumeClaims(f.Namespace).List(api.ListOptions{
-				LabelSelector: ls,
-			})
-			if err != nil {
-				return false, err
-			}
-			if len(pl.Items) > 0 {
-				return false, nil
-			}
-		case spec.BackupStorageTypeS3:
-			resp, err := f.S3Cli.ListObjects(&s3.ListObjectsInput{
-				Bucket: aws.String(f.S3Bucket),
-				Prefix: aws.String(clusterName + "/"),
-			})
-			if err != nil {
-				return false, err
-			}
-			if len(resp.Contents) > 0 {
-				return false, nil
-			}
-		}
-		return true, nil
-	})
-}
-
 func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, timeout time.Duration) ([]string, error) {
 	return waitSizeReachedWithFilter(f, clusterName, size, timeout, func(*api.Pod) bool { return true })
 }
@@ -241,9 +199,9 @@ func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdC
 	return k8sutil.UpdateClusterTPRObjectUnconditionally(f.KubeClient, f.MasterHost, f.Namespace, e)
 }
 
-func deleteEtcdCluster(f *framework.Framework, name string) error {
-	fmt.Printf("deleting etcd cluster: %v\n", name)
-	podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.ClusterListOpt(name))
+func deleteEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) error {
+	fmt.Printf("deleting etcd cluster: %v\n", e.Name)
+	podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
 	if err != nil {
 		return err
 	}
@@ -272,7 +230,7 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 	fmt.Println("etcd-operator logs END ===")
 
 	req, err := http.NewRequest("DELETE",
-		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace, name), nil)
+		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace, e.Name), nil)
 	if err != nil {
 		return err
 	}
@@ -284,7 +242,53 @@ func deleteEtcdCluster(f *framework.Framework, name string) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status: %v", resp.Status)
 	}
+	if e.Spec.Backup != nil {
+		err := waitBackupDeleted(f, e)
+		if err != nil {
+			return fmt.Errorf("fail to check backup deleted: %v", err)
+		}
+	}
 	return nil
+}
+
+func waitBackupDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
+	return retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
+		rl, err := f.KubeClient.ReplicaSets(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
+		if err != nil {
+			return false, err
+		}
+		if len(rl.Items) > 0 {
+			return false, nil
+		}
+		// TODO: check backup pod deleted. There is a graceful deletion that takes too long.
+
+		if !e.Spec.Backup.CleanupBackupsOnClusterDelete {
+			return true, nil
+		}
+
+		switch e.Spec.Backup.StorageType {
+		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+			pl, err := f.KubeClient.PersistentVolumeClaims(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
+			if err != nil {
+				return false, err
+			}
+			if len(pl.Items) > 0 {
+				return false, nil
+			}
+		case spec.BackupStorageTypeS3:
+			resp, err := f.S3Cli.ListObjects(&s3.ListObjectsInput{
+				Bucket: aws.String(f.S3Bucket),
+				Prefix: aws.String(e.Name + "/"),
+			})
+			if err != nil {
+				return false, err
+			}
+			if len(resp.Contents) > 0 {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
 }
 
 func getLogs(kubecli *k8sclient.Client, ns, p, c string, out io.Writer) error {

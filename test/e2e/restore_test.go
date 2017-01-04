@@ -90,7 +90,7 @@ func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec
 	if err := makeBackup(f, testEtcd.Name); err != nil {
 		t.Fatalf("fail to make a backup: %v", err)
 	}
-	if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+	if err := deleteEtcdCluster(f, testEtcd); err != nil {
 		t.Fatal(err)
 	}
 	// waits a bit to make sure resources are finally deleted on APIServer.
@@ -117,7 +117,7 @@ func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+		if err := deleteEtcdCluster(f, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
