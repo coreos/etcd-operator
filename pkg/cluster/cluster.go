@@ -338,7 +338,7 @@ func (c *Cluster) Update(e *spec.EtcdCluster) {
 }
 
 func (c *Cluster) delete() {
-	if err := c.gc.CollectCluster(c.cluster.Name, c.cluster.UID); err != nil {
+	if err := c.gc.CollectCluster(c.cluster.Name, garbagecollection.NullUID); err != nil {
 		c.logger.Errorf("cluster delete: fail to clean up resources %v", err)
 	}
 

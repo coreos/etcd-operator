@@ -24,6 +24,10 @@ import (
 	"k8s.io/kubernetes/pkg/types"
 )
 
+const (
+	NullUID = ""
+)
+
 var pkgLogger = logrus.WithField("pkg", "gc")
 
 type GC struct {
