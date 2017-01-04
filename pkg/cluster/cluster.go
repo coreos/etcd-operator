@@ -125,7 +125,7 @@ func (c *Cluster) setup() error {
 	case "":
 		shouldCreateCluster = true
 	case spec.ClusterPhaseCreating:
-		return errors.New("cluster creation was attempted before but failed")
+		return errors.New("cluster failed to be created")
 	case spec.ClusterPhaseRunning:
 		shouldCreateCluster = false
 	case spec.ClusterPhaseFailed:
