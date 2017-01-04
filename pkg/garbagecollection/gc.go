@@ -53,7 +53,7 @@ func (gc *GC) CollectCluster(cluster string, clusterUID types.UID) error {
 		}),
 	}
 
-	return gc.collectResources(option, map[types.UID]bool{clusterUID: true})
+	return gc.collectResources(option, map[types.UID]bool{}, map[types.UID]bool{clusterUID: true})
 }
 
 // fullyCollect collects resources that were created before,
@@ -75,24 +75,24 @@ func (gc *GC) fullyCollect() error {
 		}),
 	}
 
-	return gc.collectResources(option, clusterUIDSet)
+	return gc.collectResources(option, clusterUIDSet, map[types.UID]bool{})
 }
 
-func (gc *GC) collectResources(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
-	if err := gc.collectPods(option, runningSet); err != nil {
+func (gc *GC) collectResources(option k8sapi.ListOptions, runningSet, excludeSet map[types.UID]bool) error {
+	if err := gc.collectPods(option, runningSet, excludeSet); err != nil {
 		return err
 	}
-	if err := gc.collectServices(option, runningSet); err != nil {
+	if err := gc.collectServices(option, runningSet, excludeSet); err != nil {
 		return err
 	}
-	if err := gc.collectReplicaSet(option, runningSet); err != nil {
+	if err := gc.collectReplicaSet(option, runningSet, excludeSet); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (gc *GC) collectPods(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectPods(option k8sapi.ListOptions, runningSet, excludeSet map[types.UID]bool) error {
 	pods, err := gc.k8s.Pods(gc.ns).List(option)
 	if err != nil {
 		return err
@@ -103,7 +103,7 @@ func (gc *GC) collectPods(option k8sapi.ListOptions, runningSet map[types.UID]bo
 			gc.logger.Warningf("failed to check pod %s: no owner", p.GetName())
 			continue
 		}
-		if !runningSet[p.OwnerReferences[0].UID] {
+		if !runningSet[p.OwnerReferences[0].UID] || excludeSet[p.OwnerReferences[0].UID] {
 			err = gc.k8s.Pods(gc.ns).Delete(p.GetName(), k8sapi.NewDeleteOptions(0))
 			if err != nil {
 				return err
@@ -114,7 +114,7 @@ func (gc *GC) collectPods(option k8sapi.ListOptions, runningSet map[types.UID]bo
 	return nil
 }
 
-func (gc *GC) collectServices(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectServices(option k8sapi.ListOptions, runningSet, excludeSet map[types.UID]bool) error {
 	srvs, err := gc.k8s.Services(gc.ns).List(option)
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func (gc *GC) collectServices(option k8sapi.ListOptions, runningSet map[types.UI
 			gc.logger.Warningf("failed to check service %s: no owner", srv.GetName())
 			continue
 		}
-		if !runningSet[srv.OwnerReferences[0].UID] {
+		if !runningSet[srv.OwnerReferences[0].UID] || excludeSet[srv.OwnerReferences[0].UID] {
 			err = gc.k8s.Services(gc.ns).Delete(srv.GetName())
 			if err != nil {
 				return err
@@ -137,7 +137,7 @@ func (gc *GC) collectServices(option k8sapi.ListOptions, runningSet map[types.UI
 	return nil
 }
 
-func (gc *GC) collectReplicaSet(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectReplicaSet(option k8sapi.ListOptions, runningSet, excludeSet map[types.UID]bool) error {
 	rss, err := gc.k8s.ReplicaSets(gc.ns).List(option)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (gc *GC) collectReplicaSet(option k8sapi.ListOptions, runningSet map[types.
 			gc.logger.Warningf("failed to check replica set %s: no owner", rs.GetName())
 			continue
 		}
-		if !runningSet[rs.OwnerReferences[0].UID] {
+		if !runningSet[rs.OwnerReferences[0].UID] || excludeSet[rs.OwnerReferences[0].UID] {
 			err = gc.k8s.ReplicaSets(gc.ns).Delete(rs.GetName(), k8sapi.NewDeleteOptions(0))
 			if err != nil {
 				return err
