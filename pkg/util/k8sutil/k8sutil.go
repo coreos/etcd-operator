@@ -66,14 +66,14 @@ func GetPodNames(pods []*api.Pod) []string {
 	return res
 }
 
-func makeRestoreInitContainerSpec(backupAddr, name, token, version string) string {
+func makeRestoreInitContainerSpec(backupAddr, name, token string, cs *spec.ClusterSpec) string {
 	spec := []api.Container{
 		{
 			Name:  "fetch-backup",
 			Image: "tutum/curl",
 			Command: []string{
 				"/bin/sh", "-c",
-				fmt.Sprintf("curl -o %s %s", backupFile, util.MakeBackupURL(backupAddr, version)),
+				fmt.Sprintf("curl -o %s %s", backupFile, util.MakeBackupURL(backupAddr, cs.Version)),
 			},
 			VolumeMounts: []api.VolumeMount{
 				{Name: "etcd-data", MountPath: etcdDir},
@@ -81,7 +81,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 		},
 		{
 			Name:  "restore-datadir",
-			Image: MakeEtcdImage(version),
+			Image: MakeEtcdImage(cs),
 			Command: []string{
 				"/bin/sh", "-c",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
@@ -103,8 +103,11 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 	return string(b)
 }
 
-func MakeEtcdImage(version string) string {
-	return fmt.Sprintf("quay.io/coreos/etcd:%v", version)
+func MakeEtcdImage(cs *spec.ClusterSpec) string {
+	if cs.Image != "" {
+		return cs.Image
+	}
+	return fmt.Sprintf("quay.io/coreos/etcd:%v", cs.Version)
 }
 
 func GetNodePortString(srv *api.Service) string {
@@ -119,7 +122,7 @@ func PodWithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, 
 	containerSpec := []api.Container{
 		{
 			Name:  "add-member",
-			Image: MakeEtcdImage(cs.Version),
+			Image: MakeEtcdImage(cs),
 			Command: []string{
 				"/bin/sh", "-c",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), name, strings.Join(peerURLs, ",")),
@@ -246,7 +249,7 @@ func MakeEtcdMemberService(etcdName, clusterName string, owner metatypes.OwnerRe
 
 func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string, cs *spec.ClusterSpec) {
 	pod.Annotations[k8sv1api.PodInitContainersAnnotationKey] =
-		makeRestoreInitContainerSpec(MakeBackupHostPort(clusterName), name, token, cs.Version)
+		makeRestoreInitContainerSpec(MakeBackupHostPort(clusterName), name, token, cs)
 }
 
 func addOwnerRefToObject(o meta.Object, r metatypes.OwnerReference) {
@@ -261,7 +264,7 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
-	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version), etcdLivenessProbe())
+	container := containerWithLivenessProbe(etcdContainer(commands, cs), etcdLivenessProbe())
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
 			Name: m.Name,
