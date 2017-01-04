@@ -15,6 +15,7 @@
 package k8sutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -22,11 +23,43 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/meta/metatypes"
+	k8sv1api "k8s.io/kubernetes/pkg/api/v1"
 )
 
 const (
 	shouldCheckpointAnnotation = "checkpointer.alpha.coreos.com/checkpoint" // = "true"
 )
+
+var (
+	envPodIP = api.EnvVar{
+		Name: "MY_POD_IP",
+		ValueFrom: &api.EnvVarSource{
+			FieldRef: &api.ObjectFieldSelector{
+				FieldPath: "status.podIP",
+			},
+		},
+	}
+)
+
+func PodWithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, peerURLs []string, cs *spec.ClusterSpec) *api.Pod {
+	containerSpec := []api.Container{
+		{
+			Name:  "add-member",
+			Image: MakeEtcdImage(cs.Version),
+			Command: []string{
+				"/bin/sh", "-c",
+				fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), name, strings.Join(peerURLs, ",")),
+			},
+			Env: []api.EnvVar{envPodIP},
+		},
+	}
+	b, err := json.Marshal(containerSpec)
+	if err != nil {
+		panic(err)
+	}
+	p.Annotations[k8sv1api.PodInitContainersAnnotationKey] = string(b)
+	return p
+}
 
 func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec, owner metatypes.OwnerReference) *api.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
@@ -38,6 +71,8 @@ func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, st
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
 
+	c := etcdContainer(commands, cs.Version)
+	c.Env = []api.EnvVar{envPodIP}
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
 			Name: name,
@@ -51,9 +86,7 @@ func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, st
 			},
 		},
 		Spec: api.PodSpec{
-			Containers: []api.Container{
-				etcdContainer(commands, cs.Version),
-			},
+			Containers: []api.Container{c},
 			// Self-hosted etcd pod need to endure node restart.
 			// If we set it to Never, the pod won't restart. If etcd won't come up, nor does other k8s API components.
 			RestartPolicy: api.RestartPolicyAlways,
