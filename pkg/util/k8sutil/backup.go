@@ -34,7 +34,6 @@ import (
 	"k8s.io/kubernetes/pkg/apis/storage"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/watch"
 )
 
 const (
@@ -320,14 +319,23 @@ func CopyVolume(kubecli *unversioned.Client, fromClusterName, toClusterName, ns 
 		return err
 	}
 
-	w, err := kubecli.Pods(ns).Watch(api.SingleObject(api.ObjectMeta{Name: pod.Name}))
+	// Delay could be very long due to k8s controller detaching the volume
+	err := retryutil.Retry(10*time.Second, 12, func() (bool, error) {
+		p, err := kubecli.Pods(ns).Get(pod.Name)
+		if err != nil {
+			return false, err
+		}
+		switch p.Status.Phase {
+		case api.PodSucceeded:
+			return true, nil
+		case api.PodFailed:
+			return false, fmt.Errorf("backup copy pod (%s) failed: %v, %v", pod.Name, pod.Status.Reason,
+				pod.Status.ContainerStatuses[0].LastTerminationState.Terminated.Reason)
+		}
+		return false, nil
+	})
 	if err != nil {
-		return err
-	}
-	// It could take long due to delay of k8s controller detaching the volume
-	_, err = watch.Until(120*time.Second, w, unversioned.PodCompleted)
-	if err != nil {
-		return fmt.Errorf("fail to wait data copy job completed: %v", err)
+		return fmt.Errorf("fail to wait backup copy pod (%s) succeeded: %v", pod.Name, err)
 	}
 	// Delete the pod to detach the volume from the node
 	return kubecli.Pods(ns).Delete(pod.Name, api.NewDeleteOptions(0))
