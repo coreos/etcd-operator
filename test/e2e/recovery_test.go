@@ -56,7 +56,7 @@ func testOneMemberRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+		if err := deleteEtcdCluster(f, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -106,10 +106,7 @@ func testDisasterRecoveryWithStorageType(t *testing.T, numToKill int, bt spec.Ba
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
-			t.Fatal(err)
-		}
-		if err := checkBackupDeleted(f, testEtcd.Name, bt); err != nil {
+		if err := deleteEtcdCluster(f, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()

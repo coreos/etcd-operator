@@ -338,7 +338,7 @@ func (c *Cluster) Update(e *spec.EtcdCluster) {
 }
 
 func (c *Cluster) delete() {
-	if err := c.gc.CollectCluster(c.cluster.Name, c.cluster.UID); err != nil {
+	if err := c.gc.CollectCluster(c.cluster.Name, ""); err != nil {
 		c.logger.Errorf("cluster delete: fail to clean up resources %v", err)
 	}
 
@@ -407,7 +407,7 @@ func (c *Cluster) removePodAndService(name string) error {
 }
 
 func (c *Cluster) pollPods() ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
-	podList, err := c.config.KubeCli.Pods(c.cluster.Namespace).List(k8sutil.EtcdPodListOpt(c.cluster.Name))
+	podList, err := c.config.KubeCli.Pods(c.cluster.Namespace).List(k8sutil.ClusterListOpt(c.cluster.Name))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)
 	}
