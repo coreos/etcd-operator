@@ -225,7 +225,7 @@ func MakeEtcdMemberService(etcdName, clusterName string, owner metatypes.OwnerRe
 }
 
 func AddRecoveryToPod(pod *api.Pod, clusterName, name, token string, cs *spec.ClusterSpec) {
-	pod.Annotations[k8sv1api.PodInitContainersAnnotationKey] =
+	pod.Annotations[k8sv1api.PodInitContainersBetaAnnotationKey] =
 		makeRestoreInitContainerSpec(MakeBackupHostPort(clusterName), name, token, cs.Version)
 }
 
