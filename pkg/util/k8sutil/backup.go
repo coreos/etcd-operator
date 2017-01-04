@@ -68,6 +68,7 @@ func CreateAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisione
 			Name: name,
 			Labels: map[string]string{
 				"etcd_cluster": clusterName,
+				"app":          "etcd",
 			},
 			Annotations: map[string]string{
 				"volume.beta.kubernetes.io/storage-class": storageClassName,

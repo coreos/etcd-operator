@@ -44,7 +44,7 @@ func testCreateCluster(t *testing.T) {
 	}
 
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+		if err := deleteEtcdCluster(f, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -66,7 +66,7 @@ func testPauseControl(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+		if err := deleteEtcdCluster(f, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -119,7 +119,7 @@ func testEtcdUpgrade(t *testing.T) {
 	}
 
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+		if err := deleteEtcdCluster(f, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()

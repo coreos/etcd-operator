@@ -49,7 +49,7 @@ func testCreateSelfHostedCluster(t *testing.T) {
 	}
 
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+		if err := deleteEtcdCluster(f, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -116,7 +116,7 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	}
 
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd.Name); err != nil {
+		if err := deleteEtcdCluster(f, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
