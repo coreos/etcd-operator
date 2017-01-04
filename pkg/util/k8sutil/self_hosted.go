@@ -58,7 +58,7 @@ func PodWithAddMemberInitContainer(p *api.Pod, endpoints []string, name string, 
 	if err != nil {
 		panic(err)
 	}
-	p.Annotations[k8sv1api.PodInitContainersAnnotationKey] = string(b)
+	p.Annotations[k8sv1api.PodInitContainersBetaAnnotationKey] = string(b)
 	return p
 }
 
