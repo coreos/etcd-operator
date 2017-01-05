@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"testing"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/cluster"
@@ -85,11 +86,11 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 	return cluster.RequestBackupNow(f.KubeClient.Client, addr)
 }
 
-func waitUntilSizeReached(f *framework.Framework, clusterName string, size int, timeout time.Duration) ([]string, error) {
-	return waitSizeReachedWithFilter(f, clusterName, size, timeout, func(*api.Pod) bool { return true })
+func waitUntilSizeReached(t *testing.T, f *framework.Framework, clusterName string, size int, timeout time.Duration) ([]string, error) {
+	return waitSizeReachedWithFilter(t, f, clusterName, size, timeout, func(*api.Pod) bool { return true })
 }
 
-func waitSizeReachedWithFilter(f *framework.Framework, clusterName string, size int, timeout time.Duration, filterPod func(*api.Pod) bool) ([]string, error) {
+func waitSizeReachedWithFilter(t *testing.T, f *framework.Framework, clusterName string, size int, timeout time.Duration, filterPod func(*api.Pod) bool) ([]string, error) {
 	var names []string
 	err := retryutil.Retry(10*time.Second, int(timeout/(10*time.Second)), func() (done bool, err error) {
 		podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.ClusterListOpt(clusterName))
@@ -103,7 +104,7 @@ func waitSizeReachedWithFilter(f *framework.Framework, clusterName string, size 
 				names = append(names, pod.Name)
 			}
 		}
-		fmt.Printf("waiting size (%d), etcd pods: %v\n", size, names)
+		t.Logf("waiting size (%d), etcd pods: %v", size, names)
 		if len(names) != size {
 			return false, nil
 		}
@@ -171,7 +172,7 @@ func etcdClusterWithVersion(ec *spec.EtcdCluster, version string) *spec.EtcdClus
 	return ec
 }
 
-func createEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+func createEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
 	b, err := json.Marshal(e)
 	if err != nil {
 		return nil, err
@@ -191,7 +192,7 @@ func createEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdC
 	if err := decoder.Decode(res); err != nil {
 		return nil, err
 	}
-	fmt.Printf("created etcd cluster: %v\n", res.Name)
+	t.Logf("created etcd cluster: %v", res.Name)
 	return res, nil
 }
 
@@ -199,25 +200,23 @@ func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdC
 	return k8sutil.UpdateClusterTPRObjectUnconditionally(f.KubeClient, f.MasterHost, f.Namespace, e)
 }
 
-func deleteEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) error {
-	fmt.Printf("deleting etcd cluster: %v\n", e.Name)
+func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster) error {
 	podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
 	if err != nil {
 		return err
 	}
-	fmt.Println("etcd pods ======")
 	for i := range podList.Items {
 		pod := &podList.Items[i]
-		fmt.Printf("pod (%v): status (%v), cmd (%v)\n", pod.Name, pod.Status.Phase, pod.Spec.Containers[0].Command)
+		t.Logf("pod (%v): status (%v), cmd (%v)", pod.Name, pod.Status.Phase, pod.Spec.Containers[0].Command)
 		buf := bytes.NewBuffer(nil)
 
 		if pod.Status.Phase == api.PodFailed {
 			if err := getLogs(f.KubeClient, f.Namespace, pod.Name, "etcd", buf); err != nil {
 				return fmt.Errorf("fail to get pod (%s)'s log: %v", pod.Name, err)
 			}
-			fmt.Println(pod.Name, "logs ===")
-			fmt.Println(buf.String())
-			fmt.Println(pod.Name, "logs END ===")
+			t.Logf(pod.Name, "logs ===")
+			t.Logf(buf.String())
+			t.Logf(pod.Name, "logs END ===")
 		}
 	}
 
@@ -225,9 +224,9 @@ func deleteEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) error {
 	if err := getLogs(f.KubeClient, f.Namespace, "etcd-operator", "etcd-operator", buf); err != nil {
 		return err
 	}
-	fmt.Println("etcd-operator logs ===")
-	fmt.Println(buf.String())
-	fmt.Println("etcd-operator logs END ===")
+	t.Logf("etcd-operator logs ===")
+	t.Logf(buf.String())
+	t.Logf("etcd-operator logs END ===")
 
 	req, err := http.NewRequest("DELETE",
 		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace, e.Name), nil)
