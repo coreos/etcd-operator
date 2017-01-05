@@ -212,25 +212,12 @@ func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 		t.Logf("pod (%v): status (%v), cmd (%v)", pod.Name, pod.Status.Phase, pod.Spec.Containers[0].Command)
-		buf := bytes.NewBuffer(nil)
-
-		if pod.Status.Phase == api.PodFailed {
-			if err := getLogs(f.KubeClient, f.Namespace, pod.Name, "etcd", buf); err != nil {
-				return fmt.Errorf("fail to get pod (%s)'s log: %v", pod.Name, err)
-			}
-			t.Logf(pod.Name, "logs ===")
-			t.Logf(buf.String())
-			t.Logf(pod.Name, "logs END ===")
-		}
 	}
 
 	buf := bytes.NewBuffer(nil)
 	if err := getLogs(f.KubeClient, f.Namespace, "etcd-operator", "etcd-operator", buf); err != nil {
 		return err
 	}
-	t.Logf("etcd-operator logs ===")
-	t.Logf(buf.String())
-	t.Logf("etcd-operator logs END ===")
 
 	req, err := http.NewRequest("DELETE",
 		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace, e.Name), nil)
@@ -245,16 +232,17 @@ func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status: %v", resp.Status)
 	}
-	return waitResourcesDeleted(f, e)
+	return waitResourcesDeleted(t, f, e)
 }
 
-func waitResourcesDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
+func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.EtcdCluster) error {
 	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
 		list, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
 		if err != nil {
 			return false, err
 		}
 		if len(list.Items) > 0 {
+			t.Logf("waiting pod (%s) to be deleted.", list.Items[0].Name)
 			return false, nil
 		}
 		return true, nil
@@ -269,6 +257,7 @@ func waitResourcesDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
 			return false, err
 		}
 		if len(list.Items) > 0 {
+			t.Logf("waiting service (%s) to be deleted.", list.Items[0].Name)
 			return false, nil
 		}
 		return true, nil
