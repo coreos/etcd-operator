@@ -35,18 +35,18 @@ func testResizeCluster3to5(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 3))
+	testEtcd, err := createEtcdCluster(t, f, makeEtcdCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd); err != nil {
+		if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second); err != nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 3 members cluster")
@@ -56,7 +56,7 @@ func testResizeCluster3to5(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 5, 60*time.Second); err != nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 5, 60*time.Second); err != nil {
 		t.Fatalf("failed to resize to 5 members etcd cluster: %v", err)
 	}
 }
@@ -66,18 +66,18 @@ func testResizeCluster5to3(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := createEtcdCluster(f, makeEtcdCluster("test-etcd-", 5))
+	testEtcd, err := createEtcdCluster(t, f, makeEtcdCluster("test-etcd-", 5))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd); err != nil {
+		if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 5, 90*time.Second); err != nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 5, 90*time.Second); err != nil {
 		t.Fatalf("failed to create 5 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 5 members cluster")
@@ -87,7 +87,7 @@ func testResizeCluster5to3(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second); err != nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }

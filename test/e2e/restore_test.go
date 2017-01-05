@@ -65,12 +65,12 @@ func testClusterRestore(t *testing.T, needDataClone bool) {
 func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec.BackupStorageType) {
 	f := framework.Global
 	origEtcd := makeEtcdCluster("test-etcd-", 3)
-	testEtcd, err := createEtcdCluster(f,
+	testEtcd, err := createEtcdCluster(t, f,
 		etcdClusterWithBackup(origEtcd, backupPolicyWithStorageType(makeBackupPolicy(false), bt)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	names, err := waitUntilSizeReached(f, testEtcd.Name, 3, 60*time.Second)
+	names, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -90,7 +90,7 @@ func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec
 	if err := makeBackup(f, testEtcd.Name); err != nil {
 		t.Fatalf("fail to make a backup: %v", err)
 	}
-	if err := deleteEtcdCluster(f, testEtcd); err != nil {
+	if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
 		t.Fatal(err)
 	}
 	// waits a bit to make sure resources are finally deleted on APIServer.
@@ -111,17 +111,17 @@ func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec
 		BackupClusterName: testEtcd.Name,
 		StorageType:       bt,
 	})
-	testEtcd, err = createEtcdCluster(f,
+	testEtcd, err = createEtcdCluster(t, f,
 		etcdClusterWithBackup(origEtcd, backupPolicyWithStorageType(makeBackupPolicy(true), bt)))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := deleteEtcdCluster(f, testEtcd); err != nil {
+		if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
-	names, err = waitUntilSizeReached(f, testEtcd.Name, 3, waitRestoreTimeout)
+	names, err = waitUntilSizeReached(t, f, testEtcd.Name, 3, waitRestoreTimeout)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
