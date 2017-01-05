@@ -35,9 +35,27 @@ import (
 // reconcile reconciles cluster current state to desired state specified by spec.
 // - it tries to reconcile the cluster to desired size.
 // - if the cluster needs for upgrade, it tries to upgrade old member one by one.
-func (c *Cluster) reconcile(pods []*api.Pod) error {
+func (c *Cluster) reconcile(pods []*api.Pod, needUpdateMember bool) error {
 	c.logger.Infoln("Start reconciling")
 	defer c.logger.Infoln("Finish reconciling")
+
+	if len(pods) == 0 {
+		c.logger.Warningf("all etcd pods are dead. Trying to recover from a previous backup")
+		if err := c.disasterRecovery(nil); err != nil {
+			c.logger.Errorf("fail to do disaster recovery: %v", err)
+			return err
+		}
+		// backoff since we just did disaster recovery
+		return nil
+	}
+
+	if needUpdateMember {
+		err := c.updateMembers(podsToMemberSet(pods, c.cluster.Spec.SelfHosted))
+		if err != nil {
+			c.logger.Errorf("failed to update members: %v", err)
+			return err
+		}
+	}
 
 	c.status.Size = c.members.Size()
 
