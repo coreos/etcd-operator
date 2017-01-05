@@ -282,7 +282,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		}
 
 		if isFatalError(rerr) {
-			c.cluster.Status.SetReason(rerr.Error())
+			c.status.SetReason(rerr.Error())
 			c.logger.Errorf("exiting for fatal error: %v", rerr)
 			return
 		}
