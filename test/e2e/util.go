@@ -245,6 +245,15 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.EtcdClus
 			t.Logf("waiting pod (%s) to be deleted.", list.Items[0].Name)
 			return false, nil
 		}
+		for _, p := range list.Items {
+			buf := bytes.NewBuffer(nil)
+			buf.WriteString("init container status:\n")
+			printContainerStatus(buf, p.Status.InitContainerStatuses)
+			buf.WriteString("container status:\n")
+			printContainerStatus(buf, p.Status.ContainerStatuses)
+
+			t.Logf("pod (%s) status.phase is (%s): %v", p.Name, p.Status.Phase, buf.String())
+		}
 		return true, nil
 	})
 	if err != nil {
@@ -332,6 +341,17 @@ func getLogs(kubecli *k8sclient.Client, ns, p, c string, out io.Writer) error {
 
 	_, err = io.Copy(out, readCloser)
 	return err
+}
+
+func printContainerStatus(buf *bytes.Buffer, ss []api.ContainerStatus) {
+	for _, s := range ss {
+		if s.State.Waiting != nil {
+			buf.WriteString(fmt.Sprintf("%s: Waiting: message (%s) reason (%s)\n", s.Name, s.State.Waiting.Message, s.State.Waiting.Reason))
+		}
+		if s.State.Terminated != nil {
+			buf.WriteString(fmt.Sprintf("%s: Terminated: message (%s) reason (%s)\n", s.Name, s.State.Terminated.Message, s.State.Terminated.Reason))
+		}
+	}
 }
 
 func createEtcdClient(addr string) (*clientv3.Client, error) {
