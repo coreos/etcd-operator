@@ -83,7 +83,11 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 
 	// We are assuming pod ip is accessible from test machine.
 	addr := fmt.Sprintf("%s:%d", podList.Items[0].Status.PodIP, constants.DefaultBackupPodHTTPPort)
-	return cluster.RequestBackupNow(f.KubeClient.Client, addr)
+	err = cluster.RequestBackupNow(f.KubeClient.Client, addr)
+	if err != nil {
+		return fmt.Errorf("backup pod (%s): %v", podList.Items[0].Name, err)
+	}
+	return nil
 }
 
 func waitUntilSizeReached(t *testing.T, f *framework.Framework, clusterName string, size int, timeout time.Duration) ([]string, error) {
