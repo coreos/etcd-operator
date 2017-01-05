@@ -242,10 +242,42 @@ func deleteEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status: %v", resp.Status)
 	}
+	return waitResourcesDeleted(f, e)
+}
+
+func waitResourcesDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
+	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
+		list, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
+		if err != nil {
+			return false, err
+		}
+		if len(list.Items) > 0 {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("fail to wait pods deleted: %v", err)
+	}
+
+	err = retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
+		list, err := f.KubeClient.Services(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
+		if err != nil {
+			return false, err
+		}
+		if len(list.Items) > 0 {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("fail to wait services deleted: %v", err)
+	}
+
 	if e.Spec.Backup != nil {
 		err := waitBackupDeleted(f, e)
 		if err != nil {
-			return fmt.Errorf("fail to check backup deleted: %v", err)
+			return fmt.Errorf("fail to wait backup deleted: %v", err)
 		}
 	}
 	return nil
