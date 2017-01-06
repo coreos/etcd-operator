@@ -252,7 +252,9 @@ func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 	name := MakeBackupName(clusterName)
 	err := kubecli.Services(ns).Delete(name)
 	if err != nil {
-		return err
+		if !IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
 	}
 	orphanOption := false
 	gracePeriod := int64(0)
@@ -261,13 +263,19 @@ func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 		GracePeriodSeconds: &gracePeriod,
 	})
 	if err != nil {
-		return err
+		if !IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
 	}
 	return nil
 }
 
 func DeletePVC(kubecli *unversioned.Client, clusterName, ns string) error {
-	return kubecli.PersistentVolumeClaims(ns).Delete(makePVCName(clusterName))
+	err := kubecli.PersistentVolumeClaims(ns).Delete(makePVCName(clusterName))
+	if !IsKubernetesResourceNotFoundError(err) {
+		return err
+	}
+	return nil
 }
 
 func CopyVolume(kubecli *unversioned.Client, fromClusterName, toClusterName, ns string) error {
