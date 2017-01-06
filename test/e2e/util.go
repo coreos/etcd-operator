@@ -285,7 +285,7 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.EtcdClus
 }
 
 func waitBackupDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
-	return retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
+	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
 		rl, err := f.KubeClient.ReplicaSets(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
 		if err != nil {
 			return false, err
@@ -293,12 +293,18 @@ func waitBackupDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
 		if len(rl.Items) > 0 {
 			return false, nil
 		}
-		// TODO: check backup pod deleted. There is a graceful deletion that takes too long.
-
-		if !e.Spec.Backup.CleanupBackupsOnClusterDelete {
-			return true, nil
-		}
-
+		// TODO: check backup pod deleted. There is a graceful deletion that takes too long
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to wait backup RS deleted: %v", err)
+	}
+	// The rest is to track backup storage, e.g. PV or S3 "dir" deleted.
+	// If CleanupBackupsOnClusterDelete=false, we don't delete them and thus don't check them.
+	if !e.Spec.Backup.CleanupBackupsOnClusterDelete {
+		return nil
+	}
+	err = retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
 		switch e.Spec.Backup.StorageType {
 		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 			pl, err := f.KubeClient.PersistentVolumeClaims(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
@@ -322,6 +328,10 @@ func waitBackupDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
 		}
 		return true, nil
 	})
+	if err != nil {
+		return fmt.Errorf("failed to wait storage (%s) to be deleted: %v", e.Spec.Backup.StorageType, err)
+	}
+	return nil
 }
 
 func getLogs(kubecli *k8sclient.Client, ns, p, c string, out io.Writer) error {
