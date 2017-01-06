@@ -320,12 +320,14 @@ func CopyVolume(kubecli *unversioned.Client, fromClusterName, toClusterName, ns 
 		return err
 	}
 
+	var phase api.PodPhase
 	// Delay could be very long due to k8s controller detaching the volume
 	err := retryutil.Retry(10*time.Second, 12, func() (bool, error) {
 		p, err := kubecli.Pods(ns).Get(pod.Name)
 		if err != nil {
 			return false, err
 		}
+		phase = p.Status.Phase
 		switch p.Status.Phase {
 		case api.PodSucceeded:
 			return true, nil
@@ -336,7 +338,7 @@ func CopyVolume(kubecli *unversioned.Client, fromClusterName, toClusterName, ns 
 		return false, nil
 	})
 	if err != nil {
-		return fmt.Errorf("fail to wait backup copy pod (%s) succeeded: %v", pod.Name, err)
+		return fmt.Errorf("failed to wait backup copy pod (%s, phase: %s) to succeed: %v", pod.Name, phase, err)
 	}
 	// Delete the pod to detach the volume from the node
 	return kubecli.Pods(ns).Delete(pod.Name, api.NewDeleteOptions(0))
