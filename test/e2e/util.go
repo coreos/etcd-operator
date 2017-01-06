@@ -242,17 +242,17 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.EtcdClus
 			return false, err
 		}
 		if len(list.Items) > 0 {
-			t.Logf("waiting pod (%s) to be deleted.", list.Items[0].Name)
-			return false, nil
-		}
-		for _, p := range list.Items {
+			p := list.Items[0]
+			t.Logf("waiting pod (%s) to be deleted.", p.Name)
+
 			buf := bytes.NewBuffer(nil)
 			buf.WriteString("init container status:\n")
 			printContainerStatus(buf, p.Status.InitContainerStatuses)
 			buf.WriteString("container status:\n")
 			printContainerStatus(buf, p.Status.ContainerStatuses)
-
 			t.Logf("pod (%s) status.phase is (%s): %v", p.Name, p.Status.Phase, buf.String())
+
+			return false, nil
 		}
 		return true, nil
 	})
