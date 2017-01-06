@@ -206,12 +206,14 @@ func getMemberWithMaxRev(pods []*api.Pod) (*etcdutil.Member, int64) {
 		}
 		etcdcli, err := clientv3.New(cfg)
 		if err != nil {
-			logrus.Fatalf("failed to create etcd client (%v)", err)
+			logrus.Warningf("failed to create etcd client for pod (%v): %v", pod.Name, err)
+			continue
 		}
 		defer etcdcli.Close()
 
-		ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
+		cancel()
 		if err != nil {
 			logrus.Warningf("getMaxRev: failed to get revision from member %s (%s)", m.Name, m.ClientAddr())
 			continue

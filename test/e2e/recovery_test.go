@@ -126,11 +126,13 @@ func testDisasterRecoveryWithStorageType(t *testing.T, numToKill int, bt spec.Ba
 			t.Fatalf("fail to make a latest backup: %v", err)
 		}
 	}
+	// Reverse the order because the last member could have not come ready yet.
+	// Try to prioritize deleting it first.
 	toKill := make([]string, numToKill)
 	for i := 0; i < numToKill; i++ {
 		toKill[i] = names[len(names)-i-1]
 	}
-	// TODO: There might be race that ooperator will recover members between
+	// TODO: There might be race that operator will recover members between
 	// 		these members are deleted individually.
 	if err := killMembers(f, toKill...); err != nil {
 		t.Fatal(err)
