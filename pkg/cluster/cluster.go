@@ -218,8 +218,10 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 
 	c.status.SetPhase(spec.ClusterPhaseRunning)
 
-	var rerr error
+	needUpdateMembers := true
 	for {
+		var rerr error
+
 		select {
 		case <-stopC:
 			needDeleteCluster = false
@@ -251,7 +253,9 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				c.logger.Infof("skip reconciliation: running (%v), pending (%v)", k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
 				continue
 			}
+
 			if len(running) == 0 {
+				needUpdateMembers = true
 				c.logger.Warningf("all etcd pods are dead. Trying to recover from a previous backup")
 				rerr = c.disasterRecovery(nil)
 				if rerr != nil {
@@ -261,9 +265,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				break
 			}
 
-			// TODO: The case "c.members = nil" only happens on creating seed member.
-			//       We should just set the member directly if successful.
-			if rerr != nil || c.members == nil {
+			if needUpdateMembers {
 				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted))
 				if rerr != nil {
 					c.logger.Errorf("failed to update members: %v", rerr)
@@ -272,9 +274,12 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			}
 			rerr = c.reconcile(running)
 			if rerr != nil {
+				needUpdateMembers = true
 				c.logger.Errorf("failed to reconcile: %v", rerr)
 				break
 			}
+
+			needUpdateMembers = false
 
 			if err := c.updateStatus(); err != nil {
 				c.logger.Warningf("failed to update TPR status: %v", err)
