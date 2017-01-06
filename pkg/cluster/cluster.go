@@ -35,6 +35,8 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
+var reconcileInterval = 8 * time.Second
+
 type clusterEventType string
 
 const (
@@ -233,7 +235,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 			case eventDeleteCluster:
 				return
 			}
-		case <-time.After(5 * time.Second):
+		case <-time.After(reconcileInterval):
 			if c.cluster.Spec.Paused {
 				c.status.PauseControl()
 				c.logger.Infof("control is paused, skipping reconcilation")
