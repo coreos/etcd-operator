@@ -140,9 +140,6 @@ func (c *Controller) Run() error {
 			case "ADDED":
 				stopC := make(chan struct{})
 				nc := cluster.New(c.makeClusterConfig(), event.Object, stopC, &c.waitCluster)
-				if nc == nil {
-					continue
-				}
 
 				c.stopChMap[clusterName] = stopC
 				c.clusters[clusterName] = nc
@@ -152,20 +149,10 @@ func (c *Controller) Run() error {
 				clustersTotal.Inc()
 
 			case "MODIFIED":
-				if c.clusters[clusterName] == nil {
-					c.logger.Warningf("ignore modification: cluster %q not found (or dead)", clusterName)
-					break
-				}
-
 				c.clusters[clusterName].Update(event.Object)
 				clustersModified.Inc()
 
 			case "DELETED":
-				if c.clusters[clusterName] == nil {
-					c.logger.Warningf("ignore deletion: cluster %q not found (or dead)", clusterName)
-					break
-				}
-
 				c.clusters[clusterName].Delete()
 				delete(c.clusters, clusterName)
 				analytics.ClusterDeleted()
@@ -192,9 +179,6 @@ func (c *Controller) findAllClusters() (string, error) {
 		clusterName := item.Name
 		stopC := make(chan struct{})
 		nc := cluster.New(c.makeClusterConfig(), &item, stopC, &c.waitCluster)
-		if nc == nil {
-			continue
-		}
 		c.stopChMap[clusterName] = stopC
 		c.clusters[clusterName] = nc
 	}
