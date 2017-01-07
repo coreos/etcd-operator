@@ -16,6 +16,8 @@ package cluster
 
 import "errors"
 
+// TODO: We can't wrap the error in many places because we could be returning fatal error.
+//       Use custom error type and separate fatal level and message.
 var (
 	errNoBackupExist     = errors.New("no backup exist for disaster recovery")
 	errInvalidMemberName = errors.New("the format of member's name is invalid")

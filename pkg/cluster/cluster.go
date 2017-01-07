@@ -256,40 +256,23 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				c.logger.Infof("skip reconciliation: running (%v), pending (%v)", k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
 				continue
 			}
-			if len(running) == 0 {
-				c.logger.Warningf("all etcd pods are dead. Trying to recover from a previous backup")
-				rerr = c.disasterRecovery(nil)
-				if rerr != nil {
-					c.logger.Errorf("fail to do disaster recovery: %v", rerr)
-				}
-				// On normal recovery case, we need backoff. On error case, this could be either backoff or leading to cluster delete.
-				break
-			}
 
-			// TODO: The case "c.members = nil" only happens on creating seed member.
-			//       We should just set the member directly if successful.
-			if rerr != nil || c.members == nil {
-				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted))
-				if rerr != nil {
-					c.logger.Errorf("failed to update members: %v", rerr)
-					break
-				}
-			}
-			rerr = c.reconcile(running)
+			// TODO: The case "c.members = nil" only happens on creating seed member. We should just set the member directly if successful.
+			needUpdateMember := rerr != nil || c.members == nil
+			rerr = c.reconcile(running, needUpdateMember)
 			if rerr != nil {
 				c.logger.Errorf("failed to reconcile: %v", rerr)
+				if isFatalError(rerr) {
+					c.status.SetReason(rerr.Error())
+					c.logger.Errorf("exiting for fatal error: %v", rerr)
+					return
+				}
 				break
 			}
 
 			if err := c.updateStatus(); err != nil {
 				c.logger.Warningf("failed to update TPR status: %v", err)
 			}
-		}
-
-		if isFatalError(rerr) {
-			c.status.SetReason(rerr.Error())
-			c.logger.Errorf("exiting for fatal error: %v", rerr)
-			return
 		}
 	}
 }
