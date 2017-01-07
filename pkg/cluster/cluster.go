@@ -94,21 +94,23 @@ func New(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 		gc:      garbagecollection.New(config.KubeCli, config.MasterHost, e.Namespace),
 	}
 
-	err := c.setup()
-	if err != nil {
-		c.logger.Errorf("fail to setup: %v", err)
-		if c.status.Phase != spec.ClusterPhaseFailed {
-			c.status.SetReason(err.Error())
-			c.status.SetPhase(spec.ClusterPhaseFailed)
-			if err := c.updateStatus(); err != nil {
-				c.logger.Errorf("failed to update cluster phase (%v): %v", spec.ClusterPhaseFailed, err)
+	go func() {
+		err := c.setup()
+		if err != nil {
+			c.logger.Errorf("fail to setup: %v", err)
+			if c.status.Phase != spec.ClusterPhaseFailed {
+				c.status.SetReason(err.Error())
+				c.status.SetPhase(spec.ClusterPhaseFailed)
+				if err := c.updateStatus(); err != nil {
+					c.logger.Errorf("failed to update cluster phase (%v): %v", spec.ClusterPhaseFailed, err)
+				}
 			}
+			return
 		}
-		return nil
-	}
+		wg.Add(1)
+		c.run(stopC, wg)
+	}()
 
-	wg.Add(1)
-	go c.run(stopC, wg)
 	return c
 }
 
@@ -142,6 +144,7 @@ func (c *Cluster) setup() error {
 	}
 
 	if shouldCreateCluster {
+		c.logger.Infof("creating new cluster")
 		return c.create()
 	}
 	return nil
