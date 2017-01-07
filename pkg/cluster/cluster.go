@@ -229,6 +229,9 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		case event := <-c.eventCh:
 			switch event.typ {
 			case eventModifyCluster:
+				if isSpecEqual(event.cluster.Spec, c.cluster.Spec) {
+					break
+				}
 				// TODO: we can't handle another upgrade while an upgrade is in progress
 				c.logger.Infof("spec update: from: %v to: %v", c.cluster.Spec, event.cluster.Spec)
 				c.cluster = event.cluster
@@ -291,6 +294,13 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 	}
 }
 
+func isSpecEqual(s1, s2 *spec.ClusterSpec) bool {
+	if s1.Size != s2.Size || s1.Paused != s2.Paused || s1.Version != s2.Version {
+		return false
+	}
+	return true
+}
+
 func isFatalError(err error) bool {
 	switch err {
 	case errNoBackupExist, errInvalidMemberName, errUnexpectedUnreadyMember:
@@ -325,18 +335,10 @@ func (c *Cluster) restoreSeedMember() error {
 }
 
 func (c *Cluster) Update(e *spec.EtcdCluster) {
-	anyInterestedChange := false
-	s1, s2 := e.Spec, c.cluster.Spec
-	switch {
-	case s1.Size != s2.Size, s1.Paused != s2.Paused, s1.Version != s2.Version:
-		anyInterestedChange = true
-	}
-	if anyInterestedChange {
-		c.send(&clusterEvent{
-			typ:     eventModifyCluster,
-			cluster: e,
-		})
-	}
+	c.send(&clusterEvent{
+		typ:     eventModifyCluster,
+		cluster: e,
+	})
 }
 
 func (c *Cluster) delete() {
