@@ -108,7 +108,7 @@ func waitSizeReachedWithFilter(t *testing.T, f *framework.Framework, clusterName
 				names = append(names, pod.Name)
 			}
 		}
-		t.Logf("waiting size (%d), etcd pods: %v", size, names)
+		logfWithTimestamp(t, "waiting size (%d), etcd pods: %v", size, names)
 		if len(names) != size {
 			return false, nil
 		}
@@ -196,7 +196,7 @@ func createEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster
 	if err := decoder.Decode(res); err != nil {
 		return nil, err
 	}
-	t.Logf("created etcd cluster: %v", res.Name)
+	logfWithTimestamp(t, "created etcd cluster: %v", res.Name)
 	return res, nil
 }
 
@@ -243,7 +243,7 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.EtcdClus
 		}
 		if len(list.Items) > 0 {
 			p := list.Items[0]
-			t.Logf("waiting pod (%s) to be deleted.", p.Name)
+			logfWithTimestamp(t, "waiting pod (%s) to be deleted.", p.Name)
 
 			buf := bytes.NewBuffer(nil)
 			buf.WriteString("init container status:\n")
@@ -266,7 +266,7 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.EtcdClus
 			return false, err
 		}
 		if len(list.Items) > 0 {
-			t.Logf("waiting service (%s) to be deleted.", list.Items[0].Name)
+			logfWithTimestamp(t, "waiting service (%s) to be deleted", list.Items[0].Name)
 			return false, nil
 		}
 		return true, nil
@@ -362,6 +362,10 @@ func printContainerStatus(buf *bytes.Buffer, ss []api.ContainerStatus) {
 			buf.WriteString(fmt.Sprintf("%s: Terminated: message (%s) reason (%s)\n", s.Name, s.State.Terminated.Message, s.State.Terminated.Reason))
 		}
 	}
+}
+
+func logfWithTimestamp(t *testing.T, format string, args ...interface{}) {
+	t.Log(time.Now(), fmt.Sprintf(format, args...))
 }
 
 func createEtcdClient(addr string) (*clientv3.Client, error) {
