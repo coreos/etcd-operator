@@ -211,11 +211,10 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		if needDeleteCluster {
 			c.logger.Infof("deleting cluster")
 			c.delete()
+			go c.reportFailedStatus()
 		}
 		close(c.stopCh)
 		wg.Done()
-
-		c.reportFailedStatus()
 	}()
 
 	c.status.SetPhase(spec.ClusterPhaseRunning)
