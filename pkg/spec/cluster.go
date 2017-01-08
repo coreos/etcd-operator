@@ -111,9 +111,10 @@ func (c *ClusterSpec) Validate() error {
 type ClusterPhase string
 
 const (
-	ClusterPhaseCreating = "Creating"
-	ClusterPhaseRunning  = "Running"
-	ClusterPhaseFailed   = "Failed"
+	ClusterPhaseNone     ClusterPhase = ""
+	ClusterPhaseCreating              = "Creating"
+	ClusterPhaseRunning               = "Running"
+	ClusterPhaseFailed                = "Failed"
 )
 
 type ClusterCondition struct {
