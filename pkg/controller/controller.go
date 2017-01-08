@@ -185,10 +185,16 @@ func (c *Controller) findAllClusters() (string, error) {
 	}
 
 	for _, item := range clusterList.Items {
+		if item.Status.IsFailed() {
+			c.logger.Infof("ignore failed cluster %s", item.GetName())
+			continue
+		}
+
 		if s := item.Spec; len(s.Version) == 0 {
 			// TODO: set version in spec in apiserver
 			s.Version = defaultVersion
 		}
+
 		clusterName := item.Name
 		stopC := make(chan struct{})
 		nc := cluster.New(c.makeClusterConfig(), &item, stopC, &c.waitCluster)
