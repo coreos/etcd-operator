@@ -205,17 +205,18 @@ func (c *Cluster) send(ev *clusterEvent) {
 }
 
 func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
-	needDeleteCluster := true
+	clusterFailed := false
 
 	defer func() {
-		if needDeleteCluster {
-			c.logger.Infof("deleting cluster")
+		if clusterFailed {
+			c.reportFailedStatus()
+
+			c.logger.Infof("deleting the failed cluster")
 			c.delete()
 		}
+
 		close(c.stopCh)
 		wg.Done()
-
-		c.reportFailedStatus()
 	}()
 
 	c.status.SetPhase(spec.ClusterPhaseRunning)
@@ -224,7 +225,6 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-stopC:
-			needDeleteCluster = false
 			return
 		case event := <-c.eventCh:
 			switch event.typ {
@@ -235,9 +235,13 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 				// TODO: we can't handle another upgrade while an upgrade is in progress
 				c.logger.Infof("spec update: from: %v to: %v", c.cluster.Spec, event.cluster.Spec)
 				c.cluster = event.cluster
+
 			case eventDeleteCluster:
+				c.logger.Infof("cluster is deleted by the user")
+				clusterFailed = true
 				return
 			}
+
 		case <-time.After(reconcileInterval):
 			if c.cluster.Spec.Paused {
 				c.status.PauseControl()
@@ -287,8 +291,10 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		}
 
 		if isFatalError(rerr) {
+			clusterFailed = true
 			c.status.SetReason(rerr.Error())
-			c.logger.Errorf("exiting for fatal error: %v", rerr)
+
+			c.logger.Errorf("cluster failed: %v", rerr)
 			return
 		}
 	}
