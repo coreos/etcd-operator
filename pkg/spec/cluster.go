@@ -111,9 +111,10 @@ func (c *ClusterSpec) Validate() error {
 type ClusterPhase string
 
 const (
-	ClusterPhaseCreating = "Creating"
-	ClusterPhaseRunning  = "Running"
-	ClusterPhaseFailed   = "Failed"
+	ClusterPhaseNone     ClusterPhase = ""
+	ClusterPhaseCreating              = "Creating"
+	ClusterPhaseRunning               = "Running"
+	ClusterPhaseFailed                = "Failed"
 )
 
 type ClusterCondition struct {
@@ -157,6 +158,13 @@ type ClusterStatus struct {
 	// TargetVersion is the version the cluster upgrading to.
 	// If the cluster is not upgrading, TargetVersion is empty.
 	TargetVersion string `json:"targetVersion"`
+}
+
+func (cs *ClusterStatus) IsFailed() bool {
+	if cs == nil {
+		return false
+	}
+	return cs.Phase == ClusterPhaseFailed
 }
 
 func (cs *ClusterStatus) SetPhase(p ClusterPhase) {
