@@ -97,7 +97,7 @@ func New(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 	err := c.setup()
 	if err != nil {
 		c.logger.Errorf("fail to setup: %v", err)
-		if c.status.Phase != spec.ClusterPhaseFailed {
+		if c.cluster.Status.Phase != spec.ClusterPhaseFailed {
 			c.status.SetReason(err.Error())
 			c.status.SetPhase(spec.ClusterPhaseFailed)
 			if err := c.updateStatus(); err != nil {
@@ -118,13 +118,13 @@ func (c *Cluster) setup() error {
 		return fmt.Errorf("invalid cluster spec: %v", err)
 	}
 
-	var phase spec.ClusterPhase
+	phase := spec.ClusterPhaseNone
 	if c.cluster.Status != nil {
 		phase = c.cluster.Status.Phase
 	}
 	var shouldCreateCluster bool
 	switch phase {
-	case "":
+	case spec.ClusterPhaseNone:
 		shouldCreateCluster = true
 	case spec.ClusterPhaseCreating:
 		return errors.New("cluster failed to be created")
