@@ -91,10 +91,10 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 }
 
 func waitUntilSizeReached(t *testing.T, f *framework.Framework, clusterName string, size int, timeout time.Duration) ([]string, error) {
-	return waitSizeReachedWithFilter(t, f, clusterName, size, timeout, func(*api.Pod) bool { return true })
+	return waitSizeReachedWithAccept(t, f, clusterName, size, timeout, func(*api.Pod) bool { return true })
 }
 
-func waitSizeReachedWithFilter(t *testing.T, f *framework.Framework, clusterName string, size int, timeout time.Duration, filterPod func(*api.Pod) bool) ([]string, error) {
+func waitSizeReachedWithAccept(t *testing.T, f *framework.Framework, clusterName string, size int, timeout time.Duration, acceptPod func(*api.Pod) bool) ([]string, error) {
 	var names []string
 	err := retryutil.Retry(10*time.Second, int(timeout/(10*time.Second)), func() (done bool, err error) {
 		podList, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.ClusterListOpt(clusterName))
@@ -104,9 +104,10 @@ func waitSizeReachedWithFilter(t *testing.T, f *framework.Framework, clusterName
 		names = nil
 		for i := range podList.Items {
 			pod := &podList.Items[i]
-			if pod.Status.Phase == api.PodRunning {
-				names = append(names, pod.Name)
+			if pod.Status.Phase != api.PodRunning || !acceptPod(pod) {
+				continue
 			}
+			names = append(names, pod.Name)
 		}
 		logfWithTimestamp(t, "waiting size (%d), etcd pods: %v", size, names)
 		if len(names) != size {
