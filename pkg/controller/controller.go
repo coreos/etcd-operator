@@ -130,44 +130,45 @@ func (c *Controller) Run() error {
 
 	go func() {
 		for event := range eventCh {
-			if s := event.Object.Spec; len(s.Version) == 0 {
+			clus := event.Object
+
+			if s := clus.Spec; len(s.Version) == 0 {
 				// TODO: set version in spec in apiserver
 				s.Version = defaultVersion
 			}
 
-			clusterName := event.Object.ObjectMeta.Name
 			switch event.Type {
 			case "ADDED":
 				stopC := make(chan struct{})
-				nc := cluster.New(c.makeClusterConfig(), event.Object, stopC, &c.waitCluster)
+				nc := cluster.New(c.makeClusterConfig(), clus, stopC, &c.waitCluster)
 				if nc == nil {
 					continue
 				}
 
-				c.stopChMap[clusterName] = stopC
-				c.clusters[clusterName] = nc
+				c.stopChMap[clus.Name] = stopC
+				c.clusters[clus.Name] = nc
 
 				analytics.ClusterCreated()
 				clustersCreated.Inc()
 				clustersTotal.Inc()
 
 			case "MODIFIED":
-				if c.clusters[clusterName] == nil {
-					c.logger.Warningf("ignore modification: cluster %q not found (or dead)", clusterName)
+				if c.clusters[clus.Name] == nil {
+					c.logger.Warningf("ignore modification: cluster %q not found (or dead)", clus.Name)
 					break
 				}
 
-				c.clusters[clusterName].Update(event.Object)
+				c.clusters[clus.Name].Update(clus)
 				clustersModified.Inc()
 
 			case "DELETED":
-				if c.clusters[clusterName] == nil {
-					c.logger.Warningf("ignore deletion: cluster %q not found (or dead)", clusterName)
+				if c.clusters[clus.Name] == nil {
+					c.logger.Warningf("ignore deletion: cluster %q not found (or dead)", clus.Name)
 					break
 				}
 
-				c.clusters[clusterName].Delete()
-				delete(c.clusters, clusterName)
+				c.clusters[clus.Name].Delete()
+				delete(c.clusters, clus.Name)
 				analytics.ClusterDeleted()
 				clustersDeleted.Inc()
 				clustersTotal.Dec()
@@ -184,26 +185,26 @@ func (c *Controller) findAllClusters() (string, error) {
 		return "", err
 	}
 
-	for _, item := range clusterList.Items {
-		clusterObj := item
-		if item.Status.IsFailed() {
-			c.logger.Infof("ignore failed cluster %s", item.GetName())
+	for i := range clusterList.Items {
+		clus := clusterList.Items[i]
+
+		if clus.Status.IsFailed() {
+			c.logger.Infof("ignore failed cluster %s", clus.Name)
 			continue
 		}
 
-		if s := item.Spec; len(s.Version) == 0 {
+		if s := clus.Spec; len(s.Version) == 0 {
 			// TODO: set version in spec in apiserver
 			s.Version = defaultVersion
 		}
 
-		clusterName := item.Name
 		stopC := make(chan struct{})
-		nc := cluster.New(c.makeClusterConfig(), &clusterObj, stopC, &c.waitCluster)
+		nc := cluster.New(c.makeClusterConfig(), &clus, stopC, &c.waitCluster)
 		if nc == nil {
 			continue
 		}
-		c.stopChMap[clusterName] = stopC
-		c.clusters[clusterName] = nc
+		c.stopChMap[clus.Name] = stopC
+		c.clusters[clus.Name] = nc
 	}
 
 	return clusterList.ResourceVersion, nil
@@ -289,7 +290,6 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 			decoder := json.NewDecoder(resp.Body)
 			for {
 				ev, st, err := pollEvent(decoder)
-
 				if err != nil {
 					if err == io.EOF { // apiserver will close stream periodically
 						c.logger.Debug("apiserver closed stream")
