@@ -185,6 +185,7 @@ func (c *Controller) findAllClusters() (string, error) {
 	}
 
 	for _, item := range clusterList.Items {
+		clusterObj := item
 		if item.Status.IsFailed() {
 			c.logger.Infof("ignore failed cluster %s", item.GetName())
 			continue
@@ -197,7 +198,7 @@ func (c *Controller) findAllClusters() (string, error) {
 
 		clusterName := item.Name
 		stopC := make(chan struct{})
-		nc := cluster.New(c.makeClusterConfig(), &item, stopC, &c.waitCluster)
+		nc := cluster.New(c.makeClusterConfig(), &clusterObj, stopC, &c.waitCluster)
 		if nc == nil {
 			continue
 		}
