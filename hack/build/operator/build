@@ -29,6 +29,6 @@ CGO_ENABLED=0 go build -installsuffix cgo -ldflags "$go_ldflags" \
 	-o ${bin_dir}/etcd-backup ./cmd/backup/main.go
 
 
-docker build --tag "${IMAGE}" -f hack/build/operator/Dockerfile .
+docker build --tag "${IMAGE}" -f hack/build/operator/Dockerfile . 1>/dev/null
 # For gcr users, do "gcloud docker -a" to have access.
-docker push "${IMAGE}"
+docker push "${IMAGE}" 1>/dev/null
