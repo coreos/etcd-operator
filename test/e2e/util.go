@@ -125,7 +125,7 @@ func waitSizeReachedWithAccept(t *testing.T, f *framework.Framework, clusterName
 func killMembers(f *framework.Framework, names ...string) error {
 	for _, name := range names {
 		err := f.KubeClient.Pods(f.Namespace).Delete(name, api.NewDeleteOptions(0))
-		if err != nil {
+		if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
 	}

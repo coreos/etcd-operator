@@ -132,9 +132,8 @@ func testDisasterRecoveryWithStorageType(t *testing.T, numToKill int, bt spec.Ba
 	for i := 0; i < numToKill; i++ {
 		toKill[i] = names[len(names)-i-1]
 	}
-	// TODO: There might be race that operator will recover members between
-	// 		these members are deleted individually.
-	t.Logf("killing pods: %v", names)
+	// TODO: race: members are recovered between they are deleted one by one.
+	logfWithTimestamp(t, "killing pods: %v", names)
 	if err := killMembers(f, toKill...); err != nil {
 		t.Fatal(err)
 	}
