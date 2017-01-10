@@ -213,6 +213,7 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 
 			c.logger.Infof("deleting the failed cluster")
 			c.delete()
+			go c.reportFailedStatus()
 		}
 
 		close(c.stopCh)
