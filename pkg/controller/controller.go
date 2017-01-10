@@ -87,6 +87,11 @@ func (c *Config) Validate() error {
 			c.PVProvisioner, supportedPVProvisioners,
 		)
 	}
+	allEmpty := len(c.S3Context.AWSConfig) == 0 && len(c.S3Context.AWSSecret) == 0 && len(c.S3Context.S3Bucket) == 0
+	allSet := len(c.S3Context.AWSConfig) != 0 && len(c.S3Context.AWSSecret) != 0 && len(c.S3Context.S3Bucket) != 0
+	if !(allEmpty || allSet) {
+		return errors.New("AWS/S3 related configs should be all set or all empty")
+	}
 	return nil
 }
 
@@ -105,6 +110,15 @@ func (c *Controller) Run() error {
 		watchVersion string
 		err          error
 	)
+
+	if len(c.Config.AWSConfig) != 0 {
+		// AWS config/creds should be initialized only once here.
+		// It will be shared and used by potential cluster's S3 backup manager to manage storage on operator side.
+		err := setupS3Env(c.Config.KubeCli, c.Config.S3Context, c.Config.Namespace)
+		if err != nil {
+			return err
+		}
+	}
 
 	for {
 		watchVersion, err = c.initResource()
