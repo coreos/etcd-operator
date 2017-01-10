@@ -99,19 +99,25 @@ func New(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 		c.status = &spec.ClusterStatus{}
 	}
 
-	err := c.setup()
-	if err != nil {
-		c.logger.Errorf("cluster failed to setup: %v", err)
-		c.status.SetReason(err.Error())
-		c.status.SetPhase(spec.ClusterPhaseFailed)
-		if err := c.updateStatus(); err != nil {
-			c.logger.Errorf("failed to update cluster phase (%v): %v", spec.ClusterPhaseFailed, err)
-		}
-		return nil
-	}
-
 	wg.Add(1)
-	go c.run(stopC, wg)
+	go func() {
+		defer wg.Done()
+
+		err := c.setup()
+		if err != nil {
+			c.logger.Errorf("cluster failed to setup: %v", err)
+			if c.status.Phase != spec.ClusterPhaseFailed {
+				c.status.SetReason(err.Error())
+				c.status.SetPhase(spec.ClusterPhaseFailed)
+				if err := c.updateStatus(); err != nil {
+					c.logger.Errorf("failed to update cluster phase (%v): %v", spec.ClusterPhaseFailed, err)
+				}
+			}
+			return
+		}
+		c.run(stopC)
+	}()
+
 	return c
 }
 
@@ -148,6 +154,7 @@ func (c *Cluster) setup() error {
 }
 
 func (c *Cluster) create() error {
+	c.logger.Infof("creating cluster with Spec (%#v), Status (%#v)", c.cluster.Spec, c.cluster.Status)
 	c.status.SetPhase(spec.ClusterPhaseCreating)
 	if err := c.updateStatus(); err != nil {
 		return fmt.Errorf("cluster create: failed to update cluster phase (%v): %v", spec.ClusterPhaseCreating, err)
@@ -204,7 +211,7 @@ func (c *Cluster) send(ev *clusterEvent) {
 	}
 }
 
-func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
+func (c *Cluster) run(stopC <-chan struct{}) {
 	clusterFailed := false
 
 	defer func() {
@@ -216,7 +223,6 @@ func (c *Cluster) run(stopC <-chan struct{}, wg *sync.WaitGroup) {
 		}
 
 		close(c.stopCh)
-		wg.Done()
 	}()
 
 	c.status.SetPhase(spec.ClusterPhaseRunning)
