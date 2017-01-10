@@ -1,9 +1,6 @@
 package backupstorage
 
 import (
-	"io/ioutil"
-	"os"
-
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -22,19 +19,6 @@ type s3 struct {
 }
 
 func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
-	cm, err := kubecli.ConfigMaps(ns).Get(s3Ctx.AWSConfig)
-	if err != nil {
-		return nil, err
-	}
-	se, err := kubecli.Secrets(ns).Get(s3Ctx.AWSSecret)
-	if err != nil {
-		return nil, err
-	}
-	err = setupS3Env([]byte(cm.Data["config"]), se.Data["credentials"])
-	if err != nil {
-		return nil, err
-	}
-
 	s3cli, err := backups3.New(s3Ctx.S3Bucket, clusterName+"/", session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
@@ -76,15 +60,4 @@ func (s *s3) Delete() error {
 		}
 	}
 	return nil
-}
-
-func setupS3Env(config, creds []byte) error {
-	homedir := os.Getenv("HOME")
-	if err := os.MkdirAll(homedir+"/.aws", 0700); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(homedir+"/.aws/config", config, 0600); err != nil {
-		return err
-	}
-	return ioutil.WriteFile(homedir+"/.aws/credentials", creds, 0600)
 }
