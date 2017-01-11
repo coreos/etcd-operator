@@ -92,13 +92,17 @@ func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 		c.logger.Infof("Disaster recovery")
 		return c.disasterRecovery(L)
 	}
-
-	c.logger.Infof("replacing one dead member with a new member")
-
-	if err := c.removeDeadMember(c.members.Diff(L).PickOne()); err != nil {
-		return err
+	
+	deadMembers := c.members.Diff(L)
+	if deadMembers.Size() > 0 {
+		c.logger.Infof("removing dead pods:", deadMembers)
+		for _, m := range deadMembers {
+			if err := c.removeDeadMember(m); err != nil {
+				return err
+			}
+		}
 	}
-
+	
 	return c.resize()
 }
 
