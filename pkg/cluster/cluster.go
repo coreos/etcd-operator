@@ -226,6 +226,9 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 	}()
 
 	c.status.SetPhase(spec.ClusterPhaseRunning)
+	if err := c.updateStatus(); err != nil {
+		c.logger.Warningf("failed to update TPR status: %v", err)
+	}
 
 	var rerr error
 	for {
