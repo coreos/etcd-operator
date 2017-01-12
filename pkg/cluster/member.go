@@ -15,6 +15,8 @@
 package cluster
 
 import (
+	"fmt"
+
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 
@@ -31,9 +33,15 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 		var name string
 		if c.cluster.Spec.SelfHosted != nil {
 			name = m.Name
-			if len(name) == 0 {
+			if len(name) == 0 || len(m.ClientURLs) == 0 {
 				c.logger.Errorf("member peerURL (%s): %v", m.PeerURLs[0], errUnexpectedUnreadyMember)
 				return errUnexpectedUnreadyMember
+			}
+
+			curl := m.ClientURLs[0]
+			bcurl := c.cluster.Spec.SelfHosted.BootMemberClientEndpoint
+			if curl == bcurl {
+				return fmt.Errorf("skipping update members for self hosted cluster: waiting for the boot member (%s) to be removed...", m.Name)
 			}
 		} else {
 			name, err = etcdutil.MemberNameFromPeerURL(m.PeerURLs[0])
