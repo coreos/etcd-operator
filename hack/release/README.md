@@ -21,7 +21,7 @@ Working directory is root of "etcd-operator/".
 
 Install dependency if none exists:
 ```
-$ glide install
+$ glide install --strip-vendor
 ```
 You should see "vendor/".
 
