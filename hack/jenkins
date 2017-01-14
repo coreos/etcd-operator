@@ -27,7 +27,7 @@ cleanup() {
 
 trap cleanup EXIT
 
-glide install --strip-vendor --skip-test 1>/dev/null
+glide install 1>/dev/null
 
 GIT_VERSION=$(git rev-parse HEAD)
 export OPERATOR_IMAGE="gcr.io/coreos-k8s-scale-testing/etcd-operator:${GIT_VERSION}"
