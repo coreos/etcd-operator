@@ -279,8 +279,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 				break
 			}
 
-			// TODO: The case "c.members = nil" only happens on creating seed member.
-			//       We should just set the member directly if successful.
+			// On controller restore, we could have "members == nil"
 			if rerr != nil || c.members == nil {
 				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted))
 				if rerr != nil {
@@ -332,11 +331,12 @@ func (c *Cluster) makeSeedMember() *etcdutil.Member {
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	m := c.makeSeedMember()
-	if err := c.createPodAndService(etcdutil.NewMemberSet(m), m, "new", recoverFromBackup); err != nil {
-		c.logger.Errorf("failed to create seed member (%s): %v", m.Name, err)
-		return err
+	ms := etcdutil.NewMemberSet(m)
+	if err := c.createPodAndService(ms, m, "new", recoverFromBackup); err != nil {
+		return fmt.Errorf("failed to create seed member (%s): %v", m.Name, err)
 	}
 	c.memberCounter++
+	c.members = ms
 	c.logger.Infof("cluster created with seed member (%s)", m.Name)
 	return nil
 }
