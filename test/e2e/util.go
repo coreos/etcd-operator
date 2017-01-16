@@ -237,7 +237,7 @@ func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster
 }
 
 func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.EtcdCluster) error {
-	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
+	err := retryutil.Retry(5*time.Second, 10, func() (done bool, err error) {
 		list, err := f.KubeClient.Pods(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
 		if err != nil {
 			return false, err
@@ -261,7 +261,7 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.EtcdClus
 		return fmt.Errorf("fail to wait pods deleted: %v", err)
 	}
 
-	err = retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
+	err = retryutil.Retry(5*time.Second, 10, func() (done bool, err error) {
 		list, err := f.KubeClient.Services(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
 		if err != nil {
 			return false, err
@@ -286,7 +286,7 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.EtcdClus
 }
 
 func waitBackupDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
-	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
+	err := retryutil.Retry(5*time.Second, 10, func() (done bool, err error) {
 		rl, err := f.KubeClient.ReplicaSets(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
 		if err != nil {
 			return false, err
@@ -305,7 +305,7 @@ func waitBackupDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
 	if !e.Spec.Backup.CleanupBackupsOnClusterDelete {
 		return nil
 	}
-	err = retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
+	err = retryutil.Retry(5*time.Second, 10, func() (done bool, err error) {
 		switch e.Spec.Backup.StorageType {
 		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 			pl, err := f.KubeClient.PersistentVolumeClaims(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
