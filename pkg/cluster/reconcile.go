@@ -93,13 +93,9 @@ func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 		return c.disasterRecovery(L)
 	}
 
-	c.logger.Infof("replacing one dead member with a new member")
-
-	if err := c.removeDeadMember(c.members.Diff(L).PickOne()); err != nil {
-		return err
-	}
-
-	return c.resize()
+	c.logger.Infof("removing one dead member")
+	// remove dead members that doesn't have any running pods before doing resizing.
+	return c.removeDeadMember(c.members.Diff(L).PickOne())
 }
 
 func (c *Cluster) resize() error {
