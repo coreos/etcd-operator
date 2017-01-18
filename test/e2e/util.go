@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -35,7 +34,6 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
-	k8sclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
 )
 
@@ -215,11 +213,6 @@ func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster
 		t.Logf("pod (%v): status (%v), cmd (%v)", pod.Name, pod.Status.Phase, pod.Spec.Containers[0].Command)
 	}
 
-	buf := bytes.NewBuffer(nil)
-	if err := getLogs(f.KubeClient, f.Namespace, "etcd-operator", "etcd-operator", buf); err != nil {
-		return err
-	}
-
 	req, err := http.NewRequest("DELETE",
 		fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.MasterHost, f.Namespace, e.Name), nil)
 	if err != nil {
@@ -333,25 +326,6 @@ func waitBackupDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
 		return fmt.Errorf("failed to wait storage (%s) to be deleted: %v", e.Spec.Backup.StorageType, err)
 	}
 	return nil
-}
-
-func getLogs(kubecli *k8sclient.Client, ns, p, c string, out io.Writer) error {
-	req := kubecli.RESTClient.Get().
-		Namespace(ns).
-		Resource("pods").
-		Name(p).
-		SubResource("log").
-		Param("container", c).
-		Param("tailLines", "20")
-
-	readCloser, err := req.Stream()
-	if err != nil {
-		return err
-	}
-	defer readCloser.Close()
-
-	_, err = io.Copy(out, readCloser)
-	return err
 }
 
 func printContainerStatus(buf *bytes.Buffer, ss []api.ContainerStatus) {
