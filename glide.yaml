@@ -1,42 +1,21 @@
 package: github.com/coreos/etcd-operator
 import:
 - package: github.com/Sirupsen/logrus
-  version: v0.10.0
-- package: github.com/pborman/uuid
-  version: v1.0
-- package: golang.org/x/net
-  subpackages:
-  - context
-- package: github.com/coreos/etcd
-  version: v3.1.0-alpha.1
-  subpackages:
-  - clientv3
-  - etcdserver/api/v3rpc/rpctypes
-- package: github.com/xiang90/probing
-  version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
-- package: k8s.io/kubernetes
-  version: v1.4.6
-  subpackages:
-  - pkg/api
-  - pkg/api/errors
-  - pkg/api/resource
-  - pkg/api/unversioned
-  - pkg/api/v1
-  - pkg/apis/extensions
-  - pkg/apis/storage
-  - pkg/client/restclient
-  - pkg/client/unversioned
-  - pkg/client/unversioned/clientcmd
-  - pkg/labels
-  - pkg/util/intstr
-  - pkg/util/wait
-  - pkg/watch
+  version: v0.11.0
 - package: github.com/aws/aws-sdk-go
-  version: v1.3.0
-- package: github.com/jpillora/go-ogle-analytics
+  version: v1.6.13
 - package: github.com/coreos/go-semver
   version: v0.2.0
+- package: github.com/jpillora/go-ogle-analytics
+- package: github.com/pborman/uuid
+  version: v1.0
 - package: github.com/prometheus/client_golang
   version: v0.8.0
-  subpackages:
-  - prometheus
+- package: golang.org/x/net
+- package: golang.org/x/time
+- package: github.com/coreos/etcd
+  version: v3.1.0-alpha.1
+- package: k8s.io/client-go
+  version: v1.5.0
+- package: k8s.io/kubernetes
+  version: v1.5.2
