@@ -22,7 +22,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
 type backupManager struct {
@@ -109,9 +109,9 @@ func (bm *backupManager) runSidecar() error {
 	return nil
 }
 
-func (bm *backupManager) createBackupReplicaSet(podSpec api.PodSpec) error {
+func (bm *backupManager) createBackupReplicaSet(podSpec v1.PodSpec) error {
 	rs := k8sutil.MakeBackupReplicaSet(bm.cluster.Name, podSpec, bm.cluster.AsOwner())
-	_, err := bm.config.KubeCli.ReplicaSets(bm.cluster.Namespace).Create(rs)
+	_, err := bm.config.KubeCli.Extensions().ReplicaSets(bm.cluster.Namespace).Create(rs)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
@@ -122,7 +122,7 @@ func (bm *backupManager) createBackupReplicaSet(podSpec api.PodSpec) error {
 
 func (bm *backupManager) createBackupService() error {
 	svc := k8sutil.MakeBackupService(bm.cluster.Name, bm.cluster.AsOwner())
-	_, err := bm.config.KubeCli.Services(bm.cluster.Namespace).Create(svc)
+	_, err := bm.config.KubeCli.Core().Services(bm.cluster.Namespace).Create(svc)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err

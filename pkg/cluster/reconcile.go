@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util"
@@ -29,13 +30,13 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"golang.org/x/net/context"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
 // reconcile reconciles cluster current state to desired state specified by spec.
 // - it tries to reconcile the cluster to desired size.
 // - if the cluster needs for upgrade, it tries to upgrade old member one by one.
-func (c *Cluster) reconcile(pods []*api.Pod) error {
+func (c *Cluster) reconcile(pods []*v1.Pod) error {
 	c.logger.Infoln("Start reconciling")
 	defer c.logger.Infoln("Finish reconciling")
 
@@ -194,7 +195,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	backupNow := false
 	if len(left) > 0 {
 		c.logger.Infof("pods are still running (%v). Will try to make a latest backup from one of them.", left)
-		err := RequestBackupNow(c.config.KubeCli.RESTClient.Client, k8sutil.MakeBackupHostPort(c.cluster.Name))
+		err := RequestBackupNow(k8sutil.MakeBackupHostPort(c.cluster.Name))
 		if err != nil {
 			c.logger.Errorln(err)
 		} else {
@@ -206,7 +207,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	} else {
 		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
 		// If so, we can still continue. Otherwise, it's fatal error.
-		exist, err := checkBackupExist(c.config.KubeCli.RESTClient.Client, k8sutil.MakeBackupHostPort(c.cluster.Name), c.cluster.Spec.Version)
+		exist, err := checkBackupExist(k8sutil.MakeBackupHostPort(c.cluster.Name), c.cluster.Spec.Version)
 		if err != nil {
 			c.logger.Errorln(err)
 			return err
@@ -226,8 +227,11 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 }
 
 // TODO: make this private
-func RequestBackupNow(httpClient *http.Client, addr string) error {
-	resp, err := httpClient.Get(fmt.Sprintf("http://%s/backupnow", addr))
+func RequestBackupNow(addr string) error {
+	httpcli := http.Client{
+		Timeout: 30 * time.Second,
+	}
+	resp, err := httpcli.Get(fmt.Sprintf("http://%s/backupnow", addr))
 	if err != nil {
 		return fmt.Errorf("backupnow (%s) failed: %v", addr, err)
 	}
@@ -243,7 +247,11 @@ func RequestBackupNow(httpClient *http.Client, addr string) error {
 	return nil
 }
 
-func checkBackupExist(httpcli *http.Client, addr, ver string) (bool, error) {
+func checkBackupExist(addr, ver string) (bool, error) {
+	httpcli := http.Client{
+		Timeout: 30 * time.Second,
+	}
+
 	req := &http.Request{
 		Method: http.MethodHead,
 		URL:    util.MakeBackupURL(addr, ver),
@@ -265,11 +273,11 @@ func checkBackupExist(httpcli *http.Client, addr, ver string) (bool, error) {
 	return true, nil
 }
 
-func needUpgrade(pods []*api.Pod, cs *spec.ClusterSpec) bool {
+func needUpgrade(pods []*v1.Pod, cs *spec.ClusterSpec) bool {
 	return len(pods) == cs.Size && pickOneOldMember(pods, cs.Version) != nil
 }
 
-func pickOneOldMember(pods []*api.Pod, newVersion string) *etcdutil.Member {
+func pickOneOldMember(pods []*v1.Pod, newVersion string) *etcdutil.Member {
 	for _, pod := range pods {
 		if k8sutil.GetEtcdVersion(pod) == newVersion {
 			continue

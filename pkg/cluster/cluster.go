@@ -31,8 +31,9 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/pborman/uuid"
-	k8sapi "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
 var reconcileInterval = 8 * time.Second
@@ -54,7 +55,7 @@ type Config struct {
 	s3config.S3Context
 
 	MasterHost string
-	KubeCli    *unversioned.Client
+	KubeCli    kubernetes.Interface
 }
 
 type Cluster struct {
@@ -92,7 +93,7 @@ func New(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
 		status:  e.Status,
-		gc:      garbagecollection.New(config.KubeCli, config.MasterHost, e.Namespace),
+		gc:      garbagecollection.New(config.KubeCli, e.Namespace),
 	}
 
 	if c.status == nil {
@@ -379,7 +380,7 @@ func (c *Cluster) createClientServiceLB() error {
 }
 
 func (c *Cluster) deleteClientServiceLB() error {
-	err := c.config.KubeCli.Services(c.cluster.Namespace).Delete(c.cluster.Name)
+	err := c.config.KubeCli.Core().Services(c.cluster.Namespace).Delete(c.cluster.Name, nil)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
@@ -405,18 +406,18 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	if needRecovery {
 		k8sutil.AddRecoveryToPod(pod, c.cluster.Name, m.Name, token, c.cluster.Spec)
 	}
-	_, err := c.config.KubeCli.Pods(c.cluster.Namespace).Create(pod)
+	_, err := c.config.KubeCli.Core().Pods(c.cluster.Namespace).Create(pod)
 	return err
 }
 
 func (c *Cluster) removePodAndService(name string) error {
-	err := c.config.KubeCli.Services(c.cluster.Namespace).Delete(name)
+	err := c.config.KubeCli.Core().Services(c.cluster.Namespace).Delete(name, nil)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
 	}
-	err = c.config.KubeCli.Pods(c.cluster.Namespace).Delete(name, k8sapi.NewDeleteOptions(0))
+	err = c.config.KubeCli.Core().Pods(c.cluster.Namespace).Delete(name, api.NewDeleteOptions(0))
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
@@ -425,14 +426,14 @@ func (c *Cluster) removePodAndService(name string) error {
 	return nil
 }
 
-func (c *Cluster) pollPods() ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
-	podList, err := c.config.KubeCli.Pods(c.cluster.Namespace).List(k8sutil.ClusterListOpt(c.cluster.Name))
+func (c *Cluster) pollPods() ([]*v1.Pod, []*v1.Pod, error) {
+	podList, err := c.config.KubeCli.Core().Pods(c.cluster.Namespace).List(k8sutil.ClusterListOpt(c.cluster.Name))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)
 	}
 
-	var running []*k8sapi.Pod
-	var pending []*k8sapi.Pod
+	var running []*v1.Pod
+	var pending []*v1.Pod
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 		if len(pod.OwnerReferences) < 1 {
@@ -444,9 +445,9 @@ func (c *Cluster) pollPods() ([]*k8sapi.Pod, []*k8sapi.Pod, error) {
 			continue
 		}
 		switch pod.Status.Phase {
-		case k8sapi.PodRunning:
+		case v1.PodRunning:
 			running = append(running, pod)
-		case k8sapi.PodPending:
+		case v1.PodPending:
 			pending = append(pending, pod)
 		}
 	}
@@ -461,7 +462,7 @@ func (c *Cluster) updateStatus() error {
 
 	newCluster := c.cluster
 	newCluster.Status = c.status
-	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli, c.config.MasterHost, c.cluster.GetNamespace(), newCluster)
+	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli.Core().GetRESTClient(), c.cluster.GetNamespace(), newCluster)
 	if err != nil {
 		return err
 	}
@@ -474,16 +475,18 @@ func (c *Cluster) reportFailedStatus() {
 	f := func() (bool, error) {
 		c.status.SetPhase(spec.ClusterPhaseFailed)
 		err := c.updateStatus()
-		switch err {
-		case nil, k8sutil.ErrTPRObjectNotFound:
+		if err == nil || k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return true, nil
-		case k8sutil.ErrTPRObjectVersionConflict:
-			cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli, c.config.MasterHost, c.cluster.Namespace, c.cluster.Name)
+		}
+
+		if k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+			cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli.Core().GetRESTClient(), c.cluster.Namespace, c.cluster.Name)
 			if err != nil {
 				c.logger.Warningf("report status: fail to get latest version: %v", err)
 				return false, nil
 			}
 			c.cluster = cl
+			return false, nil
 		}
 		c.logger.Warningf("report status: fail to update: %v", err)
 		return false, nil

@@ -21,19 +21,19 @@ import (
 	"time"
 
 	backupenv "github.com/coreos/etcd-operator/pkg/backup/env"
+	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
-	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/meta/metatypes"
-	"k8s.io/kubernetes/pkg/api/resource"
-	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/apis/storage"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/util/intstr"
+	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/meta/metatypes"
+	"k8s.io/client-go/1.5/pkg/api/resource"
+	"k8s.io/client-go/1.5/pkg/api/v1"
+	v1beta1extensions "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
+	v1beta1storage "k8s.io/client-go/1.5/pkg/apis/storage/v1beta1"
+	"k8s.io/client-go/1.5/pkg/util/intstr"
 )
 
 const (
@@ -47,24 +47,24 @@ const (
 	fromDirMountDir           = "/mnt/backup/from"
 )
 
-func CreateStorageClass(kubecli *unversioned.Client, pvProvisioner string) error {
+func CreateStorageClass(kubecli kubernetes.Interface, pvProvisioner string) error {
 	// We need to get rid of prefix because naming doesn't support "/".
 	name := storageClassPrefix + "-" + path.Base(pvProvisioner)
-	class := &storage.StorageClass{
-		ObjectMeta: api.ObjectMeta{
+	class := &v1beta1storage.StorageClass{
+		ObjectMeta: v1.ObjectMeta{
 			Name: name,
 		},
 		Provisioner: pvProvisioner,
 	}
-	_, err := kubecli.StorageClasses().Create(class)
+	_, err := kubecli.Storage().StorageClasses().Create(class)
 	return err
 }
 
-func CreateAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisioner string, volumeSizeInMB int) error {
+func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvisioner string, volumeSizeInMB int) error {
 	name := makePVCName(clusterName)
 	storageClassName := storageClassPrefix + "-" + path.Base(pvProvisioner)
-	claim := &api.PersistentVolumeClaim{
-		ObjectMeta: api.ObjectMeta{
+	claim := &v1.PersistentVolumeClaim{
+		ObjectMeta: v1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
 				"etcd_cluster": clusterName,
@@ -74,29 +74,29 @@ func CreateAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisione
 				"volume.beta.kubernetes.io/storage-class": storageClassName,
 			},
 		},
-		Spec: api.PersistentVolumeClaimSpec{
-			AccessModes: []api.PersistentVolumeAccessMode{
-				api.ReadWriteOnce,
+		Spec: v1.PersistentVolumeClaimSpec{
+			AccessModes: []v1.PersistentVolumeAccessMode{
+				v1.ReadWriteOnce,
 			},
-			Resources: api.ResourceRequirements{
-				Requests: api.ResourceList{
-					api.ResourceStorage: resource.MustParse(fmt.Sprintf("%dMi", volumeSizeInMB)),
+			Resources: v1.ResourceRequirements{
+				Requests: v1.ResourceList{
+					v1.ResourceStorage: resource.MustParse(fmt.Sprintf("%dMi", volumeSizeInMB)),
 				},
 			},
 		},
 	}
-	_, err := kubecli.PersistentVolumeClaims(ns).Create(claim)
+	_, err := kubecli.Core().PersistentVolumeClaims(ns).Create(claim)
 	if err != nil {
 		return err
 	}
 
 	err = retryutil.Retry(4*time.Second, 5, func() (bool, error) {
 		var err error
-		claim, err = kubecli.PersistentVolumeClaims(ns).Get(name)
+		claim, err = kubecli.Core().PersistentVolumeClaims(ns).Get(name)
 		if err != nil {
 			return false, err
 		}
-		if claim.Status.Phase != api.ClaimBound {
+		if claim.Status.Phase != v1.ClaimBound {
 			return false, nil
 		}
 		return true, nil
@@ -111,15 +111,15 @@ func CreateAndWaitPVC(kubecli *unversioned.Client, clusterName, ns, pvProvisione
 
 var BackupImage = "quay.io/coreos/etcd-operator:latest"
 
-func PodSpecWithPV(ps *api.PodSpec, clusterName string) *api.PodSpec {
-	ps.Containers[0].VolumeMounts = []api.VolumeMount{{
+func PodSpecWithPV(ps *v1.PodSpec, clusterName string) *v1.PodSpec {
+	ps.Containers[0].VolumeMounts = []v1.VolumeMount{{
 		Name:      backupPVVolName,
 		MountPath: constants.BackupDir,
 	}}
-	ps.Volumes = []api.Volume{{
+	ps.Volumes = []v1.Volume{{
 		Name: backupPVVolName,
-		VolumeSource: api.VolumeSource{
-			PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{
+		VolumeSource: v1.VolumeSource{
+			PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
 				ClaimName: makePVCName(clusterName),
 			},
 		},
@@ -127,49 +127,49 @@ func PodSpecWithPV(ps *api.PodSpec, clusterName string) *api.PodSpec {
 	return ps
 }
 
-func PodSpecWithS3(ps *api.PodSpec, s3Ctx s3config.S3Context) *api.PodSpec {
-	ps.Containers[0].VolumeMounts = []api.VolumeMount{{
+func PodSpecWithS3(ps *v1.PodSpec, s3Ctx s3config.S3Context) *v1.PodSpec {
+	ps.Containers[0].VolumeMounts = []v1.VolumeMount{{
 		Name:      awsSecretVolName,
 		MountPath: awsCredentialDir,
 	}, {
 		Name:      awsConfigVolName,
 		MountPath: awsConfigDir,
 	}}
-	ps.Volumes = []api.Volume{{
+	ps.Volumes = []v1.Volume{{
 		Name: awsSecretVolName,
-		VolumeSource: api.VolumeSource{
-			Secret: &api.SecretVolumeSource{
+		VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{
 				SecretName: s3Ctx.AWSSecret,
 			},
 		},
 	}, {
 		Name: awsConfigVolName,
-		VolumeSource: api.VolumeSource{
-			ConfigMap: &api.ConfigMapVolumeSource{
-				LocalObjectReference: api.LocalObjectReference{
+		VolumeSource: v1.VolumeSource{
+			ConfigMap: &v1.ConfigMapVolumeSource{
+				LocalObjectReference: v1.LocalObjectReference{
 					Name: s3Ctx.AWSConfig,
 				},
 			},
 		},
 	}}
-	ps.Containers[0].Env = append(ps.Containers[0].Env, api.EnvVar{
+	ps.Containers[0].Env = append(ps.Containers[0].Env, v1.EnvVar{
 		Name:  backupenv.AWSConfig,
 		Value: path.Join(awsConfigDir, "config"),
-	}, api.EnvVar{
+	}, v1.EnvVar{
 		Name:  backupenv.AWSS3Bucket,
 		Value: s3Ctx.S3Bucket,
 	})
 	return ps
 }
 
-func MakeBackupPodSpec(clusterName string, policy *spec.BackupPolicy) (*api.PodSpec, error) {
+func MakeBackupPodSpec(clusterName string, policy *spec.BackupPolicy) (*v1.PodSpec, error) {
 	bp, err := json.Marshal(policy)
 	if err != nil {
 		return nil, err
 	}
 
-	ps := &api.PodSpec{
-		Containers: []api.Container{
+	ps := &v1.PodSpec{
+		Containers: []v1.Container{
 			{
 				Name:  "backup",
 				Image: BackupImage,
@@ -178,9 +178,9 @@ func MakeBackupPodSpec(clusterName string, policy *spec.BackupPolicy) (*api.PodS
 					"-c",
 					"/usr/local/bin/etcd-backup --etcd-cluster=" + clusterName,
 				},
-				Env: []api.EnvVar{{
+				Env: []v1.EnvVar{{
 					Name:      "MY_POD_NAMESPACE",
-					ValueFrom: &api.EnvVarSource{FieldRef: &api.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+					ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 				}, {
 					Name:  backupenv.BackupPolicy,
 					Value: string(bp),
@@ -200,21 +200,20 @@ func backupNameAndLabel(clusterName string) (string, map[string]string) {
 	return name, labels
 }
 
-func MakeBackupReplicaSet(clusterName string, ps api.PodSpec, owner metatypes.OwnerReference) *extensions.ReplicaSet {
+func MakeBackupReplicaSet(clusterName string, ps v1.PodSpec, owner metatypes.OwnerReference) *v1beta1extensions.ReplicaSet {
 	name, labels := backupNameAndLabel(clusterName)
-	rs := &extensions.ReplicaSet{
-		ObjectMeta: api.ObjectMeta{
+	rs := &v1beta1extensions.ReplicaSet{
+		ObjectMeta: v1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
 				"etcd_cluster": clusterName,
 				"app":          "etcd",
 			},
 		},
-		Spec: extensions.ReplicaSetSpec{
-			Replicas: 1,
-			Selector: &unversionedAPI.LabelSelector{MatchLabels: labels},
-			Template: api.PodTemplateSpec{
-				ObjectMeta: api.ObjectMeta{
+		Spec: v1beta1extensions.ReplicaSetSpec{
+			Selector: &v1beta1extensions.LabelSelector{MatchLabels: labels},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
 					Labels: labels,
 				},
 				Spec: ps,
@@ -225,20 +224,20 @@ func MakeBackupReplicaSet(clusterName string, ps api.PodSpec, owner metatypes.Ow
 	return rs
 }
 
-func MakeBackupService(clusterName string, owner metatypes.OwnerReference) *api.Service {
+func MakeBackupService(clusterName string, owner metatypes.OwnerReference) *v1.Service {
 	name, labels := backupNameAndLabel(clusterName)
-	svc := &api.Service{
-		ObjectMeta: api.ObjectMeta{
+	svc := &v1.Service{
+		ObjectMeta: v1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
-		Spec: api.ServiceSpec{
-			Ports: []api.ServicePort{
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
 				{
 					Name:       "backup-service",
 					Port:       constants.DefaultBackupPodHTTPPort,
 					TargetPort: intstr.FromInt(constants.DefaultBackupPodHTTPPort),
-					Protocol:   api.ProtocolTCP,
+					Protocol:   v1.ProtocolTCP,
 				},
 			},
 			Selector: labels,
@@ -248,9 +247,9 @@ func MakeBackupService(clusterName string, owner metatypes.OwnerReference) *api.
 	return svc
 }
 
-func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, ns string) error {
+func DeleteBackupReplicaSetAndService(kubecli kubernetes.Interface, clusterName, ns string) error {
 	name := MakeBackupName(clusterName)
-	err := kubecli.Services(ns).Delete(name)
+	err := kubecli.Core().Services(ns).Delete(name, nil)
 	if err != nil {
 		if !IsKubernetesResourceNotFoundError(err) {
 			return err
@@ -258,7 +257,7 @@ func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 	}
 	orphanOption := false
 	gracePeriod := int64(0)
-	err = kubecli.ReplicaSets(ns).Delete(name, &api.DeleteOptions{
+	err = kubecli.Extensions().ReplicaSets(ns).Delete(name, &api.DeleteOptions{
 		OrphanDependents:   &orphanOption,
 		GracePeriodSeconds: &gracePeriod,
 	})
@@ -270,24 +269,24 @@ func DeleteBackupReplicaSetAndService(kubecli *unversioned.Client, clusterName, 
 	return nil
 }
 
-func DeletePVC(kubecli *unversioned.Client, clusterName, ns string) error {
-	err := kubecli.PersistentVolumeClaims(ns).Delete(makePVCName(clusterName))
+func DeletePVC(kubecli kubernetes.Interface, clusterName, ns string) error {
+	err := kubecli.Core().PersistentVolumeClaims(ns).Delete(makePVCName(clusterName), nil)
 	if !IsKubernetesResourceNotFoundError(err) {
 		return err
 	}
 	return nil
 }
 
-func CopyVolume(kubecli *unversioned.Client, fromClusterName, toClusterName, ns string) error {
-	pod := &api.Pod{
-		ObjectMeta: api.ObjectMeta{
+func CopyVolume(kubecli kubernetes.Interface, fromClusterName, toClusterName, ns string) error {
+	pod := &v1.Pod{
+		ObjectMeta: v1.ObjectMeta{
 			Name: copyVolumePodName(toClusterName),
 			Labels: map[string]string{
 				"etcd_cluster": toClusterName,
 			},
 		},
-		Spec: api.PodSpec{
-			Containers: []api.Container{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
 				{
 					Name:  "copy-backup",
 					Image: "alpine",
@@ -296,7 +295,7 @@ func CopyVolume(kubecli *unversioned.Client, fromClusterName, toClusterName, ns 
 						"-c",
 						fmt.Sprintf("cp -r %s/* %s/", fromDirMountDir, constants.BackupDir),
 					},
-					VolumeMounts: []api.VolumeMount{{
+					VolumeMounts: []v1.VolumeMount{{
 						Name:      "from-dir",
 						MountPath: fromDirMountDir,
 					}, {
@@ -305,41 +304,41 @@ func CopyVolume(kubecli *unversioned.Client, fromClusterName, toClusterName, ns 
 					}},
 				},
 			},
-			RestartPolicy: api.RestartPolicyNever,
-			Volumes: []api.Volume{{
+			RestartPolicy: v1.RestartPolicyNever,
+			Volumes: []v1.Volume{{
 				Name: "from-dir",
-				VolumeSource: api.VolumeSource{
-					PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
 						ClaimName: makePVCName(fromClusterName),
 						ReadOnly:  true,
 					},
 				},
 			}, {
 				Name: "to-dir",
-				VolumeSource: api.VolumeSource{
-					PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
 						ClaimName: makePVCName(toClusterName),
 					},
 				},
 			}},
 		},
 	}
-	if _, err := kubecli.Pods(ns).Create(pod); err != nil {
+	if _, err := kubecli.Core().Pods(ns).Create(pod); err != nil {
 		return err
 	}
 
-	var phase api.PodPhase
+	var phase v1.PodPhase
 	// Delay could be very long due to k8s controller detaching the volume
 	err := retryutil.Retry(10*time.Second, 12, func() (bool, error) {
-		p, err := kubecli.Pods(ns).Get(pod.Name)
+		p, err := kubecli.Core().Pods(ns).Get(pod.Name)
 		if err != nil {
 			return false, err
 		}
 		phase = p.Status.Phase
 		switch p.Status.Phase {
-		case api.PodSucceeded:
+		case v1.PodSucceeded:
 			return true, nil
-		case api.PodFailed:
+		case v1.PodFailed:
 			return false, fmt.Errorf("backup copy pod (%s) failed: %v, %v", pod.Name, pod.Status.Reason,
 				pod.Status.ContainerStatuses[0].LastTerminationState.Terminated.Reason)
 		}
@@ -349,7 +348,7 @@ func CopyVolume(kubecli *unversioned.Client, fromClusterName, toClusterName, ns 
 		return fmt.Errorf("failed to wait backup copy pod (%s, phase: %s) to succeed: %v", pod.Name, phase, err)
 	}
 	// Delete the pod to detach the volume from the node
-	return kubecli.Pods(ns).Delete(pod.Name, api.NewDeleteOptions(0))
+	return kubecli.Core().Pods(ns).Delete(pod.Name, api.NewDeleteOptions(0))
 }
 
 func copyVolumePodName(clusterName string) string {

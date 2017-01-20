@@ -22,13 +22,13 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/pkg/netutil"
+
+	"k8s.io/client-go/1.5/pkg/api/unversioned"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
 func TestSelfHosted(t *testing.T) {
@@ -99,7 +99,7 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 			Kind:       "EtcdCluster",
 			APIVersion: "coreos.com/v1",
 		},
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: v1.ObjectMeta{
 			GenerateName: "etcd-test-seed-",
 		},
 		Spec: &spec.ClusterSpec{
@@ -132,7 +132,7 @@ func makeSelfHostedEnabledCluster(genName string, size int) *spec.EtcdCluster {
 			Kind:       "EtcdCluster",
 			APIVersion: "coreos.com/v1",
 		},
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: v1.ObjectMeta{
 			GenerateName: genName,
 		},
 		Spec: &spec.ClusterSpec{

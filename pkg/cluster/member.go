@@ -19,8 +19,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
-
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
 func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
@@ -70,7 +69,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	return nil
 }
 
-func podsToMemberSet(pods []*api.Pod, selfHosted *spec.SelfHostedPolicy) etcdutil.MemberSet {
+func podsToMemberSet(pods []*v1.Pod, selfHosted *spec.SelfHostedPolicy) etcdutil.MemberSet {
 	members := etcdutil.MemberSet{}
 	for _, pod := range pods {
 		m := &etcdutil.Member{Name: pod.Name}

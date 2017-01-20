@@ -20,21 +20,21 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
+	"k8s.io/client-go/1.5/tools/clientcmd"
 )
 
 var Global *Framework
 
 type Framework struct {
-	KubeClient *unversioned.Client
-	MasterHost string
+	KubeClient kubernetes.Interface
 	Namespace  string
 	S3Cli      *s3.S3
 	S3Bucket   string
@@ -51,13 +51,12 @@ func Setup() error {
 	if err != nil {
 		return err
 	}
-	cli, err := unversioned.New(config)
+	cli, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return err
 	}
 
 	Global = &Framework{
-		MasterHost: config.Host,
 		KubeClient: cli,
 		Namespace:  *ns,
 	}
@@ -66,7 +65,7 @@ func Setup() error {
 
 func Teardown() error {
 	// TODO: check all deleted and wait
-	if err := Global.KubeClient.Pods(Global.Namespace).Delete("etcd-operator", api.NewDeleteOptions(0)); err != nil {
+	if err := Global.KubeClient.Core().Pods(Global.Namespace).Delete("etcd-operator", api.NewDeleteOptions(10)); err != nil {
 		return err
 	}
 	Global = nil
@@ -94,28 +93,28 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 	if os.Getenv("AWS_TEST_ENABLED") == "true" {
 		cmd += " --backup-aws-secret=aws --backup-aws-config=aws --backup-s3-bucket=jenkins-etcd-operator"
 	}
-	pod := &api.Pod{
-		ObjectMeta: api.ObjectMeta{
+	pod := &v1.Pod{
+		ObjectMeta: v1.ObjectMeta{
 			Name:   "etcd-operator",
 			Labels: map[string]string{"name": "etcd-operator"},
 		},
-		Spec: api.PodSpec{
-			Containers: []api.Container{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
 				{
 					Name:  "etcd-operator",
 					Image: opImage,
 					Command: []string{
 						"/bin/sh", "-c", cmd,
 					},
-					Env: []api.EnvVar{
+					Env: []v1.EnvVar{
 						{
 							Name:      "MY_POD_NAMESPACE",
-							ValueFrom: &api.EnvVarSource{FieldRef: &api.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 						},
 					},
 				},
 			},
-			RestartPolicy: api.RestartPolicyNever,
+			RestartPolicy: v1.RestartPolicyNever,
 		},
 	}
 
@@ -123,7 +122,7 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 	if err != nil {
 		return err
 	}
-	err = k8sutil.WaitEtcdTPRReady(f.KubeClient, 5*time.Second, 60*time.Second, f.MasterHost, f.Namespace)
+	err = k8sutil.WaitEtcdTPRReady(f.KubeClient.Core().GetRESTClient(), 5*time.Second, 60*time.Second, f.Namespace)
 	if err != nil {
 		return err
 	}

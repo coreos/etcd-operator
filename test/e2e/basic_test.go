@@ -22,7 +22,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
 func TestBasic(t *testing.T) {
@@ -124,7 +124,7 @@ func testEtcdUpgrade(t *testing.T) {
 		}
 	}()
 
-	_, err = waitSizeReachedWithAccept(t, f, testEtcd.Name, 3, 60*time.Second, func(pod *api.Pod) bool {
+	_, err = waitSizeReachedWithAccept(t, f, testEtcd.Name, 3, 60*time.Second, func(pod *v1.Pod) bool {
 		return k8sutil.GetEtcdVersion(pod) == "v3.0.12"
 	})
 	if err != nil {
@@ -137,7 +137,7 @@ func testEtcdUpgrade(t *testing.T) {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 
-	_, err = waitSizeReachedWithAccept(t, f, testEtcd.Name, 3, 60*time.Second, func(pod *api.Pod) bool {
+	_, err = waitSizeReachedWithAccept(t, f, testEtcd.Name, 3, 60*time.Second, func(pod *v1.Pod) bool {
 		return k8sutil.GetEtcdVersion(pod) == "v3.1.0-alpha.1"
 	})
 	if err != nil {

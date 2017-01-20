@@ -18,6 +18,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -31,12 +32,15 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"golang.org/x/time/rate"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/1.5/pkg/labels"
+	"k8s.io/client-go/1.5/rest"
+	k8sapi "k8s.io/kubernetes/pkg/api"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/leaderelection"
+	"k8s.io/kubernetes/pkg/client/leaderelection/resourcelock"
 	"k8s.io/kubernetes/pkg/client/record"
 	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/labels"
 )
 
 var (
@@ -105,18 +109,26 @@ func main() {
 		logrus.Fatalf("failed to get hostname: %v", err)
 	}
 
-	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
-		EndpointsMeta: api.ObjectMeta{
+	// TODO: replace this to client-go once leader election pacakge is imported
+	//       https://github.com/kubernetes/client-go/issues/28
+	rl := &resourcelock.EndpointsLock{
+		EndpointsMeta: k8sapi.ObjectMeta{
 			Namespace: namespace,
 			Name:      "etcd-operator",
 		},
-		Client: k8sutil.MustCreateClient(masterHost, tlsInsecure, &restclient.TLSClientConfig{
+		Client: mustCreateLeaderElectionClient(masterHost, tlsInsecure, &restclient.TLSClientConfig{
 			CertFile: certFile,
 			KeyFile:  keyFile,
 			CAFile:   caFile,
 		}),
-		EventRecorder: &record.FakeRecorder{},
-		Identity:      id,
+		LockConfig: resourcelock.ResourceLockConfig{
+			Identity:      id,
+			EventRecorder: &record.FakeRecorder{},
+		},
+	}
+
+	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
+		Lock:          rl,
 		LeaseDuration: leaseDuration,
 		RenewDeadline: renewDuration,
 		RetryPeriod:   retryPeriod,
@@ -136,7 +148,7 @@ func run(stop <-chan struct{}) {
 		logrus.Fatalf("invalid operator config: %v", err)
 	}
 
-	go periodicFullGC(cfg.KubeCli, cfg.MasterHost, cfg.Namespace, gcInterval)
+	go periodicFullGC(cfg.KubeCli, cfg.Namespace, gcInterval)
 
 	startChaos(context.Background(), cfg.KubeCli, cfg.Namespace, chaosLevel)
 
@@ -152,7 +164,7 @@ func run(stop <-chan struct{}) {
 }
 
 func newControllerConfig() controller.Config {
-	tlsConfig := restclient.TLSClientConfig{
+	tlsConfig := rest.TLSClientConfig{
 		CertFile: certFile,
 		KeyFile:  keyFile,
 		CAFile:   caFile,
@@ -176,8 +188,8 @@ func newControllerConfig() controller.Config {
 	return cfg
 }
 
-func periodicFullGC(k8s *unversioned.Client, host, ns string, d time.Duration) {
-	gc := garbagecollection.New(k8s, host, ns)
+func periodicFullGC(k8s kubernetes.Interface, ns string, d time.Duration) {
+	gc := garbagecollection.New(k8s, ns)
 	timer := time.NewTimer(d)
 	defer timer.Stop()
 	for {
@@ -189,7 +201,7 @@ func periodicFullGC(k8s *unversioned.Client, host, ns string, d time.Duration) {
 	}
 }
 
-func startChaos(ctx context.Context, k8s *unversioned.Client, ns string, chaosLevel int) {
+func startChaos(ctx context.Context, k8s kubernetes.Interface, ns string, chaosLevel int) {
 	m := chaos.NewMonkeys(k8s)
 	ls := labels.SelectorFromSet(map[string]string{"app": "etcd"})
 
@@ -222,4 +234,31 @@ func startChaos(ctx context.Context, k8s *unversioned.Client, ns string, chaosLe
 
 	default:
 	}
+}
+
+func mustCreateLeaderElectionClient(host string, tlsInsecure bool, tlsConfig *restclient.TLSClientConfig) clientset.Interface {
+	var cfg *restclient.Config
+	if len(host) == 0 {
+		var err error
+		cfg, err = restclient.InClusterConfig()
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		cfg = &restclient.Config{
+			Host:  host,
+			QPS:   100,
+			Burst: 100,
+		}
+		hostUrl, err := url.Parse(host)
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse host url %s : %v", host, err))
+		}
+		if hostUrl.Scheme == "https" {
+			cfg.TLSClientConfig = *tlsConfig
+			cfg.Insecure = tlsInsecure
+		}
+	}
+
+	return clientset.NewForConfigOrDie(cfg)
 }

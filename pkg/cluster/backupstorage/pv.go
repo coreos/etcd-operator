@@ -4,7 +4,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/client-go/1.5/kubernetes"
 )
 
 type pv struct {
@@ -12,16 +12,16 @@ type pv struct {
 	namespace     string
 	pvProvisioner string
 	backupPolicy  spec.BackupPolicy
-	kubecli       *unversioned.Client
+	kubecli       kubernetes.Interface
 }
 
-func NewPVStorage(kc *unversioned.Client, cn, ns, pvp string, backupPolicy spec.BackupPolicy) (Storage, error) {
+func NewPVStorage(kubecli kubernetes.Interface, cn, ns, pvp string, backupPolicy spec.BackupPolicy) (Storage, error) {
 	s := &pv{
 		clusterName:   cn,
 		namespace:     ns,
 		pvProvisioner: pvp,
 		backupPolicy:  backupPolicy,
-		kubecli:       kc,
+		kubecli:       kubecli,
 	}
 	return s, nil
 }

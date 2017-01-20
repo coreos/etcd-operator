@@ -30,10 +30,10 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
-	k8sapi "k8s.io/kubernetes/pkg/api"
-	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/1.5/pkg/api/unversioned"
+	"k8s.io/client-go/1.5/pkg/api/v1"
+	v1beta1extensions "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
 )
 
 const (
@@ -77,7 +77,7 @@ type Config struct {
 	Namespace     string
 	PVProvisioner string
 	s3config.S3Context
-	KubeCli *unversioned.Client
+	KubeCli kubernetes.Interface
 }
 
 func (c *Config) Validate() error {
@@ -181,7 +181,7 @@ func (c *Controller) Run() error {
 
 func (c *Controller) findAllClusters() (string, error) {
 	c.logger.Info("finding existing clusters...")
-	clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli, c.Config.MasterHost, c.Config.Namespace)
+	clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli.Core().GetRESTClient(), c.Config.Namespace)
 	if err != nil {
 		return "", err
 	}
@@ -242,28 +242,24 @@ func (c *Controller) initResource() (string, error) {
 }
 
 func (c *Controller) createTPR() error {
-	tpr := &extensions.ThirdPartyResource{
-		ObjectMeta: k8sapi.ObjectMeta{
+	tpr := &v1beta1extensions.ThirdPartyResource{
+		ObjectMeta: v1.ObjectMeta{
 			Name: tprName,
 		},
-		Versions: []extensions.APIVersion{
+		Versions: []v1beta1extensions.APIVersion{
 			{Name: "v1"},
 		},
 		Description: "Managed etcd clusters",
 	}
-	_, err := c.KubeCli.ThirdPartyResources().Create(tpr)
+	_, err := c.KubeCli.Extensions().ThirdPartyResources().Create(tpr)
 	if err != nil {
 		return err
 	}
 
-	return k8sutil.WaitEtcdTPRReady(c.KubeCli, 3*time.Second, 30*time.Second, c.MasterHost, c.Namespace)
+	return k8sutil.WaitEtcdTPRReady(c.KubeCli.Core().GetRESTClient(), 3*time.Second, 30*time.Second, c.Namespace)
 }
 
 func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) {
-	host := c.MasterHost
-	ns := c.Namespace
-	httpClient := c.KubeCli.Client
-
 	eventCh := make(chan *Event)
 	// On unexpected error case, controller should exit
 	errCh := make(chan error, 1)
@@ -271,8 +267,12 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 	go func() {
 		defer close(eventCh)
 
+		host := c.MasterHost
+		ns := c.Namespace
+		httpcli := c.KubeCli.Core().GetRESTClient().Client
+
 		for {
-			resp, err := k8sutil.WatchClusters(host, ns, httpClient, watchVersion)
+			resp, err := k8sutil.WatchClusters(host, ns, httpcli, watchVersion)
 			if err != nil {
 				errCh <- err
 				return
@@ -320,7 +320,7 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 	return eventCh, errCh
 }
 
-func pollEvent(decoder *json.Decoder) (*Event, *unversionedAPI.Status, error) {
+func pollEvent(decoder *json.Decoder) (*Event, *unversioned.Status, error) {
 	re := &rawEvent{}
 	err := decoder.Decode(re)
 	if err != nil {
@@ -331,7 +331,7 @@ func pollEvent(decoder *json.Decoder) (*Event, *unversionedAPI.Status, error) {
 	}
 
 	if re.Type == "ERROR" {
-		status := &unversionedAPI.Status{}
+		status := &unversioned.Status{}
 		err = json.Unmarshal(re.Object, status)
 		if err != nil {
 			return nil, nil, fmt.Errorf("fail to decode (%s) into unversioned.Status (%v)", re.Object, err)

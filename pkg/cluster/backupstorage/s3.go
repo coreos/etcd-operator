@@ -6,7 +6,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 
 	"github.com/aws/aws-sdk-go/aws/session"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/client-go/1.5/kubernetes"
 )
 
 type s3 struct {
@@ -14,11 +14,11 @@ type s3 struct {
 	clusterName  string
 	namespace    string
 	backupPolicy spec.BackupPolicy
-	kubecli      *unversioned.Client
+	kubecli      kubernetes.Interface
 	s3cli        *backups3.S3
 }
 
-func NewS3Storage(s3Ctx s3config.S3Context, kubecli *unversioned.Client, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
+func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
 	s3cli, err := backups3.New(s3Ctx.S3Bucket, clusterName+"/", session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
