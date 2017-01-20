@@ -18,30 +18,31 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"k8s.io/kubernetes/pkg/api"
-	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/unversioned"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
-func etcdContainer(commands, version string) api.Container {
-	c := api.Container{
+func etcdContainer(commands, version string) v1.Container {
+	c := v1.Container{
 		// TODO: fix "sleep 5".
 		// Without waiting some time, there is highly probable flakes in network setup.
 		Command: []string{"/bin/sh", "-c", fmt.Sprintf("sleep 5; %s", commands)},
 		Name:    "etcd",
 		Image:   MakeEtcdImage(version),
-		Ports: []api.ContainerPort{
+		Ports: []v1.ContainerPort{
 			{
 				Name:          "server",
 				ContainerPort: int32(2380),
-				Protocol:      api.ProtocolTCP,
+				Protocol:      v1.ProtocolTCP,
 			},
 			{
 				Name:          "client",
 				ContainerPort: int32(2379),
-				Protocol:      api.ProtocolTCP,
+				Protocol:      v1.ProtocolTCP,
 			},
 		},
-		VolumeMounts: []api.VolumeMount{
+		VolumeMounts: []v1.VolumeMount{
 			{Name: "etcd-data", MountPath: etcdDir},
 		},
 	}
@@ -49,16 +50,16 @@ func etcdContainer(commands, version string) api.Container {
 	return c
 }
 
-func containerWithLivenessProbe(c api.Container, lp *api.Probe) api.Container {
+func containerWithLivenessProbe(c v1.Container, lp *v1.Probe) v1.Container {
 	c.LivenessProbe = lp
 	return c
 }
 
-func etcdLivenessProbe() *api.Probe {
+func etcdLivenessProbe() *v1.Probe {
 	// etcd pod is alive only if a linearizable get succeeds.
-	return &api.Probe{
-		Handler: api.Handler{
-			Exec: &api.ExecAction{
+	return &v1.Probe{
+		Handler: v1.Handler{
+			Exec: &v1.ExecAction{
 				Command: []string{"/bin/sh", "-c",
 					"ETCDCTL_API=3 etcdctl get foo"},
 			},
@@ -70,13 +71,13 @@ func etcdLivenessProbe() *api.Probe {
 	}
 }
 
-func PodWithAntiAffinity(pod *api.Pod, clusterName string) *api.Pod {
+func PodWithAntiAffinity(pod *v1.Pod, clusterName string) *v1.Pod {
 	// set pod anti-affinity with the pods that belongs to the same etcd cluster
-	affinity := api.Affinity{
-		PodAntiAffinity: &api.PodAntiAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: []api.PodAffinityTerm{
+	affinity := v1.Affinity{
+		PodAntiAffinity: &v1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
 				{
-					LabelSelector: &unversionedAPI.LabelSelector{
+					LabelSelector: &unversioned.LabelSelector{
 						MatchLabels: map[string]string{
 							"etcd_cluster": clusterName,
 						},

@@ -24,14 +24,14 @@ import (
 func (c *Cluster) upgradeOneMember(m *etcdutil.Member) error {
 	c.status.AppendUpgradingCondition(c.cluster.Spec.Version, m.Name)
 
-	pod, err := c.config.KubeCli.Pods(c.cluster.Namespace).Get(m.Name)
+	pod, err := c.config.KubeCli.Core().Pods(c.cluster.Namespace).Get(m.Name)
 	if err != nil {
 		return fmt.Errorf("fail to get pod (%s): %v", m.Name, err)
 	}
 	c.logger.Infof("upgrading the etcd member %v from %s to %s", m.Name, k8sutil.GetEtcdVersion(pod), c.cluster.Spec.Version)
 	pod.Spec.Containers[0].Image = k8sutil.MakeEtcdImage(c.cluster.Spec.Version)
 	k8sutil.SetEtcdVersion(pod, c.cluster.Spec.Version)
-	_, err = c.config.KubeCli.Pods(c.cluster.Namespace).Update(pod)
+	_, err = c.config.KubeCli.Core().Pods(c.cluster.Namespace).Update(pod)
 	if err != nil {
 		return fmt.Errorf("fail to update the etcd member (%s): %v", m.Name, err)
 	}

@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/kubernetes/pkg/api"
-	metatypes "k8s.io/kubernetes/pkg/api/meta/metatypes"
-	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/client-go/1.5/pkg/api/meta/metatypes"
+	"k8s.io/client-go/1.5/pkg/api/unversioned"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
 var (
@@ -30,14 +30,14 @@ var (
 
 type EtcdCluster struct {
 	unversioned.TypeMeta `json:",inline"`
-	api.ObjectMeta       `json:"metadata,omitempty"`
+	v1.ObjectMeta        `json:"metadata,omitempty"`
 	Spec                 *ClusterSpec   `json:"spec"`
 	Status               *ClusterStatus `json:"status"`
 }
 
 func (e *EtcdCluster) AsOwner() metatypes.OwnerReference {
 	trueVar := true
-	// TODO: In 1.5 this is gonna be "k8s.io/kubernetes/pkg/apis/meta/v1"
+	// TODO: In 1.6 this is gonna be "k8s.io/kubernetes/pkg/apis/meta/v1"
 	// Both api.OwnerReference and metatypes.OwnerReference are combined into that.
 	return metatypes.OwnerReference{
 		APIVersion: e.APIVersion,

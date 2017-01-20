@@ -18,10 +18,10 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
-	k8sapi "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/types"
+	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/labels"
+	"k8s.io/client-go/1.5/pkg/types"
 )
 
 const (
@@ -33,17 +33,15 @@ var pkgLogger = logrus.WithField("pkg", "gc")
 type GC struct {
 	logger *logrus.Entry
 
-	k8s        *unversioned.Client
-	masterHost string
-	ns         string
+	k8s kubernetes.Interface
+	ns  string
 }
 
-func New(k8s *unversioned.Client, masterHost, ns string) *GC {
+func New(k8s kubernetes.Interface, ns string) *GC {
 	return &GC{
-		logger:     pkgLogger,
-		k8s:        k8s,
-		masterHost: masterHost,
-		ns:         ns,
+		logger: pkgLogger,
+		k8s:    k8s,
+		ns:     ns,
 	}
 }
 
@@ -56,7 +54,7 @@ func (gc *GC) CollectCluster(cluster string, clusterUID types.UID) error {
 // FullyCollect collects resources that were created before,
 // but does not belong to any current running clusters.
 func (gc *GC) FullyCollect() error {
-	clusters, err := k8sutil.GetClusterList(gc.k8s, gc.masterHost, gc.ns)
+	clusters, err := k8sutil.GetClusterList(gc.k8s.Core().GetRESTClient(), gc.ns)
 	if err != nil {
 		return err
 	}
@@ -66,7 +64,7 @@ func (gc *GC) FullyCollect() error {
 		clusterUIDSet[c.GetUID()] = true
 	}
 
-	option := k8sapi.ListOptions{
+	option := api.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"app": "etcd",
 		}),
@@ -75,7 +73,7 @@ func (gc *GC) FullyCollect() error {
 	return gc.collectResources(option, clusterUIDSet)
 }
 
-func (gc *GC) collectResources(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectResources(option api.ListOptions, runningSet map[types.UID]bool) error {
 	if err := gc.collectPods(option, runningSet); err != nil {
 		return err
 	}
@@ -89,8 +87,8 @@ func (gc *GC) collectResources(option k8sapi.ListOptions, runningSet map[types.U
 	return nil
 }
 
-func (gc *GC) collectPods(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
-	pods, err := gc.k8s.Pods(gc.ns).List(option)
+func (gc *GC) collectPods(option api.ListOptions, runningSet map[types.UID]bool) error {
+	pods, err := gc.k8s.Core().Pods(gc.ns).List(option)
 	if err != nil {
 		return err
 	}
@@ -101,7 +99,7 @@ func (gc *GC) collectPods(option k8sapi.ListOptions, runningSet map[types.UID]bo
 			continue
 		}
 		if !runningSet[p.OwnerReferences[0].UID] {
-			err = gc.k8s.Pods(gc.ns).Delete(p.GetName(), k8sapi.NewDeleteOptions(0))
+			err = gc.k8s.Core().Pods(gc.ns).Delete(p.GetName(), api.NewDeleteOptions(0))
 			if err != nil {
 				return err
 			}
@@ -111,8 +109,8 @@ func (gc *GC) collectPods(option k8sapi.ListOptions, runningSet map[types.UID]bo
 	return nil
 }
 
-func (gc *GC) collectServices(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
-	srvs, err := gc.k8s.Services(gc.ns).List(option)
+func (gc *GC) collectServices(option api.ListOptions, runningSet map[types.UID]bool) error {
+	srvs, err := gc.k8s.Core().Services(gc.ns).List(option)
 	if err != nil {
 		return err
 	}
@@ -123,7 +121,7 @@ func (gc *GC) collectServices(option k8sapi.ListOptions, runningSet map[types.UI
 			continue
 		}
 		if !runningSet[srv.OwnerReferences[0].UID] {
-			err = gc.k8s.Services(gc.ns).Delete(srv.GetName())
+			err = gc.k8s.Core().Services(gc.ns).Delete(srv.GetName(), nil)
 			if err != nil {
 				return err
 			}
@@ -134,8 +132,8 @@ func (gc *GC) collectServices(option k8sapi.ListOptions, runningSet map[types.UI
 	return nil
 }
 
-func (gc *GC) collectReplicaSet(option k8sapi.ListOptions, runningSet map[types.UID]bool) error {
-	rss, err := gc.k8s.ReplicaSets(gc.ns).List(option)
+func (gc *GC) collectReplicaSet(option api.ListOptions, runningSet map[types.UID]bool) error {
+	rss, err := gc.k8s.Extensions().ReplicaSets(gc.ns).List(option)
 	if err != nil {
 		return err
 	}
@@ -146,7 +144,7 @@ func (gc *GC) collectReplicaSet(option k8sapi.ListOptions, runningSet map[types.
 			continue
 		}
 		if !runningSet[rs.OwnerReferences[0].UID] {
-			err = gc.k8s.ReplicaSets(gc.ns).Delete(rs.GetName(), k8sapi.NewDeleteOptions(0))
+			err = gc.k8s.Extensions().ReplicaSets(gc.ns).Delete(rs.GetName(), nil)
 			if err != nil {
 				return err
 			}

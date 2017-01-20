@@ -32,12 +32,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
 type Backup struct {
-	kclient *unversioned.Client
+	kclient kubernetes.Interface
 
 	clusterName string
 	namespace   string
@@ -49,7 +49,7 @@ type Backup struct {
 	backupNow chan chan error
 }
 
-func New(kclient *unversioned.Client, clusterName, ns string, policy spec.BackupPolicy, listenAddr string) *Backup {
+func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.BackupPolicy, listenAddr string) *Backup {
 	// We created not only backup dir and but also tmp dir under it.
 	// tmp dir is used to store intermediate snapshot files.
 	// It will be no-op if target dir existed.
@@ -129,15 +129,15 @@ func (b *Backup) Run() {
 }
 
 func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
-	podList, err := b.kclient.Pods(b.namespace).List(k8sutil.ClusterListOpt(b.clusterName))
+	podList, err := b.kclient.Core().Pods(b.namespace).List(k8sutil.ClusterListOpt(b.clusterName))
 	if err != nil {
 		return lastSnapRev, err
 	}
 
-	var pods []*api.Pod
+	var pods []*v1.Pod
 	for i := range podList.Items {
 		pod := &podList.Items[i]
-		if pod.Status.Phase == api.PodRunning {
+		if pod.Status.Phase == v1.PodRunning {
 			pods = append(pods, pod)
 		}
 	}
@@ -195,7 +195,7 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	return b.be.save(resp.Version, rev, rc)
 }
 
-func getMemberWithMaxRev(pods []*api.Pod) (*etcdutil.Member, int64) {
+func getMemberWithMaxRev(pods []*v1.Pod) (*etcdutil.Member, int64) {
 	var member *etcdutil.Member
 	maxRev := int64(0)
 	for _, pod := range pods {
