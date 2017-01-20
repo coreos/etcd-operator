@@ -33,6 +33,7 @@ import (
 	"github.com/pborman/uuid"
 	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api"
+	apierrors "k8s.io/client-go/1.5/pkg/api/errors"
 	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
@@ -479,7 +480,7 @@ func (c *Cluster) reportFailedStatus() {
 			return true, nil
 		}
 
-		if k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+		if apierrors.IsConflict(err) {
 			cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli.Core().GetRESTClient(), c.cluster.Namespace, c.cluster.Name)
 			if err != nil {
 				c.logger.Warningf("report status: fail to get latest version: %v", err)
