@@ -4,7 +4,7 @@ metadata:
   name: "etcd-cluster-with-backup"
 spec:
   size: 3
-  version: "v3.1.0-alpha.1"
+  version: "v3.1.0"
   backup:
     # short snapshot interval for testing, do not use this in production!
     backupIntervalInSecond: 30

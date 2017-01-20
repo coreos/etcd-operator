@@ -315,10 +315,10 @@ metadata:
   name: "etcd-cluster"
 spec:
   size: 3
-  version: "v3.0.13"
+  version: "v3.0.16"
 ```
 
-Create an etcd cluster with the version specified (3.0.13) in the yaml file:
+Create an etcd cluster with the version specified (3.0.16) in the yaml file:
 
 ```
 $ kubectl create -f 3.0-etcd-cluster.yaml
@@ -329,11 +329,11 @@ etcd-cluster-0001      1/1       Running   0          25s
 etcd-cluster-0002      1/1       Running   0          14s
 ```
 
-The container image version should be 3.0.13:
+The container image version should be 3.0.16:
 
 ```
 $ kubectl get pod etcd-cluster-0000 -o yaml | grep "image:" | uniq
-    image: quay.io/coreos/etcd:v3.0.13
+    image: quay.io/coreos/etcd:v3.0.16
 ```
 
 `kubectl apply` doesn't work for TPR at the moment. See [kubernetes/#29542](https://github.com/kubernetes/kubernetes/issues/29542).
@@ -347,7 +347,7 @@ Starting to serve on 127.0.0.1:8080
 ```
 
 Have following json file ready:
-(Note that the version field is changed from v3.0.13 to v3.1.0-alpha.1)
+(Note that the version field is changed from v3.0.16 to v3.1.0)
 
 ```
 $ cat body.json
@@ -359,7 +359,7 @@ $ cat body.json
   },
   "spec": {
     "size": 3,
-    "version": "v3.1.0-alpha.1"
+    "version": "v3.1.0"
   }
 }
 ```
