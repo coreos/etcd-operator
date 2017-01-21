@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -24,6 +23,8 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
+
+	"golang.org/x/net/context"
 )
 
 func TestClusterRestore(t *testing.T) {

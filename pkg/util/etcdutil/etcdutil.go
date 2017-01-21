@@ -15,7 +15,6 @@
 package etcdutil
 
 import (
-	"context"
 	"errors"
 	"net/url"
 	"regexp"
@@ -23,6 +22,8 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd/clientv3"
+
+	"golang.org/x/net/context"
 )
 
 var validPeerURL = regexp.MustCompile(`^\w+:\/\/[\w\.\-]+(:\d+)?$`)
