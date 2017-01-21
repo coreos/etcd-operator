@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"math/rand"
 	"net/url"
 	"os"
 	"path"
@@ -68,16 +69,17 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	host, _ := netutil.GetDefaultHost()
+	port := rand.Intn(61000-32768) + 32768 // linux ephemeral ports
 
 	embedCfg := embed.NewConfig()
 	embedCfg.Dir = dir
-	lpurl, _ := url.Parse("http://" + host + ":12380")
-	lcurl, _ := url.Parse("http://" + host + ":12379")
+	lpurl, _ := url.Parse(fmt.Sprintf("http://%s:%d", host, port+1))
+	lcurl, _ := url.Parse(fmt.Sprintf("http://%s:%d", host, port))
 	embedCfg.LCUrls = []url.URL{*lcurl}
 	embedCfg.LPUrls = []url.URL{*lpurl}
 
-	apurl, _ := url.Parse("http://" + host + ":12380")
-	acurl, _ := url.Parse("http://" + host + ":12379")
+	apurl, _ := url.Parse(fmt.Sprintf("http://%s:%d", host, port+1))
+	acurl, _ := url.Parse(fmt.Sprintf("http://%s:%d", host, port))
 	embedCfg.ACUrls = []url.URL{*acurl}
 	embedCfg.APUrls = []url.URL{*apurl}
 	embedCfg.InitialCluster = "default=" + apurl.String()
