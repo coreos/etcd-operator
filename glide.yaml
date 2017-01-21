@@ -14,6 +14,6 @@ import:
 - package: golang.org/x/net
 - package: golang.org/x/time
 - package: github.com/coreos/etcd
-  version: v3.1.0-alpha.1
+  version: v3.1.0
 - package: k8s.io/client-go
   version: v1.5.0
