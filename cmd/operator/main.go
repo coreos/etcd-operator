@@ -18,7 +18,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net/url"
 	"os"
 	"time"
 
@@ -28,19 +27,17 @@ import (
 	"github.com/coreos/etcd-operator/pkg/controller"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election/resourcelock"
 	"github.com/coreos/etcd-operator/version"
 
 	"github.com/Sirupsen/logrus"
 	"golang.org/x/time/rate"
 	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/labels"
 	"k8s.io/client-go/1.5/rest"
-	k8sapi "k8s.io/kubernetes/pkg/api"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/client/leaderelection"
-	"k8s.io/kubernetes/pkg/client/leaderelection/resourcelock"
-	"k8s.io/kubernetes/pkg/client/record"
-	"k8s.io/kubernetes/pkg/client/restclient"
+	"k8s.io/client-go/1.5/tools/record"
 )
 
 var (
@@ -112,11 +109,11 @@ func main() {
 	// TODO: replace this to client-go once leader election pacakge is imported
 	//       https://github.com/kubernetes/client-go/issues/28
 	rl := &resourcelock.EndpointsLock{
-		EndpointsMeta: k8sapi.ObjectMeta{
+		EndpointsMeta: api.ObjectMeta{
 			Namespace: namespace,
 			Name:      "etcd-operator",
 		},
-		Client: mustCreateLeaderElectionClient(masterHost, tlsInsecure, &restclient.TLSClientConfig{
+		Client: k8sutil.MustCreateClient(masterHost, tlsInsecure, &rest.TLSClientConfig{
 			CertFile: certFile,
 			KeyFile:  keyFile,
 			CAFile:   caFile,
@@ -127,12 +124,12 @@ func main() {
 		},
 	}
 
-	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
+	election.RunOrDie(election.LeaderElectionConfig{
 		Lock:          rl,
 		LeaseDuration: leaseDuration,
 		RenewDeadline: renewDuration,
 		RetryPeriod:   retryPeriod,
-		Callbacks: leaderelection.LeaderCallbacks{
+		Callbacks: election.LeaderCallbacks{
 			OnStartedLeading: run,
 			OnStoppedLeading: func() {
 				logrus.Fatalf("leader election lost")
@@ -234,31 +231,4 @@ func startChaos(ctx context.Context, k8s kubernetes.Interface, ns string, chaosL
 
 	default:
 	}
-}
-
-func mustCreateLeaderElectionClient(host string, tlsInsecure bool, tlsConfig *restclient.TLSClientConfig) clientset.Interface {
-	var cfg *restclient.Config
-	if len(host) == 0 {
-		var err error
-		cfg, err = restclient.InClusterConfig()
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		cfg = &restclient.Config{
-			Host:  host,
-			QPS:   100,
-			Burst: 100,
-		}
-		hostUrl, err := url.Parse(host)
-		if err != nil {
-			panic(fmt.Sprintf("failed to parse host url %s : %v", host, err))
-		}
-		if hostUrl.Scheme == "https" {
-			cfg.TLSClientConfig = *tlsConfig
-			cfg.Insecure = tlsInsecure
-		}
-	}
-
-	return clientset.NewForConfigOrDie(cfg)
 }
