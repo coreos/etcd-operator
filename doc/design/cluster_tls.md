@@ -7,7 +7,7 @@ The primary goals etcd-operator cluster TLS:
  * Cryptographically attestable identites for following components:
     * etcd operator
     * etcd cluster TPR objects
-    * backup tool pods
+    * backup sidecar pods
     * etcd pods
  * Cryptographically enforced cluster isolation (backup pod from cluster A CANNOT possibly talk to etcd pod in cluster B)
 
@@ -45,7 +45,7 @@ Here is the overview for etcd-operator TLS flow, which should set us up well for
 		  |		 	|                    |  etcd-cluster-A-0002
 		  |		 S	|                    |-------------> [ client-interface SERVER CERT ]
 		  |		 I	|                    |
-		  |		 G	|                    |  cluster-A-backup-tool
+		  |		 G	|                    |  cluster-A-backup-sidecar
 		  |		 N	|                    |-------------> [ client-interface CLIENT CERT ]
 		  |			|
 		  |			|
@@ -175,7 +175,7 @@ Here's a table showing how this process is currently used in the etcd operator T
 | external pki  | external CA    | operator | <ul><li>operator peer ca</li><li>operator client ca</li></ul> | CERTIFICATE AUTHORITY |
 | operator      | clusterA peer ca | etcd-xxxx | etcd-xxxx-peer-interface | SERVER CERTIFICATE |
 | operator      | clusterA client ca | etcd-xxxx | etcd-xxxx, client-interface | SERVER CERTIFICATE  |
-| operator      | clusterA client ca | clusterA-backup-tool | clusterA-backup-tool, client ce | CLIENT CERTIFICATE |
+| operator      | clusterA client ca | clusterA-backup-sidecar | clusterA-backup-sidecar, client ce | CLIENT CERTIFICATE |
 
 ## Things to note:
 * **Private Keys Stay Put:** If a private key is needed, is its generated on and never leaves the component that uses it. The business of shuffling around private key material across networks is a dangerous business.

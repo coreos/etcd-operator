@@ -119,7 +119,7 @@ func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 }
 
 func MakeBackupName(clusterName string) string {
-	return fmt.Sprintf("%s-backup-tool", clusterName)
+	return fmt.Sprintf("%s-backup-sidecar", clusterName)
 }
 
 func CreateEtcdMemberService(kubecli kubernetes.Interface, ns string, svc *v1.Service) (*v1.Service, error) {
