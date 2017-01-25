@@ -13,6 +13,7 @@ etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating thei
 - [Rolling upgrade](#upgrade-an-etcd-cluster)
 
 Read [Best Practices](./doc/best_practices.md) for more information on how to use etcd operator better.
+Read [Developer Guide](./doc/devel/development.md) for setting up Developer Environment
 
 ## Requirements
 
@@ -28,8 +29,6 @@ Users need to create multiple operators in different namespaces to manage etcd c
 
 ![etcd Operator demo](https://raw.githubusercontent.com/coreos/etcd-operator/master/doc/gif/demo.gif)
 
-## Developer Guide
-[Instructions](./doc/devel/development.md) for setting up Developer Environment
 
 ## Deploy etcd operator
 
