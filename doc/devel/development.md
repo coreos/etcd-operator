@@ -3,7 +3,7 @@ This document explains how to setup your dev environment.
 
 ## Prerequisite 
 - kubernetes 1.4 
-- go-lang version 1.7
+- GO 1.7+
 - docker 
 - glide 
 
