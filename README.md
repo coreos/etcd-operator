@@ -286,14 +286,14 @@ Now quorum is lost. The etcd operator will start to recover the cluster by:
 $ kubectl get pods
 NAME                                         READY     STATUS     RESTARTS   AGE
 etcd-cluster-with-backup-0003                0/1       Init:0/2   0          11s
-etcd-cluster-with-backup-backup-tool-e9gkv   1/1       Running    0          18m
+etcd-cluster-with-backup-backup-sidecar-e9gkv   1/1       Running    0          18m
 ...
 $ kubectl get pods
 NAME                                         READY     STATUS    RESTARTS   AGE
 etcd-cluster-with-backup-0003                1/1       Running   0          3m
 etcd-cluster-with-backup-0004                1/1       Running   0          3m
 etcd-cluster-with-backup-0005                1/1       Running   0          3m
-etcd-cluster-with-backup-backup-tool-e9gkv   1/1       Running   0          22m
+etcd-cluster-with-backup-backup-sidecar-e9gkv   1/1       Running   0          22m
 ```
 
 Finally, besides destroying the cluster, also cleanup the backup if you don't need it anymore:
