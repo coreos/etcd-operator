@@ -12,7 +12,9 @@ etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating thei
 - [Backup and restore a cluster](#disaster-recovery)
 - [Rolling upgrade](#upgrade-an-etcd-cluster)
 
-Read [Best Practices](./doc/best_practices.md) for more information on how to use etcd operator better.
+Read [Best Practices](./doc/best_practices.md) for more information on how to better use etcd operator.
+
+Read [Developer Guide](./doc/dev/developer_guide.md) for setting up development environment if you want to contribute.
 
 ## Requirements
 
