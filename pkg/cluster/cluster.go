@@ -391,7 +391,6 @@ func (c *Cluster) deleteClientServiceLB() error {
 }
 
 func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
-	// TODO: remove garbage service. Because we will fail after service created before pods created.
 	svc := k8sutil.MakeEtcdMemberService(m.Name, c.cluster.Name, c.cluster.AsOwner())
 	if _, err := k8sutil.CreateEtcdMemberService(c.config.KubeCli, c.cluster.Namespace, svc); err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
