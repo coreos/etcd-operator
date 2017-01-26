@@ -65,7 +65,6 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 		t.Parallel()
 	}
 	dir := path.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
-	os.RemoveAll(dir)
 	defer os.RemoveAll(dir)
 
 	host, _ := netutil.GetDefaultHost()
