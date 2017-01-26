@@ -84,6 +84,11 @@ func (ms MemberSet) IsEqual(other MemberSet) bool {
 	return true
 }
 
+func (ms MemberSet) Has(n string) bool {
+	_, exist := ms[n]
+	return exist
+}
+
 func (ms MemberSet) Size() int {
 	return len(ms)
 }
