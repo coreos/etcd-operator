@@ -43,7 +43,7 @@ func TestBackupVersionCompatiblity(t *testing.T) {
 		{"v3.1.0", http.StatusOK},
 		{"v3.2.0", http.StatusBadRequest},
 		{"v2.3.7", http.StatusBadRequest},
-		{"", http.StatusBadRequest},
+		{"", http.StatusOK},
 	}
 
 	for i, tt := range tests {

@@ -76,16 +76,20 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	versionValue := r.FormValue(util.BackupHTTPQueryVersion)
-	reqV, err := getMajorAndMinorVersion(strings.TrimLeft(versionValue, "v"))
-	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid param 'version' (%s): %v", versionValue, err), http.StatusBadRequest)
-		return
-	}
+	checkVersion := r.FormValue(util.BackupHTTPQueryVersion)
+	// If version param is empty, we don't need to check compatibility.
+	// This could happen if user manually requests it.
+	if len(checkVersion) != 0 {
+		reqV, err := getMajorAndMinorVersion(strings.TrimLeft(checkVersion, "v"))
+		if err != nil {
+			http.Error(w, fmt.Sprintf("invalid param 'version' (%s): %v", checkVersion, err), http.StatusBadRequest)
+			return
+		}
 
-	if !isVersionCompatible(reqV, serV) {
-		http.Error(w, fmt.Sprintf("requested version (%s) is not compatible with the backup (%s)", reqV, serV), http.StatusBadRequest)
-		return
+		if !isVersionCompatible(reqV, serV) {
+			http.Error(w, fmt.Sprintf("requested version (%s) is not compatible with the backup (%s)", reqV, serV), http.StatusBadRequest)
+			return
+		}
 	}
 
 	if r.Method == http.MethodHead {
