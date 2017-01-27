@@ -333,9 +333,13 @@ func IsKubernetesResourceNotFoundError(err error) bool {
 // We are using internal api types for cluster related.
 func ClusterListOpt(clusterName string) api.ListOptions {
 	return api.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			"etcd_cluster": clusterName,
-			"app":          "etcd",
-		}),
+		LabelSelector: labels.SelectorFromSet(newLablesForCluster(clusterName)),
+	}
+}
+
+func newLablesForCluster(clusterName string) map[string]string {
+	return map[string]string{
+		"etcd_cluster": clusterName,
+		"app":          "etcd",
 	}
 }
