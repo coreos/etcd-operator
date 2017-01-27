@@ -200,15 +200,12 @@ func backupNameAndLabel(clusterName string) (string, map[string]string) {
 	return name, labels
 }
 
-func MakeBackupReplicaSet(clusterName string, ps v1.PodSpec, owner metatypes.OwnerReference) *v1beta1extensions.ReplicaSet {
+func NewBackupReplicaSetManifest(clusterName string, ps v1.PodSpec, owner metatypes.OwnerReference) *v1beta1extensions.ReplicaSet {
 	name, labels := backupNameAndLabel(clusterName)
 	rs := &v1beta1extensions.ReplicaSet{
 		ObjectMeta: v1.ObjectMeta{
-			Name: name,
-			Labels: map[string]string{
-				"etcd_cluster": clusterName,
-				"app":          "etcd",
-			},
+			Name:   name,
+			Labels: newLablesForCluster(clusterName),
 		},
 		Spec: v1beta1extensions.ReplicaSetSpec{
 			Selector: &v1beta1extensions.LabelSelector{MatchLabels: labels},
@@ -224,12 +221,12 @@ func MakeBackupReplicaSet(clusterName string, ps v1.PodSpec, owner metatypes.Own
 	return rs
 }
 
-func MakeBackupService(clusterName string, owner metatypes.OwnerReference) *v1.Service {
+func NewBackupServiceManifest(clusterName string, owner metatypes.OwnerReference) *v1.Service {
 	name, labels := backupNameAndLabel(clusterName)
 	svc := &v1.Service{
 		ObjectMeta: v1.ObjectMeta{
 			Name:   name,
-			Labels: labels,
+			Labels: newLablesForCluster(clusterName),
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{

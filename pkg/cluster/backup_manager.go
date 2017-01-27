@@ -110,7 +110,7 @@ func (bm *backupManager) runSidecar() error {
 }
 
 func (bm *backupManager) createBackupReplicaSet(podSpec v1.PodSpec) error {
-	rs := k8sutil.MakeBackupReplicaSet(bm.cluster.Name, podSpec, bm.cluster.AsOwner())
+	rs := k8sutil.NewBackupReplicaSetManifest(bm.cluster.Name, podSpec, bm.cluster.AsOwner())
 	_, err := bm.config.KubeCli.Extensions().ReplicaSets(bm.cluster.Namespace).Create(rs)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
@@ -121,7 +121,7 @@ func (bm *backupManager) createBackupReplicaSet(podSpec v1.PodSpec) error {
 }
 
 func (bm *backupManager) createBackupService() error {
-	svc := k8sutil.MakeBackupService(bm.cluster.Name, bm.cluster.AsOwner())
+	svc := k8sutil.NewBackupServiceManifest(bm.cluster.Name, bm.cluster.AsOwner())
 	_, err := bm.config.KubeCli.Core().Services(bm.cluster.Namespace).Create(svc)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
