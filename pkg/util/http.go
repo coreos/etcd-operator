@@ -22,7 +22,7 @@ func MakeBackupURL(host, version string) *url.URL {
 	u := &url.URL{
 		Scheme: "http",
 		Host:   host,
-		Path:   "/backup",
+		Path:   "/v1/backup",
 	}
 	q := u.Query()
 	q.Set(BackupHTTPQueryVersion, version)
