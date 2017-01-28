@@ -33,7 +33,7 @@ func TestS3BackendPurge(t *testing.T) {
 	if os.Getenv("RUN_INTEGRATION_TEST") != "true" {
 		t.Skip("skipping integration test due to RUN_INTEGRATION_TEST not set")
 	}
-	prefix := randString(8) + "/"
+	prefix := randString(8)
 	s3cli, err := s3.New("test-bucket", prefix, session.Options{
 		Config: aws.Config{
 			Credentials:      credentials.NewStaticCredentials(os.Getenv("MINIO_ACCESS_KEY_ID"), os.Getenv("MINIO_SECRET_ACCESS_KEY"), ""),
