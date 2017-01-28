@@ -19,7 +19,7 @@ type s3 struct {
 }
 
 func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
-	s3cli, err := backups3.New(s3Ctx.S3Bucket, clusterName+"/", session.Options{
+	s3cli, err := backups3.New(s3Ctx.S3Bucket, clusterName, session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
 	if err != nil {
