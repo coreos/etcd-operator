@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup"
@@ -232,7 +233,7 @@ func RequestBackupNow(addr string) error {
 	httpcli := http.Client{
 		Timeout: 30 * time.Second,
 	}
-	resp, err := httpcli.Get(fmt.Sprintf("http://%s/%s/backupnow", addr, backup.APIV1))
+	resp, err := httpcli.Get(fmt.Sprintf("http://%s/backupnow", path.Join(addr, backup.APIV1)))
 	if err != nil {
 		return fmt.Errorf("backupnow (%s) failed: %v", addr, err)
 	}
