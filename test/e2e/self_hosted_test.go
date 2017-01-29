@@ -89,7 +89,11 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	}
 	defer e.Close()
 
-	<-e.Server.ReadyNotify()
+	select {
+	case <-e.Server.ReadyNotify():
+	case <-time.After(30 * time.Second):
+		t.Fatal("timeout: wait etcd server ready")
+	}
 
 	t.Log("etcdserver is ready")
 
