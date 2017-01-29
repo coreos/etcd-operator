@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,6 +29,9 @@ import (
 
 const (
 	APIV1 = "/v1"
+
+	HTTPHeaderEtcdVersion = "X-etcd-Version"
+	HTTPHeaderRevision    = "X-Revision"
 )
 
 func (b *Backup) startHTTP() {
@@ -70,7 +74,7 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	serV, err := getVersionFromBackupName(fname)
+	serV, err := getMajorMinorVersionFromBackup(fname)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("fail to parse etcd version from file (%s): %v", fname, err), http.StatusInternalServerError)
 		return
@@ -91,6 +95,13 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	w.Header().Set(HTTPHeaderEtcdVersion, getVersionFromBackup(fname))
+	rev, err := getRev(fname)
+	if err != nil {
+		panic("unexpected error:" + err.Error()) // fname should have already been verified
+	}
+	w.Header().Set(HTTPHeaderRevision, strconv.FormatInt(rev, 10))
 
 	if r.Method == http.MethodHead {
 		return

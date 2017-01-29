@@ -26,8 +26,12 @@ var compatibilityMap = map[string]map[string]struct{}{
 	"3.1": {"3.0": struct{}{}, "3.1": struct{}{}},
 }
 
-func getVersionFromBackupName(name string) (string, error) {
-	return getMajorAndMinorVersion(strings.SplitN(name, "_", 2)[0])
+func getMajorMinorVersionFromBackup(name string) (string, error) {
+	return getMajorAndMinorVersion(getVersionFromBackup(name))
+}
+
+func getVersionFromBackup(name string) string {
+	return strings.SplitN(name, "_", 2)[0]
 }
 
 func isVersionCompatible(req, serve string) bool {

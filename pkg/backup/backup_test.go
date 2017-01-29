@@ -26,6 +26,28 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util"
 )
 
+func TestResponseHeader(t *testing.T) {
+	d, err := setupBackupDir("3.1.0_000000000000000a_etcd.backup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(d)
+	b := &Backup{
+		be: &fileBackend{dir: d},
+	}
+	req := &http.Request{
+		URL: util.MakeBackupURL("ignore", ""),
+	}
+	rr := httptest.NewRecorder()
+	b.serveSnap(rr, req)
+	if get := rr.Header().Get(HTTPHeaderEtcdVersion); get != "3.1.0" {
+		t.Errorf("etcd version want=%s, get=%s", "3.1.0", get)
+	}
+	if get := rr.Header().Get(HTTPHeaderRevision); get != "10" {
+		t.Errorf("revision want=%s, get=%s", "10", get)
+	}
+}
+
 func TestBackupVersionCompatiblity(t *testing.T) {
 	d, err := setupBackupDir("3.0.15_0000000000000002_etcd.backup")
 	if err != nil {
