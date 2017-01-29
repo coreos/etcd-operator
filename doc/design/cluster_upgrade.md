@@ -19,7 +19,7 @@
 
 ## Support notes
 
-- Upgrade path: We only support one minor version upgrade, e.g. 3.0 -> 3.1, no 3.0 -> 3.2. Only support v3.0+
+- Upgrade path: We only support one minor version upgrade, e.g. 3.0 -> 3.1, no 3.0 -> 3.2. Only support 3.0+
 - Rollback: We relies on etcd operator to do periodic backup.
   For alpha release, we will provide features to do manual rollback.
   In the future, we might consider support automatic rollback.

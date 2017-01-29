@@ -15,7 +15,7 @@ etcd-cluster-backup-sidecar   10.39.243.229   <none>        19999/TCP           
 Given the etcd version of the cluster, you can download backup via HTTP endpoint
 `http://${CLUSTER_NAME}-backup-sidecar:19999/v1/backup?etcdVersion=${ETCD_VERSION}` . For example:
 ```
-$ curl "http://etcd-cluster-backup-sidecar:19999/v1/backup?etcdVersion=v3.1.0" -o v3.1.0_etcd.backup
+$ curl "http://etcd-cluster-backup-sidecar:19999/v1/backup?etcdVersion=3.1.0" -o 3.1.0_etcd.backup
 ```
 "etcdVersion" parameter is the version of the potential etcd cluster to restore and run.
 On success, the backup's etcd version should be compatible with given version.

@@ -102,7 +102,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 }
 
 func MakeEtcdImage(version string) string {
-	return fmt.Sprintf("quay.io/coreos/etcd:%v", version)
+	return fmt.Sprintf("quay.io/coreos/etcd:v%v", version)
 }
 
 func GetNodePortString(srv *v1.Service) string {
