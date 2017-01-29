@@ -19,6 +19,7 @@ Read [Developer Guide](./doc/dev/developer_guide.md) for setting up development 
 ## Requirements
 
 - Kubernetes 1.4+
+  **Warning**: as of Kubernetes 1.5.2 etcd operator won't well work due to k8s bug: https://github.com/kubernetes/kubernetes/issues/39816 .
 - etcd 3.0+
 
 ## Namespace
