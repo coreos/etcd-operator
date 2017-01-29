@@ -65,8 +65,8 @@ func testClusterRestore(t *testing.T, needDataClone bool) {
 
 func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec.BackupStorageType) {
 	f := framework.Global
-	origEtcd := makeEtcdCluster("test-etcd-", 3)
-	testEtcd, err := createEtcdCluster(t, f,
+	origEtcd := newClusterSpec("test-etcd-", 3)
+	testEtcd, err := createCluster(t, f,
 		etcdClusterWithBackup(origEtcd, backupPolicyWithStorageType(makeBackupPolicy(false), bt)))
 	if err != nil {
 		t.Fatal(err)
@@ -112,7 +112,7 @@ func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec
 		BackupClusterName: testEtcd.Name,
 		StorageType:       bt,
 	})
-	testEtcd, err = createEtcdCluster(t, f,
+	testEtcd, err = createCluster(t, f,
 		etcdClusterWithBackup(origEtcd, backupPolicyWithStorageType(makeBackupPolicy(true), bt)))
 	if err != nil {
 		t.Fatal(err)

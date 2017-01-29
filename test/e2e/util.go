@@ -132,7 +132,7 @@ func killMembers(f *framework.Framework, names ...string) error {
 	return nil
 }
 
-func makeEtcdCluster(genName string, size int) *spec.EtcdCluster {
+func newClusterSpec(genName string, size int) *spec.EtcdCluster {
 	return &spec.EtcdCluster{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "EtcdCluster",
@@ -177,12 +177,12 @@ func etcdClusterWithVersion(ec *spec.EtcdCluster, version string) *spec.EtcdClus
 	return ec
 }
 
-func etcdClusterWithSelfHosted(ec *spec.EtcdCluster, sh *spec.SelfHostedPolicy) *spec.EtcdCluster {
+func clusterWithSelfHosted(ec *spec.EtcdCluster, sh *spec.SelfHostedPolicy) *spec.EtcdCluster {
 	ec.Spec.SelfHosted = sh
 	return ec
 }
 
-func createEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+func createCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
 	uri := fmt.Sprintf("/apis/coreos.com/v1/namespaces/%s/etcdclusters", f.Namespace)
 	b, err := f.KubeClient.Core().GetRESTClient().Post().Body(e).RequestURI(uri).DoRaw()
 	if err != nil {

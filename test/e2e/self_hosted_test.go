@@ -44,9 +44,9 @@ func testCreateSelfHostedCluster(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	c := makeEtcdCluster("test-etcd-", 3)
-	c = etcdClusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
-	testEtcd, err := createEtcdCluster(t, f, c)
+	c := newClusterSpec("test-etcd-", 3)
+	c = clusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
+	testEtcd, err := createCluster(t, f, c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,11 +101,11 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 
 	f := framework.Global
 
-	c := makeEtcdCluster("test-etcd-", 3)
-	c = etcdClusterWithSelfHosted(c, &spec.SelfHostedPolicy{
+	c := newClusterSpec("test-etcd-", 3)
+	c = clusterWithSelfHosted(c, &spec.SelfHostedPolicy{
 		BootMemberClientEndpoint: embedCfg.ACUrls[0].String(),
 	})
-	testEtcd, err := createEtcdCluster(t, f, c)
+	testEtcd, err := createCluster(t, f, c)
 	if err != nil {
 		t.Fatal(err)
 	}
