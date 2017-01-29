@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	storageClassPrefix        = "etcd-operator-backup"
+	storageClassPrefix        = "etcd-backup"
 	BackupPodSelectorAppField = "etcd_backup_tool"
 	backupPVVolName           = "etcd-backup-storage"
 	awsCredentialDir          = "/root/.aws/"
@@ -45,6 +45,8 @@ const (
 	awsSecretVolName          = "secret-aws"
 	awsConfigVolName          = "config-aws"
 	fromDirMountDir           = "/mnt/backup/from"
+
+	PVBackupV1 = "v1" // TODO: refactor and combine this with pkg/backup.PVBackupV1
 )
 
 func CreateStorageClass(kubecli kubernetes.Interface, pvProvisioner string) error {
@@ -114,7 +116,7 @@ var BackupImage = "quay.io/coreos/etcd-operator:latest"
 func PodSpecWithPV(ps *v1.PodSpec, clusterName string) *v1.PodSpec {
 	ps.Containers[0].VolumeMounts = []v1.VolumeMount{{
 		Name:      backupPVVolName,
-		MountPath: constants.BackupDir,
+		MountPath: constants.BackupMountDir,
 	}}
 	ps.Volumes = []v1.Volume{{
 		Name: backupPVVolName,
@@ -275,6 +277,9 @@ func DeletePVC(kubecli kubernetes.Interface, clusterName, ns string) error {
 }
 
 func CopyVolume(kubecli kubernetes.Interface, fromClusterName, toClusterName, ns string) error {
+	from := path.Join(fromDirMountDir, PVBackupV1, fromClusterName)
+	to := path.Join(constants.BackupMountDir, PVBackupV1, toClusterName)
+
 	pod := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name: copyVolumePodName(toClusterName),
@@ -290,14 +295,14 @@ func CopyVolume(kubecli kubernetes.Interface, fromClusterName, toClusterName, ns
 					Command: []string{
 						"/bin/sh",
 						"-c",
-						fmt.Sprintf("cp -r %s/* %s/", fromDirMountDir, constants.BackupDir),
+						fmt.Sprintf("mkdir -p %[2]s; cp -r %[1]s/* %[2]s/", from, to),
 					},
 					VolumeMounts: []v1.VolumeMount{{
 						Name:      "from-dir",
 						MountPath: fromDirMountDir,
 					}, {
 						Name:      "to-dir",
-						MountPath: constants.BackupDir,
+						MountPath: constants.BackupMountDir,
 					}},
 				},
 			},
@@ -336,8 +341,11 @@ func CopyVolume(kubecli kubernetes.Interface, fromClusterName, toClusterName, ns
 		case v1.PodSucceeded:
 			return true, nil
 		case v1.PodFailed:
-			return false, fmt.Errorf("backup copy pod (%s) failed: %v, %v", pod.Name, pod.Status.Reason,
-				pod.Status.ContainerStatuses[0].LastTerminationState.Terminated.Reason)
+			var termReason string
+			if len(pod.Status.ContainerStatuses) > 0 {
+				termReason = pod.Status.ContainerStatuses[0].LastTerminationState.Terminated.Reason
+			}
+			return false, fmt.Errorf("backup copy pod (%s) failed: %v, %v", pod.Name, pod.Status.Reason, termReason)
 		}
 		return false, nil
 	})

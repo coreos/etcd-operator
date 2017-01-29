@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
+	"path"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/env"
@@ -36,6 +36,10 @@ import (
 	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
+const (
+	PVBackupV1 = "v1"
+)
+
 type Backup struct {
 	kclient kubernetes.Interface
 
@@ -50,17 +54,19 @@ type Backup struct {
 }
 
 func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.BackupPolicy, listenAddr string) *Backup {
+	bdir := path.Join(constants.BackupMountDir, PVBackupV1, clusterName)
 	// We created not only backup dir and but also tmp dir under it.
 	// tmp dir is used to store intermediate snapshot files.
 	// It will be no-op if target dir existed.
-	if err := os.MkdirAll(filepath.Join(constants.BackupDir, backupTmpDir), 0700); err != nil {
+	tmpDir := path.Join(bdir, backupTmpDir)
+	if err := os.MkdirAll(tmpDir, 0700); err != nil {
 		panic(err)
 	}
 
 	var be backend
 	switch policy.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-		be = &fileBackend{dir: constants.BackupDir}
+		be = &fileBackend{dir: bdir}
 	case spec.BackupStorageTypeS3:
 		prefix := clusterName + "/"
 		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), prefix, session.Options{
@@ -70,7 +76,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.Backu
 			panic(err)
 		}
 		be = &s3Backend{
-			dir: constants.BackupDir,
+			dir: tmpDir,
 			S3:  s3cli,
 		}
 	default:

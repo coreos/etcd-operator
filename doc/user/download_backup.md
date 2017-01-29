@@ -47,7 +47,7 @@ $ aws s3 ls ${BUCKET_NAME}/v1/${CLUSTER_NAME}/
 Backup file name format is `${ETCD_VERSION}_${CLUSTER_REVISION}_etcd.backup` . Revision is hexadecimal.
 
 Unless intentional, just pick the backup with max revision. 
-E.g. in above examples, we would pick file "3.1.0_0000000000000005_etcd.backup" .
+E.g. in above examples, we would pick file "3.1.0_000000000000000f_etcd.backup" .
 
 Download backup:
 ```
@@ -55,5 +55,26 @@ $ aws s3 cp "s3://${BUCKET_NAME}/v1/${CLUSTER_NAME}/${MAX_REVISION_BACKUP}" $tar
 ```
 
 ## Get backup from PV
+If backup service is healthy, we suggest to get backups via that.
 
-TODO
+However, in disaster scenarios like when Kubernetes is down, the backup service is not running,
+and we cannot retrieve backup from backup service.
+
+If backup storage type is "PV", users need to get backup directly from PV.
+
+TODO: document how to find and mount the disk.
+
+Given the cluster name, backups are stored under dir `/var/etcd-backup/v1/${CLUSTER_NAME}/` .
+
+List all backup files:
+```
+$ ls /var/etcd-backup/v1/${CLUSTER_NAME}/
+3.1.0_0000000000000002_etcd.backup 3.1.0_000000000000000f_etcd.backup ...
+```
+
+Backup file name format is `${ETCD_VERSION}_${CLUSTER_REVISION}_etcd.backup` . Revision is hexadecimal.
+
+Unless intentional, just pick the backup with max revision.
+E.g. in above examples, we would pick file "3.1.0_000000000000000f_etcd.backup" .
+
+TODO: document how to download.

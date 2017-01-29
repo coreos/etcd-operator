@@ -55,7 +55,7 @@ func init() {
 
 func main() {
 	if printVersion {
-		fmt.Println("etcd-operator-backup", version.Version)
+		fmt.Println("etcd-backup", version.Version)
 		os.Exit(0)
 	}
 

@@ -245,7 +245,7 @@ By default, the etcd operator creates a storage class on initialization:
 ```
 $ kubectl get storageclass
 NAME                            TYPE
-etcd-operator-backup-gce-pd   kubernetes.io/gce-pd
+etcd-backup-gce-pd   kubernetes.io/gce-pd
 ```
 
 This is used to request the persistent volume to store the backup data. (AWS EBS supported using --pv-provisioner=kubernetes.io/aws-ebs. See [AWS deployment](example/deployment-aws.yaml))
