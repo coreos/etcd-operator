@@ -38,7 +38,7 @@ import (
 )
 
 const (
-	defaultVersion = "v3.1.0"
+	defaultVersion = "3.1.0"
 )
 
 var (

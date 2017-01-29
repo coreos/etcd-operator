@@ -19,7 +19,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util"
@@ -84,7 +83,7 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 	// If version param is empty, we don't need to check compatibility.
 	// This could happen if user manually requests it.
 	if len(checkVersion) != 0 {
-		reqV, err := getMajorAndMinorVersion(strings.TrimLeft(checkVersion, "v"))
+		reqV, err := getMajorAndMinorVersion(checkVersion)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("invalid param 'version' (%s): %v", checkVersion, err), http.StatusBadRequest)
 			return

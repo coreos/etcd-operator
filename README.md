@@ -317,7 +317,7 @@ metadata:
   name: "etcd-cluster"
 spec:
   size: 3
-  version: "v3.0.16"
+  version: "3.0.16"
 ```
 
 Create an etcd cluster with the version specified (3.0.16) in the yaml file:
@@ -349,7 +349,7 @@ Starting to serve on 127.0.0.1:8080
 ```
 
 Have following json file ready:
-(Note that the version field is changed from v3.0.16 to v3.1.0)
+(Note that the version field is changed from 3.0.16 to 3.1.0)
 
 ```
 $ cat body.json
@@ -361,7 +361,7 @@ $ cat body.json
   },
   "spec": {
     "size": 3,
-    "version": "v3.1.0"
+    "version": "3.1.0"
   }
 }
 ```
@@ -373,11 +373,11 @@ $ curl -H 'Content-Type: application/json' -X PUT --data @body.json \
     http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
 ```
 
-Wait ~30 seconds. The container image version should be updated to v3.1.0-alpha.1:
+Wait ~30 seconds. The container image version should be updated to v3.1.0:
 
 ```
 $ kubectl get pod etcd-cluster-0000 -o yaml | grep "image:" | uniq
-    image: quay.io/coreos/etcd:v3.1.0-alpha.1
+    image: quay.io/coreos/etcd:v3.1.0
 ```
 
 Check the other two pods and you should see the same result.
