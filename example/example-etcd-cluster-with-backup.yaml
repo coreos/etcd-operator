@@ -9,5 +9,6 @@ spec:
     # short snapshot interval for testing, do not use this in production!
     backupIntervalInSecond: 30
     maxBackups: 5
-    volumeSizeInMB: 512
     storageType: "PersistentVolume"
+    pv:
+      volumeSizeInMB: 512

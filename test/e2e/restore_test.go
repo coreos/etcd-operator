@@ -60,17 +60,18 @@ func testClusterRestoreDifferentName(t *testing.T) {
 }
 
 func testClusterRestore(t *testing.T, needDataClone bool) {
-	testClusterRestoreWithStorageType(t, needDataClone, spec.BackupStorageTypePersistentVolume)
+	testClusterRestoreWithBackupPolicy(t, needDataClone, newBackupPolicyPV())
 }
 
-func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec.BackupStorageType) {
+func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backupPolicy *spec.BackupPolicy) {
 	f := framework.Global
+
 	origEtcd := newClusterSpec("test-etcd-", 3)
-	testEtcd, err := createCluster(t, f,
-		etcdClusterWithBackup(origEtcd, backupPolicyWithStorageType(makeBackupPolicy(false), bt)))
+	testEtcd, err := createCluster(t, f, etcdClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	names, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
@@ -106,14 +107,15 @@ func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec
 		origEtcd.GenerateName = ""
 		origEtcd.Name = testEtcd.Name
 	}
-	waitRestoreTimeout := calculateClusterRestoreWaitTime(bt, needDataClone)
+	waitRestoreTimeout := calculateRestoreWaitTime(needDataClone)
 
 	origEtcd = etcdClusterWithRestore(origEtcd, &spec.RestorePolicy{
 		BackupClusterName: testEtcd.Name,
-		StorageType:       bt,
+		StorageType:       backupPolicy.StorageType,
 	})
-	testEtcd, err = createCluster(t, f,
-		etcdClusterWithBackup(origEtcd, backupPolicyWithStorageType(makeBackupPolicy(true), bt)))
+
+	backupPolicy.CleanupBackupsOnClusterDelete = true
+	testEtcd, err = createCluster(t, f, etcdClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,6 +124,7 @@ func testClusterRestoreWithStorageType(t *testing.T, needDataClone bool, bt spec
 			t.Fatal(err)
 		}
 	}()
+
 	names, err = waitUntilSizeReached(t, f, testEtcd.Name, 3, waitRestoreTimeout)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
@@ -168,15 +171,8 @@ func checkEtcdData(t *testing.T, addr string) {
 	}
 }
 
-func calculateClusterRestoreWaitTime(bt spec.BackupStorageType, needDataClone bool) time.Duration {
-	var waitTime time.Duration
-	switch bt {
-	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-		// It could take very long due to delay of k8s controller detaching the volume
-		waitTime = 180 * time.Second
-	default:
-		waitTime = 120 * time.Second
-	}
+func calculateRestoreWaitTime(needDataClone bool) time.Duration {
+	waitTime := 180 * time.Second
 	if needDataClone {
 		// Take additional time to clone the data.
 		waitTime += 60 * time.Second
@@ -188,12 +184,14 @@ func testClusterRestoreS3SameName(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testClusterRestoreWithStorageType(t, false, spec.BackupStorageTypeS3)
+
+	testClusterRestoreWithBackupPolicy(t, false, newBackupPolicyS3())
 }
 
 func testClusterRestoreS3DifferentName(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testClusterRestoreWithStorageType(t, true, spec.BackupStorageTypeS3)
+
+	testClusterRestoreWithBackupPolicy(t, true, newBackupPolicyS3())
 }
