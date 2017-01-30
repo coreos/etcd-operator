@@ -16,10 +16,10 @@ package e2e
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/url"
 	"os"
-	"path"
 	"testing"
 	"time"
 
@@ -64,7 +64,10 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	dir := path.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
+	dir, err := ioutil.TempDir("", "embed-etcd")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(dir)
 
 	host, _ := netutil.GetDefaultHost()
