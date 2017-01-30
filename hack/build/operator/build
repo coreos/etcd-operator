@@ -16,18 +16,18 @@ fi
 
 : ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator"}
 
-bin_dir="_output/bin"
+bin_dir="$(pwd)/_output/bin"
 mkdir -p ${bin_dir} || true
 
 
 ldKVPairs="github.com/coreos/etcd-operator/pkg/util/k8sutil.BackupImage=${IMAGE}"
 go_ldflags="-X ${ldKVPairs}"
 
-CGO_ENABLED=0 go build -installsuffix cgo -ldflags "$go_ldflags" \
-	-o ${bin_dir}/etcd-operator ./cmd/operator/main.go
-CGO_ENABLED=0 go build -installsuffix cgo -ldflags "$go_ldflags" \
-	-o ${bin_dir}/etcd-backup ./cmd/backup/main.go
+GOBIN=${bin_dir} CGO_ENABLED=0 go install -installsuffix cgo -ldflags "$go_ldflags" ./cmd/operator/
+mv ${bin_dir}/operator ${bin_dir}/etcd-operator
 
+GOBIN=${bin_dir} CGO_ENABLED=0 go install -installsuffix cgo -ldflags "$go_ldflags" ./cmd/backup/
+mv ${bin_dir}/backup ${bin_dir}/etcd-backup
 
 docker build --tag "${IMAGE}" -f hack/build/operator/Dockerfile . 1>/dev/null
 # For gcr users, do "gcloud docker -a" to have access.
