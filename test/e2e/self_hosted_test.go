@@ -44,7 +44,9 @@ func testCreateSelfHostedCluster(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := createEtcdCluster(t, f, makeSelfHostedEnabledCluster("test-etcd-", 3))
+	c := newClusterSpec("test-etcd-", 3)
+	c = clusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
+	testEtcd, err := createCluster(t, f, c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,23 +104,11 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 
 	f := framework.Global
 
-	c := &spec.EtcdCluster{
-		TypeMeta: unversioned.TypeMeta{
-			Kind:       "EtcdCluster",
-			APIVersion: "coreos.com/v1",
-		},
-		ObjectMeta: v1.ObjectMeta{
-			GenerateName: "etcd-test-seed-",
-		},
-		Spec: &spec.ClusterSpec{
-			Size: 3,
-			SelfHosted: &spec.SelfHostedPolicy{
-				BootMemberClientEndpoint: embedCfg.ACUrls[0].String(),
-			},
-		},
-	}
-
-	testEtcd, err := createEtcdCluster(t, f, c)
+	c := newClusterSpec("test-etcd-", 3)
+	c = clusterWithSelfHosted(c, &spec.SelfHostedPolicy{
+		BootMemberClientEndpoint: embedCfg.ACUrls[0].String(),
+	})
+	testEtcd, err := createCluster(t, f, c)
 	if err != nil {
 		t.Fatal(err)
 	}

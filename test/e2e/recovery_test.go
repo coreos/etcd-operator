@@ -51,7 +51,7 @@ func testOneMemberRecovery(t *testing.T) {
 	}
 
 	f := framework.Global
-	testEtcd, err := createEtcdCluster(t, f, makeEtcdCluster("test-etcd-", 3))
+	testEtcd, err := createCluster(t, f, newClusterSpec("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,9 +99,9 @@ func testDisasterRecovery(t *testing.T, numToKill int) {
 
 func testDisasterRecoveryWithStorageType(t *testing.T, numToKill int, bt spec.BackupStorageType) {
 	f := framework.Global
-	origEtcd := makeEtcdCluster("test-etcd-", 3)
+	origEtcd := newClusterSpec("test-etcd-", 3)
 	bp := backupPolicyWithStorageType(makeBackupPolicy(true), bt)
-	testEtcd, err := createEtcdCluster(t, f, etcdClusterWithBackup(origEtcd, bp))
+	testEtcd, err := createCluster(t, f, etcdClusterWithBackup(origEtcd, bp))
 	if err != nil {
 		t.Fatal(err)
 	}
