@@ -122,7 +122,7 @@ func MakeBackupName(clusterName string) string {
 	return fmt.Sprintf("%s-backup-sidecar", clusterName)
 }
 
-func CreateEtcdMemberService(kubecli kubernetes.Interface, ns string, svc *v1.Service) (*v1.Service, error) {
+func CreateMemberService(kubecli kubernetes.Interface, ns string, svc *v1.Service) (*v1.Service, error) {
 	retSvc, err := kubecli.Core().Services(ns).Create(svc)
 	if err != nil {
 		return nil, err
@@ -194,16 +194,13 @@ func makeEtcdService(clusterName string) *v1.Service {
 }
 
 // TODO: converge the port logic with member ClientAddr() and PeerAddr()
-func MakeEtcdMemberService(etcdName, clusterName string, owner metatypes.OwnerReference) *v1.Service {
-	labels := map[string]string{
-		"app":          "etcd",
-		"etcd_node":    etcdName,
-		"etcd_cluster": clusterName,
-	}
+func NewMemberServiceManifest(etcdName, clusterName string, owner metatypes.OwnerReference) *v1.Service {
 	svc := &v1.Service{
 		ObjectMeta: v1.ObjectMeta{
-			Name:   etcdName,
-			Labels: labels,
+			Name: etcdName,
+			Labels: map[string]string{
+				"etcd_cluster": clusterName,
+			},
 			Annotations: map[string]string{
 				annotationPrometheusScrape: "true",
 				annotationPrometheusPort:   "2379",
@@ -224,7 +221,11 @@ func MakeEtcdMemberService(etcdName, clusterName string, owner metatypes.OwnerRe
 					Protocol:   v1.ProtocolTCP,
 				},
 			},
-			Selector: labels,
+			Selector: map[string]string{
+				"app":          "etcd",
+				"etcd_node":    etcdName,
+				"etcd_cluster": clusterName,
+			},
 		},
 	}
 	addOwnerRefToObject(svc.GetObjectMeta(), owner)
