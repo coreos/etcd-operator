@@ -94,14 +94,15 @@ func testDisasterRecoveryAll(t *testing.T) {
 }
 
 func testDisasterRecovery(t *testing.T, numToKill int) {
-	testDisasterRecoveryWithStorageType(t, numToKill, spec.BackupStorageTypePersistentVolume)
+	testDisasterRecoveryWithBackupPolicy(t, numToKill, newBackupPolicyPV())
 }
 
-func testDisasterRecoveryWithStorageType(t *testing.T, numToKill int, bt spec.BackupStorageType) {
+func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPolicy *spec.BackupPolicy) {
 	f := framework.Global
+
+	backupPolicy.CleanupBackupsOnClusterDelete = true
 	origEtcd := newClusterSpec("test-etcd-", 3)
-	bp := backupPolicyWithStorageType(makeBackupPolicy(true), bt)
-	testEtcd, err := createCluster(t, f, etcdClusterWithBackup(origEtcd, bp))
+	testEtcd, err := createCluster(t, f, etcdClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,12 +148,14 @@ func testS3MajorityDown(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testDisasterRecoveryWithStorageType(t, 2, spec.BackupStorageTypeS3)
+
+	testDisasterRecoveryWithBackupPolicy(t, 2, newBackupPolicyS3())
 }
 
 func testS3AllDown(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testDisasterRecoveryWithStorageType(t, 3, spec.BackupStorageTypeS3)
+
+	testDisasterRecoveryWithBackupPolicy(t, 3, newBackupPolicyS3())
 }

@@ -147,24 +147,33 @@ func newClusterSpec(genName string, size int) *spec.EtcdCluster {
 	}
 }
 
-func makeBackupPolicy(cleanup bool) *spec.BackupPolicy {
-	return &spec.BackupPolicy{
-		BackupIntervalInSecond:        60 * 60,
-		MaxBackups:                    5,
-		VolumeSizeInMB:                512,
-		StorageType:                   spec.BackupStorageTypeDefault,
-		CleanupBackupsOnClusterDelete: cleanup,
-	}
-}
-
-func backupPolicyWithStorageType(bp *spec.BackupPolicy, bt spec.BackupStorageType) *spec.BackupPolicy {
-	bp.StorageType = bt
-	return bp
-}
-
 func etcdClusterWithBackup(ec *spec.EtcdCluster, backupPolicy *spec.BackupPolicy) *spec.EtcdCluster {
 	ec.Spec.Backup = backupPolicy
 	return ec
+}
+
+func newBackupPolicyS3() *spec.BackupPolicy {
+	return &spec.BackupPolicy{
+		BackupIntervalInSecond: 60 * 60,
+		MaxBackups:             5,
+		StorageType:            spec.BackupStorageTypeS3,
+		StorageSource: spec.StorageSource{
+			S3: &spec.S3Source{},
+		},
+	}
+}
+
+func newBackupPolicyPV() *spec.BackupPolicy {
+	return &spec.BackupPolicy{
+		BackupIntervalInSecond: 60 * 60,
+		MaxBackups:             5,
+		StorageType:            spec.BackupStorageTypePersistentVolume,
+		StorageSource: spec.StorageSource{
+			PV: &spec.PVSource{
+				VolumeSizeInMB: 512,
+			},
+		},
+	}
 }
 
 func etcdClusterWithRestore(ec *spec.EtcdCluster, restorePolicy *spec.RestorePolicy) *spec.EtcdCluster {

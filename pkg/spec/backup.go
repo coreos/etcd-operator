@@ -28,6 +28,8 @@ type BackupPolicy struct {
 	// If it's not set by user, the default is "PersistentVolume".
 	StorageType BackupStorageType `json:"storageType"`
 
+	StorageSource `json:",inline"`
+
 	// BackupIntervalInSecond specifies the interval between two backups.
 	// The default interval is 1800 seconds.
 	BackupIntervalInSecond int `json:"backupIntervalInSecond"`
@@ -38,13 +40,23 @@ type BackupPolicy struct {
 	// time).
 	MaxBackups int `json:"maxBackups"`
 
+	// CleanupBackupsOnClusterDelete tells whether to cleanup backup data if cluster is deleted.
+	// By default, operator will keep the backup data.
+	CleanupBackupsOnClusterDelete bool `json:"cleanupBackupsOnClusterDelete"`
+}
+
+type StorageSource struct {
+	PV *PVSource `json:"pv,omitempty"`
+	S3 *S3Source `json:"s3,omitempty"`
+}
+
+type PVSource struct {
 	// VolumeSizeInMB specifies the required volume size to perform backups.
 	// Operator will claim the required size before creating the etcd cluster for backup
 	// purpose.
 	// If the snapshot size is larger than the size specified, backup fails.
 	VolumeSizeInMB int `json:"volumeSizeInMB"`
+}
 
-	// CleanupBackupsOnClusterDelete tells whether to cleanup backup data if cluster is deleted.
-	// By default, operator will keep the backup data.
-	CleanupBackupsOnClusterDelete bool `json:"cleanupBackupsOnClusterDelete"`
+type S3Source struct {
 }
