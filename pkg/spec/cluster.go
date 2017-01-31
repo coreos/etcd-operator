@@ -17,11 +17,16 @@ package spec
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"k8s.io/client-go/1.5/pkg/api/meta/metatypes"
 	"k8s.io/client-go/1.5/pkg/api/unversioned"
 	"k8s.io/client-go/1.5/pkg/api/v1"
+)
+
+const (
+	defaultVersion = "3.1.0"
 )
 
 var (
@@ -58,6 +63,9 @@ type ClusterSpec struct {
 	// Version is the expected version of the etcd cluster.
 	// The etcd-operator will eventually make the etcd cluster version
 	// equal to the expected version.
+	//
+	// The version must follow the [semver]( http://semver.org) format, for example "3.1.0".
+	// Only etcd released versions are supported: https://github.com/coreos/etcd/releases
 	Version string `json:"version"`
 
 	// Backup defines the policy to backup data of etcd cluster if not nil.
@@ -106,6 +114,15 @@ func (c *ClusterSpec) Validate() error {
 		}
 	}
 	return nil
+}
+
+// Cleanup cleans up user passed spec, e.g. defaulting, transforming fields.
+// TODO: move this to admission controller
+func (c *ClusterSpec) Cleanup() {
+	if len(c.Version) == 0 {
+		c.Version = defaultVersion
+	}
+	c.Version = strings.TrimLeft(c.Version, "v")
 }
 
 type ClusterPhase string

@@ -37,10 +37,6 @@ import (
 	v1beta1extensions "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
 )
 
-const (
-	defaultVersion = "3.1.0"
-)
-
 var (
 	supportedPVProvisioners = map[string]struct{}{
 		"kubernetes.io/gce-pd":  {},
@@ -144,11 +140,7 @@ func (c *Controller) Run() error {
 	go func() {
 		for event := range eventCh {
 			clus := event.Object
-
-			if s := clus.Spec; len(s.Version) == 0 {
-				// TODO: set version in spec in apiserver
-				s.Version = defaultVersion
-			}
+			clus.Spec.Cleanup()
 
 			switch event.Type {
 			case "ADDED":
@@ -193,10 +185,7 @@ func (c *Controller) findAllClusters() (string, error) {
 			continue
 		}
 
-		if s := clus.Spec; len(s.Version) == 0 {
-			// TODO: set version in spec in apiserver
-			s.Version = defaultVersion
-		}
+		clus.Spec.Cleanup()
 
 		stopC := make(chan struct{})
 		nc := cluster.New(c.makeClusterConfig(), &clus, stopC, &c.waitCluster)
