@@ -27,9 +27,6 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/pkg/netutil"
-
-	"k8s.io/client-go/1.5/pkg/api/unversioned"
-	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
 func TestSelfHosted(t *testing.T) {
@@ -121,21 +118,5 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 
 	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 120*time.Second); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
-	}
-}
-
-func makeSelfHostedEnabledCluster(genName string, size int) *spec.EtcdCluster {
-	return &spec.EtcdCluster{
-		TypeMeta: unversioned.TypeMeta{
-			Kind:       "EtcdCluster",
-			APIVersion: "coreos.com/v1",
-		},
-		ObjectMeta: v1.ObjectMeta{
-			GenerateName: genName,
-		},
-		Spec: &spec.ClusterSpec{
-			Size:       size,
-			SelfHosted: &spec.SelfHostedPolicy{},
-		},
 	}
 }
