@@ -42,7 +42,9 @@ func (c *Cluster) reconcile(pods []*v1.Pod) error {
 	c.logger.Infoln("Start reconciling")
 	defer c.logger.Infoln("Finish reconciling")
 
-	c.status.Size = c.members.Size()
+	defer func() {
+		c.status.Size = c.members.Size()
+	}()
 
 	sp := c.cluster.Spec
 	running := podsToMemberSet(pods, c.cluster.Spec.SelfHosted)
