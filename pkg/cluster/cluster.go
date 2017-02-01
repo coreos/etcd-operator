@@ -191,6 +191,8 @@ func (c *Cluster) create() error {
 }
 
 func (c *Cluster) prepareSeedMember() error {
+	c.status.AppendScalingUpCondition(0, c.cluster.Spec.Size)
+
 	var err error
 	if sh := c.cluster.Spec.SelfHosted; sh != nil {
 		if len(sh.BootMemberClientEndpoint) == 0 {
@@ -201,7 +203,12 @@ func (c *Cluster) prepareSeedMember() error {
 	} else {
 		err = c.newSeedMember()
 	}
-	return err
+	if err != nil {
+		return err
+	}
+
+	c.status.Size = 1
+	return nil
 }
 
 func (c *Cluster) Delete() {
