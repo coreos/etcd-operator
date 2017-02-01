@@ -18,13 +18,13 @@ import (
 // Operator operators etcd clusters atop Kubernetes.
 type Operator interface {
 	// Create creates an etcd cluster.
-	Create(ctx context.Context, name string, spec *spec.ClusterSpec) error
+	Create(ctx context.Context, name string, spec spec.ClusterSpec) error
 
 	// Delete deletes the etcd cluster.
 	Delete(ctx context.Context, name string) error
 
 	// Update updates the etcd cluster with the given spec.
-	Update(ctx context.Context, name string, spec *spec.ClusterSpec) error
+	Update(ctx context.Context, name string, spec spec.ClusterSpec) error
 
 	// Get gets the etcd cluster information.
 	Get(ctx context.Context, name string) (*spec.EtcdCluster, error)
@@ -82,7 +82,7 @@ func NewOperator(namespace string) (Operator, error) {
 
 }
 
-func (o *operator) Create(ctx context.Context, name string, cspec *spec.ClusterSpec) error {
+func (o *operator) Create(ctx context.Context, name string, cspec spec.ClusterSpec) error {
 	cluster := &spec.EtcdCluster{
 		ObjectMeta: v1.ObjectMeta{
 			Name: name,
@@ -105,7 +105,7 @@ func (o *operator) Delete(ctx context.Context, name string) error {
 		Namespace(o.ns).Name(name).Do().Error()
 }
 
-func (o *operator) Update(ctx context.Context, name string, spec *spec.ClusterSpec) error {
+func (o *operator) Update(ctx context.Context, name string, spec spec.ClusterSpec) error {
 	for {
 		e, err := o.Get(ctx, name)
 		if err != nil {

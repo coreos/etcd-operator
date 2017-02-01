@@ -277,7 +277,7 @@ func checkBackupExist(addr, ver string) (bool, error) {
 	return true, nil
 }
 
-func needUpgrade(pods []*v1.Pod, cs *spec.ClusterSpec) bool {
+func needUpgrade(pods []*v1.Pod, cs spec.ClusterSpec) bool {
 	return len(pods) == cs.Size && pickOneOldMember(pods, cs.Version) != nil
 }
 

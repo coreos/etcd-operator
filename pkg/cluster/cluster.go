@@ -97,7 +97,7 @@ func New(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 		cluster: e,
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
-		status:  e.Status,
+		status:  &e.Status,
 		gc:      garbagecollection.New(config.KubeCli, e.Namespace),
 	}
 
@@ -323,7 +323,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 	}
 }
 
-func isSpecEqual(s1, s2 *spec.ClusterSpec) bool {
+func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
 	if s1.Size != s2.Size || s1.Paused != s2.Paused || s1.Version != s2.Version {
 		return false
 	}
@@ -488,12 +488,12 @@ func (c *Cluster) pollPods() ([]*v1.Pod, []*v1.Pod, error) {
 }
 
 func (c *Cluster) updateStatus() error {
-	if reflect.DeepEqual(c.cluster.Status, c.status) {
+	if reflect.DeepEqual(c.cluster.Status, *c.status) {
 		return nil
 	}
 
 	newCluster := c.cluster
-	newCluster.Status = c.status
+	newCluster.Status = *c.status
 	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli.Core().GetRESTClient(), c.cluster.GetNamespace(), newCluster)
 	if err != nil {
 		return err

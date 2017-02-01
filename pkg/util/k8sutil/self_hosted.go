@@ -41,7 +41,7 @@ var (
 	}
 )
 
-func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, name string, peerURLs []string, cs *spec.ClusterSpec) *v1.Pod {
+func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, name string, peerURLs []string, cs spec.ClusterSpec) *v1.Pod {
 	containerSpec := []v1.Container{
 		{
 			Name:  "add-member",
@@ -61,7 +61,7 @@ func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, name string, p
 	return p
 }
 
-func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
+func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
 		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
