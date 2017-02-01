@@ -38,7 +38,10 @@ import (
 	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
-var reconcileInterval = 8 * time.Second
+var (
+	reconcileInterval         = 8 * time.Second
+	podTerminationGracePeriod = int64(5)
+)
 
 type clusterEventType string
 
@@ -433,7 +436,11 @@ func (c *Cluster) removePodAndService(name string) error {
 			return err
 		}
 	}
-	err = c.config.KubeCli.Core().Pods(c.cluster.Namespace).Delete(name, api.NewDeleteOptions(0))
+
+	err = c.config.KubeCli.Core().Pods(c.cluster.Namespace).Delete(
+		name,
+		api.NewDeleteOptions(podTerminationGracePeriod),
+	)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
