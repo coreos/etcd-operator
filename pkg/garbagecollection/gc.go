@@ -99,6 +99,7 @@ func (gc *GC) collectPods(option api.ListOptions, runningSet map[types.UID]bool)
 			continue
 		}
 		if !runningSet[p.OwnerReferences[0].UID] {
+			// kill bad pods without grace period to kill it immediately
 			err = gc.k8s.Core().Pods(gc.ns).Delete(p.GetName(), api.NewDeleteOptions(0))
 			if err != nil {
 				return err
