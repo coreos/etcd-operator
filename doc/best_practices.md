@@ -6,7 +6,7 @@ To run etcd cluster at large-scale, it is important to assign etcd pods to nodes
 
 ### Assign to nodes with desired resources
 
-Kuberentes nodes can be attached with labels. Users can [assign pods to nodes with given labels](http://kubernetes.io/docs/user-guide/node-selection/). Similarly for the etcd-operator, users can specify `Node Selector` in the cluster spec to select nodes for etcd pods. For example, users can label a set of nodes with SSD with label `"disk"="SSD"`. To assign etcd pods to these node, users can specify `"disk"="SSD"` node selector in the cluster spec.
+Kuberentes nodes can be attached with labels. Users can [assign pods to nodes with given labels](http://kubernetes.io/docs/user-guide/node-selection/). Similarly for the etcd-operator, users can specify `Node Selector` in the pod policy to select nodes for etcd pods. For example, users can label a set of nodes with SSD with label `"disk"="SSD"`. To assign etcd pods to these node, users can specify `"disk"="SSD"` node selector in the cluster spec.
 
 ### Assign to dedicated node (work in progress)
 

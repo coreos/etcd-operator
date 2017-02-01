@@ -271,12 +271,14 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 
 	SetEtcdVersion(pod, cs.Version)
 
-	if cs.AntiAffinity {
-		pod = PodWithAntiAffinity(pod, clusterName)
-	}
+	if cs.Pod != nil {
+		if cs.Pod.AntiAffinity {
+			pod = PodWithAntiAffinity(pod, clusterName)
+		}
 
-	if len(cs.NodeSelector) != 0 {
-		pod = PodWithNodeSelector(pod, cs.NodeSelector)
+		if len(cs.Pod.NodeSelector) != 0 {
+			pod = PodWithNodeSelector(pod, cs.Pod.NodeSelector)
+		}
 	}
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
