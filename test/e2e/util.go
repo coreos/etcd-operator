@@ -284,11 +284,32 @@ func waitBackupDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
 		if len(rl.Items) > 0 {
 			return false, nil
 		}
-		// TODO: check backup pod deleted. There is a graceful deletion that takes too long
 		return true, nil
 	})
 	if err != nil {
 		return fmt.Errorf("failed to wait backup RS deleted: %v", err)
+	}
+	err = retryutil.Retry(5*time.Second, 2, func() (done bool, err error) {
+		ls := labels.SelectorFromSet(map[string]string{
+			"app":          k8sutil.BackupPodSelectorAppField,
+			"etcd_cluster": e.Name,
+		})
+		pl, err := f.KubeClient.Core().Pods(f.Namespace).List(api.ListOptions{
+			LabelSelector: ls,
+		})
+		if err != nil {
+			return false, err
+		}
+		if len(pl.Items) == 0 {
+			return true, nil
+		}
+		if pl.Items[0].DeletionTimestamp != nil {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to wait backup pod terminated: %v", err)
 	}
 	// The rest is to track backup storage, e.g. PV or S3 "dir" deleted.
 	// If CleanupBackupsOnClusterDelete=false, we don't delete them and thus don't check them.
