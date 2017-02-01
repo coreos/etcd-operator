@@ -68,6 +68,12 @@ type ClusterSpec struct {
 	// Only etcd released versions are supported: https://github.com/coreos/etcd/releases
 	Version string `json:"version"`
 
+	// Paused is to pause the control of the operator for the etcd cluster.
+	Paused bool `json:"paused,omitempty"`
+
+	// Pod defines the policy to create pod for the etcd container.
+	Pod *PodPolicy `json:"pod,omitempty"`
+
 	// Backup defines the policy to backup data of etcd cluster if not nil.
 	// If backup policy is set but restore policy not, and if a previous backup exists,
 	// this cluster would face conflict and fail to start.
@@ -76,18 +82,6 @@ type ClusterSpec struct {
 	// Restore defines the policy to restore cluster form existing backup if not nil.
 	// It's not allowed if restore policy is set and backup policy not.
 	Restore *RestorePolicy `json:"restore,omitempty"`
-
-	// Paused is to pause the control of the operator for the etcd cluster.
-	Paused bool `json:"paused,omitempty"`
-
-	// NodeSelector specifies a map of key-value pairs. For the pod to be eligible
-	// to run on a node, the node must have each of the indicated key-value pairs as
-	// labels.
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
-	// AntiAffinity determines if the etcd-operator tries to avoid putting
-	// the etcd members in the same cluster onto the same node.
-	AntiAffinity bool `json:"antiAffinity"`
 
 	// SelfHosted determines if the etcd cluster is used for a self-hosted
 	// Kubernetes cluster.
@@ -102,6 +96,18 @@ type RestorePolicy struct {
 	// StorageType specifies the type of storage device to store backup files.
 	// If not set, the default is "PersistentVolume".
 	StorageType BackupStorageType `json:"storageType"`
+}
+
+// PodPolicy defines the policy to create pod for the etcd container.
+type PodPolicy struct {
+	// NodeSelector specifies a map of key-value pairs. For the pod to be eligible
+	// to run on a node, the node must have each of the indicated key-value pairs as
+	// labels.
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// AntiAffinity determines if the etcd-operator tries to avoid putting
+	// the etcd members in the same cluster onto the same node.
+	AntiAffinity bool `json:"antiAffinity"`
 }
 
 func (c *ClusterSpec) Validate() error {

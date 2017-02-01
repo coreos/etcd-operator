@@ -100,9 +100,8 @@ func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, st
 	SetEtcdVersion(pod, cs.Version)
 
 	pod = PodWithAntiAffinity(pod, clusterName)
-
-	if len(cs.NodeSelector) != 0 {
-		pod = PodWithNodeSelector(pod, cs.NodeSelector)
+	if cs.Pod != nil && len(cs.Pod.NodeSelector) != 0 {
+		pod = PodWithNodeSelector(pod, cs.Pod.NodeSelector)
 	}
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
