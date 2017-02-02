@@ -30,6 +30,7 @@ func etcdContainer(commands, version string) v1.Container {
 		Command: []string{"/bin/sh", "-c", fmt.Sprintf("sleep 5; %s", commands)},
 		Name:    "etcd",
 		Image:   EtcdImageName(version),
+		Env:     etcdNodeTLSEnv(),
 		Ports: []v1.ContainerPort{
 			{
 				Name:          "server",
@@ -44,6 +45,8 @@ func etcdContainer(commands, version string) v1.Container {
 		},
 		VolumeMounts: []v1.VolumeMount{
 			{Name: "etcd-data", MountPath: etcdDir},
+			{Name: "etcd-node-tls", MountPath: nodeTLSDir, ReadOnly: true},
+			{Name: "etcd-operator-ca", MountPath: caTLSDir, ReadOnly: true},
 		},
 	}
 
