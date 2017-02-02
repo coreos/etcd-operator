@@ -32,7 +32,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	newMemberName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
 	c.memberCounter++
 
-	peerURL := "http://$(MY_POD_IP):2380"
+	peerURL := fmt.Sprintf("=https://%s.%s.svc.cluster.local:2380", newMemberName, c.cluster.Namespace)
 	initialCluster := append(c.members.PeerURLPairs(), newMemberName+"="+peerURL)
 
 	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
@@ -69,7 +69,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 func (c *Cluster) newSelfHostedSeedMember() error {
 	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Metadata.Name, c.memberCounter)
 	c.memberCounter++
-	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
+	initialCluster := []string{fmt.Sprintf("%s=https://%s.%s.svc.cluster.local:2380", newMemberName, newMemberName, c.cluster.Namespace)}
 
 	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
 	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 30*time.Second)
@@ -104,7 +104,7 @@ func (c *Cluster) migrateBootMember() error {
 	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Metadata.Name, c.memberCounter)
 	c.memberCounter++
 
-	peerURL := "http://$(MY_POD_IP):2380"
+	peerURL := fmt.Sprintf("https://%s.%s.svc.cluster.local:2380", newMemberName, c.cluster.Namespace)
 	initialCluster = append(initialCluster, newMemberName+"="+peerURL)
 
 	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
@@ -123,7 +123,7 @@ func (c *Cluster) migrateBootMember() error {
 		c.logger.Infof("wait %v before removing the boot member", delay)
 		time.Sleep(delay)
 
-		err = etcdutil.RemoveMember([]string{"http://" + pod.Status.PodIP + ":2379"}, bootMember.ID)
+		err = etcdutil.RemoveMember([]string{fmt.Sprintf("https://%s.%s.svc.cluster.local:2379", newMemberName, c.cluster.Namespace)}, bootMember.ID)
 		if err != nil {
 			c.logger.Errorf("boot member migration: failed to remove the boot member (%v)", err)
 		}
