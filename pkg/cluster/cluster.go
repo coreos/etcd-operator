@@ -508,10 +508,14 @@ func (c *Cluster) reportFailedStatus() {
 		if err == nil || k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return true, nil
 		}
-
 		if apierrors.IsConflict(err) {
 			cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli.Core().GetRESTClient(), c.cluster.Namespace, c.cluster.Name)
 			if err != nil {
+				// Update (PUT) with UID set will return conflict even if object is deleted.
+				// Because it will check UID first and return something like: "Precondition failed: UID in precondition: 0xc42712c0f0, UID in object meta: ".
+				if k8sutil.IsKubernetesResourceNotFoundError(err) {
+					return true, nil
+				}
 				c.logger.Warningf("report status: fail to get latest version: %v", err)
 				return false, nil
 			}
