@@ -145,9 +145,20 @@ func (gc *GC) collectReplicaSet(option api.ListOptions, runningSet map[types.UID
 			continue
 		}
 		if !runningSet[rs.OwnerReferences[0].UID] {
-			err = gc.k8s.Extensions().ReplicaSets(gc.ns).Delete(rs.GetName(), nil)
+			// set orphanOption to false to enable Kubernetes GC to remove the objects that
+			// depends on this replica set.
+			// See https://kubernetes.io/docs/user-guide/garbage-collection/ for more details.
+			orphanOption := false
+			// set gracePeriod to delete the replica set immediately
+			gracePeriod := int64(0)
+			err = gc.k8s.Extensions().ReplicaSets(gc.ns).Delete(rs.GetName(), &api.DeleteOptions{
+				OrphanDependents:   &orphanOption,
+				GracePeriodSeconds: &gracePeriod,
+			})
 			if err != nil {
-				return err
+				if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+					return err
+				}
 			}
 			gc.logger.Infof("deleted replica set (%s)", rs.GetName())
 		}
