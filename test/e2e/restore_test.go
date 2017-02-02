@@ -172,7 +172,7 @@ func checkEtcdData(t *testing.T, addr string) {
 }
 
 func calculateRestoreWaitTime(needDataClone bool) time.Duration {
-	waitTime := 180 * time.Second
+	waitTime := 240 * time.Second
 	if needDataClone {
 		// Take additional time to clone the data.
 		waitTime += 60 * time.Second
