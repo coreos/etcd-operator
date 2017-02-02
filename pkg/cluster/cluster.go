@@ -218,9 +218,11 @@ func (c *Cluster) Delete() {
 func (c *Cluster) send(ev *clusterEvent) {
 	select {
 	case c.eventCh <- ev:
+		l, ecap := len(c.eventCh), cap(c.eventCh)
+		if l > int(float64(ecap)*0.8) {
+			c.logger.Warningf("eventCh buffer is almost full [%d/%d]", l, ecap)
+		}
 	case <-c.stopCh:
-	default:
-		panic("TODO: too many events queued...")
 	}
 }
 
