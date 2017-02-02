@@ -232,7 +232,7 @@ func NewMemberServiceManifest(etcdName, clusterName string, owner metatypes.Owne
 	return svc
 }
 
-func AddRecoveryToPod(pod *v1.Pod, clusterName, name, token string, cs *spec.ClusterSpec) {
+func AddRecoveryToPod(pod *v1.Pod, clusterName, name, token string, cs spec.ClusterSpec) {
 	pod.Annotations[v1.PodInitContainersBetaAnnotationKey] =
 		makeRestoreInitContainerSpec(MakeBackupHostPort(clusterName), name, token, cs.Version)
 }
@@ -241,7 +241,7 @@ func addOwnerRefToObject(o meta.Object, r metatypes.OwnerReference) {
 	o.SetOwnerReferences(append(o.GetOwnerReferences(), r))
 }
 
-func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs *spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
+func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",

@@ -36,8 +36,8 @@ var (
 type EtcdCluster struct {
 	unversioned.TypeMeta `json:",inline"`
 	v1.ObjectMeta        `json:"metadata,omitempty"`
-	Spec                 *ClusterSpec   `json:"spec"`
-	Status               *ClusterStatus `json:"status"`
+	Spec                 ClusterSpec   `json:"spec"`
+	Status               ClusterStatus `json:"status"`
 }
 
 func (e *EtcdCluster) AsOwner() metatypes.OwnerReference {

@@ -141,7 +141,7 @@ func newClusterSpec(genName string, size int) *spec.EtcdCluster {
 		ObjectMeta: v1.ObjectMeta{
 			GenerateName: genName,
 		},
-		Spec: &spec.ClusterSpec{
+		Spec: spec.ClusterSpec{
 			Size: size,
 		},
 	}
