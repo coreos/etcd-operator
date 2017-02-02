@@ -70,7 +70,9 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	host, _ := netutil.GetDefaultHost()
-	port := rand.Intn(61000-32768) + 32768 // linux ephemeral ports
+
+	rand.Seed(time.Now().UnixNano())
+	port := rand.Intn(61000-32768-1) + 32768 // linux ephemeral ports
 
 	embedCfg := embed.NewConfig()
 	embedCfg.Dir = dir
