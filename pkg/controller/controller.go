@@ -32,7 +32,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/api/unversioned"
 	"k8s.io/client-go/1.5/pkg/api/v1"
 	v1beta1extensions "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
 )
@@ -48,11 +47,6 @@ var (
 	initRetryWaitTime = 30 * time.Second
 )
 
-type rawEvent struct {
-	Type   string
-	Object json.RawMessage
-}
-
 type Event struct {
 	Type   string
 	Object *spec.EtcdCluster
@@ -60,10 +54,14 @@ type Event struct {
 
 type Controller struct {
 	logger *logrus.Entry
-
 	Config
-	clusters    map[string]*cluster.Cluster
-	stopChMap   map[string]chan struct{}
+
+	// TODO: combine the three cluster map.
+	clusters map[string]*cluster.Cluster
+	// Kubernetes resource version of the clusters
+	clusterRVs map[string]string
+	stopChMap  map[string]chan struct{}
+
 	waitCluster sync.WaitGroup
 }
 
@@ -94,9 +92,10 @@ func New(cfg Config) *Controller {
 	return &Controller{
 		logger: logrus.WithField("pkg", "controller"),
 
-		Config:    cfg,
-		clusters:  make(map[string]*cluster.Cluster),
-		stopChMap: map[string]chan struct{}{},
+		Config:     cfg,
+		clusters:   make(map[string]*cluster.Cluster),
+		clusterRVs: make(map[string]string),
+		stopChMap:  map[string]chan struct{}{},
 	}
 }
 
@@ -149,6 +148,7 @@ func (c *Controller) Run() error {
 
 				c.stopChMap[clus.Name] = stopC
 				c.clusters[clus.Name] = nc
+				c.clusterRVs[clus.Name] = clus.ResourceVersion
 
 				analytics.ClusterCreated()
 				clustersCreated.Inc()
@@ -156,11 +156,13 @@ func (c *Controller) Run() error {
 
 			case "MODIFIED":
 				c.clusters[clus.Name].Update(clus)
+				c.clusterRVs[clus.Name] = clus.ResourceVersion
 				clustersModified.Inc()
 
 			case "DELETED":
 				c.clusters[clus.Name].Delete()
 				delete(c.clusters, clus.Name)
+				delete(c.clusterRVs, clus.Name)
 				analytics.ClusterDeleted()
 				clustersDeleted.Inc()
 				clustersTotal.Dec()
@@ -191,6 +193,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		nc := cluster.New(c.makeClusterConfig(), &clus, stopC, &c.waitCluster)
 		c.stopChMap[clus.Name] = stopC
 		c.clusters[clus.Name] = nc
+		c.clusterRVs[clus.Name] = clus.ResourceVersion
 	}
 
 	return clusterList.ResourceVersion, nil
@@ -288,16 +291,29 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 				}
 
 				if st != nil {
-					if st.Code == http.StatusGone { // event history is outdated
-						errCh <- ErrVersionOutdated // go to recovery path
+					resp.Body.Close()
+
+					if st.Code == http.StatusGone {
+						// event history is outdated.
+						// if nothing has changed, we can go back to watch again.
+						clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli.Core().GetRESTClient(), c.Config.Namespace)
+						if err == nil && !c.isClustersCacheStale(clusterList.Items) {
+							watchVersion = clusterList.ResourceVersion
+							break
+						}
+
+						// if anything has changed (or error on relist), we have to rebuild the state.
+						// go to recovery path
+						errCh <- ErrVersionOutdated
 						return
 					}
+
 					c.logger.Fatalf("unexpected status response from API server: %v", st.Message)
 				}
 
 				c.logger.Debugf("etcd cluster event: %v %v", ev.Type, ev.Object.Spec)
 
-				watchVersion = ev.Object.ObjectMeta.ResourceVersion
+				watchVersion = ev.Object.ResourceVersion
 				eventCh <- ev
 			}
 
@@ -308,32 +324,17 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 	return eventCh, errCh
 }
 
-func pollEvent(decoder *json.Decoder) (*Event, *unversioned.Status, error) {
-	re := &rawEvent{}
-	err := decoder.Decode(re)
-	if err != nil {
-		if err == io.EOF {
-			return nil, nil, err
-		}
-		return nil, nil, fmt.Errorf("fail to decode raw event from apiserver (%v)", err)
+func (c *Controller) isClustersCacheStale(currentClusters []spec.EtcdCluster) bool {
+	if len(c.clusterRVs) != len(currentClusters) {
+		return true
 	}
 
-	if re.Type == "ERROR" {
-		status := &unversioned.Status{}
-		err = json.Unmarshal(re.Object, status)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to decode (%s) into unversioned.Status (%v)", re.Object, err)
+	for _, cc := range currentClusters {
+		rv, ok := c.clusterRVs[cc.Name]
+		if !ok || rv != cc.ResourceVersion {
+			return true
 		}
-		return nil, status, nil
 	}
 
-	ev := &Event{
-		Type:   re.Type,
-		Object: &spec.EtcdCluster{},
-	}
-	err = json.Unmarshal(re.Object, ev.Object)
-	if err != nil {
-		return nil, nil, fmt.Errorf("fail to unmarshal EtcdCluster object from data (%s): %v", re.Object, err)
-	}
-	return ev, nil, nil
+	return false
 }
