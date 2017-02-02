@@ -246,28 +246,6 @@ func NewBackupServiceManifest(clusterName string, owner metatypes.OwnerReference
 	return svc
 }
 
-func DeleteBackupReplicaSetAndService(kubecli kubernetes.Interface, clusterName, ns string) error {
-	name := MakeBackupName(clusterName)
-	err := kubecli.Core().Services(ns).Delete(name, nil)
-	if err != nil {
-		if !IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-	}
-	orphanOption := false
-	gracePeriod := int64(0)
-	err = kubecli.Extensions().ReplicaSets(ns).Delete(name, &api.DeleteOptions{
-		OrphanDependents:   &orphanOption,
-		GracePeriodSeconds: &gracePeriod,
-	})
-	if err != nil {
-		if !IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-	}
-	return nil
-}
-
 func DeletePVC(kubecli kubernetes.Interface, clusterName, ns string) error {
 	err := kubecli.Core().PersistentVolumeClaims(ns).Delete(makePVCName(clusterName), nil)
 	if !IsKubernetesResourceNotFoundError(err) {

@@ -132,16 +132,10 @@ func (bm *backupManager) createBackupService() error {
 }
 
 func (bm *backupManager) cleanup() error {
-	cl, c := bm.cluster, bm.config
-	err := k8sutil.DeleteBackupReplicaSetAndService(c.KubeCli, cl.Name, cl.Namespace)
+	// Only need to delete storage, Kubernetes related resources will be deleted by the GC.
+	err := bm.s.Delete()
 	if err != nil {
-		return fmt.Errorf("fail to delete backup ReplicaSet and Service: %v", err)
-	}
-	bm.logger.Infof("backup replica set and service deleted")
-
-	err = bm.s.Delete()
-	if err != nil {
-		return fmt.Errorf("fail to delete store: %v", err)
+		return fmt.Errorf("fail to delete backup storage: %v", err)
 	}
 	return nil
 }

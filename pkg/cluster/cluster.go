@@ -370,8 +370,7 @@ func (c *Cluster) delete() {
 	}
 
 	if c.bm != nil {
-		err := c.bm.cleanup()
-		if err != nil {
+		if err := c.bm.cleanup(); err != nil {
 			c.logger.Errorf("cluster deletion: backup manager failed to cleanup: %v", err)
 		}
 	}
