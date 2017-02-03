@@ -15,6 +15,11 @@
 package spec
 
 type ClusterTLSPolicy struct {
+	Static StaticTLS `json:"static"`
+	//TODO: add more TLS options here
+}
+
+type StaticTLS struct {
 	// Secret containing peer and client CA cert files
 	CASecretName string `json:"caSecretName"`
 	// Secret containing peer-interface and client-interface server x509 key/cert
