@@ -38,7 +38,7 @@ func (m *Member) ClientAddr() string {
 		return strings.Join(m.ClientURLs, ",")
 	}
 
-	return fmt.Sprintf("http://%s:2379", m.Name)
+	return fmt.Sprintf("https://%s:2379", m.Name)
 }
 
 func (m *Member) PeerAddr() string {
@@ -46,7 +46,7 @@ func (m *Member) PeerAddr() string {
 		return strings.Join(m.PeerURLs, ",")
 	}
 
-	return fmt.Sprintf("http://%s:2380", m.Name)
+	return fmt.Sprintf("https://%s:2380", m.Name)
 }
 
 type MemberSet map[string]*Member

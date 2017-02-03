@@ -16,12 +16,17 @@ package k8sutil
 
 import (
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/tlsutil"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/rest"
 )
 
 var (
@@ -46,11 +51,11 @@ func NewEtcdNodeIdentitySecret(secretName string, clientKey, peerKey *rsa.Privat
 			},
 		},
 		Data: map[string][]byte{
-			"peer-server-key.pem":  tlsutil.EncodePrivateKeyPEM(peerKey),
-			"peer-server-cert.pem": tlsutil.EncodeCertificatePEM(peerCert),
+			NodePeerKeyName:  tlsutil.EncodePrivateKeyPEM(peerKey),
+			NodePeerCertName: tlsutil.EncodeCertificatePEM(peerCert),
 
-			"client-server-key.pem":  tlsutil.EncodePrivateKeyPEM(clientKey),
-			"client-server-cert.pem": tlsutil.EncodeCertificatePEM(clientCert),
+			NodeClientKeyName:  tlsutil.EncodePrivateKeyPEM(clientKey),
+			NodeClientCertName: tlsutil.EncodeCertificatePEM(clientCert),
 		},
 	}
 	return &tlsSecret, nil
@@ -71,8 +76,8 @@ func NewEtcdClientIdentitySecret(secretName string, clientKey *rsa.PrivateKey, c
 			},
 		},
 		Data: map[string][]byte{
-			"client-key.pem":  tlsutil.EncodePrivateKeyPEM(clientKey),
-			"client-cert.pem": tlsutil.EncodeCertificatePEM(clientCert),
+			EtcdClientKeyName:  tlsutil.EncodePrivateKeyPEM(clientKey),
+			EtcdClientCertName: tlsutil.EncodeCertificatePEM(clientCert),
 		},
 	}
 
@@ -95,9 +100,72 @@ func NewSelfSignedClusterCASecret(secretName string, clientCACert, peerCACert *x
 			},
 		},
 		Data: map[string][]byte{
-			"peer-ca-cert.pem":   tlsutil.EncodeCertificatePEM(peerCACert),
-			"client-ca-cert.pem": tlsutil.EncodeCertificatePEM(clientCACert),
+			PeerCAKeyName:  tlsutil.EncodeCertificatePEM(peerCACert),
+			PeerCACertName: tlsutil.EncodeCertificatePEM(clientCACert),
 		},
 	}
 	return &caSecret, nil
+}
+
+func getSecret(uri string, restcli rest.Interface) (*v1.Secret, error) {
+	b, err := restcli.Get().RequestURI(uri).DoRaw()
+	if err != nil {
+		return nil, err
+	}
+	secret := &v1.Secret{}
+	if err := json.Unmarshal(b, secret); err != nil {
+		return nil, err
+	}
+	return secret, nil
+}
+
+func GetEtcdHTTPClientFromSecrets(clientSecretName, caSecretName, ns string, restcli rest.Interface) (*http.Client, error) {
+	baseURI := "/apis/coreos.com/v1/namespaces/%s/secrets/%s"
+
+	// Fetch secrets from Kubernetes API
+	caSecret, err := getSecret(fmt.Sprintf(baseURI, ns, caSecretName), restcli)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching ca secret: %v", err)
+	}
+	clientSecret, err := getSecret(fmt.Sprintf(baseURI, ns, clientSecretName), restcli)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching client secret: %v", err)
+	}
+
+	// Retrieve byte arrays from Data map
+	caCertBytes, ok := caSecret.Data[ClientCACertName]
+	if !ok {
+		return nil, fmt.Errorf("could not find %s data key in secret %s", PeerCACertName, caSecretName)
+	}
+
+	clientKeyBytes, ok := clientSecret.Data[NodeClientKeyName]
+	if !ok {
+		return nil, fmt.Errorf("could not find %s data key in secret %s", NodeClientKeyName, clientSecretName)
+	}
+
+	clientCertBytes, ok := clientSecret.Data[NodeClientCertName]
+	if !ok {
+		return nil, fmt.Errorf("could not find %s data key in secret %s", NodeClientCertName, clientSecretName)
+	}
+
+	keyPair, err := tls.X509KeyPair(clientKeyBytes, clientCertBytes)
+	if err != nil {
+		return nil, fmt.Errorf("error creating tls key pair: %v", err)
+	}
+
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCertBytes)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{keyPair},
+		RootCAs:      caCertPool,
+	}
+	tlsConfig.BuildNameToCertificate()
+	client := &http.Client{
+		Transport: &http.Transport{TLSClientConfig: tlsConfig},
+		Timeout:   30 * time.Second,
+	}
+
+	return client, nil
+
 }

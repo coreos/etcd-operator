@@ -101,7 +101,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 					filepath.Join(caTLSDir, ClientCACertName),
 					filepath.Join(clientTLSDir, EtcdClientCertName),
 					filepath.Join(clientTLSDir, EtcdClientKeyName),
-					backupFile, util.MakeBackupURL(backupAddr, version)),
+					backupFile, backupapi.NewBackupURL("https", backupAddr, version)),
 			},
 			VolumeMounts: []v1.VolumeMount{
 				{Name: "etcd-data", MountPath: etcdDir},
@@ -111,15 +111,15 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 		},
 		{
 			Name:  "restore-datadir",
-			Image: MakeEtcdImage(version),
+			Image: EtcdImageName(version),
 			Env:   etcdctlTLSEnv(),
 			Command: []string{
 				"/bin/sh", "-c",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
 					" --name %[2]s"+
-					" --initial-cluster %[2]s=http://%[2]s:2380"+
+					" --initial-cluster %[2]s=https://%[2]s:2380"+
 					" --initial-cluster-token %[3]s"+
-					" --initial-advertise-peer-urls http://%[2]s:2380"+
+					" --initial-advertise-peer-urls https://%[2]s:2380"+
 					" --data-dir %[4]s", backupFile, name, token, dataDir),
 			},
 			VolumeMounts: []v1.VolumeMount{
@@ -278,7 +278,7 @@ func addOwnerRefToObject(o meta.Object, r metatypes.OwnerReference) {
 
 func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
-		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
+		"--listen-peer-urls=https://0.0.0.0:2380 --listen-client-urls=https://0.0.0.0:2379 --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
 		dataDir, m.Name, m.PeerAddr(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
 
@@ -307,7 +307,13 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			Volumes: []v1.Volume{
 				{Name: "etcd-data", VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}},
 				{Name: "etcd-node-tls", VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
-					SecretName: cs.ClusterTLS.NodeSecretName,
+					SecretName: cs.ClusterTLS.Static.NodeSecretName,
+				}}},
+				{Name: "etcd-client-tls", VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
+					SecretName: cs.ClusterTLS.Static.ClientSecretName,
+				}}},
+				{Name: "etcd-operator-ca", VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
+					SecretName: cs.ClusterTLS.Static.CASecretName,
 				}}},
 			},
 		},

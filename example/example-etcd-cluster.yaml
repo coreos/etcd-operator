@@ -6,6 +6,7 @@ spec:
   size: 3
   version: "3.1.2"
   clusterTLS:
-    caSecretName: etcd-operator-ca
-    nodeSecretName: etcd-operator-generic-node-tls
-    clientSecretName: etcd-operator-client
+    static:
+      caSecretName: etcd-operator-ca
+      nodeSecretName: etcd-operator-generic-node-tls
+      clientSecretName: etcd-operator-client

@@ -17,6 +17,7 @@ package cluster
 import (
 	"fmt"
 	"math"
+	"net/http"
 	"reflect"
 	"sync"
 	"time"
@@ -85,6 +86,8 @@ type Cluster struct {
 	backupDir string
 
 	gc *garbagecollection.GC
+
+	etcdHttpClient *http.Client
 }
 
 func New(config Config, cl *spec.Cluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
@@ -252,6 +255,22 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 				// TODO: we can't handle another upgrade while an upgrade is in progress
 				c.logger.Infof("spec update: from: %v to: %v", c.cluster.Spec, event.cluster.Spec)
 				c.cluster = event.cluster
+				staticSpec := c.cluster.Spec.ClusterTLS.Static
+				if staticSpec != nil {
+					httpcli, err := k8sutil.GetEtcdHTTPClientFromSecrets(
+						staticSpec.ClientSecretName,
+						staticSpec.CASecretName,
+						c.cluster.Metadata.Namespace,
+						c.config.KubeCli.CoreV1().RESTClient(),
+					)
+					if err != nil {
+						c.logger.Errorf("error getting httpClient from secrets: %v", err)
+					}
+
+					c.etcdHttpClient = httpcli
+				} else {
+					c.logger.Errorf("no valid TLS config defined, could not create etcd https client")
+				}
 
 			case eventDeleteCluster:
 				c.logger.Infof("cluster is deleted by the user")

@@ -61,11 +61,11 @@ func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, name string, p
 	return p
 }
 
-func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
-	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
-		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
-		"--initial-cluster=%s --initial-cluster-state=%s",
-		dataDir, name, strings.Join(initialCluster, ","), state)
+func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, clusterNamespace, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
+	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%[1]s --name=%[2]s --initial-advertise-peer-urls=https://%[5]s.%[6]s.svc.cluster.local::2380 "+
+		"--listen-peer-urls=https://$(MY_POD_IP):2380 --listen-client-urls=https://$(MY_POD_IP):2379 --advertise-client-urls=https://%[5]s.%[6]s.svc.cluster.local:2379 "+
+		"--initial-cluster=%[3]s --initial-cluster-state=%[4]s",
+		dataDir, name, strings.Join(initialCluster, ","), state, clusterName, clusterNamespace)
 
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
@@ -96,6 +96,15 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, sta
 			HostNetwork:   true,
 			Volumes: []v1.Volume{
 				{Name: "etcd-data", VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}},
+				{Name: "etcd-node-tls", VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
+					SecretName: cs.ClusterTLS.Static.NodeSecretName,
+				}}},
+				{Name: "etcd-client-tls", VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
+					SecretName: cs.ClusterTLS.Static.ClientSecretName,
+				}}},
+				{Name: "etcd-operator-ca", VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
+					SecretName: cs.ClusterTLS.Static.CASecretName,
+				}}},
 			},
 		},
 	}

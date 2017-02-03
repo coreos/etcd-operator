@@ -75,8 +75,8 @@ func podsToMemberSet(pods []*v1.Pod, selfHosted *spec.SelfHostedPolicy) etcdutil
 	for _, pod := range pods {
 		m := &etcdutil.Member{Name: pod.Name}
 		if selfHosted != nil {
-			m.ClientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
-			m.PeerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
+			m.ClientURLs = []string{fmt.Sprintf("https://%s.%s.svc.cluster.local:2379", pod.Name, pod.Namespace)}
+			m.PeerURLs = []string{fmt.Sprintf("https://%s.%s.svc.cluster.local:2380", pod.Name, pod.Namespace)}
 		}
 		members.Add(m)
 	}

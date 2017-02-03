@@ -15,7 +15,7 @@
 package spec
 
 type ClusterTLSPolicy struct {
-	Static StaticTLS `json:"static"`
+	Static *StaticTLS `json:"static"`
 	//TODO: add more TLS options here
 }
 
