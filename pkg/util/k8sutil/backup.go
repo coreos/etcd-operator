@@ -92,7 +92,9 @@ func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvision
 		return err
 	}
 
-	err = retryutil.Retry(4*time.Second, 5, func() (bool, error) {
+	// TODO: We set timeout to 60s here since PVC binding could take up to 60s for GCE/PD. See https://github.com/kubernetes/kubernetes/issues/40972 .
+	//       Change the wait time once there are official p99 SLA.
+	err = retryutil.Retry(4*time.Second, 15, func() (bool, error) {
 		var err error
 		claim, err = kubecli.Core().PersistentVolumeClaims(ns).Get(name)
 		if err != nil {
