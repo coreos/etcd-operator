@@ -16,12 +16,16 @@ fi
 
 : ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator"}
 
+GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
+
 bin_dir="$(pwd)/_output/bin"
 mkdir -p ${bin_dir} || true
 
 
 ldKVPairs="github.com/coreos/etcd-operator/pkg/util/k8sutil.BackupImage=${IMAGE}"
-go_ldflags="-X ${ldKVPairs}"
+gitHash="github.com/coreos/etcd-operator/version.GitSHA=${GIT_SHA}"
+
+go_ldflags="-X ${ldKVPairs} -X ${gitHash}"
 
 GOBIN=${bin_dir} CGO_ENABLED=0 go install -installsuffix cgo -ldflags "$go_ldflags" ./cmd/operator/
 mv ${bin_dir}/operator ${bin_dir}/etcd-operator

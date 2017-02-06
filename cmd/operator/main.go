@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/analytics"
@@ -91,9 +92,17 @@ func init() {
 
 func main() {
 	if printVersion {
-		fmt.Println("etcd-operator", version.Version)
+		fmt.Println("etcd-operator Version:", version.Version)
+		fmt.Println("Git SHA:", version.GitSHA)
+		fmt.Println("Go Version:", runtime.Version())
+		fmt.Printf("Go OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 		os.Exit(0)
 	}
+
+	logrus.Infof("etcd-operator Version: %v", version.Version)
+	logrus.Infof("Git SHA: %s", version.GitSHA)
+	logrus.Infof("Go Version: %s", runtime.Version())
+	logrus.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
 
 	if analyticsEnabled {
 		analytics.Enable()
