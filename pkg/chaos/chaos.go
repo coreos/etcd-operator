@@ -88,7 +88,7 @@ func (m *Monkeys) CrushPods(ctx context.Context, c *CrashConfig) {
 		}
 
 		for tokill := range tokills {
-			err = m.k8s.Core().Pods(ns).Delete(tokill, api.NewDeleteOptions(0))
+			err = m.k8s.Core().Pods(ns).Delete(tokill, api.NewDeleteOptions(1))
 			if err != nil {
 				logrus.Errorf("failed to kill pod %v: %v", tokill, err)
 				continue

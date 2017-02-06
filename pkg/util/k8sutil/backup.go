@@ -333,7 +333,7 @@ func CopyVolume(kubecli kubernetes.Interface, fromClusterName, toClusterName, ns
 		return fmt.Errorf("failed to wait backup copy pod (%s, phase: %s) to succeed: %v", pod.Name, phase, err)
 	}
 	// Delete the pod to detach the volume from the node
-	return kubecli.Core().Pods(ns).Delete(pod.Name, api.NewDeleteOptions(0))
+	return kubecli.Core().Pods(ns).Delete(pod.Name, api.NewDeleteOptions(1))
 }
 
 func copyVolumePodName(clusterName string) string {
