@@ -37,9 +37,6 @@ func TestSelfHosted(t *testing.T) {
 }
 
 func testCreateSelfHostedCluster(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
 	f := framework.Global
 	c := newClusterSpec("test-etcd-", 3)
 	c = clusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
@@ -60,9 +57,6 @@ func testCreateSelfHostedCluster(t *testing.T) {
 }
 
 func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
 	dir, err := ioutil.TempDir("", "embed-etcd")
 	if err != nil {
 		t.Fatal(err)
