@@ -80,7 +80,7 @@ func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 
 	unknownMembers := running.Diff(c.members)
 	if unknownMembers.Size() > 0 {
-		c.logger.Infof("removing unexpected pods:", unknownMembers)
+		c.logger.Infof("removing unexpected pods: %v", unknownMembers)
 		for _, m := range unknownMembers {
 			if err := c.removePodAndService(m.Name); err != nil {
 				return err
