@@ -34,6 +34,7 @@ import (
 var Global *Framework
 
 type Framework struct {
+	opImage    string
 	KubeClient kubernetes.Interface
 	Namespace  string
 	S3Cli      *s3.S3
@@ -59,25 +60,27 @@ func Setup() error {
 	Global = &Framework{
 		KubeClient: cli,
 		Namespace:  *ns,
+		opImage:    *opImage,
 	}
-	return Global.setup(*opImage)
+	return Global.setup()
 }
 
 func Teardown() error {
-	// TODO: check all deleted and wait
-	if err := Global.KubeClient.Core().Pods(Global.Namespace).Delete("etcd-operator", api.NewDeleteOptions(10)); err != nil {
+	if err := Global.DeleteEtcdOperator(); err != nil {
 		return err
 	}
+	// TODO: check all deleted and wait
 	Global = nil
 	logrus.Info("e2e teardown successfully")
 	return nil
 }
 
-func (f *Framework) setup(opImage string) error {
-	if err := f.setupEtcdOperator(opImage); err != nil {
+func (f *Framework) setup() error {
+	if err := f.SetupEtcdOperator(); err != nil {
 		logrus.Errorf("fail to setup etcd operator: %v", err)
 		return err
 	}
+	logrus.Info("etcd operator created successfully")
 	if os.Getenv("AWS_TEST_ENABLED") == "true" {
 		if err := f.setupAWS(); err != nil {
 			return fmt.Errorf("fail to setup aws: %v", err)
@@ -87,7 +90,7 @@ func (f *Framework) setup(opImage string) error {
 	return nil
 }
 
-func (f *Framework) setupEtcdOperator(opImage string) error {
+func (f *Framework) SetupEtcdOperator() error {
 	// TODO: unify this and the yaml file in example/
 	cmd := "/usr/local/bin/etcd-operator --analytics=false"
 	if os.Getenv("AWS_TEST_ENABLED") == "true" {
@@ -102,7 +105,7 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 			Containers: []v1.Container{
 				{
 					Name:  "etcd-operator",
-					Image: opImage,
+					Image: f.opImage,
 					Command: []string{
 						"/bin/sh", "-c", cmd,
 					},
@@ -127,8 +130,11 @@ func (f *Framework) setupEtcdOperator(opImage string) error {
 		return err
 	}
 
-	logrus.Info("etcd operator created successfully")
 	return nil
+}
+
+func (f *Framework) DeleteEtcdOperator() error {
+	return f.KubeClient.Core().Pods(f.Namespace).Delete("etcd-operator", api.NewDeleteOptions(1))
 }
 
 func (f *Framework) setupAWS() error {

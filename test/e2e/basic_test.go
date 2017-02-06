@@ -28,9 +28,13 @@ import (
 func TestBasic(t *testing.T) {
 	t.Run("basic test", func(t *testing.T) {
 		t.Run("create cluster", testCreateCluster)
-		t.Run("pause control", testPauseControl)
 		t.Run("upgrade cluster", testEtcdUpgrade)
+		t.Run("pause control", testPauseControl)
 	})
+}
+
+func TestKillOperator(t *testing.T) {
+	testStopOperator(t, true)
 }
 
 func testCreateCluster(t *testing.T) {
@@ -57,6 +61,10 @@ func testCreateCluster(t *testing.T) {
 // testPauseControl tests the user can pause the operator from controlling
 // an etcd cluster.
 func testPauseControl(t *testing.T) {
+	testStopOperator(t, false)
+}
+
+func testStopOperator(t *testing.T, kill bool) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -76,14 +84,22 @@ func testPauseControl(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	testEtcd.Spec.Paused = true
-	if testEtcd, err = updateEtcdCluster(f, testEtcd); err != nil {
-		t.Fatalf("failed to pause control: %v", err)
-	}
+	if !kill {
+		testEtcd.Spec.Paused = true
+		if testEtcd, err = updateEtcdCluster(f, testEtcd); err != nil {
+			t.Fatalf("failed to pause control: %v", err)
+		}
 
-	// TODO: this is used to wait for the TPR to be updated.
-	// TODO: make this wait for reliable
-	time.Sleep(5 * time.Second)
+		// TODO: this is used to wait for the TPR to be updated.
+		// TODO: make this wait for reliable
+		time.Sleep(5 * time.Second)
+	} else {
+		if err := f.DeleteEtcdOperator(); err != nil {
+			t.Fatalf("fail to delete etcd operator pod: %v", err)
+		}
+		// wait twice grace period
+		time.Sleep(2 * time.Second)
+	}
 
 	if err := killMembers(f, names[0]); err != nil {
 		t.Fatal(err)
@@ -96,9 +112,15 @@ func testPauseControl(t *testing.T) {
 		t.Fatalf("cluster should not be recovered: control is paused")
 	}
 
-	testEtcd.Spec.Paused = false
-	if _, err = updateEtcdCluster(f, testEtcd); err != nil {
-		t.Fatalf("failed to resume control: %v", err)
+	if !kill {
+		testEtcd.Spec.Paused = false
+		if _, err = updateEtcdCluster(f, testEtcd); err != nil {
+			t.Fatalf("failed to resume control: %v", err)
+		}
+	} else {
+		if err := f.SetupEtcdOperator(); err != nil {
+			t.Fatalf("fail to restart etcd operator: %v", err)
+		}
 	}
 
 	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second); err != nil {
