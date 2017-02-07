@@ -121,10 +121,12 @@ func (f *Framework) SetupEtcdOperator() error {
 		},
 	}
 
-	_, err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace, pod, 60*time.Second)
+	p, err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace, pod, 60*time.Second)
 	if err != nil {
 		return err
 	}
+	logrus.Infof("etcd operator pod is running on node (%s)", p.Spec.NodeName)
+
 	err = k8sutil.WaitEtcdTPRReady(f.KubeClient.Core().GetRESTClient(), 5*time.Second, 60*time.Second, f.Namespace)
 	if err != nil {
 		return err
