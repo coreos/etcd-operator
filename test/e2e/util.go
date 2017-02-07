@@ -102,14 +102,16 @@ func waitSizeReachedWithAccept(t *testing.T, f *framework.Framework, clusterName
 			return false, err
 		}
 		names = nil
+		var nodeNames []string
 		for i := range podList.Items {
 			pod := &podList.Items[i]
 			if pod.Status.Phase != v1.PodRunning || !acceptPod(pod) {
 				continue
 			}
 			names = append(names, pod.Name)
+			nodeNames = append(nodeNames, pod.Spec.NodeName)
 		}
-		logfWithTimestamp(t, "waiting size (%d), etcd pods: %v", size, names)
+		logfWithTimestamp(t, "waiting size (%d), etcd pods: names (%v), nodes (%v)", size, names, nodeNames)
 		if len(names) != size {
 			return false, nil
 		}
@@ -216,7 +218,7 @@ func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster
 	}
 	for i := range podList.Items {
 		pod := &podList.Items[i]
-		t.Logf("pod (%v): status (%v), cmd (%v)", pod.Name, pod.Status.Phase, pod.Spec.Containers[0].Command)
+		t.Logf("pod (%v): status (%v), node (%v) cmd (%v)", pod.Name, pod.Status.Phase, pod.Spec.NodeName, pod.Spec.Containers[0].Command)
 	}
 
 	uri := fmt.Sprintf("/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.Namespace, e.Name)
