@@ -161,9 +161,7 @@ func (c *Cluster) create() error {
 		return fmt.Errorf("cluster create: failed to update cluster phase (%v): %v", spec.ClusterPhaseCreating, err)
 	}
 
-	if err := c.gc.CollectCluster(c.cluster.Name, c.cluster.UID); err != nil {
-		return fmt.Errorf("cluster create: failed to clean up conflict resources: %v", err)
-	}
+	c.gc.CollectCluster(c.cluster.Name, c.cluster.UID)
 
 	if c.bm != nil {
 		if err := c.bm.setup(); err != nil {
@@ -367,9 +365,7 @@ func (c *Cluster) Update(e *spec.EtcdCluster) {
 }
 
 func (c *Cluster) delete() {
-	if err := c.gc.CollectCluster(c.cluster.Name, garbagecollection.NullUID); err != nil {
-		c.logger.Errorf("cluster delete: fail to clean up resources %v", err)
-	}
+	c.gc.CollectCluster(c.cluster.Name, garbagecollection.NullUID)
 
 	if c.bm != nil {
 		if err := c.bm.cleanup(); err != nil {
