@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"runtime"
 	"time"
 
@@ -91,6 +92,13 @@ func init() {
 }
 
 func main() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c)
+	go func() {
+		logrus.Infof("received signal: %v", <-c)
+		os.Exit(1)
+	}()
+
 	if printVersion {
 		fmt.Println("etcd-operator Version:", version.Version)
 		fmt.Println("Git SHA:", version.GitSHA)
