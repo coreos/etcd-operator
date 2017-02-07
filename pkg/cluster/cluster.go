@@ -72,7 +72,7 @@ type Cluster struct {
 
 	// in memory state of the cluster
 	// status is the source of truth after Cluster struct is materialized.
-	status        *spec.ClusterStatus
+	status        spec.ClusterStatus
 	memberCounter int
 
 	eventCh chan *clusterEvent
@@ -97,20 +97,15 @@ func New(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wai
 		cluster: e,
 		eventCh: make(chan *clusterEvent, 100),
 		stopCh:  make(chan struct{}),
-		status:  &e.Status,
+		status:  e.Status.Copy(),
 		gc:      garbagecollection.New(config.KubeCli, e.Namespace),
-	}
-
-	if c.status == nil {
-		c.status = &spec.ClusterStatus{}
 	}
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		err := c.setup()
-		if err != nil {
+		if err := c.setup(); err != nil {
 			c.logger.Errorf("cluster failed to setup: %v", err)
 			if c.status.Phase != spec.ClusterPhaseFailed {
 				c.status.SetReason(err.Error())
@@ -487,12 +482,12 @@ func (c *Cluster) pollPods() ([]*v1.Pod, []*v1.Pod, error) {
 }
 
 func (c *Cluster) updateStatus() error {
-	if reflect.DeepEqual(c.cluster.Status, *c.status) {
+	if reflect.DeepEqual(c.cluster.Status, c.status) {
 		return nil
 	}
 
 	newCluster := c.cluster
-	newCluster.Status = *c.status
+	newCluster.Status = c.status
 	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli.Core().GetRESTClient(), c.cluster.GetNamespace(), newCluster)
 	if err != nil {
 		return err

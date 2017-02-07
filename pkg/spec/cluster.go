@@ -15,6 +15,7 @@
 package spec
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -181,6 +182,19 @@ type ClusterStatus struct {
 	// TargetVersion is the version the cluster upgrading to.
 	// If the cluster is not upgrading, TargetVersion is empty.
 	TargetVersion string `json:"targetVersion"`
+}
+
+func (cs ClusterStatus) Copy() ClusterStatus {
+	newCS := ClusterStatus{}
+	b, err := json.Marshal(cs)
+	if err != nil {
+		panic(err)
+	}
+	err = json.Unmarshal(b, &newCS)
+	if err != nil {
+		panic(err)
+	}
+	return newCS
 }
 
 func (cs *ClusterStatus) IsFailed() bool {
