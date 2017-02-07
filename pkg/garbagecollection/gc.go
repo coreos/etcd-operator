@@ -47,8 +47,8 @@ func New(k8s kubernetes.Interface, ns string) *GC {
 
 // CollectCluster collects resources that matches cluster lable, but
 // does not belong to the cluster with given clusterUID
-func (gc *GC) CollectCluster(cluster string, clusterUID types.UID) error {
-	return gc.collectResources(k8sutil.ClusterListOpt(cluster), map[types.UID]bool{clusterUID: true})
+func (gc *GC) CollectCluster(cluster string, clusterUID types.UID) {
+	gc.collectResources(k8sutil.ClusterListOpt(cluster), map[types.UID]bool{clusterUID: true})
 }
 
 // FullyCollect collects resources that were created before,
@@ -70,21 +70,20 @@ func (gc *GC) FullyCollect() error {
 		}),
 	}
 
-	return gc.collectResources(option, clusterUIDSet)
+	gc.collectResources(option, clusterUIDSet)
+	return nil
 }
 
-func (gc *GC) collectResources(option api.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectResources(option api.ListOptions, runningSet map[types.UID]bool) {
 	if err := gc.collectPods(option, runningSet); err != nil {
-		return err
+		gc.logger.Errorf("gc pods failed: %v", err)
 	}
 	if err := gc.collectServices(option, runningSet); err != nil {
-		return err
+		gc.logger.Errorf("gc services failed: %v", err)
 	}
 	if err := gc.collectReplicaSet(option, runningSet); err != nil {
-		return err
+		gc.logger.Errorf("gc replica set failed: %v", err)
 	}
-
-	return nil
 }
 
 func (gc *GC) collectPods(option api.ListOptions, runningSet map[types.UID]bool) error {
@@ -101,7 +100,7 @@ func (gc *GC) collectPods(option api.ListOptions, runningSet map[types.UID]bool)
 		if !runningSet[p.OwnerReferences[0].UID] {
 			// kill bad pods without grace period to kill it immediately
 			err = gc.k8s.Core().Pods(gc.ns).Delete(p.GetName(), api.NewDeleteOptions(0))
-			if err != nil {
+			if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
 				return err
 			}
 			gc.logger.Infof("deleted pod (%v)", p.GetName())
@@ -123,7 +122,7 @@ func (gc *GC) collectServices(option api.ListOptions, runningSet map[types.UID]b
 		}
 		if !runningSet[srv.OwnerReferences[0].UID] {
 			err = gc.k8s.Core().Services(gc.ns).Delete(srv.GetName(), nil)
-			if err != nil {
+			if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
 				return err
 			}
 			gc.logger.Infof("deleted service (%v)", srv.GetName())
@@ -155,7 +154,7 @@ func (gc *GC) collectReplicaSet(option api.ListOptions, runningSet map[types.UID
 				OrphanDependents:   &orphanOption,
 				GracePeriodSeconds: &gracePeriod,
 			})
-			if err != nil {
+			if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
 				if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 					return err
 				}
