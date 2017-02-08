@@ -2,7 +2,17 @@
 
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-operator-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-master/)
 
-**Project status: *alpha*** Not all planned features are completed. The API, spec, status and other user facing objects are subject to change. We do not support backward-compatibility for the alpha releases.
+## Project status
+
+etcd operator is a **beta** software.
+
+Major planned features are completed. The etcd cluster spec, status are fairly stable. Any breaking changes of user facing objects or API will be pointed out in release notes. 
+
+The current user facing etcd cluster objects are created as Kubernetes [TPR](https://kubernetes.io/docs/user-guide/thirdpartyresources/) items. There is a planned change to expose the object through [UAS](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/aggregated-api-servers.md) for better reliabity (validation, admission, versioning). It will not change spec or status. However, it might change the user facing object kind, and might affect how users deploy etcd operator. The overall impact should be minimal for the end users.
+
+We expect etcd operator to be stable soon. Backwards-incompatible changes will not be made after this project goes into stable stage.
+
+## Overview
 
 etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating their creation and administration:
 
