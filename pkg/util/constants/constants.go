@@ -23,7 +23,5 @@ const (
 
 	DefaultBackupPodHTTPPort = 19999
 
-	TPRName = "etcd-cluster.coreos.com"
-
 	BackupMountDir = "/var/etcd-backup"
 )

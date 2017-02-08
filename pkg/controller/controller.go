@@ -27,7 +27,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
@@ -235,7 +234,7 @@ func (c *Controller) initResource() (string, error) {
 func (c *Controller) createTPR() error {
 	tpr := &v1beta1extensions.ThirdPartyResource{
 		ObjectMeta: v1.ObjectMeta{
-			Name: constants.TPRName,
+			Name: spec.TPRName,
 		},
 		Versions: []v1beta1extensions.APIVersion{
 			{Name: "v1"},

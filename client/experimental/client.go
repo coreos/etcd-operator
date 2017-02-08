@@ -1,11 +1,10 @@
-package client
+package experimental
 
 import (
 	"context"
 	"net/http"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/api/unversioned"
@@ -15,7 +14,8 @@ import (
 	"k8s.io/client-go/1.5/rest"
 )
 
-// Operator operators etcd clusters atop Kubernetes.
+// NOTE: This is experimental client. We will likely change it in the future
+// Operator operates etcd clusters atop Kubernetes.
 type Operator interface {
 	// Create creates an etcd cluster.
 	Create(ctx context.Context, name string, spec spec.ClusterSpec) error
@@ -76,7 +76,7 @@ func NewOperator(namespace string) (Operator, error) {
 
 	return &operator{
 		tprClient: tprclient,
-		tprName:   constants.TPRName,
+		tprName:   spec.TPRName,
 		ns:        namespace,
 	}, nil
 
