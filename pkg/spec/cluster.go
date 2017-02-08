@@ -28,6 +28,8 @@ import (
 
 const (
 	defaultVersion = "3.1.0"
+
+	TPRName = "etcd-cluster.coreos.com"
 )
 
 var (

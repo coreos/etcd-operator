@@ -230,8 +230,10 @@ func startChaos(ctx context.Context, k8s kubernetes.Interface, ns string, chaosL
 			KillProbability: 0.5,
 			KillMax:         1,
 		}
-
-		go m.CrushPods(ctx, c)
+		go func() {
+			time.Sleep(60 * time.Second) // don't start until quorum up
+			m.CrushPods(ctx, c)
+		}()
 
 	case 2:
 		logrus.Info("chaos level = 2: randomly kill at most five etcd pods every 30 seconds at 50%")
