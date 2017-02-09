@@ -61,13 +61,13 @@ func testCreateCluster(t *testing.T) {
 // testPauseControl tests the user can pause the operator from controlling
 // an etcd cluster.
 func testPauseControl(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	testStopOperator(t, false)
 }
 
 func testStopOperator(t *testing.T, kill bool) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
 	f := framework.Global
 	testEtcd, err := createCluster(t, f, newClusterSpec("test-etcd-", 3))
 	if err != nil {
