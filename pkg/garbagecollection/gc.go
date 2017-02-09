@@ -20,6 +20,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 	"k8s.io/client-go/1.5/pkg/labels"
 	"k8s.io/client-go/1.5/pkg/types"
 )
@@ -97,7 +98,8 @@ func (gc *GC) collectPods(option api.ListOptions, runningSet map[types.UID]bool)
 			gc.logger.Warningf("failed to check pod %s: no owner", p.GetName())
 			continue
 		}
-		if !runningSet[p.OwnerReferences[0].UID] {
+		// Pods failed due to liveness probe are also collected
+		if !runningSet[p.OwnerReferences[0].UID] || p.Status.Phase == v1.PodFailed {
 			// kill bad pods without grace period to kill it immediately
 			err = gc.k8s.Core().Pods(gc.ns).Delete(p.GetName(), api.NewDeleteOptions(0))
 			if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
