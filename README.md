@@ -6,9 +6,9 @@
 
 etcd operator is a **beta** software.
 
-Major planned features are completed. The etcd cluster spec, status are fairly stable. Any breaking changes of user facing objects or API will be pointed out in release notes. 
+Major planned features are completed. We don't plan to have any breaking API changes. However, we might fix API bugs before stable release that introduce backward incompatible behaviors. We will announce breaking changes in release notes.
 
-The current user facing etcd cluster objects are created as Kubernetes [TPR](https://kubernetes.io/docs/user-guide/thirdpartyresources/) items. There is a planned change to expose the object through [UAS](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/aggregated-api-servers.md) for better reliabity (validation, admission, versioning). It will not change spec or status. However, it might change the user facing object kind, and might affect how users deploy etcd operator. The overall impact should be minimal for the end users.
+The current user facing etcd cluster objects are created as Kubernetes [TPR](https://kubernetes.io/docs/user-guide/thirdpartyresources/) items. There is a planned change to expose the object through [UAS](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/aggregated-api-servers.md) for better reliabity (validation, admission, versioning). It will not change spec or status. However, it might change the user facing object kind, and might affect how users deploy etcd operator. The overall impact should be minimal.
 
 We expect etcd operator to be stable soon. Backwards-incompatible changes will not be made after this project goes into stable stage.
 
