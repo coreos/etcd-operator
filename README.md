@@ -2,19 +2,17 @@
 
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-operator-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-master/)
 
-## Project status
+### Project status: beta
 
-etcd operator is a **beta** software.
+Major planned features have been completed and while no breaking API changes are currently planned, we reserve the right to address bugs and API changes in a backwards incompatible way before the project is declared stable. Any breaking changes introduced will be documented in release notes.
 
-Major planned features are completed. We don't plan to have any breaking API changes. However, we might fix API bugs before stable release that introduce backward incompatible behaviors. We will announce breaking changes in release notes.
+Currently user face etcd cluster objects are created as [Kubernetes Third Party Resources](https://kubernetes.io/docs/user-guide/thirdpartyresources/), however, taking advantage of [User Aggregated API Servers](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/aggregated-api-servers.md) to improve reliability, validation and versioning is planned. The use of Aggregated API should be minimally disruptive to existing users but may change what Kubernetes objects are created or how users deploy the etcd operator.
 
-The current user facing etcd cluster objects are created as Kubernetes [TPR](https://kubernetes.io/docs/user-guide/thirdpartyresources/) items. There is a planned change to expose the object through [UAS](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/aggregated-api-servers.md) for better reliabity (validation, admission, versioning). It will not change spec or status. However, it might change the user facing object kind, and might affect how users deploy etcd operator. The overall impact should be minimal.
-
-We expect etcd operator to be stable soon. Backwards-incompatible changes will not be made after this project goes into stable stage.
+We expect to consider the etcd operator stable soon; backwards incompatible changes will not be made once the project reaches stability.
 
 ## Overview
 
-etcd operator manages etcd clusters atop [Kubernetes][k8s-home], automating their creation and administration:
+The etcd operator manages etcd clusters deployed to [Kubernetes][k8s-home] and automates tasks related to operating an etcd cluster.
 
 - [Create and destroy](#create-and-destroy-an-etcd-cluster)
 - [Resize](#resize-an-etcd-cluster)
@@ -29,13 +27,7 @@ Read [Developer Guide](./doc/dev/developer_guide.md) for setting up development 
 ## Requirements
 
 - Kubernetes 1.4+
-  **Warning**: as of Kubernetes 1.5.2 etcd operator won't well work due to k8s bug: https://github.com/kubernetes/kubernetes/issues/39816 .
 - etcd 3.0+
-
-## Namespace
-
-The etcd operator only manages the etcd cluster created in the same namespace.
-Users need to create multiple operators in different namespaces to manage etcd clusters in different namespaces.
 
 ## Demo
 
@@ -395,8 +387,14 @@ Check the other two pods and you should see the same result.
 
 ## Limitations
 
+- The etcd operator does not work well with Kubernetes: https://github.com/kubernetes/kubernetes/issues/39816.
+
+- The etcd operator only manages the etcd cluster created in the same namespace. Users need to create multiple operators in different namespaces to manage etcd clusters in different namespaces.
+
 - Backup works only for data in etcd3 storage, not for data in etcd2 storage.
+
 - Backup requires PV to work, and it only works on GCE(kubernetes.io/gce-pd) and AWS(kubernetes.io/aws-ebs) for now.
+
 - Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with all nodes running in the same Kubernetes cluster.
 
 **The operator collects anonymous usage statistics to help us learn how the software is being used and how we can improve it. To disable collection, run the operator with the flag `-analytics=false`.**
