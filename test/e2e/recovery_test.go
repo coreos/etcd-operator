@@ -127,14 +127,9 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 			t.Fatalf("fail to make a latest backup: %v", err)
 		}
 	}
-	// Reverse the order because the last member could have not come ready yet.
-	// Try to prioritize deleting it first.
-	toKill := make([]string, numToKill)
-	for i := 0; i < numToKill; i++ {
-		toKill[i] = names[len(names)-i-1]
-	}
-	// TODO: race: members are recovered between they are deleted one by one.
-	logfWithTimestamp(t, "killing pods: %v", names)
+	toKill := names[:numToKill]
+	logfWithTimestamp(t, "killing pods: %v", toKill)
+	// TODO: race: members could be recovered between being deleted one by one.
 	if err := killMembers(f, toKill...); err != nil {
 		t.Fatal(err)
 	}
