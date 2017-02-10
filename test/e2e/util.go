@@ -137,8 +137,8 @@ func killMembers(f *framework.Framework, names ...string) error {
 func newClusterSpec(genName string, size int) *spec.EtcdCluster {
 	return &spec.EtcdCluster{
 		TypeMeta: unversioned.TypeMeta{
-			Kind:       "EtcdCluster",
-			APIVersion: "coreos.com/v1",
+			Kind:       "Cluster",
+			APIVersion: spec.TPRGroup + "/" + spec.TPRVersion,
 		},
 		ObjectMeta: v1.ObjectMeta{
 			GenerateName: genName,
@@ -194,7 +194,7 @@ func clusterWithSelfHosted(ec *spec.EtcdCluster, sh *spec.SelfHostedPolicy) *spe
 }
 
 func createCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
-	uri := fmt.Sprintf("/apis/coreos.com/v1/namespaces/%s/etcdclusters", f.Namespace)
+	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, f.Namespace)
 	b, err := f.KubeClient.Core().GetRESTClient().Post().Body(e).RequestURI(uri).DoRaw()
 	if err != nil {
 		return nil, err
@@ -221,7 +221,7 @@ func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster
 		t.Logf("pod (%v): status (%v), node (%v) cmd (%v)", pod.Name, pod.Status.Phase, pod.Spec.NodeName, pod.Spec.Containers[0].Command)
 	}
 
-	uri := fmt.Sprintf("/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", f.Namespace, e.Name)
+	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, f.Namespace, e.Name)
 	if _, err := f.KubeClient.Core().GetRESTClient().Delete().RequestURI(uri).DoRaw(); err != nil {
 		return err
 	}

@@ -35,8 +35,8 @@ type Operator interface {
 
 var (
 	groupversion = unversioned.GroupVersion{
-		Group:   "coreos.com",
-		Version: "v1",
+		Group:   spec.TPRGroup,
+		Version: spec.TPRVersion,
 	}
 )
 
@@ -76,7 +76,7 @@ func NewOperator(namespace string) (Operator, error) {
 
 	return &operator{
 		tprClient: tprclient,
-		tprName:   spec.TPRName,
+		tprName:   spec.TPRName(),
 		ns:        namespace,
 	}, nil
 

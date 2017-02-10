@@ -27,8 +27,8 @@ valid BackupPolicy and saved with backup. Now, user can restore the cluster by a
 to previous yaml file:
 
 ```yaml
-apiVersion: "coreos.com/v1"
-kind: "EtcdCluster"
+apiVersion: "etcd.coreos.com/v1beta1"
+kind: "Cluster"
 metadata:
   name: "etcd-A"
 spec:
