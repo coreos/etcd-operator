@@ -234,10 +234,10 @@ func (c *Controller) initResource() (string, error) {
 func (c *Controller) createTPR() error {
 	tpr := &v1beta1extensions.ThirdPartyResource{
 		ObjectMeta: v1.ObjectMeta{
-			Name: spec.TPRName,
+			Name: spec.TPRName(),
 		},
 		Versions: []v1beta1extensions.APIVersion{
-			{Name: "v1"},
+			{Name: spec.TPRVersion},
 		},
 		Description: "Managed etcd clusters",
 	}

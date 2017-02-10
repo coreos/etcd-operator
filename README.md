@@ -40,12 +40,12 @@ $ kubectl create -f example/deployment.yaml
 deployment "etcd-operator" created
 ```
 
-etcd operator will create a Kubernetes *Third-Party Resource* (TPR) "EtcdCluster" automatically.
+etcd operator will automatically create a Kubernetes *Third-Party Resource* (TPR) as followed:
 
 ```bash
 $ kubectl get thirdpartyresources
 NAME                      DESCRIPTION             VERSION(S)
-etcd-cluster.coreos.com   Managed etcd clusters   v1
+cluster.etcd.coreos.com   Managed etcd clusters   v1beta1
 ```
 
 ## Create and destroy an etcd cluster
@@ -74,9 +74,9 @@ If you are working with [minikube locally](https://github.com/kubernetes/minikub
 
 ```bash
 $ kubectl create -f example/example-etcd-cluster-nodeport-service.json
-export ETCDCTL_API=3
-export ETCDCTL_ENDPOINTS=$(minikube service example-etcd-cluster-client-service --url)
-etcdctl put foo bar
+$ export ETCDCTL_API=3
+$ export ETCDCTL_ENDPOINTS=$(minikube service example-etcd-cluster-client-service --url)
+$ etcdctl put foo bar
 ```
 
 Destroy etcd cluster:
@@ -109,8 +109,8 @@ Create a json file with the new configuration:
 ```
 $ cat body.json
 {
-  "apiVersion": "coreos.com/v1",
-  "kind": "EtcdCluster",
+  "apiVersion": "etcd.coreos.com/v1beta1",
+  "kind": "Cluster",
   "metadata": {
     "name": "example-etcd-cluster",
     "namespace": "default"
@@ -124,7 +124,7 @@ $ cat body.json
 In another terminal, use the following command to change the cluster size from 3 to 5.
 
 ```
-$ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/example-etcd-cluster
+$ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/etcd.coreos.com/v1beta1/namespaces/default/clusters/example-etcd-cluster
 ```
 
 We should see
@@ -146,8 +146,8 @@ Create a json file with cluster size of 3:
 ```
 $ cat body.json
 {
-  "apiVersion": "coreos.com/v1",
-  "kind": "EtcdCluster",
+  "apiVersion": "etcd.coreos.com/v1beta1",
+  "kind": "Cluster",
   "metadata": {
     "name": "example-etcd-cluster",
     "namespace": "default"
@@ -161,7 +161,7 @@ $ cat body.json
 Apply it to API Server:
 
 ```
-$ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/example-etcd-cluster
+$ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/etcd.coreos.com/v1beta1/namespaces/default/clusters/example-etcd-cluster
 ```
 
 We should see that etcd cluster will eventually reduce to 3 pods:
@@ -314,8 +314,8 @@ Have the following yaml file ready:
 
 ```
 $ cat 3.0-etcd-cluster.yaml
-apiVersion: "coreos.com/v1"
-kind: "EtcdCluster"
+apiVersion: "etcd.coreos.com/v1beta1"
+kind: "Cluster"
 metadata:
   name: "etcd-cluster"
 spec:
@@ -357,8 +357,8 @@ Have following json file ready:
 ```
 $ cat body.json
 {
-  "apiVersion": "coreos.com/v1",
-  "kind": "EtcdCluster",
+  "apiVersion": "etcd.coreos.com/v1beta1",
+  "kind": "Cluster",
   "metadata": {
     "name": "etcd-cluster"
   },
@@ -373,7 +373,7 @@ Then we update the version in spec.
 
 ```
 $ curl -H 'Content-Type: application/json' -X PUT --data @body.json \
-    http://127.0.0.1:8080/apis/coreos.com/v1/namespaces/default/etcdclusters/etcd-cluster
+    http://127.0.0.1:8080/apis/etcd.coreos.com/v1beta1/namespaces/default/clusters/etcd-cluster
 ```
 
 Wait ~30 seconds. The container image version should be updated to v3.1.0:

@@ -56,8 +56,8 @@ Or just login into aws console to view it.
 When we create a cluster with backup, we set the backup.storageType to "S3".
 For example, a yaml file would look like:
 ```
-apiVersion: "coreos.com/v1"
-kind: "EtcdCluster"
+apiVersion: "etcd.coreos.com/v1beta1"
+kind: "Cluster"
 metadata:
   name: "etcd-cluster-with-backup"
 spec:

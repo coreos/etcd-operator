@@ -29,12 +29,18 @@ import (
 const (
 	defaultVersion = "3.1.0"
 
-	TPRName = "etcd-cluster.coreos.com"
+	TPRKind    = "cluster"
+	TPRGroup   = "etcd.coreos.com"
+	TPRVersion = "v1beta1"
 )
 
 var (
 	ErrBackupUnsetRestoreSet = errors.New("spec: backup policy must be set if restore policy is set")
 )
+
+func TPRName() string {
+	return fmt.Sprintf("%s.%s", TPRKind, TPRGroup)
+}
 
 type EtcdCluster struct {
 	unversioned.TypeMeta `json:",inline"`

@@ -31,8 +31,8 @@ import (
 // TODO: replace this package with Operator client
 
 func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
-	return httpClient.Get(fmt.Sprintf("%s/apis/coreos.com/v1/namespaces/%s/etcdclusters?watch=true&resourceVersion=%s",
-		host, ns, resourceVersion))
+	return httpClient.Get(fmt.Sprintf("%s/apis/%s/%s/namespaces/%s/clusters?watch=true&resourceVersion=%s",
+		host, spec.TPRGroup, spec.TPRVersion, ns, resourceVersion))
 }
 
 func GetClusterList(restcli *rest.RESTClient, ns string) (*spec.EtcdClusterList, error) {
@@ -62,11 +62,11 @@ func WaitEtcdTPRReady(restcli *rest.RESTClient, interval, timeout time.Duration,
 }
 
 func listClustersURI(ns string) string {
-	return fmt.Sprintf("/apis/coreos.com/v1/namespaces/%s/etcdclusters", ns)
+	return fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, ns)
 }
 
 func GetClusterTPRObject(restcli *rest.RESTClient, ns, name string) (*spec.EtcdCluster, error) {
-	uri := fmt.Sprintf("/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", ns, name)
+	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, name)
 	b, err := restcli.Get().RequestURI(uri).DoRaw()
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func UpdateClusterTPRObjectUnconditionally(restcli *rest.RESTClient, ns string, 
 }
 
 func updateClusterTPRObject(restcli *rest.RESTClient, ns string, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
-	uri := fmt.Sprintf("/apis/coreos.com/v1/namespaces/%s/etcdclusters/%s", ns, e.Name)
+	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, e.Name)
 	b, err := restcli.Put().RequestURI(uri).Body(e).DoRaw()
 	if err != nil {
 		return nil, err
