@@ -246,7 +246,7 @@ By default, the etcd operator creates a storage class on initialization:
 
 ```
 $ kubectl get storageclass
-NAME                            TYPE
+NAME                 TYPE
 etcd-backup-gce-pd   kubernetes.io/gce-pd
 ```
 
@@ -262,15 +262,15 @@ A persistent volume claim is created for the backup pod:
 
 ```
 $ kubectl get pvc
-NAME                           STATUS    VOLUME                                     CAPACITY   ACCESSMODES   AGE
-etcd-cluster-with-backup-pvc   Bound     pvc-79e39bab-b973-11e6-8ae4-42010af00002   1Gi        RWO           9s
+NAME                                   STATUS    VOLUME                                     CAPACITY   ACCESSMODES   AGE
+example-etcd-cluster-with-backup-pvc   Bound     pvc-79e39bab-b973-11e6-8ae4-42010af00002   1Gi        RWO           9s
 ```
 
 Let's try to write some data into etcd:
 
 ```
 $ kubectl run --rm -i --tty fun --image quay.io/coreos/etcd --restart=Never -- /bin/sh
-/ # ETCDCTL_API=3 etcdctl --endpoints http://etcd-cluster-with-backup-0002:2379 put foo bar
+/ # ETCDCTL_API=3 etcdctl --endpoints http://example-etcd-cluster-with-backup-0002:2379 put foo bar
 OK
 (ctrl-D to exit)
 ```
@@ -278,9 +278,9 @@ OK
 Now let's kill two pods to simulate a disaster failure:
 
 ```
-$ kubectl delete pod etcd-cluster-with-backup-0000 etcd-cluster-with-backup-0001 --now
-pod "etcd-cluster-with-backup-0000" deleted
-pod "etcd-cluster-with-backup-0001" deleted
+$ kubectl delete pod example-etcd-cluster-with-backup-0000 example-etcd-cluster-with-backup-0001 --now
+pod "example-etcd-cluster-with-backup-0000" deleted
+pod "example-etcd-cluster-with-backup-0001" deleted
 ```
 
 Now quorum is lost. The etcd operator will start to recover the cluster by:
@@ -289,21 +289,21 @@ Now quorum is lost. The etcd operator will start to recover the cluster by:
 
 ```
 $ kubectl get pods
-NAME                                         READY     STATUS     RESTARTS   AGE
-etcd-cluster-with-backup-0003                0/1       Init:0/2   0          11s
-etcd-cluster-with-backup-backup-sidecar-e9gkv   1/1       Running    0          18m
+NAME                                                    READY     STATUS     RESTARTS   AGE
+example-etcd-cluster-with-backup-0003                   0/1       Init:0/2   0          11s
+example-etcd-cluster-with-backup-backup-sidecar-e9gkv   1/1       Running    0          18m
 ...
 $ kubectl get pods
-NAME                                         READY     STATUS    RESTARTS   AGE
-etcd-cluster-with-backup-0003                1/1       Running   0          3m
-etcd-cluster-with-backup-0004                1/1       Running   0          3m
-etcd-cluster-with-backup-0005                1/1       Running   0          3m
-etcd-cluster-with-backup-backup-sidecar-e9gkv   1/1       Running   0          22m
+NAME                                                    READY     STATUS    RESTARTS   AGE
+example-etcd-cluster-with-backup-0003                   1/1       Running   0          3m
+example-etcd-cluster-with-backup-0004                   1/1       Running   0          3m
+example-etcd-cluster-with-backup-0005                   1/1       Running   0          3m
+example-etcd-cluster-with-backup-backup-sidecar-e9gkv   1/1       Running   0          22m
 ```
 
 Finally, besides destroying the cluster, also cleanup the backup if you don't need it anymore:
 ```
-$ k delete pvc etcd-cluster-with-backup-pvc
+$ kubectl delete pvc example-etcd-cluster-with-backup-pvc
 ```
 
 Note: There could be a race that it will fall to single member recovery if a pod is recovered before another is deleted.
@@ -317,7 +317,7 @@ $ cat 3.0-etcd-cluster.yaml
 apiVersion: "etcd.coreos.com/v1beta1"
 kind: "Cluster"
 metadata:
-  name: "etcd-cluster"
+  name: "example-etcd-cluster"
 spec:
   size: 3
   version: "3.0.16"
@@ -328,16 +328,16 @@ Create an etcd cluster with the version specified (3.0.16) in the yaml file:
 ```
 $ kubectl create -f 3.0-etcd-cluster.yaml
 $ kubectl get pods
-NAME                   READY     STATUS    RESTARTS   AGE
-etcd-cluster-0000      1/1       Running   0          37s
-etcd-cluster-0001      1/1       Running   0          25s
-etcd-cluster-0002      1/1       Running   0          14s
+NAME                           READY     STATUS    RESTARTS   AGE
+example-etcd-cluster-0000      1/1       Running   0          37s
+example-etcd-cluster-0001      1/1       Running   0          25s
+example-etcd-cluster-0002      1/1       Running   0          14s
 ```
 
 The container image version should be 3.0.16:
 
 ```
-$ kubectl get pod etcd-cluster-0000 -o yaml | grep "image:" | uniq
+$ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
     image: quay.io/coreos/etcd:v3.0.16
 ```
 
@@ -360,7 +360,7 @@ $ cat body.json
   "apiVersion": "etcd.coreos.com/v1beta1",
   "kind": "Cluster",
   "metadata": {
-    "name": "etcd-cluster"
+    "name": "example-etcd-cluster"
   },
   "spec": {
     "size": 3,
@@ -373,13 +373,13 @@ Then we update the version in spec.
 
 ```
 $ curl -H 'Content-Type: application/json' -X PUT --data @body.json \
-    http://127.0.0.1:8080/apis/etcd.coreos.com/v1beta1/namespaces/default/clusters/etcd-cluster
+    http://127.0.0.1:8080/apis/etcd.coreos.com/v1beta1/namespaces/default/clusters/example-etcd-cluster
 ```
 
 Wait ~30 seconds. The container image version should be updated to v3.1.0:
 
 ```
-$ kubectl get pod etcd-cluster-0000 -o yaml | grep "image:" | uniq
+$ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
     image: quay.io/coreos/etcd:v3.1.0
 ```
 
