@@ -19,10 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
-
-	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
 func TestBasic(t *testing.T) {
@@ -146,9 +143,7 @@ func testEtcdUpgrade(t *testing.T) {
 		}
 	}()
 
-	_, err = waitSizeReachedWithAccept(t, f, testEtcd.Name, 3, 60*time.Second, func(pod *v1.Pod) bool {
-		return k8sutil.GetEtcdVersion(pod) == "3.0.16"
-	})
+	err = waitSizeAndVersionReached(t, f, testEtcd.Name, "3.0.16", 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -159,9 +154,7 @@ func testEtcdUpgrade(t *testing.T) {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 
-	_, err = waitSizeReachedWithAccept(t, f, testEtcd.Name, 3, 60*time.Second, func(pod *v1.Pod) bool {
-		return k8sutil.GetEtcdVersion(pod) == "3.1.0"
-	})
+	err = waitSizeAndVersionReached(t, f, testEtcd.Name, "3.1.0", 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to wait new version etcd cluster: %v", err)
 	}

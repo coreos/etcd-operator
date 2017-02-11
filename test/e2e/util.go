@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -44,6 +45,8 @@ const (
 	etcdKeyFoo = "foo"
 	etcdValBar = "bar"
 )
+
+type acceptFunc func(*v1.Pod) bool
 
 func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Duration) error {
 	ls := labels.SelectorFromSet(map[string]string{
@@ -91,10 +94,17 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 }
 
 func waitUntilSizeReached(t *testing.T, f *framework.Framework, clusterName string, size int, timeout time.Duration) ([]string, error) {
-	return waitSizeReachedWithAccept(t, f, clusterName, size, timeout, func(*v1.Pod) bool { return true })
+	return waitSizeReachedWithAccept(t, f, clusterName, size, timeout, acceptRunningPod, acceptReadyMember)
 }
 
-func waitSizeReachedWithAccept(t *testing.T, f *framework.Framework, clusterName string, size int, timeout time.Duration, acceptPod func(*v1.Pod) bool) ([]string, error) {
+func waitSizeAndVersionReached(t *testing.T, f *framework.Framework, clusterName, version string, size int, timeout time.Duration) error {
+	_, err := waitSizeReachedWithAccept(t, f, clusterName, size, timeout, acceptRunningPod, acceptReadyMember, func(pod *v1.Pod) bool {
+		return k8sutil.GetEtcdVersion(pod) == version
+	})
+	return err
+}
+
+func waitSizeReachedWithAccept(t *testing.T, f *framework.Framework, clusterName string, size int, timeout time.Duration, accepts ...acceptFunc) ([]string, error) {
 	var names []string
 	err := retryutil.Retry(10*time.Second, int(timeout/(10*time.Second)), func() (done bool, err error) {
 		podList, err := f.KubeClient.Core().Pods(f.Namespace).List(k8sutil.ClusterListOpt(clusterName))
@@ -103,25 +113,60 @@ func waitSizeReachedWithAccept(t *testing.T, f *framework.Framework, clusterName
 		}
 		names = nil
 		var nodeNames []string
+		var podIPs []string
 		for i := range podList.Items {
 			pod := &podList.Items[i]
-			if pod.Status.Phase != v1.PodRunning || !acceptPod(pod) {
+			accepted := true
+			for _, acceptPod := range accepts {
+				if !acceptPod(pod) {
+					accepted = false
+					break
+				}
+			}
+			if !accepted {
 				continue
 			}
 			names = append(names, pod.Name)
 			nodeNames = append(nodeNames, pod.Spec.NodeName)
+			podIPs = append(podIPs, pod.Status.PodIP)
 		}
 		logfWithTimestamp(t, "waiting size (%d), etcd pods: names (%v), nodes (%v)", size, names, nodeNames)
 		if len(names) != size {
 			return false, nil
 		}
-		// TODO: check etcd member membership
 		return true, nil
 	})
 	if err != nil {
 		return nil, err
 	}
 	return names, nil
+}
+
+func acceptRunningPod(p *v1.Pod) bool {
+	return p.Status.Phase == v1.PodRunning
+}
+
+func acceptReadyMember(p *v1.Pod) bool {
+	return checkMemberReady(fmt.Sprintf("http://%s:2379", p.Status.PodIP))
+}
+
+func checkMemberReady(url string) bool {
+	cfg := clientv3.Config{
+		Endpoints:   []string{url},
+		DialTimeout: constants.DefaultDialTimeout,
+	}
+	etcdcli, err := clientv3.New(cfg)
+	if err != nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	_, err = etcdcli.Get(ctx, "/", clientv3.WithSerializable())
+	cancel()
+	etcdcli.Close()
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func killMembers(f *framework.Framework, names ...string) error {
