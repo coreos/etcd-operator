@@ -109,16 +109,16 @@ func GetNodePortString(srv *v1.Service) string {
 	return fmt.Sprint(srv.Spec.Ports[0].NodePort)
 }
 
-func MakeBackupHostPort(clusterName string) string {
-	return fmt.Sprintf("%s:%d", MakeBackupName(clusterName), constants.DefaultBackupPodHTTPPort)
-}
-
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 	p.Spec.NodeSelector = ns
 	return p
 }
 
-func MakeBackupName(clusterName string) string {
+func BackupServiceAddr(clusterName string) string {
+	return fmt.Sprintf("%s:%d", BackupServiceName(clusterName), constants.DefaultBackupPodHTTPPort)
+}
+
+func BackupServiceName(clusterName string) string {
 	return fmt.Sprintf("%s-backup-sidecar", clusterName)
 }
 
@@ -234,7 +234,7 @@ func NewMemberServiceManifest(etcdName, clusterName string, owner metatypes.Owne
 
 func AddRecoveryToPod(pod *v1.Pod, clusterName, name, token string, cs spec.ClusterSpec) {
 	pod.Annotations[v1.PodInitContainersBetaAnnotationKey] =
-		makeRestoreInitContainerSpec(MakeBackupHostPort(clusterName), name, token, cs.Version)
+		makeRestoreInitContainerSpec(BackupServiceAddr(clusterName), name, token, cs.Version)
 }
 
 func addOwnerRefToObject(o meta.Object, r metatypes.OwnerReference) {

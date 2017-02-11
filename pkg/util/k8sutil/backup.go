@@ -200,7 +200,7 @@ func backupNameAndLabel(clusterName string) (string, map[string]string) {
 		"app":          BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
 	}
-	name := MakeBackupName(clusterName)
+	name := BackupServiceName(clusterName)
 	return name, labels
 }
 

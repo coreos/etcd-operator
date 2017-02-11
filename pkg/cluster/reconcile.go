@@ -19,10 +19,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"path"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/backup"
+	"github.com/coreos/etcd-operator/client/experimentalclient"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -199,7 +198,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	backupNow := false
 	if len(left) > 0 {
 		c.logger.Infof("pods are still running (%v). Will try to make a latest backup from one of them.", left)
-		err := RequestBackupNow(k8sutil.MakeBackupHostPort(c.cluster.Name))
+		err := requestBackup(c.cluster.Name)
 		if err != nil {
 			c.logger.Errorln(err)
 		} else {
@@ -211,7 +210,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	} else {
 		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
 		// If so, we can still continue. Otherwise, it's fatal error.
-		exist, err := checkBackupExist(k8sutil.MakeBackupHostPort(c.cluster.Name), c.cluster.Spec.Version)
+		exist, err := checkBackupExist(k8sutil.BackupServiceAddr(c.cluster.Name), c.cluster.Spec.Version)
 		if err != nil {
 			c.logger.Errorln(err)
 			return err
@@ -230,28 +229,16 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	return c.restoreSeedMember()
 }
 
-// TODO: make this private
-func RequestBackupNow(addr string) error {
-	httpcli := http.Client{
-		Timeout: 30 * time.Second,
-	}
-	resp, err := httpcli.Get(fmt.Sprintf("http://%s/backupnow", path.Join(addr, backup.APIV1)))
-	if err != nil {
-		return fmt.Errorf("backupnow (%s) failed: %v", addr, err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			b = []byte(fmt.Sprintf("fail to read HTTP response: %v", err))
-		}
-		return fmt.Errorf("backupnow (%s) failed: unexpected status code (%v), response (%s)",
-			addr, resp.Status, string(b))
-	}
-	return nil
+func requestBackup(clusterName string) error {
+	// TODO: reuse http client
+	bc := experimentalclient.NewBackup(&http.Client{}, clusterName)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return bc.Request(ctx)
 }
 
 func checkBackupExist(addr, ver string) (bool, error) {
+	// TODO: reuse http client
 	httpcli := http.Client{
 		Timeout: 30 * time.Second,
 	}
