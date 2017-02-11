@@ -301,6 +301,11 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 				break
 			}
 
+			// TODO: We are coupling GC logic here because we need to sync with current membership.
+			// - We need to redesign this GC part and have it not coupled with cluster code
+			// - This is listing serivces every reconcile loop. We need to reduce such performance impact.
+			garbagecollection.RemoveDeletedMemberServices(c.cluster.Name, c.cluster.Namespace, c.config.KubeCli, c.members, c.logger)
+
 			if err := c.updateStatus(); err != nil {
 				c.logger.Warningf("failed to update TPR status: %v", err)
 			}
