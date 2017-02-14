@@ -16,12 +16,12 @@ package spec
 
 import "k8s.io/client-go/1.5/pkg/api/unversioned"
 
-// EtcdClusterList is a list of etcd clusters.
-type EtcdClusterList struct {
+// ClusterList is a list of etcd clusters.
+type ClusterList struct {
 	unversioned.TypeMeta `json:",inline"`
 	// Standard list metadata
 	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	unversioned.ListMeta `json:"metadata,omitempty"`
 	// Items is a list of third party objects
-	Items []EtcdCluster `json:"items"`
+	Items []Cluster `json:"items"`
 }

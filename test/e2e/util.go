@@ -185,8 +185,8 @@ func killMembers(f *framework.Framework, names ...string) error {
 	return nil
 }
 
-func newClusterSpec(genName string, size int) *spec.EtcdCluster {
-	return &spec.EtcdCluster{
+func newClusterSpec(genName string, size int) *spec.Cluster {
+	return &spec.Cluster{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Cluster",
 			APIVersion: spec.TPRGroup + "/" + spec.TPRVersion,
@@ -200,7 +200,7 @@ func newClusterSpec(genName string, size int) *spec.EtcdCluster {
 	}
 }
 
-func etcdClusterWithBackup(ec *spec.EtcdCluster, backupPolicy *spec.BackupPolicy) *spec.EtcdCluster {
+func etcdClusterWithBackup(ec *spec.Cluster, backupPolicy *spec.BackupPolicy) *spec.Cluster {
 	ec.Spec.Backup = backupPolicy
 	return ec
 }
@@ -229,28 +229,28 @@ func newBackupPolicyPV() *spec.BackupPolicy {
 	}
 }
 
-func etcdClusterWithRestore(ec *spec.EtcdCluster, restorePolicy *spec.RestorePolicy) *spec.EtcdCluster {
+func etcdClusterWithRestore(ec *spec.Cluster, restorePolicy *spec.RestorePolicy) *spec.Cluster {
 	ec.Spec.Restore = restorePolicy
 	return ec
 }
 
-func etcdClusterWithVersion(ec *spec.EtcdCluster, version string) *spec.EtcdCluster {
+func etcdClusterWithVersion(ec *spec.Cluster, version string) *spec.Cluster {
 	ec.Spec.Version = version
 	return ec
 }
 
-func clusterWithSelfHosted(ec *spec.EtcdCluster, sh *spec.SelfHostedPolicy) *spec.EtcdCluster {
+func clusterWithSelfHosted(ec *spec.Cluster, sh *spec.SelfHostedPolicy) *spec.Cluster {
 	ec.Spec.SelfHosted = sh
 	return ec
 }
 
-func createCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+func createCluster(t *testing.T, f *framework.Framework, e *spec.Cluster) (*spec.Cluster, error) {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, f.Namespace)
 	b, err := f.KubeClient.Core().GetRESTClient().Post().Body(e).RequestURI(uri).DoRaw()
 	if err != nil {
 		return nil, err
 	}
-	res := &spec.EtcdCluster{}
+	res := &spec.Cluster{}
 	if err := json.Unmarshal(b, res); err != nil {
 		return nil, err
 	}
@@ -258,11 +258,11 @@ func createCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster) (*
 	return res, nil
 }
 
-func updateEtcdCluster(f *framework.Framework, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+func updateEtcdCluster(f *framework.Framework, e *spec.Cluster) (*spec.Cluster, error) {
 	return k8sutil.UpdateClusterTPRObjectUnconditionally(f.KubeClient.Core().GetRESTClient(), f.Namespace, e)
 }
 
-func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster) error {
+func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.Cluster) error {
 	podList, err := f.KubeClient.Core().Pods(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
 	if err != nil {
 		return err
@@ -279,7 +279,7 @@ func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.EtcdCluster
 	return waitResourcesDeleted(t, f, e)
 }
 
-func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.EtcdCluster) error {
+func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.Cluster) error {
 	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
 		list, err := f.KubeClient.Core().Pods(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
 		if err != nil {
@@ -328,7 +328,7 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.EtcdClus
 	return nil
 }
 
-func waitBackupDeleted(f *framework.Framework, e *spec.EtcdCluster) error {
+func waitBackupDeleted(f *framework.Framework, e *spec.Cluster) error {
 	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
 		rl, err := f.KubeClient.Extensions().ReplicaSets(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
 		if err != nil {

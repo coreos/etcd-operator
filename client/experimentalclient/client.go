@@ -27,10 +27,10 @@ type Operator interface {
 	Update(ctx context.Context, name string, spec spec.ClusterSpec) error
 
 	// Get gets the etcd cluster information.
-	Get(ctx context.Context, name string) (*spec.EtcdCluster, error)
+	Get(ctx context.Context, name string) (*spec.Cluster, error)
 
 	// List lists all etcd clusters.
-	List(ctx context.Context) (*spec.EtcdClusterList, error)
+	List(ctx context.Context) (*spec.ClusterList, error)
 }
 
 var (
@@ -52,8 +52,8 @@ func init() {
 		func(scheme *runtime.Scheme) error {
 			scheme.AddKnownTypes(
 				groupversion,
-				&spec.EtcdCluster{},
-				&spec.EtcdClusterList{},
+				&spec.Cluster{},
+				&spec.ClusterList{},
 				&v1.ListOptions{},
 				&v1.DeleteOptions{},
 			)
@@ -90,7 +90,7 @@ func NewOperator(namespace string) (Operator, error) {
 }
 
 func (o *operator) Create(ctx context.Context, name string, cspec spec.ClusterSpec) error {
-	cluster := &spec.EtcdCluster{
+	cluster := &spec.Cluster{
 		ObjectMeta: v1.ObjectMeta{
 			Name: name,
 		},
@@ -137,8 +137,8 @@ func (o *operator) Update(ctx context.Context, name string, spec spec.ClusterSpe
 	}
 }
 
-func (o *operator) Get(ctx context.Context, name string) (*spec.EtcdCluster, error) {
-	cluster := &spec.EtcdCluster{}
+func (o *operator) Get(ctx context.Context, name string) (*spec.Cluster, error) {
+	cluster := &spec.Cluster{}
 
 	err := o.tprClient.Get().
 		Resource(o.tprName).
@@ -153,8 +153,8 @@ func (o *operator) Get(ctx context.Context, name string) (*spec.EtcdCluster, err
 	return cluster, nil
 }
 
-func (o *operator) List(ctx context.Context) (*spec.EtcdClusterList, error) {
-	clusters := &spec.EtcdClusterList{}
+func (o *operator) List(ctx context.Context) (*spec.ClusterList, error) {
+	clusters := &spec.ClusterList{}
 
 	err := o.tprClient.Get().
 		Resource(o.tprName).

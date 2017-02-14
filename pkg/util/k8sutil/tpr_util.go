@@ -35,13 +35,13 @@ func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion str
 		host, spec.TPRGroup, spec.TPRVersion, ns, resourceVersion))
 }
 
-func GetClusterList(restcli *rest.RESTClient, ns string) (*spec.EtcdClusterList, error) {
+func GetClusterList(restcli *rest.RESTClient, ns string) (*spec.ClusterList, error) {
 	b, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
 	if err != nil {
 		return nil, err
 	}
 
-	clusters := &spec.EtcdClusterList{}
+	clusters := &spec.ClusterList{}
 	if err := json.Unmarshal(b, clusters); err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func listClustersURI(ns string) string {
 	return fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, ns)
 }
 
-func GetClusterTPRObject(restcli *rest.RESTClient, ns, name string) (*spec.EtcdCluster, error) {
+func GetClusterTPRObject(restcli *rest.RESTClient, ns, name string) (*spec.Cluster, error) {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, name)
 	b, err := restcli.Get().RequestURI(uri).DoRaw()
 	if err != nil {
@@ -76,7 +76,7 @@ func GetClusterTPRObject(restcli *rest.RESTClient, ns, name string) (*spec.EtcdC
 
 // UpdateClusterTPRObject updates the given TPR object.
 // ResourceVersion of the object MUST be set or update will fail.
-func UpdateClusterTPRObject(restcli *rest.RESTClient, ns string, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+func UpdateClusterTPRObject(restcli *rest.RESTClient, ns string, e *spec.Cluster) (*spec.Cluster, error) {
 	if len(e.ResourceVersion) == 0 {
 		return nil, errors.New("k8sutil: resource version is not provided")
 	}
@@ -85,12 +85,12 @@ func UpdateClusterTPRObject(restcli *rest.RESTClient, ns string, e *spec.EtcdClu
 
 // UpdateClusterTPRObjectUnconditionally updates the given TPR object.
 // This should only be used in tests.
-func UpdateClusterTPRObjectUnconditionally(restcli *rest.RESTClient, ns string, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+func UpdateClusterTPRObjectUnconditionally(restcli *rest.RESTClient, ns string, e *spec.Cluster) (*spec.Cluster, error) {
 	e.ResourceVersion = ""
 	return updateClusterTPRObject(restcli, ns, e)
 }
 
-func updateClusterTPRObject(restcli *rest.RESTClient, ns string, e *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+func updateClusterTPRObject(restcli *rest.RESTClient, ns string, e *spec.Cluster) (*spec.Cluster, error) {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, e.Name)
 	b, err := restcli.Put().RequestURI(uri).Body(e).DoRaw()
 	if err != nil {
@@ -99,8 +99,8 @@ func updateClusterTPRObject(restcli *rest.RESTClient, ns string, e *spec.EtcdClu
 	return readOutCluster(b)
 }
 
-func readOutCluster(b []byte) (*spec.EtcdCluster, error) {
-	cluster := &spec.EtcdCluster{}
+func readOutCluster(b []byte) (*spec.Cluster, error) {
+	cluster := &spec.Cluster{}
 	if err := json.Unmarshal(b, cluster); err != nil {
 		return nil, err
 	}

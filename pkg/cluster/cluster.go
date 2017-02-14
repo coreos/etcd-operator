@@ -52,7 +52,7 @@ const (
 
 type clusterEvent struct {
 	typ     clusterEventType
-	cluster *spec.EtcdCluster
+	cluster *spec.Cluster
 }
 
 type Config struct {
@@ -68,7 +68,7 @@ type Cluster struct {
 
 	config Config
 
-	cluster *spec.EtcdCluster
+	cluster *spec.Cluster
 
 	// in memory state of the cluster
 	// status is the source of truth after Cluster struct is materialized.
@@ -89,7 +89,7 @@ type Cluster struct {
 	gc *garbagecollection.GC
 }
 
-func New(config Config, e *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
+func New(config Config, e *spec.Cluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
 	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", e.Name)
 	c := &Cluster{
 		logger:  lg,
@@ -357,7 +357,7 @@ func (c *Cluster) restoreSeedMember() error {
 	return c.startSeedMember(true)
 }
 
-func (c *Cluster) Update(e *spec.EtcdCluster) {
+func (c *Cluster) Update(e *spec.Cluster) {
 	c.send(&clusterEvent{
 		typ:     eventModifyCluster,
 		cluster: e,
