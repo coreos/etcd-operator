@@ -21,21 +21,19 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/util"
+	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 
 	"github.com/Sirupsen/logrus"
 )
 
 const (
-	APIV1 = "/v1"
-
 	HTTPHeaderEtcdVersion = "X-etcd-Version"
 	HTTPHeaderRevision    = "X-Revision"
 )
 
 func (b *Backup) startHTTP() {
-	http.HandleFunc(APIV1+"/backup", b.serveSnap)
-	http.HandleFunc(APIV1+"/backupnow", b.serveBackupNow)
+	http.HandleFunc(backupapi.APIV1+"/backup", b.serveSnap)
+	http.HandleFunc(backupapi.APIV1+"/backupnow", b.serveBackupNow)
 
 	logrus.Infof("listening on %v", b.listenAddr)
 	panic(http.ListenAndServe(b.listenAddr, nil))
@@ -79,7 +77,7 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	checkVersion := r.FormValue(util.BackupHTTPQueryVersion)
+	checkVersion := r.FormValue(backupapi.HTTPQueryVersionKey)
 	// If version param is empty, we don't need to check compatibility.
 	// This could happen if user manually requests it.
 	if len(checkVersion) != 0 {

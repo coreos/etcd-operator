@@ -16,14 +16,11 @@ package cluster
 
 import (
 	"errors"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 
 	"github.com/coreos/etcd-operator/client/experimentalclient"
 	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -210,7 +207,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	} else {
 		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
 		// If so, we can still continue. Otherwise, it's fatal error.
-		exist, err := checkBackupExist(k8sutil.BackupServiceAddr(c.cluster.Name), c.cluster.Spec.Version)
+		exist, err := checkBackupExist(c.cluster.Name, c.cluster.Spec.Version)
 		if err != nil {
 			c.logger.Errorln(err)
 			return err
@@ -237,31 +234,12 @@ func requestBackup(clusterName string) error {
 	return bc.Request(ctx)
 }
 
-func checkBackupExist(addr, ver string) (bool, error) {
+func checkBackupExist(clusterName, ver string) (bool, error) {
 	// TODO: reuse http client
-	httpcli := http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	req := &http.Request{
-		Method: http.MethodHead,
-		URL:    util.MakeBackupURL(addr, ver),
-	}
-
-	resp, err := httpcli.Do(req)
-	if err != nil {
-		return false, fmt.Errorf("check backup (%s) failed: %v", addr, err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			b = []byte(fmt.Sprintf("fail to read HTTP response: %v", err))
-		}
-		return false, fmt.Errorf("check backup (%s) failed: unexpected status code (%v), response (%s)",
-			addr, resp.Status, string(b))
-	}
-	return true, nil
+	bc := experimentalclient.NewBackup(&http.Client{}, clusterName)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return bc.Exist(ctx, ver)
 }
 
 func needUpgrade(pods []*v1.Pod, cs spec.ClusterSpec) bool {

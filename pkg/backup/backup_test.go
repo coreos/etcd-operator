@@ -19,11 +19,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
-	"path/filepath"
-
-	"github.com/coreos/etcd-operator/pkg/util"
+	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 )
 
 func TestResponseHeader(t *testing.T) {
@@ -36,7 +35,7 @@ func TestResponseHeader(t *testing.T) {
 		be: &fileBackend{dir: d},
 	}
 	req := &http.Request{
-		URL: util.MakeBackupURL("ignore", ""),
+		URL: backupapi.NewBackupURL("http", "ignore", ""),
 	}
 	rr := httptest.NewRecorder()
 	b.serveSnap(rr, req)
@@ -73,7 +72,7 @@ func TestBackupVersionCompatiblity(t *testing.T) {
 			be: &fileBackend{dir: d},
 		}
 		req := &http.Request{
-			URL: util.MakeBackupURL("ignore", tt.reqVersion),
+			URL: backupapi.NewBackupURL("http", "ignore", tt.reqVersion),
 		}
 		rr := httptest.NewRecorder()
 		b.serveSnap(rr, req)

@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -71,7 +71,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 			Image: "tutum/curl",
 			Command: []string{
 				"/bin/sh", "-c",
-				fmt.Sprintf("curl -o %s %s", backupFile, util.MakeBackupURL(backupAddr, version)),
+				fmt.Sprintf("curl -o %s %s", backupFile, backupapi.NewBackupURL("http", backupAddr, version)),
 			},
 			VolumeMounts: []v1.VolumeMount{
 				{Name: "etcd-data", MountPath: etcdDir},
