@@ -22,33 +22,37 @@ type Backup interface {
 
 type backupClient struct {
 	client *http.Client
-	url    string
+	scheme string
+	// address of the backup service
+	addr string
 }
 
-func NewBackup(c *http.Client, clusterName string) Backup {
+func NewBackup(c *http.Client, scheme, clusterName string) Backup {
 	return &backupClient{
 		client: c,
-		url:    k8sutil.BackupServiceAddr(clusterName),
+		scheme: scheme,
+		addr:   k8sutil.BackupServiceAddr(clusterName),
 	}
 }
 
-func NewBackupWithURL(c *http.Client, url string) Backup {
+func NewBackupWithAddr(c *http.Client, scheme, addr string) Backup {
 	return &backupClient{
 		client: c,
-		url:    url,
+		scheme: scheme,
+		addr:   addr,
 	}
 }
 
 func (b backupClient) Request(ctx context.Context) error {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/backupnow", path.Join(b.url, backupapi.APIV1)), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s://%s/backupnow", b.scheme, path.Join(b.addr, backupapi.APIV1)), nil)
 	if err != nil {
-		return fmt.Errorf("request backup (%s) failed: %v", b.url, err)
+		return fmt.Errorf("request backup (%s) failed: %v", b.addr, err)
 	}
 	req.WithContext(ctx)
 
 	resp, err := b.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("request backup (%s) failed: %v", b.url, err)
+		return fmt.Errorf("request backup (%s) failed: %v", b.addr, err)
 	}
 
 	defer resp.Body.Close()
@@ -64,19 +68,19 @@ func (b backupClient) Request(ctx context.Context) error {
 	} else {
 		errmsg = string(body)
 	}
-	return fmt.Errorf("request backup (%s) failed: unexpected status code (%v), response (%s)", b.url, resp.Status, errmsg)
+	return fmt.Errorf("request backup (%s) failed: unexpected status code (%v), response (%s)", b.addr, resp.Status, errmsg)
 }
 
 func (b backupClient) Exist(ctx context.Context, v string) (bool, error) {
 	req := &http.Request{
 		Method: http.MethodHead,
-		URL:    backupapi.NewBackupURL("http", b.url, v),
+		URL:    backupapi.NewBackupURL(b.scheme, b.addr, v),
 	}
 	req.WithContext(ctx)
 
 	resp, err := b.client.Do(req)
 	if err != nil {
-		return false, fmt.Errorf("check backup existence (%s) failed: %v", b.url, err)
+		return false, fmt.Errorf("check backup existence (%s) failed: %v", b.addr, err)
 	}
 	defer resp.Body.Close()
 
@@ -91,5 +95,5 @@ func (b backupClient) Exist(ctx context.Context, v string) (bool, error) {
 	} else {
 		errmsg = string(body)
 	}
-	return false, fmt.Errorf("check backup existence (%s) failed: unexpected status code (%v), response (%s)", b.url, resp.Status, errmsg)
+	return false, fmt.Errorf("check backup existence (%s) failed: unexpected status code (%v), response (%s)", b.addr, resp.Status, errmsg)
 }

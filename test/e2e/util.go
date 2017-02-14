@@ -85,8 +85,8 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 
 	// We are assuming Kubernetes pod network is accessible from test machine.
 	// TODO: remove this assumption.
-	url := fmt.Sprintf("%s:%d", podList.Items[0].Status.PodIP, constants.DefaultBackupPodHTTPPort)
-	bc := experimentalclient.NewBackupWithURL(&http.Client{}, url)
+	addr := fmt.Sprintf("%s:%d", podList.Items[0].Status.PodIP, constants.DefaultBackupPodHTTPPort)
+	bc := experimentalclient.NewBackupWithAddr(&http.Client{}, "http", addr)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

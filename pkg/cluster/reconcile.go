@@ -228,7 +228,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 
 func requestBackup(clusterName string) error {
 	// TODO: reuse http client
-	bc := experimentalclient.NewBackup(&http.Client{}, clusterName)
+	bc := experimentalclient.NewBackup(&http.Client{}, "http", clusterName)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	return bc.Request(ctx)
@@ -236,7 +236,7 @@ func requestBackup(clusterName string) error {
 
 func checkBackupExist(clusterName, ver string) (bool, error) {
 	// TODO: reuse http client
-	bc := experimentalclient.NewBackup(&http.Client{}, clusterName)
+	bc := experimentalclient.NewBackup(&http.Client{}, "http", clusterName)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	return bc.Exist(ctx, ver)
