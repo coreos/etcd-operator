@@ -61,7 +61,7 @@ func testOneMemberRecovery(t *testing.T) {
 		}
 	}()
 
-	names, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second)
+	names, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -70,7 +70,7 @@ func testOneMemberRecovery(t *testing.T) {
 	if err := killMembers(f, names[0]); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second); err != nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 60*time.Second); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }
@@ -112,18 +112,18 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 		}
 	}()
 
-	names, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second)
+	names, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 3 members cluster")
-	if err := waitBackupPodUp(f, testEtcd.Name, 60*time.Second); err != nil {
+	if err := waitBackupPodUp(f, testEtcd.Metadata.Name, 60*time.Second); err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
 	// No left pod to make a backup from. We need to back up ahead.
 	// If there is any left pod, ooperator should be able to make a backup from it.
 	if numToKill == len(names) {
-		if err := makeBackup(f, testEtcd.Name); err != nil {
+		if err := makeBackup(f, testEtcd.Metadata.Name); err != nil {
 			t.Fatalf("fail to make a latest backup: %v", err)
 		}
 	}
@@ -133,7 +133,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 	if err := killMembers(f, toKill...); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 120*time.Second); err != nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 120*time.Second); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 	// TODO: add checking of data in etcd

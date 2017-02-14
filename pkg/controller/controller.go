@@ -145,23 +145,23 @@ func (c *Controller) Run() error {
 				stopC := make(chan struct{})
 				nc := cluster.New(c.makeClusterConfig(), clus, stopC, &c.waitCluster)
 
-				c.stopChMap[clus.Name] = stopC
-				c.clusters[clus.Name] = nc
-				c.clusterRVs[clus.Name] = clus.ResourceVersion
+				c.stopChMap[clus.Metadata.Name] = stopC
+				c.clusters[clus.Metadata.Name] = nc
+				c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
 
 				analytics.ClusterCreated()
 				clustersCreated.Inc()
 				clustersTotal.Inc()
 
 			case "MODIFIED":
-				c.clusters[clus.Name].Update(clus)
-				c.clusterRVs[clus.Name] = clus.ResourceVersion
+				c.clusters[clus.Metadata.Name].Update(clus)
+				c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
 				clustersModified.Inc()
 
 			case "DELETED":
-				c.clusters[clus.Name].Delete()
-				delete(c.clusters, clus.Name)
-				delete(c.clusterRVs, clus.Name)
+				c.clusters[clus.Metadata.Name].Delete()
+				delete(c.clusters, clus.Metadata.Name)
+				delete(c.clusterRVs, clus.Metadata.Name)
 				analytics.ClusterDeleted()
 				clustersDeleted.Inc()
 				clustersTotal.Dec()
@@ -182,7 +182,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		clus := clusterList.Items[i]
 
 		if clus.Status.IsFailed() {
-			c.logger.Infof("ignore failed cluster %s", clus.Name)
+			c.logger.Infof("ignore failed cluster %s", clus.Metadata.Name)
 			continue
 		}
 
@@ -190,12 +190,12 @@ func (c *Controller) findAllClusters() (string, error) {
 
 		stopC := make(chan struct{})
 		nc := cluster.New(c.makeClusterConfig(), &clus, stopC, &c.waitCluster)
-		c.stopChMap[clus.Name] = stopC
-		c.clusters[clus.Name] = nc
-		c.clusterRVs[clus.Name] = clus.ResourceVersion
+		c.stopChMap[clus.Metadata.Name] = stopC
+		c.clusters[clus.Metadata.Name] = nc
+		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
 	}
 
-	return clusterList.ResourceVersion, nil
+	return clusterList.Metadata.ResourceVersion, nil
 }
 
 func (c *Controller) makeClusterConfig() cluster.Config {
@@ -297,7 +297,7 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 						// if nothing has changed, we can go back to watch again.
 						clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli.Core().GetRESTClient(), c.Config.Namespace)
 						if err == nil && !c.isClustersCacheStale(clusterList.Items) {
-							watchVersion = clusterList.ResourceVersion
+							watchVersion = clusterList.Metadata.ResourceVersion
 							break
 						}
 
@@ -312,7 +312,7 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 
 				c.logger.Debugf("etcd cluster event: %v %v", ev.Type, ev.Object.Spec)
 
-				watchVersion = ev.Object.ResourceVersion
+				watchVersion = ev.Object.Metadata.ResourceVersion
 				eventCh <- ev
 			}
 
@@ -329,8 +329,8 @@ func (c *Controller) isClustersCacheStale(currentClusters []spec.Cluster) bool {
 	}
 
 	for _, cc := range currentClusters {
-		rv, ok := c.clusterRVs[cc.Name]
-		if !ok || rv != cc.ResourceVersion {
+		rv, ok := c.clusterRVs[cc.Metadata.Name]
+		if !ok || rv != cc.Metadata.ResourceVersion {
 			return true
 		}
 	}

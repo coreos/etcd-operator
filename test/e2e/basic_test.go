@@ -50,7 +50,7 @@ func testCreateCluster(t *testing.T) {
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second); err != nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 60*time.Second); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 }
@@ -76,7 +76,7 @@ func testStopOperator(t *testing.T, kill bool) {
 		}
 	}()
 
-	names, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second)
+	names, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -102,10 +102,10 @@ func testStopOperator(t *testing.T, kill bool) {
 		t.Fatal(err)
 	}
 
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 2, 30*time.Second); err != nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 2, 30*time.Second); err != nil {
 		t.Fatalf("failed to wait for killed member to die: %v", err)
 	}
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 30*time.Second); err == nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 30*time.Second); err == nil {
 		t.Fatalf("cluster should not be recovered: control is paused")
 	}
 
@@ -120,7 +120,7 @@ func testStopOperator(t *testing.T, kill bool) {
 		}
 	}
 
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second); err != nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 60*time.Second); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }
@@ -143,7 +143,7 @@ func testEtcdUpgrade(t *testing.T) {
 		}
 	}()
 
-	err = waitSizeAndVersionReached(t, f, testEtcd.Name, "3.0.16", 3, 60*time.Second)
+	err = waitSizeAndVersionReached(t, f, testEtcd.Metadata.Name, "3.0.16", 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -154,7 +154,7 @@ func testEtcdUpgrade(t *testing.T) {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 
-	err = waitSizeAndVersionReached(t, f, testEtcd.Name, "3.1.0", 3, 60*time.Second)
+	err = waitSizeAndVersionReached(t, f, testEtcd.Metadata.Name, "3.1.0", 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to wait new version etcd cluster: %v", err)
 	}

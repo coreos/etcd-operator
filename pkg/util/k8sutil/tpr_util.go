@@ -76,23 +76,23 @@ func GetClusterTPRObject(restcli *rest.RESTClient, ns, name string) (*spec.Clust
 
 // UpdateClusterTPRObject updates the given TPR object.
 // ResourceVersion of the object MUST be set or update will fail.
-func UpdateClusterTPRObject(restcli *rest.RESTClient, ns string, e *spec.Cluster) (*spec.Cluster, error) {
-	if len(e.ResourceVersion) == 0 {
+func UpdateClusterTPRObject(restcli *rest.RESTClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+	if len(c.Metadata.ResourceVersion) == 0 {
 		return nil, errors.New("k8sutil: resource version is not provided")
 	}
-	return updateClusterTPRObject(restcli, ns, e)
+	return updateClusterTPRObject(restcli, ns, c)
 }
 
 // UpdateClusterTPRObjectUnconditionally updates the given TPR object.
 // This should only be used in tests.
-func UpdateClusterTPRObjectUnconditionally(restcli *rest.RESTClient, ns string, e *spec.Cluster) (*spec.Cluster, error) {
-	e.ResourceVersion = ""
-	return updateClusterTPRObject(restcli, ns, e)
+func UpdateClusterTPRObjectUnconditionally(restcli *rest.RESTClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+	c.Metadata.ResourceVersion = ""
+	return updateClusterTPRObject(restcli, ns, c)
 }
 
-func updateClusterTPRObject(restcli *rest.RESTClient, ns string, e *spec.Cluster) (*spec.Cluster, error) {
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, e.Name)
-	b, err := restcli.Put().RequestURI(uri).Body(e).DoRaw()
+func updateClusterTPRObject(restcli *rest.RESTClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, c.Metadata.Name)
+	b, err := restcli.Put().RequestURI(uri).Body(c).DoRaw()
 	if err != nil {
 		return nil, err
 	}

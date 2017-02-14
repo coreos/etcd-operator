@@ -72,7 +72,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		t.Fatal(err)
 	}
 
-	names, err := waitUntilSizeReached(t, f, testEtcd.Name, 3, 60*time.Second)
+	names, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -86,10 +86,10 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		t.Fatal(err)
 	}
 
-	if err := waitBackupPodUp(f, testEtcd.Name, 60*time.Second); err != nil {
+	if err := waitBackupPodUp(f, testEtcd.Metadata.Name, 60*time.Second); err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
-	if err := makeBackup(f, testEtcd.Name); err != nil {
+	if err := makeBackup(f, testEtcd.Metadata.Name); err != nil {
 		t.Fatalf("fail to make a backup: %v", err)
 	}
 	if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
@@ -104,13 +104,13 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		// - set BackupClusterName to the same name in RestorePolicy.
 		// Then operator will use the existing backup in the same storage and
 		// restore cluster with the same data.
-		origEtcd.GenerateName = ""
-		origEtcd.Name = testEtcd.Name
+		origEtcd.Metadata.GenerateName = ""
+		origEtcd.Metadata.Name = testEtcd.Metadata.Name
 	}
 	waitRestoreTimeout := calculateRestoreWaitTime(needDataClone)
 
 	origEtcd = etcdClusterWithRestore(origEtcd, &spec.RestorePolicy{
-		BackupClusterName: testEtcd.Name,
+		BackupClusterName: testEtcd.Metadata.Name,
 		StorageType:       backupPolicy.StorageType,
 	})
 
@@ -125,7 +125,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		}
 	}()
 
-	names, err = waitUntilSizeReached(t, f, testEtcd.Name, 3, waitRestoreTimeout)
+	names, err = waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, waitRestoreTimeout)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}

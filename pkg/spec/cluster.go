@@ -44,20 +44,20 @@ func TPRName() string {
 
 type Cluster struct {
 	unversioned.TypeMeta `json:",inline"`
-	v1.ObjectMeta        `json:"metadata,omitempty"`
+	Metadata             v1.ObjectMeta `json:"metadata,omitempty"`
 	Spec                 ClusterSpec   `json:"spec"`
 	Status               ClusterStatus `json:"status"`
 }
 
-func (e *Cluster) AsOwner() metatypes.OwnerReference {
+func (c *Cluster) AsOwner() metatypes.OwnerReference {
 	trueVar := true
 	// TODO: In 1.6 this is gonna be "k8s.io/kubernetes/pkg/apis/meta/v1"
 	// Both api.OwnerReference and metatypes.OwnerReference are combined into that.
 	return metatypes.OwnerReference{
-		APIVersion: e.APIVersion,
-		Kind:       e.Kind,
-		Name:       e.Name,
-		UID:        e.UID,
+		APIVersion: c.APIVersion,
+		Kind:       c.Kind,
+		Name:       c.Metadata.Name,
+		UID:        c.Metadata.UID,
 		Controller: &trueVar,
 	}
 }

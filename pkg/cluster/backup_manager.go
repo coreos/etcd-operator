@@ -56,16 +56,16 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 	b := cl.Spec.Backup
 	switch b.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Name, cl.Namespace, c.PVProvisioner, *b)
+		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, c.PVProvisioner, *b)
 	case spec.BackupStorageTypeS3:
-		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, cl.Name, cl.Namespace, *b)
+		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, *b)
 	}
 	return s, err
 }
 
 func (bm *backupManager) setup() error {
 	r := bm.cluster.Spec.Restore
-	restoreSameNameCluster := r != nil && r.BackupClusterName == bm.cluster.Name
+	restoreSameNameCluster := r != nil && r.BackupClusterName == bm.cluster.Metadata.Name
 
 	// There is only one case that we don't need to create underlying storage.
 	// That is, the storage already exists and we are restoring cluster from it.
@@ -77,7 +77,7 @@ func (bm *backupManager) setup() error {
 
 	if r != nil {
 		bm.logger.Infof("restoring cluster from existing backup (%s)", r.BackupClusterName)
-		if bm.cluster.Name != r.BackupClusterName {
+		if bm.cluster.Metadata.Name != r.BackupClusterName {
 			if err := bm.s.Clone(r.BackupClusterName); err != nil {
 				return err
 			}
@@ -89,13 +89,13 @@ func (bm *backupManager) setup() error {
 
 func (bm *backupManager) runSidecar() error {
 	cl, c := bm.cluster, bm.config
-	podSpec, err := k8sutil.MakeBackupPodSpec(cl.Name, cl.Spec.Backup)
+	podSpec, err := k8sutil.MakeBackupPodSpec(cl.Metadata.Name, cl.Spec.Backup)
 	if err != nil {
 		return err
 	}
 	switch cl.Spec.Backup.StorageType {
 	case spec.BackupStorageTypeDefault, spec.BackupStorageTypePersistentVolume:
-		podSpec = k8sutil.PodSpecWithPV(podSpec, cl.Name)
+		podSpec = k8sutil.PodSpecWithPV(podSpec, cl.Metadata.Name)
 	case spec.BackupStorageTypeS3:
 		podSpec = k8sutil.PodSpecWithS3(podSpec, c.S3Context)
 	}
@@ -110,8 +110,8 @@ func (bm *backupManager) runSidecar() error {
 }
 
 func (bm *backupManager) createBackupReplicaSet(podSpec v1.PodSpec) error {
-	rs := k8sutil.NewBackupReplicaSetManifest(bm.cluster.Name, podSpec, bm.cluster.AsOwner())
-	_, err := bm.config.KubeCli.Extensions().ReplicaSets(bm.cluster.Namespace).Create(rs)
+	rs := k8sutil.NewBackupReplicaSetManifest(bm.cluster.Metadata.Name, podSpec, bm.cluster.AsOwner())
+	_, err := bm.config.KubeCli.Extensions().ReplicaSets(bm.cluster.Metadata.Namespace).Create(rs)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
@@ -121,8 +121,8 @@ func (bm *backupManager) createBackupReplicaSet(podSpec v1.PodSpec) error {
 }
 
 func (bm *backupManager) createBackupService() error {
-	svc := k8sutil.NewBackupServiceManifest(bm.cluster.Name, bm.cluster.AsOwner())
-	_, err := bm.config.KubeCli.Core().Services(bm.cluster.Namespace).Create(svc)
+	svc := k8sutil.NewBackupServiceManifest(bm.cluster.Metadata.Name, bm.cluster.AsOwner())
+	_, err := bm.config.KubeCli.Core().Services(bm.cluster.Metadata.Namespace).Create(svc)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err

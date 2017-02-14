@@ -91,7 +91,7 @@ func NewOperator(namespace string) (Operator, error) {
 
 func (o *operator) Create(ctx context.Context, name string, cspec spec.ClusterSpec) error {
 	cluster := &spec.Cluster{
-		ObjectMeta: v1.ObjectMeta{
+		Metadata: v1.ObjectMeta{
 			Name: name,
 		},
 		Spec: cspec,
