@@ -19,10 +19,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/cluster"
+	"github.com/coreos/etcd-operator/client/experimentalclient"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -84,9 +85,14 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 		return fmt.Errorf("no backup pod found")
 	}
 
-	// We are assuming pod ip is accessible from test machine.
-	addr := fmt.Sprintf("%s:%d", podList.Items[0].Status.PodIP, constants.DefaultBackupPodHTTPPort)
-	err = cluster.RequestBackupNow(addr)
+	// We are assuming Kubernetes pod network is accessible from test machine.
+	// TODO: remove this assumption.
+	url := fmt.Sprintf("%s:%d", podList.Items[0].Status.PodIP, constants.DefaultBackupPodHTTPPort)
+	bc := experimentalclient.NewBackupWithURL(&http.Client{}, url)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	err = bc.Request(ctx)
 	if err != nil {
 		return fmt.Errorf("backup pod (%s): %v", podList.Items[0].Name, err)
 	}

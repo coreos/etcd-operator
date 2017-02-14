@@ -1,4 +1,4 @@
-package experimental
+package experimentalclient
 
 import (
 	"context"
@@ -41,6 +41,13 @@ var (
 )
 
 func init() {
+	// FIXME: if we add this scheme, Kubernetes client will not work
+	// correctly. Fix it before use operator trp client.
+	needfix := true
+	if needfix {
+		return
+	}
+
 	schemeBuilder := runtime.NewSchemeBuilder(
 		func(scheme *runtime.Scheme) error {
 			scheme.AddKnownTypes(
