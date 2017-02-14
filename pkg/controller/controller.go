@@ -48,7 +48,7 @@ var (
 
 type Event struct {
 	Type   string
-	Object *spec.EtcdCluster
+	Object *spec.Cluster
 }
 
 type Controller struct {
@@ -323,7 +323,7 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 	return eventCh, errCh
 }
 
-func (c *Controller) isClustersCacheStale(currentClusters []spec.EtcdCluster) bool {
+func (c *Controller) isClustersCacheStale(currentClusters []spec.Cluster) bool {
 	if len(c.clusterRVs) != len(currentClusters) {
 		return true
 	}

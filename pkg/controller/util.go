@@ -50,11 +50,11 @@ func pollEvent(decoder *json.Decoder) (*Event, *unversioned.Status, error) {
 
 	ev := &Event{
 		Type:   re.Type,
-		Object: &spec.EtcdCluster{},
+		Object: &spec.Cluster{},
 	}
 	err = json.Unmarshal(re.Object, ev.Object)
 	if err != nil {
-		return nil, nil, fmt.Errorf("fail to unmarshal EtcdCluster object from data (%s): %v", re.Object, err)
+		return nil, nil, fmt.Errorf("fail to unmarshal Cluster object from data (%s): %v", re.Object, err)
 	}
 	return ev, nil, nil
 }

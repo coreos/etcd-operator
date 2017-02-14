@@ -29,11 +29,11 @@ type backupManager struct {
 	logger *logrus.Entry
 
 	config  Config
-	cluster *spec.EtcdCluster
+	cluster *spec.Cluster
 	s       backupstorage.Storage
 }
 
-func newBackupManager(c Config, cl *spec.EtcdCluster, l *logrus.Entry) (*backupManager, error) {
+func newBackupManager(c Config, cl *spec.Cluster, l *logrus.Entry) (*backupManager, error) {
 	bm := &backupManager{
 		config:  c,
 		cluster: cl,

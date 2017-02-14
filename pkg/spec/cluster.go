@@ -42,14 +42,14 @@ func TPRName() string {
 	return fmt.Sprintf("%s.%s", TPRKind, TPRGroup)
 }
 
-type EtcdCluster struct {
+type Cluster struct {
 	unversioned.TypeMeta `json:",inline"`
 	v1.ObjectMeta        `json:"metadata,omitempty"`
 	Spec                 ClusterSpec   `json:"spec"`
 	Status               ClusterStatus `json:"status"`
 }
 
-func (e *EtcdCluster) AsOwner() metatypes.OwnerReference {
+func (e *Cluster) AsOwner() metatypes.OwnerReference {
 	trueVar := true
 	// TODO: In 1.6 this is gonna be "k8s.io/kubernetes/pkg/apis/meta/v1"
 	// Both api.OwnerReference and metatypes.OwnerReference are combined into that.
