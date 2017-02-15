@@ -12,6 +12,7 @@ spec:
       containers:
       - name: etcd-operator
         image: quay.io/coreos/etcd-operator
+        imagePullPolicy: Never
         command: 
         - "/bin/sh"
         - "-c"
