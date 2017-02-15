@@ -5,6 +5,8 @@
 
 ### Changed
 
+- Example deployements pin to the released version of the operator image
+
 ### Removed
 
 ### Fixed

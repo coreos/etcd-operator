@@ -11,6 +11,8 @@ In version/version.go, bump it to:
 	Version = $VERSION
 ```
 
+Bump the version of the operator image in example deployements.
+
 Send a PR. After it's merged, create a tag:
 ```
 $ git tag $VERSION
