@@ -128,7 +128,7 @@ func (c *Cluster) addOneMember() error {
 	}
 	defer etcdcli.Close()
 
-	newMemberName := etcdutil.CreateMemberName(c.cluster.Name, c.memberCounter)
+	newMemberName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
 	newMember := &etcdutil.Member{Name: newMemberName}
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
@@ -195,7 +195,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	backupNow := false
 	if len(left) > 0 {
 		c.logger.Infof("pods are still running (%v). Will try to make a latest backup from one of them.", left)
-		err := requestBackup(c.cluster.Name)
+		err := requestBackup(c.cluster.Metadata.Name)
 		if err != nil {
 			c.logger.Errorln(err)
 		} else {
@@ -207,7 +207,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	} else {
 		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
 		// If so, we can still continue. Otherwise, it's fatal error.
-		exist, err := checkBackupExist(c.cluster.Name, c.cluster.Spec.Version)
+		exist, err := checkBackupExist(c.cluster.Metadata.Name, c.cluster.Spec.Version)
 		if err != nil {
 			c.logger.Errorln(err)
 			return err

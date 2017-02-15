@@ -191,7 +191,7 @@ func newClusterSpec(genName string, size int) *spec.Cluster {
 			Kind:       "Cluster",
 			APIVersion: spec.TPRGroup + "/" + spec.TPRVersion,
 		},
-		ObjectMeta: v1.ObjectMeta{
+		Metadata: v1.ObjectMeta{
 			GenerateName: genName,
 		},
 		Spec: spec.ClusterSpec{
@@ -200,9 +200,9 @@ func newClusterSpec(genName string, size int) *spec.Cluster {
 	}
 }
 
-func etcdClusterWithBackup(ec *spec.Cluster, backupPolicy *spec.BackupPolicy) *spec.Cluster {
-	ec.Spec.Backup = backupPolicy
-	return ec
+func etcdClusterWithBackup(cl *spec.Cluster, backupPolicy *spec.BackupPolicy) *spec.Cluster {
+	cl.Spec.Backup = backupPolicy
+	return cl
 }
 
 func newBackupPolicyS3() *spec.BackupPolicy {
@@ -229,24 +229,24 @@ func newBackupPolicyPV() *spec.BackupPolicy {
 	}
 }
 
-func etcdClusterWithRestore(ec *spec.Cluster, restorePolicy *spec.RestorePolicy) *spec.Cluster {
-	ec.Spec.Restore = restorePolicy
-	return ec
+func etcdClusterWithRestore(cl *spec.Cluster, restorePolicy *spec.RestorePolicy) *spec.Cluster {
+	cl.Spec.Restore = restorePolicy
+	return cl
 }
 
-func etcdClusterWithVersion(ec *spec.Cluster, version string) *spec.Cluster {
-	ec.Spec.Version = version
-	return ec
+func etcdClusterWithVersion(cl *spec.Cluster, version string) *spec.Cluster {
+	cl.Spec.Version = version
+	return cl
 }
 
-func clusterWithSelfHosted(ec *spec.Cluster, sh *spec.SelfHostedPolicy) *spec.Cluster {
-	ec.Spec.SelfHosted = sh
-	return ec
+func clusterWithSelfHosted(cl *spec.Cluster, sh *spec.SelfHostedPolicy) *spec.Cluster {
+	cl.Spec.SelfHosted = sh
+	return cl
 }
 
-func createCluster(t *testing.T, f *framework.Framework, e *spec.Cluster) (*spec.Cluster, error) {
+func createCluster(t *testing.T, f *framework.Framework, cl *spec.Cluster) (*spec.Cluster, error) {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, f.Namespace)
-	b, err := f.KubeClient.Core().GetRESTClient().Post().Body(e).RequestURI(uri).DoRaw()
+	b, err := f.KubeClient.Core().GetRESTClient().Post().Body(cl).RequestURI(uri).DoRaw()
 	if err != nil {
 		return nil, err
 	}
@@ -254,16 +254,16 @@ func createCluster(t *testing.T, f *framework.Framework, e *spec.Cluster) (*spec
 	if err := json.Unmarshal(b, res); err != nil {
 		return nil, err
 	}
-	logfWithTimestamp(t, "created etcd cluster: %v", res.Name)
+	logfWithTimestamp(t, "created etcd cluster: %v", res.Metadata.Name)
 	return res, nil
 }
 
-func updateEtcdCluster(f *framework.Framework, e *spec.Cluster) (*spec.Cluster, error) {
-	return k8sutil.UpdateClusterTPRObjectUnconditionally(f.KubeClient.Core().GetRESTClient(), f.Namespace, e)
+func updateEtcdCluster(f *framework.Framework, c *spec.Cluster) (*spec.Cluster, error) {
+	return k8sutil.UpdateClusterTPRObjectUnconditionally(f.KubeClient.Core().GetRESTClient(), f.Namespace, c)
 }
 
-func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.Cluster) error {
-	podList, err := f.KubeClient.Core().Pods(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
+func deleteEtcdCluster(t *testing.T, f *framework.Framework, c *spec.Cluster) error {
+	podList, err := f.KubeClient.Core().Pods(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
 	if err != nil {
 		return err
 	}
@@ -272,16 +272,16 @@ func deleteEtcdCluster(t *testing.T, f *framework.Framework, e *spec.Cluster) er
 		t.Logf("pod (%v): status (%v), node (%v) cmd (%v)", pod.Name, pod.Status.Phase, pod.Spec.NodeName, pod.Spec.Containers[0].Command)
 	}
 
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, f.Namespace, e.Name)
+	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, f.Namespace, c.Metadata.Name)
 	if _, err := f.KubeClient.Core().GetRESTClient().Delete().RequestURI(uri).DoRaw(); err != nil {
 		return err
 	}
-	return waitResourcesDeleted(t, f, e)
+	return waitResourcesDeleted(t, f, c)
 }
 
-func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.Cluster) error {
+func waitResourcesDeleted(t *testing.T, f *framework.Framework, c *spec.Cluster) error {
 	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		list, err := f.KubeClient.Core().Pods(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
+		list, err := f.KubeClient.Core().Pods(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
 		if err != nil {
 			return false, err
 		}
@@ -305,7 +305,7 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.Cluster)
 	}
 
 	err = retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		list, err := f.KubeClient.Core().Services(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
+		list, err := f.KubeClient.Core().Services(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
 		if err != nil {
 			return false, err
 		}
@@ -319,8 +319,8 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.Cluster)
 		return fmt.Errorf("fail to wait services deleted: %v", err)
 	}
 
-	if e.Spec.Backup != nil {
-		err := waitBackupDeleted(f, e)
+	if c.Spec.Backup != nil {
+		err := waitBackupDeleted(f, c)
 		if err != nil {
 			return fmt.Errorf("fail to wait backup deleted: %v", err)
 		}
@@ -328,9 +328,9 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, e *spec.Cluster)
 	return nil
 }
 
-func waitBackupDeleted(f *framework.Framework, e *spec.Cluster) error {
+func waitBackupDeleted(f *framework.Framework, c *spec.Cluster) error {
 	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		rl, err := f.KubeClient.Extensions().ReplicaSets(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
+		rl, err := f.KubeClient.Extensions().ReplicaSets(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
 		if err != nil {
 			return false, err
 		}
@@ -345,7 +345,7 @@ func waitBackupDeleted(f *framework.Framework, e *spec.Cluster) error {
 	err = retryutil.Retry(5*time.Second, 2, func() (done bool, err error) {
 		ls := labels.SelectorFromSet(map[string]string{
 			"app":          k8sutil.BackupPodSelectorAppField,
-			"etcd_cluster": e.Name,
+			"etcd_cluster": c.Metadata.Name,
 		})
 		pl, err := f.KubeClient.Core().Pods(f.Namespace).List(api.ListOptions{
 			LabelSelector: ls,
@@ -366,13 +366,13 @@ func waitBackupDeleted(f *framework.Framework, e *spec.Cluster) error {
 	}
 	// The rest is to track backup storage, e.g. PV or S3 "dir" deleted.
 	// If CleanupBackupsOnClusterDelete=false, we don't delete them and thus don't check them.
-	if !e.Spec.Backup.CleanupBackupsOnClusterDelete {
+	if !c.Spec.Backup.CleanupBackupsOnClusterDelete {
 		return nil
 	}
 	err = retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		switch e.Spec.Backup.StorageType {
+		switch c.Spec.Backup.StorageType {
 		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-			pl, err := f.KubeClient.Core().PersistentVolumeClaims(f.Namespace).List(k8sutil.ClusterListOpt(e.Name))
+			pl, err := f.KubeClient.Core().PersistentVolumeClaims(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
 			if err != nil {
 				return false, err
 			}
@@ -382,7 +382,7 @@ func waitBackupDeleted(f *framework.Framework, e *spec.Cluster) error {
 		case spec.BackupStorageTypeS3:
 			resp, err := f.S3Cli.ListObjects(&s3.ListObjectsInput{
 				Bucket: aws.String(f.S3Bucket),
-				Prefix: aws.String(e.Name + "/"),
+				Prefix: aws.String(c.Metadata.Name + "/"),
 			})
 			if err != nil {
 				return false, err
@@ -394,7 +394,7 @@ func waitBackupDeleted(f *framework.Framework, e *spec.Cluster) error {
 		return true, nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to wait storage (%s) to be deleted: %v", e.Spec.Backup.StorageType, err)
+		return fmt.Errorf("failed to wait storage (%s) to be deleted: %v", c.Spec.Backup.StorageType, err)
 	}
 	return nil
 }
