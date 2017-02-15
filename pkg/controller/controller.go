@@ -136,7 +136,11 @@ func (c *Controller) Run() error {
 	eventCh, errCh := c.monitor(watchVersion)
 
 	go func() {
+		pt := newPanicTimer(time.Minute, "unexpected long blocking (> 1 Minute) when handling cluster event")
+
 		for event := range eventCh {
+			pt.start()
+
 			clus := event.Object
 			clus.Spec.Cleanup()
 
@@ -166,6 +170,8 @@ func (c *Controller) Run() error {
 				clustersDeleted.Inc()
 				clustersTotal.Dec()
 			}
+
+			pt.stop()
 		}
 	}()
 	return <-errCh
