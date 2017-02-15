@@ -250,6 +250,9 @@ func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
 	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version), etcdLivenessProbe())
+	if cs.Pod != nil {
+		container = containerWithRequirements(container, cs.Pod.ResourceRequirements)
+	}
 	pod := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name: m.Name,

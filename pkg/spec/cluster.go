@@ -118,6 +118,10 @@ type PodPolicy struct {
 	// AntiAffinity determines if the etcd-operator tries to avoid putting
 	// the etcd members in the same cluster onto the same node.
 	AntiAffinity bool `json:"antiAffinity"`
+
+	// ResourceRequirements is the resource requirements for the etcd container.
+	// This field cannot be updated once the cluster is created.
+	ResourceRequirements v1.ResourceRequirements `json:"resourceRequirements"`
 }
 
 func (c *ClusterSpec) Validate() error {
