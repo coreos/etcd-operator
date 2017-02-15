@@ -41,13 +41,6 @@ var (
 )
 
 func init() {
-	// FIXME: if we add this scheme, Kubernetes client will not work
-	// correctly. Fix it before use operator trp client.
-	needfix := true
-	if needfix {
-		return
-	}
-
 	schemeBuilder := runtime.NewSchemeBuilder(
 		func(scheme *runtime.Scheme) error {
 			scheme.AddKnownTypes(
@@ -63,9 +56,9 @@ func init() {
 }
 
 type operator struct {
-	tprClient *rest.RESTClient
-	tprName   string
-	ns        string
+	tprClient     *rest.RESTClient
+	tprKindPlural string
+	ns            string
 }
 
 func NewOperator(namespace string) (Operator, error) {
@@ -82,9 +75,9 @@ func NewOperator(namespace string) (Operator, error) {
 	}
 
 	return &operator{
-		tprClient: tprclient,
-		tprName:   spec.TPRName(),
-		ns:        namespace,
+		tprClient:     tprclient,
+		tprKindPlural: spec.TPRKindPlural,
+		ns:            namespace,
 	}, nil
 
 }
@@ -98,7 +91,7 @@ func (o *operator) Create(ctx context.Context, name string, cspec spec.ClusterSp
 	}
 
 	err := o.tprClient.Post().
-		Resource(o.tprName).
+		Resource(o.tprKindPlural).
 		Namespace(o.ns).
 		Body(cluster).
 		Do().Error()
@@ -108,7 +101,7 @@ func (o *operator) Create(ctx context.Context, name string, cspec spec.ClusterSp
 
 func (o *operator) Delete(ctx context.Context, name string) error {
 	return o.tprClient.Delete().
-		Resource(o.tprName).
+		Resource(o.tprKindPlural).
 		Namespace(o.ns).Name(name).Do().Error()
 }
 
@@ -123,7 +116,7 @@ func (o *operator) Update(ctx context.Context, name string, spec spec.ClusterSpe
 		var statusCode int
 
 		err = o.tprClient.Put().
-			Resource(o.tprName).
+			Resource(o.tprKindPlural).
 			Namespace(o.ns).
 			Name(name).
 			Body(e).
@@ -141,7 +134,7 @@ func (o *operator) Get(ctx context.Context, name string) (*spec.Cluster, error) 
 	cluster := &spec.Cluster{}
 
 	err := o.tprClient.Get().
-		Resource(o.tprName).
+		Resource(o.tprKindPlural).
 		Namespace(o.ns).
 		Name(name).
 		Do().Into(cluster)
@@ -157,8 +150,9 @@ func (o *operator) List(ctx context.Context) (*spec.ClusterList, error) {
 	clusters := &spec.ClusterList{}
 
 	err := o.tprClient.Get().
-		Resource(o.tprName).
+		Resource(o.tprKindPlural).
 		Namespace(o.ns).
+		VersionedParams(&v1.ListOptions{}, api.ParameterCodec).
 		Do().Into(clusters)
 
 	if err != nil {
