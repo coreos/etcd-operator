@@ -54,10 +54,10 @@ func TestS3BackendPurge(t *testing.T) {
 		S3:  s3cli,
 		dir: dir,
 	}
-	if err := s.save("3.1.0", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
+	if _, err := s.save("3.1.0", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.save("3.1.0", 2, bytes.NewBuffer([]byte("ignore"))); err != nil {
+	if _, err := s.save("3.1.0", 2, bytes.NewBuffer([]byte("ignore"))); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.purge(1); err != nil {

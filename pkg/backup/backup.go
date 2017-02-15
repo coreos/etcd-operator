@@ -21,6 +21,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -38,6 +39,8 @@ import (
 
 const (
 	PVBackupV1 = "v1"
+
+	maxRecentBackupStatusCount = 10
 )
 
 type Backup struct {
@@ -51,6 +54,9 @@ type Backup struct {
 	be backend
 
 	backupNow chan chan error
+
+	// recentBackupStatus keeps the statuses of 'maxRecentBackupStatusCount' recent backups.
+	recentBackupsStatus []backupapi.BackupStatus
 }
 
 func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.BackupPolicy, listenAddr string) *Backup {
@@ -173,6 +179,8 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 }
 
 func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
+	start := time.Now()
+
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.ClientAddr()},
 		DialTimeout: constants.DefaultDialTimeout,
@@ -198,7 +206,22 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	defer cancel()
 	defer rc.Close()
 
-	return b.be.save(resp.Version, rev, rc)
+	n, err := b.be.save(resp.Version, rev, rc)
+	if err != nil {
+		return err
+	}
+
+	bs := backupapi.BackupStatus{
+		Size:     n,
+		Version:  resp.Version,
+		TimeTook: time.Since(start),
+	}
+	b.recentBackupsStatus = append(b.recentBackupsStatus, bs)
+	if len(b.recentBackupsStatus) > maxRecentBackupStatusCount {
+		b.recentBackupsStatus = b.recentBackupsStatus[1:]
+	}
+
+	return nil
 }
 
 func getMemberWithMaxRev(pods []*v1.Pod) (*etcdutil.Member, int64) {

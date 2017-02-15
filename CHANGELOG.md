@@ -6,6 +6,7 @@
 get restarted.
 - Add resource requirements field in Spec.Pod. Users can specify resource requirements for the
 etcd container with this new field.
+- Add status endpoint to backup sidecar service.
 
 ### Changed
 

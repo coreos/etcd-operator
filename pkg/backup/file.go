@@ -38,17 +38,17 @@ type fileBackend struct {
 	dir string
 }
 
-func (fb *fileBackend) save(version string, snapRev int64, rc io.Reader) error {
+func (fb *fileBackend) save(version string, snapRev int64, rc io.Reader) (int64, error) {
 	filename := makeBackupName(version, snapRev)
 	tmpfile, err := os.OpenFile(filepath.Join(fb.dir, backupTmpDir, filename), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, backupFilePerm)
 	if err != nil {
-		return fmt.Errorf("failed to create snapshot tempfile: %v", err)
+		return -1, fmt.Errorf("failed to create snapshot tempfile: %v", err)
 	}
 	n, err := io.Copy(tmpfile, rc)
 	if err != nil {
 		tmpfile.Close()
 		os.Remove(tmpfile.Name())
-		return fmt.Errorf("failed to save snapshot: %v", err)
+		return -1, fmt.Errorf("failed to save snapshot: %v", err)
 	}
 	err = tmpfile.Sync()
 	if err != nil {
@@ -60,11 +60,11 @@ func (fb *fileBackend) save(version string, snapRev int64, rc io.Reader) error {
 	err = os.Rename(tmpfile.Name(), nextSnapshotName)
 	if err != nil {
 		os.Remove(tmpfile.Name())
-		return fmt.Errorf("rename snapshot from %s to %s failed: %v", tmpfile.Name(), nextSnapshotName, err)
+		return -1, fmt.Errorf("rename snapshot from %s to %s failed: %v", tmpfile.Name(), nextSnapshotName, err)
 	}
 
 	logrus.Infof("saved snapshot %s (size: %d) successfully", nextSnapshotName, n)
-	return nil
+	return n, nil
 }
 
 func (fb *fileBackend) getLatest() (string, io.ReadCloser, error) {
@@ -110,4 +110,18 @@ func (fb *fileBackend) purge(maxBackupFiles int) error {
 		}
 	}
 	return nil
+}
+
+func (fb *fileBackend) total() (int, error) {
+	files, err := ioutil.ReadDir(fb.dir)
+	if err != nil {
+		return -1, err
+	}
+
+	var names []string
+	for _, f := range files {
+		names = append(names, f.Name())
+	}
+
+	return len(filterAndSortBackups(names)), nil
 }
