@@ -29,9 +29,10 @@ import (
 const (
 	defaultVersion = "3.1.0"
 
-	TPRKind    = "cluster"
-	TPRGroup   = "etcd.coreos.com"
-	TPRVersion = "v1beta1"
+	TPRKind       = "cluster"
+	TPRKindPlural = "clusters"
+	TPRGroup      = "etcd.coreos.com"
+	TPRVersion    = "v1beta1"
 )
 
 var (
