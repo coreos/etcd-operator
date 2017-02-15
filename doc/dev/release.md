@@ -8,12 +8,12 @@ Let's say we are releasing $VERSION .
 
 In version/version.go, bump it to:
 ```go
-	Version = $VERSION
+	Version = "$VERSION"
 ```
 
 Bump the version of the operator image in example deployements.
 
-Send a PR. After it's merged, create a tag:
+Send a PR. After it's merged, cut a tag:
 ```
 $ git tag $VERSION
 $ git push ${upstream_remote} tags/$VERSION
@@ -21,9 +21,10 @@ $ git push ${upstream_remote} tags/$VERSION
 
 Bump version again:
 ```go
-	Version = $VERSION
+	Version = "$VERSION+git"
 ```
 Send another PR and merge it.
+
 
 ## Push Quay image
 
