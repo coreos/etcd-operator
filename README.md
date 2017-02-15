@@ -48,6 +48,8 @@ NAME                      DESCRIPTION             VERSION(S)
 cluster.etcd.coreos.com   Managed etcd clusters   v1beta1
 ```
 
+Note that the etcd clusters managed by the etcd operator will not be deleted if the operator fails or the deployment of the operator is deleted. This is an intentional design to prevent accidental operator failure from killing all the etcd clusters.
+
 ## Create and destroy an etcd cluster
 
 ```bash
