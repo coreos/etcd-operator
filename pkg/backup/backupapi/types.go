@@ -12,19 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package backupapi
 
-import "io"
+import "time"
 
-type backend interface {
-	// save saves the backup from the given reader with given etcd version and revision.
-	// It returns the size of the snapshot saved.
-	save(etcdVersion string, rev int64, r io.Reader) (size int64, err error)
+type ServiceStatus struct {
+	// RecentBackup is status of the most recent backup created by
+	// the backup service
+	RecentBackup *BackupStatus `json:"recentBackup,omitempty"`
 
-	getLatest() (name string, rc io.ReadCloser, err error)
+	// Backups is the totoal number of existing backups
+	Backups int `json:"backups"`
+}
 
-	// total returns the total number of available backups.
-	total() (int, error)
+type BackupStatus struct {
+	// Size is the size of the backup.
+	Size int64 `json:"size"`
 
-	purge(maxBackupFiles int) error
+	// Version is the version of the backup cluster.
+	Version string `json:"version"`
+
+	// TimeTook is the total time took to create the backup.
+	TimeTook time.Duration `json:"timeTook"`
 }

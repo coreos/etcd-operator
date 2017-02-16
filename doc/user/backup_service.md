@@ -24,3 +24,7 @@ Response Headers
 
 - X-etcd-Version: the etcd cluster version tht the backup was made from
 - X-Revision: the etcd store revision when the backup was made
+
+#### GET /v1/status
+
+The backup service returns the service status in JSON format. The JSON payload is defined in pkg backapi.ServiceStatus.

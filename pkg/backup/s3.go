@@ -33,12 +33,12 @@ type s3Backend struct {
 	dir string
 }
 
-func (sb *s3Backend) save(version string, snapRev int64, rc io.Reader) error {
+func (sb *s3Backend) save(version string, snapRev int64, rc io.Reader) (int64, error) {
 	// make a local file copy of the backup first, since s3 requires io.ReadSeeker.
 	key := makeBackupName(version, snapRev)
 	tmpfile, err := os.OpenFile(filepath.Join(sb.dir, key), os.O_RDWR|os.O_CREATE, backupFilePerm)
 	if err != nil {
-		return fmt.Errorf("failed to create snapshot tempfile: %v", err)
+		return -1, fmt.Errorf("failed to create snapshot tempfile: %v", err)
 	}
 	defer func() {
 		tmpfile.Close()
@@ -47,19 +47,19 @@ func (sb *s3Backend) save(version string, snapRev int64, rc io.Reader) error {
 
 	n, err := io.Copy(tmpfile, rc)
 	if err != nil {
-		return fmt.Errorf("failed to save snapshot: %v", err)
+		return -1, fmt.Errorf("failed to save snapshot: %v", err)
 	}
 	_, err = tmpfile.Seek(0, os.SEEK_SET)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	// S3 put is atomic, so let's go ahead and put the key directly.
 	err = sb.S3.Put(key, tmpfile)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	logrus.Infof("saved backup %s (size: %d) successfully", key, n)
-	return nil
+	return n, nil
 }
 
 func (sb *s3Backend) getLatest() (string, io.ReadCloser, error) {
@@ -93,4 +93,12 @@ func (sb *s3Backend) purge(maxBackupFiles int) error {
 		}
 	}
 	return nil
+}
+
+func (sb *s3Backend) total() (int, error) {
+	names, err := sb.S3.List()
+	if err != nil {
+		return -1, err
+	}
+	return len(filterAndSortBackups(names)), err
 }

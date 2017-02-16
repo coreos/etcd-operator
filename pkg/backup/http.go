@@ -15,6 +15,7 @@
 package backup
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -34,6 +35,7 @@ const (
 func (b *Backup) startHTTP() {
 	http.HandleFunc(backupapi.APIV1+"/backup", b.serveSnap)
 	http.HandleFunc(backupapi.APIV1+"/backupnow", b.serveBackupNow)
+	http.HandleFunc(backupapi.APIV1+"/status", b.serveStatus)
 
 	logrus.Infof("listening on %v", b.listenAddr)
 	panic(http.ListenAndServe(b.listenAddr, nil))
@@ -107,5 +109,24 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 	_, err = io.Copy(w, rc)
 	if err != nil {
 		logrus.Errorf("failed to write backup to %s: %v", r.RemoteAddr, err)
+	}
+}
+
+func (b *Backup) serveStatus(w http.ResponseWriter, r *http.Request) {
+	t, err := b.be.total()
+	if err != nil {
+		http.Error(w, "failed to get total number of backups", http.StatusInternalServerError)
+		return
+	}
+	s := backupapi.ServiceStatus{
+		Backups: t,
+	}
+	if len(b.recentBackupsStatus) != 0 {
+		s.RecentBackup = &b.recentBackupsStatus[len(b.recentBackupsStatus)-1]
+	}
+
+	je := json.NewEncoder(w)
+	if err := je.Encode(&s); err != nil {
+		logrus.Errorf("failed to write service status to %s: %v", r.RemoteAddr, err)
 	}
 }
