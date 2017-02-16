@@ -155,11 +155,11 @@ func (c *Cluster) setup() error {
 }
 
 func (c *Cluster) create() error {
-	c.logger.Infof("creating cluster with Spec (%#v), Status (%#v)", c.cluster.Spec, c.cluster.Status)
 	c.status.SetPhase(spec.ClusterPhaseCreating)
 	if err := c.updateStatus(); err != nil {
 		return fmt.Errorf("cluster create: failed to update cluster phase (%v): %v", spec.ClusterPhaseCreating, err)
 	}
+	c.logger.Infof("creating cluster with Spec (%#v), Status (%#v)", c.cluster.Spec, c.cluster.Status)
 
 	c.gc.CollectCluster(c.cluster.Metadata.Name, c.cluster.Metadata.UID)
 
@@ -237,6 +237,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 	if err := c.updateStatus(); err != nil {
 		c.logger.Warningf("failed to update TPR status: %v", err)
 	}
+	c.logger.Infof("start running...")
 
 	var rerr error
 	for {
