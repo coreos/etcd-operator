@@ -114,6 +114,10 @@ func (f *Framework) SetupEtcdOperator() error {
 							Name:      "MY_POD_NAMESPACE",
 							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 						},
+						{
+							Name:      "MY_POD_NAME",
+							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
+						},
 					},
 				},
 			},

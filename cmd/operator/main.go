@@ -34,6 +34,7 @@ import (
 	"github.com/coreos/etcd-operator/version"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"golang.org/x/time/rate"
 	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api"
@@ -51,6 +52,7 @@ var (
 	keyFile          string
 	caFile           string
 	namespace        string
+	name             string
 	awsSecret        string
 	awsConfig        string
 	s3Bucket         string
@@ -84,14 +86,18 @@ func init() {
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.DurationVar(&gcInterval, "gc-interval", 10*time.Minute, "GC interval")
 	flag.Parse()
-
-	namespace = os.Getenv("MY_POD_NAMESPACE")
-	if len(namespace) == 0 {
-		namespace = "default"
-	}
 }
 
 func main() {
+	namespace = os.Getenv("MY_POD_NAMESPACE")
+	if len(namespace) == 0 {
+		logrus.Fatalf("must set env MY_POD_NAMESPACE")
+	}
+	name = os.Getenv("MY_POD_NAME")
+	if len(name) == 0 {
+		logrus.Fatalf("must set env MY_POD_NAME")
+	}
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c)
 	go func() {
@@ -184,10 +190,17 @@ func newControllerConfig() controller.Config {
 		CAFile:   caFile,
 	}
 	kubecli := k8sutil.MustCreateClient(masterHost, tlsInsecure, &tlsConfig)
+
+	serviceAccount, err := getMyPodServiceAccount(kubecli)
+	if err != nil {
+		logrus.Fatalf("fail to get my pod's service account: %v", err)
+	}
+
 	cfg := controller.Config{
-		MasterHost:    masterHost,
-		Namespace:     namespace,
-		PVProvisioner: pvProvisioner,
+		MasterHost:     masterHost,
+		Namespace:      namespace,
+		ServiceAccount: serviceAccount,
+		PVProvisioner:  pvProvisioner,
 		S3Context: s3config.S3Context{
 			AWSSecret: awsSecret,
 			AWSConfig: awsConfig,
@@ -200,6 +213,20 @@ func newControllerConfig() controller.Config {
 		cfg.MasterHost = k8sutil.MustGetInClusterMasterHost()
 	}
 	return cfg
+}
+
+func getMyPodServiceAccount(kubecli kubernetes.Interface) (string, error) {
+	var sa string
+	err := retryutil.Retry(5*time.Second, 100, func() (bool, error) {
+		pod, err := kubecli.Core().Pods(namespace).Get(name)
+		if err != nil {
+			logrus.Errorf("fail to get operator pod (%s): %v", name, err)
+			return false, nil
+		}
+		sa = pod.Spec.ServiceAccountName
+		return true, nil
+	})
+	return sa, err
 }
 
 func periodicFullGC(k8s kubernetes.Interface, ns string, d time.Duration) {
