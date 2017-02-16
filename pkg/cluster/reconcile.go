@@ -16,10 +16,7 @@ package cluster
 
 import (
 	"errors"
-	"net/http"
-	"time"
 
-	"github.com/coreos/etcd-operator/client/experimentalclient"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -195,7 +192,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	backupNow := false
 	if len(left) > 0 {
 		c.logger.Infof("pods are still running (%v). Will try to make a latest backup from one of them.", left)
-		err := requestBackup(c.cluster.Metadata.Name)
+		err := c.bm.requestBackup()
 		if err != nil {
 			c.logger.Errorln(err)
 		} else {
@@ -207,7 +204,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	} else {
 		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
 		// If so, we can still continue. Otherwise, it's fatal error.
-		exist, err := checkBackupExist(c.cluster.Metadata.Name, c.cluster.Spec.Version)
+		exist, err := c.bm.checkBackupExist(c.cluster.Spec.Version)
 		if err != nil {
 			c.logger.Errorln(err)
 			return err
@@ -224,22 +221,6 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 		}
 	}
 	return c.restoreSeedMember()
-}
-
-func requestBackup(clusterName string) error {
-	// TODO: reuse http client
-	bc := experimentalclient.NewBackup(&http.Client{}, "http", clusterName)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	return bc.Request(ctx)
-}
-
-func checkBackupExist(clusterName, ver string) (bool, error) {
-	// TODO: reuse http client
-	bc := experimentalclient.NewBackup(&http.Client{}, "http", clusterName)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	return bc.Exist(ctx, ver)
 }
 
 func needUpgrade(pods []*v1.Pod, cs spec.ClusterSpec) bool {
