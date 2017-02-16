@@ -166,7 +166,7 @@ func PodSpecWithS3(ps *v1.PodSpec, s3Ctx s3config.S3Context) *v1.PodSpec {
 	return ps
 }
 
-func MakeBackupPodSpec(clusterName string, policy *spec.BackupPolicy) (*v1.PodSpec, error) {
+func NewBackupPodSpec(clusterName string, policy *spec.BackupPolicy) (*v1.PodSpec, error) {
 	bp, err := json.Marshal(policy)
 	if err != nil {
 		return nil, err
