@@ -8,6 +8,7 @@ get restarted.
 etcd container with this new field.
 - Add status endpoint to backup sidecar service.
 - Service account of the etcd operator pod is passed to backup pod.
+- Add backup service status into cluster status.
 
 ### Changed
 

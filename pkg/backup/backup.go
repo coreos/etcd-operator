@@ -212,9 +212,9 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	}
 
 	bs := backupapi.BackupStatus{
-		Size:     n,
-		Version:  resp.Version,
-		TimeTook: time.Since(start),
+		Size:             n,
+		Version:          resp.Version,
+		TimeTookInSecond: int(time.Since(start).Seconds() + 1),
 	}
 	b.recentBackupsStatus = append(b.recentBackupsStatus, bs)
 	if len(b.recentBackupsStatus) > maxRecentBackupStatusCount {
