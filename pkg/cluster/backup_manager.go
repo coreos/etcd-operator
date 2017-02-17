@@ -15,8 +15,13 @@
 package cluster
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"time"
 
+	"github.com/coreos/etcd-operator/client/experimentalclient"
+	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/cluster/backupstorage"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -25,12 +30,19 @@ import (
 	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
+const (
+	defaultBackupHTTPTimeout     = 5 * time.Second
+	defaultBackupCreatingTimeout = 1 * time.Minute
+)
+
 type backupManager struct {
 	logger *logrus.Entry
 
 	config  Config
 	cluster *spec.Cluster
 	s       backupstorage.Storage
+
+	bc experimentalclient.Backup
 }
 
 func newBackupManager(c Config, cl *spec.Cluster, l *logrus.Entry) (*backupManager, error) {
@@ -38,6 +50,7 @@ func newBackupManager(c Config, cl *spec.Cluster, l *logrus.Entry) (*backupManag
 		config:  c,
 		cluster: cl,
 		logger:  l,
+		bc:      experimentalclient.NewBackup(&http.Client{}, "http", cl.Metadata.GetName()),
 	}
 	var err error
 	bm.s, err = bm.setupStorage()
@@ -138,4 +151,22 @@ func (bm *backupManager) cleanup() error {
 		return fmt.Errorf("fail to delete backup storage: %v", err)
 	}
 	return nil
+}
+
+func (bm *backupManager) requestBackup() error {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultBackupHTTPTimeout+defaultBackupCreatingTimeout)
+	defer cancel()
+	return bm.bc.Request(ctx)
+}
+
+func (bm *backupManager) checkBackupExist(ver string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultBackupHTTPTimeout)
+	defer cancel()
+	return bm.bc.Exist(ctx, ver)
+}
+
+func (bm *backupManager) getStatus() (*backupapi.ServiceStatus, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultBackupHTTPTimeout)
+	defer cancel()
+	return bm.bc.ServiceStatus(ctx)
 }

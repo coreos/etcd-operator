@@ -111,7 +111,7 @@ func New(config Config, cl *spec.Cluster, stopC <-chan struct{}, wg *sync.WaitGr
 			if c.status.Phase != spec.ClusterPhaseFailed {
 				c.status.SetReason(err.Error())
 				c.status.SetPhase(spec.ClusterPhaseFailed)
-				if err := c.updateStatus(); err != nil {
+				if err := c.updateTPRStatus(); err != nil {
 					c.logger.Errorf("failed to update cluster phase (%v): %v", spec.ClusterPhaseFailed, err)
 				}
 			}
@@ -157,7 +157,7 @@ func (c *Cluster) setup() error {
 
 func (c *Cluster) create() error {
 	c.status.SetPhase(spec.ClusterPhaseCreating)
-	if err := c.updateStatus(); err != nil {
+	if err := c.updateTPRStatus(); err != nil {
 		return fmt.Errorf("cluster create: failed to update cluster phase (%v): %v", spec.ClusterPhaseCreating, err)
 	}
 	c.logger.Infof("creating cluster with Spec (%#v), Status (%#v)", c.cluster.Spec, c.cluster.Status)
@@ -235,7 +235,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 	}()
 
 	c.status.SetPhase(spec.ClusterPhaseRunning)
-	if err := c.updateStatus(); err != nil {
+	if err := c.updateTPRStatus(); err != nil {
 		c.logger.Warningf("failed to update TPR status: %v", err)
 	}
 	c.logger.Infof("start running...")
@@ -303,7 +303,11 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 				break
 			}
 
-			if err := c.updateStatus(); err != nil {
+			if err := c.updateLocalBackupStatus(); err != nil {
+				c.logger.Warningf("failed to update local backup service status: %v", err)
+			}
+
+			if err := c.updateTPRStatus(); err != nil {
 				c.logger.Warningf("failed to update TPR status: %v", err)
 			}
 		}
@@ -480,7 +484,7 @@ func (c *Cluster) pollPods() ([]*v1.Pod, []*v1.Pod, error) {
 	return running, pending, nil
 }
 
-func (c *Cluster) updateStatus() error {
+func (c *Cluster) updateTPRStatus() error {
 	if reflect.DeepEqual(c.cluster.Status, c.status) {
 		return nil
 	}
@@ -496,10 +500,22 @@ func (c *Cluster) updateStatus() error {
 	return nil
 }
 
+func (c *Cluster) updateLocalBackupStatus() error {
+	if c.bm != nil {
+		bs, err := c.bm.getStatus()
+		if err != nil {
+			return err
+		} else {
+			c.cluster.Status.BackupServiceStatus = bs
+		}
+	}
+	return nil
+}
+
 func (c *Cluster) reportFailedStatus() {
 	f := func() (bool, error) {
 		c.status.SetPhase(spec.ClusterPhaseFailed)
-		err := c.updateStatus()
+		err := c.updateTPRStatus()
 		if err == nil || k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return true, nil
 		}

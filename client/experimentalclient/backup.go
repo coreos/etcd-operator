@@ -2,6 +2,7 @@ package experimentalclient
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -18,6 +19,9 @@ type Backup interface {
 
 	// Exist checks if there is a backup available for the specific version of etcd cluster.
 	Exist(ctx context.Context, v string) (bool, error)
+
+	// ServiceStatus returns the backup service status.
+	ServiceStatus(ctx context.Context) (*backupapi.ServiceStatus, error)
 }
 
 type backupClient struct {
@@ -48,9 +52,8 @@ func (b backupClient) Request(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("request backup (%s) failed: %v", b.addr, err)
 	}
-	req.WithContext(ctx)
 
-	resp, err := b.client.Do(req)
+	resp, err := b.client.Do(req.WithContext(ctx))
 	if err != nil {
 		return fmt.Errorf("request backup (%s) failed: %v", b.addr, err)
 	}
@@ -76,9 +79,8 @@ func (b backupClient) Exist(ctx context.Context, v string) (bool, error) {
 		Method: http.MethodHead,
 		URL:    backupapi.NewBackupURL(b.scheme, b.addr, v),
 	}
-	req.WithContext(ctx)
 
-	resp, err := b.client.Do(req)
+	resp, err := b.client.Do(req.WithContext(ctx))
 	if err != nil {
 		return false, fmt.Errorf("check backup existence (%s) failed: %v", b.addr, err)
 	}
@@ -96,4 +98,37 @@ func (b backupClient) Exist(ctx context.Context, v string) (bool, error) {
 		errmsg = string(body)
 	}
 	return false, fmt.Errorf("check backup existence (%s) failed: unexpected status code (%v), response (%s)", b.addr, resp.Status, errmsg)
+}
+
+func (b backupClient) ServiceStatus(ctx context.Context) (*backupapi.ServiceStatus, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s://%s/status", b.scheme, path.Join(b.addr, backupapi.APIV1)), nil)
+	if err != nil {
+		return nil, fmt.Errorf("get service status (%s) failed: %v", b.addr, err)
+	}
+
+	resp, err := b.client.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("get service status (%s) failed: %v", b.addr, err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		var status backupapi.ServiceStatus
+		jd := json.NewDecoder(resp.Body)
+		err = jd.Decode(&status)
+		if err != nil {
+			return nil, err
+		}
+		return &status, nil
+	}
+
+	var errmsg string
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		errmsg = fmt.Sprintf("fail to read response body: %v", err)
+	} else {
+		errmsg = string(body)
+	}
+	return nil, fmt.Errorf("get service status (%s) failed: unexpected status code (%v), response (%s)", b.addr, resp.Status, errmsg)
 }
