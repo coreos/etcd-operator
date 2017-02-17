@@ -29,7 +29,7 @@ func etcdContainer(commands, version string) v1.Container {
 		// Without waiting some time, there is highly probable flakes in network setup.
 		Command: []string{"/bin/sh", "-c", fmt.Sprintf("sleep 5; %s", commands)},
 		Name:    "etcd",
-		Image:   MakeEtcdImage(version),
+		Image:   EtcdImageName(version),
 		Ports: []v1.ContainerPort{
 			{
 				Name:          "server",
