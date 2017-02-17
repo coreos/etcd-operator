@@ -134,7 +134,7 @@ func (c *Controller) Run() error {
 		c.waitCluster.Wait()
 	}()
 
-	eventCh, errCh := c.monitor(watchVersion)
+	eventCh, errCh := c.watch(watchVersion)
 
 	go func() {
 		pt := newPanicTimer(time.Minute, "unexpected long blocking (> 1 Minute) when handling cluster event")
@@ -257,7 +257,11 @@ func (c *Controller) createTPR() error {
 	return k8sutil.WaitEtcdTPRReady(c.KubeCli.Core().GetRESTClient(), 3*time.Second, 30*time.Second, c.Namespace)
 }
 
-func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) {
+// watch creates a go routine, and watches the cluster.etcd kind resources from
+// the given watch version. It emits events on the resources through the returned
+// event chan. Errors will be reported through the returned error chan. The go routine
+// exits on any error.
+func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 	eventCh := make(chan *Event)
 	// On unexpected error case, controller should exit
 	errCh := make(chan error, 1)
@@ -277,7 +281,7 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 			}
 			if resp.StatusCode != http.StatusOK {
 				resp.Body.Close()
-				errCh <- errors.New("Invalid status code: " + resp.Status)
+				errCh <- errors.New("invalid status code: " + resp.Status)
 				return
 			}
 
