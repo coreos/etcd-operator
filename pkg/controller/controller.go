@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	v1beta1extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	kwatch "k8s.io/client-go/pkg/watch"
 )
 
 var (
@@ -52,7 +53,7 @@ var (
 )
 
 type Event struct {
-	Type   string
+	Type   kwatch.EventType
 	Object *spec.Cluster
 }
 
@@ -150,7 +151,7 @@ func (c *Controller) Run() error {
 			clus.Spec.Cleanup()
 
 			switch event.Type {
-			case "ADDED":
+			case kwatch.Added:
 				stopC := make(chan struct{})
 				nc := cluster.New(c.makeClusterConfig(), clus, stopC, &c.waitCluster)
 
@@ -162,12 +163,12 @@ func (c *Controller) Run() error {
 				clustersCreated.Inc()
 				clustersTotal.Inc()
 
-			case "MODIFIED":
+			case kwatch.Modified:
 				c.clusters[clus.Metadata.Name].Update(clus)
 				c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
 				clustersModified.Inc()
 
-			case "DELETED":
+			case kwatch.Deleted:
 				c.clusters[clus.Metadata.Name].Delete()
 				delete(c.clusters, clus.Metadata.Name)
 				delete(c.clusterRVs, clus.Metadata.Name)
