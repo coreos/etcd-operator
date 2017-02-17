@@ -14,8 +14,6 @@
 
 package backupapi
 
-import "time"
-
 type ServiceStatus struct {
 	// RecentBackup is status of the most recent backup created by
 	// the backup service
@@ -32,6 +30,6 @@ type BackupStatus struct {
 	// Version is the version of the backup cluster.
 	Version string `json:"version"`
 
-	// TimeTook is the total time took to create the backup.
-	TimeTook time.Duration `json:"timeTook"`
+	// TimeTookInSecond is the total time took to create the backup.
+	TimeTookInSecond int `json:"timeTook"`
 }
