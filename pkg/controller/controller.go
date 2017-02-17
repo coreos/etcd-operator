@@ -65,9 +65,10 @@ type Controller struct {
 }
 
 type Config struct {
-	MasterHost    string
-	Namespace     string
-	PVProvisioner string
+	MasterHost     string
+	Namespace      string
+	ServiceAccount string
+	PVProvisioner  string
 	s3config.S3Context
 	KubeCli kubernetes.Interface
 }
@@ -206,8 +207,9 @@ func (c *Controller) findAllClusters() (string, error) {
 
 func (c *Controller) makeClusterConfig() cluster.Config {
 	return cluster.Config{
-		PVProvisioner: c.PVProvisioner,
-		S3Context:     c.S3Context,
+		PVProvisioner:  c.PVProvisioner,
+		ServiceAccount: c.Config.ServiceAccount,
+		S3Context:      c.S3Context,
 
 		MasterHost: c.MasterHost,
 		KubeCli:    c.KubeCli,

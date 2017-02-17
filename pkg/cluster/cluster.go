@@ -56,7 +56,8 @@ type clusterEvent struct {
 }
 
 type Config struct {
-	PVProvisioner string
+	PVProvisioner  string
+	ServiceAccount string
 	s3config.S3Context
 
 	MasterHost string
