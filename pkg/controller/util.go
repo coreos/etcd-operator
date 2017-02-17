@@ -22,7 +22,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 
-	"k8s.io/client-go/1.5/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/api/unversioned"
 )
 
 type rawEvent struct {

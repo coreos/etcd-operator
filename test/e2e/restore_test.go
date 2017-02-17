@@ -77,7 +77,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	pod, err := f.KubeClient.Core().Pods(f.Namespace).Get(names[0])
+	pod, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get(names[0])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	pod, err = f.KubeClient.Core().Pods(f.Namespace).Get(names[0])
+	pod, err = f.KubeClient.CoreV1().Pods(f.Namespace).Get(names[0])
 	if err != nil {
 		t.Fatal(err)
 	}

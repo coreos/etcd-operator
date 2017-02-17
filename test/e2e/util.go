@@ -33,10 +33,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/coreos/etcd/clientv3"
-	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/api/unversioned"
-	"k8s.io/client-go/1.5/pkg/api/v1"
-	"k8s.io/client-go/1.5/pkg/labels"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/labels"
 )
 
 const (
@@ -53,9 +52,9 @@ func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Du
 	ls := labels.SelectorFromSet(map[string]string{
 		"app":          k8sutil.BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
-	})
+	}).String()
 	return retryutil.Retry(5*time.Second, int(timeout/(5*time.Second)), func() (done bool, err error) {
-		podList, err := f.KubeClient.Core().Pods(f.Namespace).List(api.ListOptions{
+		podList, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(v1.ListOptions{
 			LabelSelector: ls,
 		})
 		if err != nil {
@@ -74,8 +73,8 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 	ls := labels.SelectorFromSet(map[string]string{
 		"app":          k8sutil.BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
-	})
-	podList, err := f.KubeClient.Core().Pods(f.Namespace).List(api.ListOptions{
+	}).String()
+	podList, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(v1.ListOptions{
 		LabelSelector: ls,
 	})
 	if err != nil {
@@ -177,7 +176,7 @@ func checkMemberReady(url string) bool {
 
 func killMembers(f *framework.Framework, names ...string) error {
 	for _, name := range names {
-		err := f.KubeClient.Core().Pods(f.Namespace).Delete(name, api.NewDeleteOptions(0))
+		err := f.KubeClient.CoreV1().Pods(f.Namespace).Delete(name, v1.NewDeleteOptions(0))
 		if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
@@ -246,7 +245,7 @@ func clusterWithSelfHosted(cl *spec.Cluster, sh *spec.SelfHostedPolicy) *spec.Cl
 
 func createCluster(t *testing.T, f *framework.Framework, cl *spec.Cluster) (*spec.Cluster, error) {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, f.Namespace)
-	b, err := f.KubeClient.Core().GetRESTClient().Post().Body(cl).RequestURI(uri).DoRaw()
+	b, err := f.KubeClient.CoreV1().RESTClient().Post().Body(cl).RequestURI(uri).DoRaw()
 	if err != nil {
 		return nil, err
 	}
@@ -259,11 +258,11 @@ func createCluster(t *testing.T, f *framework.Framework, cl *spec.Cluster) (*spe
 }
 
 func updateEtcdCluster(f *framework.Framework, c *spec.Cluster) (*spec.Cluster, error) {
-	return k8sutil.UpdateClusterTPRObjectUnconditionally(f.KubeClient.Core().GetRESTClient(), f.Namespace, c)
+	return k8sutil.UpdateClusterTPRObjectUnconditionally(f.KubeClient.CoreV1().RESTClient(), f.Namespace, c)
 }
 
 func deleteEtcdCluster(t *testing.T, f *framework.Framework, c *spec.Cluster) error {
-	podList, err := f.KubeClient.Core().Pods(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
+	podList, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
 	if err != nil {
 		return err
 	}
@@ -273,7 +272,7 @@ func deleteEtcdCluster(t *testing.T, f *framework.Framework, c *spec.Cluster) er
 	}
 
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, f.Namespace, c.Metadata.Name)
-	if _, err := f.KubeClient.Core().GetRESTClient().Delete().RequestURI(uri).DoRaw(); err != nil {
+	if _, err := f.KubeClient.CoreV1().RESTClient().Delete().RequestURI(uri).DoRaw(); err != nil {
 		return err
 	}
 	return waitResourcesDeleted(t, f, c)
@@ -281,7 +280,7 @@ func deleteEtcdCluster(t *testing.T, f *framework.Framework, c *spec.Cluster) er
 
 func waitResourcesDeleted(t *testing.T, f *framework.Framework, c *spec.Cluster) error {
 	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		list, err := f.KubeClient.Core().Pods(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
+		list, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
 		if err != nil {
 			return false, err
 		}
@@ -305,7 +304,7 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, c *spec.Cluster)
 	}
 
 	err = retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		list, err := f.KubeClient.Core().Services(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
+		list, err := f.KubeClient.CoreV1().Services(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
 		if err != nil {
 			return false, err
 		}
@@ -346,8 +345,8 @@ func waitBackupDeleted(f *framework.Framework, c *spec.Cluster) error {
 		ls := labels.SelectorFromSet(map[string]string{
 			"app":          k8sutil.BackupPodSelectorAppField,
 			"etcd_cluster": c.Metadata.Name,
-		})
-		pl, err := f.KubeClient.Core().Pods(f.Namespace).List(api.ListOptions{
+		}).String()
+		pl, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(v1.ListOptions{
 			LabelSelector: ls,
 		})
 		if err != nil {
@@ -372,7 +371,7 @@ func waitBackupDeleted(f *framework.Framework, c *spec.Cluster) error {
 	err = retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
 		switch c.Spec.Backup.StorageType {
 		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-			pl, err := f.KubeClient.Core().PersistentVolumeClaims(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
+			pl, err := f.KubeClient.CoreV1().PersistentVolumeClaims(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
 			if err != nil {
 				return false, err
 			}

@@ -6,7 +6,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 
 	"github.com/aws/aws-sdk-go/aws/session"
-	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/kubernetes"
 )
 
 type s3 struct {

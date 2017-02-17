@@ -24,8 +24,8 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
-	apierrors "k8s.io/client-go/1.5/pkg/api/errors"
-	"k8s.io/client-go/1.5/rest"
+	apierrors "k8s.io/client-go/pkg/api/errors"
+	"k8s.io/client-go/rest"
 )
 
 // TODO: replace this package with Operator client
@@ -35,7 +35,7 @@ func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion str
 		host, spec.TPRGroup, spec.TPRVersion, ns, resourceVersion))
 }
 
-func GetClusterList(restcli *rest.RESTClient, ns string) (*spec.ClusterList, error) {
+func GetClusterList(restcli rest.Interface, ns string) (*spec.ClusterList, error) {
 	b, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func GetClusterList(restcli *rest.RESTClient, ns string) (*spec.ClusterList, err
 	return clusters, nil
 }
 
-func WaitEtcdTPRReady(restcli *rest.RESTClient, interval, timeout time.Duration, ns string) error {
+func WaitEtcdTPRReady(restcli rest.Interface, interval, timeout time.Duration, ns string) error {
 	return retryutil.Retry(interval, int(timeout/interval), func() (bool, error) {
 		_, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
 		if err != nil {
@@ -65,7 +65,7 @@ func listClustersURI(ns string) string {
 	return fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, ns)
 }
 
-func GetClusterTPRObject(restcli *rest.RESTClient, ns, name string) (*spec.Cluster, error) {
+func GetClusterTPRObject(restcli rest.Interface, ns, name string) (*spec.Cluster, error) {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, name)
 	b, err := restcli.Get().RequestURI(uri).DoRaw()
 	if err != nil {
@@ -76,7 +76,7 @@ func GetClusterTPRObject(restcli *rest.RESTClient, ns, name string) (*spec.Clust
 
 // UpdateClusterTPRObject updates the given TPR object.
 // ResourceVersion of the object MUST be set or update will fail.
-func UpdateClusterTPRObject(restcli *rest.RESTClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+func UpdateClusterTPRObject(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
 	if len(c.Metadata.ResourceVersion) == 0 {
 		return nil, errors.New("k8sutil: resource version is not provided")
 	}
@@ -85,12 +85,12 @@ func UpdateClusterTPRObject(restcli *rest.RESTClient, ns string, c *spec.Cluster
 
 // UpdateClusterTPRObjectUnconditionally updates the given TPR object.
 // This should only be used in tests.
-func UpdateClusterTPRObjectUnconditionally(restcli *rest.RESTClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+func UpdateClusterTPRObjectUnconditionally(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
 	c.Metadata.ResourceVersion = ""
 	return updateClusterTPRObject(restcli, ns, c)
 }
 
-func updateClusterTPRObject(restcli *rest.RESTClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+func updateClusterTPRObject(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, c.Metadata.Name)
 	b, err := restcli.Put().RequestURI(uri).Body(c).DoRaw()
 	if err != nil {

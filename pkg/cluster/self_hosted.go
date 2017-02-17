@@ -38,7 +38,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.cluster.Spec)
 
-	_, err := c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).Create(pod)
+	_, err := c.config.KubeCli.CoreV1().Pods(c.cluster.Metadata.Namespace).Create(pod)
 	if err != nil {
 		return err
 	}

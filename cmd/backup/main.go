@@ -44,7 +44,6 @@ func init() {
 	flag.StringVar(&listenAddr, "listen", "0.0.0.0:19999", "")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 
-	// TODO: parse policy
 	flag.Parse()
 
 	namespace = os.Getenv("MY_POD_NAMESPACE")
@@ -69,6 +68,6 @@ func main() {
 		logrus.Fatalf("fail to parse backup policy (%s): %v", ps, err)
 	}
 
-	kclient := k8sutil.MustCreateClient(masterHost, false, nil)
+	kclient := k8sutil.MustNewKubeClient()
 	backup.New(kclient, clusterName, namespace, *p, listenAddr).Run()
 }

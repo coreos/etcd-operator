@@ -30,9 +30,9 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
-	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/api/v1"
-	v1beta1extensions "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
+	v1beta1extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 var (
@@ -44,6 +44,11 @@ var (
 	ErrVersionOutdated = errors.New("requested version is outdated in apiserver")
 
 	initRetryWaitTime = 30 * time.Second
+
+	// Workaround for watching TPR resource.
+	// client-go has encoding issue and we want something more predictable.
+	KubeHttpCli *http.Client
+	MasterHost  string
 )
 
 type Event struct {
@@ -65,7 +70,6 @@ type Controller struct {
 }
 
 type Config struct {
-	MasterHost     string
 	Namespace      string
 	ServiceAccount string
 	PVProvisioner  string
@@ -180,7 +184,7 @@ func (c *Controller) Run() error {
 
 func (c *Controller) findAllClusters() (string, error) {
 	c.logger.Info("finding existing clusters...")
-	clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli.Core().GetRESTClient(), c.Config.Namespace)
+	clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli.CoreV1().RESTClient(), c.Config.Namespace)
 	if err != nil {
 		return "", err
 	}
@@ -211,8 +215,7 @@ func (c *Controller) makeClusterConfig() cluster.Config {
 		ServiceAccount: c.Config.ServiceAccount,
 		S3Context:      c.S3Context,
 
-		MasterHost: c.MasterHost,
-		KubeCli:    c.KubeCli,
+		KubeCli: c.KubeCli,
 	}
 }
 
@@ -249,12 +252,12 @@ func (c *Controller) createTPR() error {
 		},
 		Description: spec.TPRDescription,
 	}
-	_, err := c.KubeCli.Extensions().ThirdPartyResources().Create(tpr)
+	_, err := c.KubeCli.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
 	if err != nil {
 		return err
 	}
 
-	return k8sutil.WaitEtcdTPRReady(c.KubeCli.Core().GetRESTClient(), 3*time.Second, 30*time.Second, c.Namespace)
+	return k8sutil.WaitEtcdTPRReady(c.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, c.Namespace)
 }
 
 // watch creates a go routine, and watches the cluster.etcd kind resources from
@@ -269,12 +272,8 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 	go func() {
 		defer close(eventCh)
 
-		host := c.MasterHost
-		ns := c.Namespace
-		httpcli := c.KubeCli.Core().GetRESTClient().Client
-
 		for {
-			resp, err := k8sutil.WatchClusters(host, ns, httpcli, watchVersion)
+			resp, err := k8sutil.WatchClusters(MasterHost, c.Config.Namespace, KubeHttpCli, watchVersion)
 			if err != nil {
 				errCh <- err
 				return
@@ -307,7 +306,7 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 					if st.Code == http.StatusGone {
 						// event history is outdated.
 						// if nothing has changed, we can go back to watch again.
-						clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli.Core().GetRESTClient(), c.Config.Namespace)
+						clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli.CoreV1().RESTClient(), c.Config.Namespace)
 						if err == nil && !c.isClustersCacheStale(clusterList.Items) {
 							watchVersion = clusterList.Metadata.ResourceVersion
 							break
