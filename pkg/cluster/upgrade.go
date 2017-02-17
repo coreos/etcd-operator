@@ -29,7 +29,7 @@ func (c *Cluster) upgradeOneMember(m *etcdutil.Member) error {
 		return fmt.Errorf("fail to get pod (%s): %v", m.Name, err)
 	}
 	c.logger.Infof("upgrading the etcd member %v from %s to %s", m.Name, k8sutil.GetEtcdVersion(pod), c.cluster.Spec.Version)
-	pod.Spec.Containers[0].Image = k8sutil.MakeEtcdImage(c.cluster.Spec.Version)
+	pod.Spec.Containers[0].Image = k8sutil.EtcdImageName(c.cluster.Spec.Version)
 	k8sutil.SetEtcdVersion(pod, c.cluster.Spec.Version)
 	_, err = c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).Update(pod)
 	if err != nil {

@@ -45,7 +45,7 @@ func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, name string, p
 	containerSpec := []v1.Container{
 		{
 			Name:  "add-member",
-			Image: MakeEtcdImage(cs.Version),
+			Image: EtcdImageName(cs.Version),
 			Command: []string{
 				"/bin/sh", "-c",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), name, strings.Join(peerURLs, ",")),
@@ -61,7 +61,7 @@ func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, name string, p
 	return p
 }
 
-func MakeSelfHostedEtcdPod(name string, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
+func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
 		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
 		"--initial-cluster=%s --initial-cluster-state=%s",

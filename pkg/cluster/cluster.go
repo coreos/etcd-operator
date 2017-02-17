@@ -405,7 +405,7 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 		token = uuid.New()
 	}
 
-	pod := k8sutil.MakeEtcdPod(m, members.PeerURLPairs(), c.cluster.Metadata.Name, state, token, c.cluster.Spec, c.cluster.AsOwner())
+	pod := k8sutil.NewEtcdPod(m, members.PeerURLPairs(), c.cluster.Metadata.Name, state, token, c.cluster.Spec, c.cluster.AsOwner())
 	if needRecovery {
 		k8sutil.AddRecoveryToPod(pod, c.cluster.Metadata.Name, m.Name, token, c.cluster.Spec)
 	}

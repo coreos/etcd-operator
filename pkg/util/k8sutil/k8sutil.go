@@ -79,7 +79,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 		},
 		{
 			Name:  "restore-datadir",
-			Image: MakeEtcdImage(version),
+			Image: EtcdImageName(version),
 			Command: []string{
 				"/bin/sh", "-c",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
@@ -101,7 +101,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 	return string(b)
 }
 
-func MakeEtcdImage(version string) string {
+func EtcdImageName(version string) string {
 	return fmt.Sprintf("quay.io/coreos/etcd:v%v", version)
 }
 
@@ -131,7 +131,7 @@ func CreateMemberService(kubecli kubernetes.Interface, ns string, svc *v1.Servic
 }
 
 func CreateEtcdService(kubecli kubernetes.Interface, clusterName, ns string, owner metatypes.OwnerReference) (*v1.Service, error) {
-	svc := makeEtcdService(clusterName)
+	svc := newEtcdServiceManifest(clusterName)
 	addOwnerRefToObject(svc.GetObjectMeta(), owner)
 	retSvc, err := kubecli.Core().Services(ns).Create(svc)
 	if err != nil {
@@ -168,7 +168,7 @@ func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, time
 	return retPod, nil
 }
 
-func makeEtcdService(clusterName string) *v1.Service {
+func newEtcdServiceManifest(clusterName string) *v1.Service {
 	labels := map[string]string{
 		"app":          "etcd",
 		"etcd_cluster": clusterName,
@@ -241,7 +241,7 @@ func addOwnerRefToObject(o meta.Object, r metatypes.OwnerReference) {
 	o.SetOwnerReferences(append(o.GetOwnerReferences(), r))
 }
 
-func MakeEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
+func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
