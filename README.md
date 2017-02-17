@@ -22,6 +22,8 @@ The etcd operator manages etcd clusters deployed to [Kubernetes][k8s-home] and a
 
 Read [Best Practices](./doc/best_practices.md) for more information on how to better use etcd operator.
 
+Read [RBAC docs](./doc/user/rbac.md) for how to setup RBAC rules for etcd operator if RBAC is in place.
+
 Read [Developer Guide](./doc/dev/developer_guide.md) for setting up development environment if you want to contribute.
 
 ## Requirements
