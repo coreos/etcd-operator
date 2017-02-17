@@ -247,7 +247,7 @@ func (c *Controller) createTPR() error {
 		Versions: []v1beta1extensions.APIVersion{
 			{Name: spec.TPRVersion},
 		},
-		Description: "Managed etcd clusters",
+		Description: spec.TPRDescription,
 	}
 	_, err := c.KubeCli.Extensions().ThirdPartyResources().Create(tpr)
 	if err != nil {
@@ -275,7 +275,7 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 				errCh <- err
 				return
 			}
-			if resp.StatusCode != 200 {
+			if resp.StatusCode != http.StatusOK {
 				resp.Body.Close()
 				errCh <- errors.New("Invalid status code: " + resp.Status)
 				return
