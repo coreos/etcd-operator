@@ -25,10 +25,9 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/api/v1"
-	"k8s.io/client-go/1.5/tools/clientcmd"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var Global *Framework
@@ -131,7 +130,7 @@ func (f *Framework) SetupEtcdOperator() error {
 	}
 	logrus.Infof("etcd operator pod is running on node (%s)", p.Spec.NodeName)
 
-	err = k8sutil.WaitEtcdTPRReady(f.KubeClient.Core().GetRESTClient(), 5*time.Second, 60*time.Second, f.Namespace)
+	err = k8sutil.WaitEtcdTPRReady(f.KubeClient.Core().RESTClient(), 5*time.Second, 60*time.Second, f.Namespace)
 	if err != nil {
 		return err
 	}
@@ -140,7 +139,7 @@ func (f *Framework) SetupEtcdOperator() error {
 }
 
 func (f *Framework) DeleteEtcdOperator() error {
-	return f.KubeClient.Core().Pods(f.Namespace).Delete("etcd-operator", api.NewDeleteOptions(1))
+	return f.KubeClient.CoreV1().Pods(f.Namespace).Delete("etcd-operator", v1.NewDeleteOptions(1))
 }
 
 func (f *Framework) setupAWS() error {

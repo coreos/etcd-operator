@@ -4,7 +4,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
-	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/kubernetes"
 )
 
 type pv struct {

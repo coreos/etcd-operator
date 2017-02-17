@@ -26,14 +26,14 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
-	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/api/meta/metatypes"
-	"k8s.io/client-go/1.5/pkg/api/resource"
-	"k8s.io/client-go/1.5/pkg/api/v1"
-	v1beta1extensions "k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
-	v1beta1storage "k8s.io/client-go/1.5/pkg/apis/storage/v1beta1"
-	"k8s.io/client-go/1.5/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/meta/metatypes"
+	"k8s.io/client-go/pkg/api/resource"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/api/v1"
+	v1beta1extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	v1beta1storage "k8s.io/client-go/pkg/apis/storage/v1beta1"
+	"k8s.io/client-go/pkg/util/intstr"
 )
 
 const (
@@ -58,7 +58,7 @@ func CreateStorageClass(kubecli kubernetes.Interface, pvProvisioner string) erro
 		},
 		Provisioner: pvProvisioner,
 	}
-	_, err := kubecli.Storage().StorageClasses().Create(class)
+	_, err := kubecli.StorageV1beta1().StorageClasses().Create(class)
 	return err
 }
 
@@ -87,7 +87,7 @@ func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvision
 			},
 		},
 	}
-	_, err := kubecli.Core().PersistentVolumeClaims(ns).Create(claim)
+	_, err := kubecli.CoreV1().PersistentVolumeClaims(ns).Create(claim)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvision
 	//       Change the wait time once there are official p99 SLA.
 	err = retryutil.Retry(4*time.Second, 15, func() (bool, error) {
 		var err error
-		claim, err = kubecli.Core().PersistentVolumeClaims(ns).Get(name)
+		claim, err = kubecli.CoreV1().PersistentVolumeClaims(ns).Get(name)
 		if err != nil {
 			return false, err
 		}
@@ -213,7 +213,7 @@ func NewBackupReplicaSetManifest(clusterName string, ps v1.PodSpec, owner metaty
 			Labels: newLablesForCluster(clusterName),
 		},
 		Spec: v1beta1extensions.ReplicaSetSpec{
-			Selector: &v1beta1extensions.LabelSelector{MatchLabels: labels},
+			Selector: &unversioned.LabelSelector{MatchLabels: labels},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{
 					Labels: labels,
@@ -250,7 +250,7 @@ func NewBackupServiceManifest(clusterName string, owner metatypes.OwnerReference
 }
 
 func DeletePVC(kubecli kubernetes.Interface, clusterName, ns string) error {
-	err := kubecli.Core().PersistentVolumeClaims(ns).Delete(makePVCName(clusterName), nil)
+	err := kubecli.CoreV1().PersistentVolumeClaims(ns).Delete(makePVCName(clusterName), nil)
 	if !IsKubernetesResourceNotFoundError(err) {
 		return err
 	}
@@ -306,14 +306,14 @@ func CopyVolume(kubecli kubernetes.Interface, fromClusterName, toClusterName, ns
 			}},
 		},
 	}
-	if _, err := kubecli.Core().Pods(ns).Create(pod); err != nil {
+	if _, err := kubecli.CoreV1().Pods(ns).Create(pod); err != nil {
 		return err
 	}
 
 	var phase v1.PodPhase
 	// Delay could be very long due to k8s controller detaching the volume
 	err := retryutil.Retry(10*time.Second, 12, func() (bool, error) {
-		p, err := kubecli.Core().Pods(ns).Get(pod.Name)
+		p, err := kubecli.CoreV1().Pods(ns).Get(pod.Name)
 		if err != nil {
 			return false, err
 		}
@@ -334,7 +334,7 @@ func CopyVolume(kubecli kubernetes.Interface, fromClusterName, toClusterName, ns
 		return fmt.Errorf("failed to wait backup copy pod (%s, phase: %s) to succeed: %v", pod.Name, phase, err)
 	}
 	// Delete the pod to detach the volume from the node
-	return kubecli.Core().Pods(ns).Delete(pod.Name, api.NewDeleteOptions(0))
+	return kubecli.CoreV1().Pods(ns).Delete(pod.Name, v1.NewDeleteOptions(0))
 }
 
 func copyVolumePodName(clusterName string) string {

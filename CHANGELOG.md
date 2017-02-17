@@ -18,6 +18,8 @@ etcd container with this new field.
 
 ### Removed
 
+- Drop etcd operator command line flags: "masterHost", "cert-file", "key-file", "ca-file".
+
 ### Fixed
 
 ### Deprecated

@@ -30,11 +30,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/pborman/uuid"
-	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/api"
-	apierrors "k8s.io/client-go/1.5/pkg/api/errors"
-	"k8s.io/client-go/1.5/pkg/api/meta/metatypes"
-	"k8s.io/client-go/1.5/pkg/api/v1"
+	"k8s.io/client-go/kubernetes"
+	apierrors "k8s.io/client-go/pkg/api/errors"
+	"k8s.io/client-go/pkg/api/meta/metatypes"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 var (
@@ -59,8 +58,7 @@ type Config struct {
 	ServiceAccount string
 	s3config.S3Context
 
-	MasterHost string
-	KubeCli    kubernetes.Interface
+	KubeCli kubernetes.Interface
 }
 
 type Cluster struct {
@@ -425,17 +423,16 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 }
 
 func (c *Cluster) removePodAndService(name string) error {
-	err := c.config.KubeCli.Core().Services(c.cluster.Metadata.Namespace).Delete(name, nil)
+	ns := c.cluster.Metadata.Namespace
+	err := c.config.KubeCli.Core().Services(ns).Delete(name, nil)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
 	}
 
-	err = c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).Delete(
-		name,
-		api.NewDeleteOptions(podTerminationGracePeriod),
-	)
+	opts := v1.NewDeleteOptions(podTerminationGracePeriod)
+	err = c.config.KubeCli.Core().Pods(ns).Delete(name, opts)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
@@ -481,7 +478,7 @@ func (c *Cluster) updateTPRStatus() error {
 
 	newCluster := c.cluster
 	newCluster.Status = c.status
-	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli.Core().GetRESTClient(), c.cluster.Metadata.Namespace, newCluster)
+	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli.Core().RESTClient(), c.cluster.Metadata.Namespace, newCluster)
 	if err != nil {
 		return err
 	}
@@ -520,10 +517,11 @@ func (c *Cluster) reportFailedStatus() {
 			return false, nil
 		}
 
-		cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli.Core().GetRESTClient(), c.cluster.Metadata.Namespace, c.cluster.Metadata.Name)
+		cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli.CoreV1().RESTClient(), c.cluster.Metadata.Namespace, c.cluster.Metadata.Name)
 		if err != nil {
-			// Update (PUT) with UID set will return conflict even if object is deleted.
-			// Because it will check UID first and return something like: "Precondition failed: UID in precondition: 0xc42712c0f0, UID in object meta: ".
+			// Update (PUT) will return conflict even if object is deleted since we have UID set in object.
+			// Because it will check UID first and return something like:
+			// "Precondition failed: UID in precondition: 0xc42712c0f0, UID in object meta: ".
 			if k8sutil.IsKubernetesResourceNotFoundError(err) {
 				return true, nil
 			}

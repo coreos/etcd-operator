@@ -20,18 +20,18 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"golang.org/x/time/rate"
-	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/labels"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/labels"
 )
 
 // Monkeys knows how to crush pods and nodes.
 type Monkeys struct {
-	k8s kubernetes.Interface
+	kubecli kubernetes.Interface
 }
 
-func NewMonkeys(k8s kubernetes.Interface) *Monkeys {
-	return &Monkeys{k8s: k8s}
+func NewMonkeys(kubecli kubernetes.Interface) *Monkeys {
+	return &Monkeys{kubecli: kubecli}
 }
 
 type CrashConfig struct {
@@ -50,12 +50,12 @@ func (m *Monkeys) CrushPods(ctx context.Context, c *CrashConfig) {
 		burst = 1
 	}
 	limiter := rate.NewLimiter(c.KillRate, burst)
-	ls := c.Selector
+	ls := c.Selector.String()
 	ns := c.Namespace
 	for {
 		err := limiter.Wait(ctx)
 		if err != nil { // user cancellation
-			logrus.Infof("crushPods is canceled for selector %v by the user: %v", ls.String(), err)
+			logrus.Infof("crushPods is canceled for selector %v by the user: %v", ls, err)
 			return
 		}
 
@@ -64,13 +64,13 @@ func (m *Monkeys) CrushPods(ctx context.Context, c *CrashConfig) {
 			continue
 		}
 
-		pods, err := m.k8s.Core().Pods(ns).List(api.ListOptions{LabelSelector: ls})
+		pods, err := m.kubecli.CoreV1().Pods(ns).List(v1.ListOptions{LabelSelector: ls})
 		if err != nil {
-			logrus.Errorf("failed to list pods for selector %v: %v", ls.String(), err)
+			logrus.Errorf("failed to list pods for selector %v: %v", ls, err)
 			continue
 		}
 		if len(pods.Items) == 0 {
-			logrus.Infof("no pods to kill for selector %v", ls.String())
+			logrus.Infof("no pods to kill for selector %v", ls)
 			continue
 		}
 
@@ -80,7 +80,7 @@ func (m *Monkeys) CrushPods(ctx context.Context, c *CrashConfig) {
 			max = kmax
 		}
 
-		logrus.Infof("start to kill %d pods for selector %v", max, ls.String())
+		logrus.Infof("start to kill %d pods for selector %v", max, ls)
 
 		tokills := make(map[string]struct{})
 		for len(tokills) < max {
@@ -88,12 +88,12 @@ func (m *Monkeys) CrushPods(ctx context.Context, c *CrashConfig) {
 		}
 
 		for tokill := range tokills {
-			err = m.k8s.Core().Pods(ns).Delete(tokill, api.NewDeleteOptions(0))
+			err = m.kubecli.CoreV1().Pods(ns).Delete(tokill, v1.NewDeleteOptions(0))
 			if err != nil {
 				logrus.Errorf("failed to kill pod %v: %v", tokill, err)
 				continue
 			}
-			logrus.Infof("killed pod %v for selector %v", tokill, ls.String())
+			logrus.Infof("killed pod %v for selector %v", tokill, ls)
 		}
 	}
 }

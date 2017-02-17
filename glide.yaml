@@ -1,19 +1,19 @@
 package: github.com/coreos/etcd-operator
 import:
+- package: k8s.io/client-go
+  version: v2.0.0
+- package: github.com/coreos/etcd
+  version: v3.1.0
 - package: github.com/Sirupsen/logrus
-  version: v0.11.0
+  version: v0.11.2
 - package: github.com/aws/aws-sdk-go
-  version: v1.6.13
+  version: v1.6.24
 - package: github.com/coreos/go-semver
   version: v0.2.0
-- package: github.com/jpillora/go-ogle-analytics
 - package: github.com/pborman/uuid
   version: v1.0
 - package: github.com/prometheus/client_golang
   version: v0.8.0
+- package: github.com/jpillora/go-ogle-analytics
 - package: golang.org/x/net
 - package: golang.org/x/time
-- package: github.com/coreos/etcd
-  version: v3.1.0
-- package: k8s.io/client-go
-  version: v1.5.0

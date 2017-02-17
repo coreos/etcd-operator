@@ -17,7 +17,7 @@ package spec
 import (
 	"encoding/json"
 
-	"k8s.io/client-go/1.5/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/api/unversioned"
 )
 
 // ClusterList is a list of etcd clusters.

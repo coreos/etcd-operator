@@ -6,12 +6,12 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 
-	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/api/unversioned"
-	"k8s.io/client-go/1.5/pkg/api/v1"
-	"k8s.io/client-go/1.5/pkg/runtime"
-	"k8s.io/client-go/1.5/pkg/runtime/serializer"
-	"k8s.io/client-go/1.5/rest"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/runtime"
+	"k8s.io/client-go/rest"
 )
 
 // NOTE: This is experimental client. We will likely change it in the future
@@ -62,14 +62,7 @@ type operator struct {
 }
 
 func NewOperator(namespace string) (Operator, error) {
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	configureClient(cfg)
-
-	tprclient, err := rest.RESTClientFor(cfg)
+	tprclient, err := k8sutil.NewTPRClient()
 	if err != nil {
 		return nil, err
 	}
@@ -160,11 +153,4 @@ func (o *operator) List(ctx context.Context) (*spec.ClusterList, error) {
 	}
 
 	return clusters, nil
-}
-
-func configureClient(config *rest.Config) {
-	config.GroupVersion = &groupversion
-	config.APIPath = "/apis"
-	config.ContentType = runtime.ContentTypeJSON
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
 }
