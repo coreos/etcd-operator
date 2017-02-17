@@ -220,7 +220,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 			return err
 		}
 	}
-	return c.restoreSeedMember()
+	return c.recover()
 }
 
 func needUpgrade(pods []*v1.Pod, cs spec.ClusterSpec) bool {

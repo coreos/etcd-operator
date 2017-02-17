@@ -15,7 +15,6 @@
 package cluster
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -134,7 +133,7 @@ func (c *Cluster) setup() error {
 	case spec.ClusterPhaseNone:
 		shouldCreateCluster = true
 	case spec.ClusterPhaseCreating:
-		return errors.New("cluster failed to be created")
+		return errCreatedCluster
 	case spec.ClusterPhaseRunning:
 		shouldCreateCluster = false
 
@@ -157,6 +156,7 @@ func (c *Cluster) setup() error {
 
 func (c *Cluster) create() error {
 	c.status.SetPhase(spec.ClusterPhaseCreating)
+
 	if err := c.updateTPRStatus(); err != nil {
 		return fmt.Errorf("cluster create: failed to update cluster phase (%v): %v", spec.ClusterPhaseCreating, err)
 	}
@@ -195,7 +195,7 @@ func (c *Cluster) prepareSeedMember() error {
 			err = c.migrateBootMember()
 		}
 	} else {
-		err = c.newSeedMember()
+		err = c.bootstrap()
 	}
 	if err != nil {
 		return err
@@ -329,22 +329,8 @@ func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
 	return true
 }
 
-func isFatalError(err error) bool {
-	switch err {
-	case errNoBackupExist, errInvalidMemberName, errUnexpectedUnreadyMember:
-		return true
-	default:
-		return false
-	}
-}
-
-func (c *Cluster) makeSeedMember() *etcdutil.Member {
-	etcdName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
-	return &etcdutil.Member{Name: etcdName}
-}
-
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
-	m := c.makeSeedMember()
+	m := &etcdutil.Member{Name: etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)}
 	ms := etcdutil.NewMemberSet(m)
 	if err := c.createPodAndService(ms, m, "new", recoverFromBackup); err != nil {
 		return fmt.Errorf("failed to create seed member (%s): %v", m.Name, err)
@@ -355,11 +341,13 @@ func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	return nil
 }
 
-func (c *Cluster) newSeedMember() error {
+// bootstrap creates the seed etcd member for a new cluster.
+func (c *Cluster) bootstrap() error {
 	return c.startSeedMember(false)
 }
 
-func (c *Cluster) restoreSeedMember() error {
+// recover recovers the cluster by creating a seed etcd member from a backup.
+func (c *Cluster) recover() error {
 	return c.startSeedMember(true)
 }
 
@@ -373,10 +361,12 @@ func (c *Cluster) Update(cl *spec.Cluster) {
 func (c *Cluster) delete() {
 	c.gc.CollectCluster(c.cluster.Metadata.Name, garbagecollection.NullUID)
 
-	if c.bm != nil {
-		if err := c.bm.cleanup(); err != nil {
-			c.logger.Errorf("cluster deletion: backup manager failed to cleanup: %v", err)
-		}
+	if c.bm == nil {
+		return
+	}
+
+	if err := c.bm.cleanup(); err != nil {
+		c.logger.Errorf("cluster deletion: backup manager failed to cleanup: %v", err)
 	}
 }
 
@@ -497,45 +487,53 @@ func (c *Cluster) updateTPRStatus() error {
 	}
 
 	c.cluster = newCluster
+
 	return nil
 }
 
 func (c *Cluster) updateLocalBackupStatus() error {
-	if c.bm != nil {
-		bs, err := c.bm.getStatus()
-		if err != nil {
-			return err
-		} else {
-			c.cluster.Status.BackupServiceStatus = bs
-		}
+	if c.bm == nil {
+		return nil
 	}
+
+	bs, err := c.bm.getStatus()
+	if err != nil {
+		return err
+	}
+	c.cluster.Status.BackupServiceStatus = bs
+
 	return nil
 }
 
 func (c *Cluster) reportFailedStatus() {
+	retryInterval := 5 * time.Second
+
 	f := func() (bool, error) {
 		c.status.SetPhase(spec.ClusterPhaseFailed)
 		err := c.updateTPRStatus()
 		if err == nil || k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return true, nil
 		}
-		if apierrors.IsConflict(err) {
-			cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli.Core().GetRESTClient(), c.cluster.Metadata.Namespace, c.cluster.Metadata.Name)
-			if err != nil {
-				// Update (PUT) with UID set will return conflict even if object is deleted.
-				// Because it will check UID first and return something like: "Precondition failed: UID in precondition: 0xc42712c0f0, UID in object meta: ".
-				if k8sutil.IsKubernetesResourceNotFoundError(err) {
-					return true, nil
-				}
-				c.logger.Warningf("report status: fail to get latest version: %v", err)
-				return false, nil
-			}
-			c.cluster = cl
+
+		if !apierrors.IsConflict(err) {
+			c.logger.Warningf("retry report status in %v: fail to update: %v", retryInterval, err)
 			return false, nil
 		}
-		c.logger.Warningf("report status: fail to update: %v", err)
+
+		cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli.Core().GetRESTClient(), c.cluster.Metadata.Namespace, c.cluster.Metadata.Name)
+		if err != nil {
+			// Update (PUT) with UID set will return conflict even if object is deleted.
+			// Because it will check UID first and return something like: "Precondition failed: UID in precondition: 0xc42712c0f0, UID in object meta: ".
+			if k8sutil.IsKubernetesResourceNotFoundError(err) {
+				return true, nil
+			}
+			c.logger.Warningf("retry report status in %v: fail to get latest version: %v", retryInterval, err)
+			return false, nil
+		}
+		c.cluster = cl
 		return false, nil
+
 	}
 
-	retryutil.Retry(5*time.Second, math.MaxInt64, f)
+	retryutil.Retry(retryInterval, math.MaxInt64, f)
 }
