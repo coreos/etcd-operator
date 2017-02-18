@@ -31,5 +31,5 @@ type BackupStatus struct {
 	Version string `json:"version"`
 
 	// TimeTookInSecond is the total time took to create the backup.
-	TimeTookInSecond int `json:"timeTook"`
+	TimeTookInSecond int `json:"timeTookInSecond"`
 }
