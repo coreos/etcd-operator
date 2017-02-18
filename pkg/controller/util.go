@@ -23,10 +23,11 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 
 	"k8s.io/client-go/pkg/api/unversioned"
+	kwatch "k8s.io/client-go/pkg/watch"
 )
 
 type rawEvent struct {
-	Type   string
+	Type   kwatch.EventType
 	Object json.RawMessage
 }
 
@@ -40,7 +41,7 @@ func pollEvent(decoder *json.Decoder) (*Event, *unversioned.Status, error) {
 		return nil, nil, fmt.Errorf("fail to decode raw event from apiserver (%v)", err)
 	}
 
-	if re.Type == "ERROR" {
+	if re.Type == kwatch.Error {
 		status := &unversioned.Status{}
 		err = json.Unmarshal(re.Object, status)
 		if err != nil {
