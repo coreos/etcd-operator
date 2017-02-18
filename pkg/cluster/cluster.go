@@ -497,7 +497,7 @@ func (c *Cluster) updateLocalBackupStatus() error {
 	if err != nil {
 		return err
 	}
-	c.cluster.Status.BackupServiceStatus = bs
+	c.cluster.Status.BackupServiceStatus = backupServiceStatusToTPRBackupServiceStatu(bs)
 
 	return nil
 }
