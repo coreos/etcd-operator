@@ -21,8 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
-
 	"k8s.io/client-go/pkg/api/meta/metatypes"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
@@ -202,8 +200,7 @@ type ClusterStatus struct {
 	// BackupServiceStatus is the status of the backup service.
 	// BackupServiceStatus only exists when backup is enabled in the
 	// cluster spec.
-	// TODO: redefine backup service status in spec pkg?
-	BackupServiceStatus *backupapi.ServiceStatus `json:"backupServiceStatus,omitempty"`
+	BackupServiceStatus *BackupServiceStatus `json:"backupServiceStatus,omitempty"`
 }
 
 func (cs ClusterStatus) Copy() ClusterStatus {

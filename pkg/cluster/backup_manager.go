@@ -170,3 +170,17 @@ func (bm *backupManager) getStatus() (*backupapi.ServiceStatus, error) {
 	defer cancel()
 	return bm.bc.ServiceStatus(ctx)
 }
+
+func backupServiceStatusToTPRBackupServiceStatu(s *backupapi.ServiceStatus) *spec.BackupServiceStatus {
+	bs := &spec.BackupServiceStatus{
+		Backups: s.Backups,
+	}
+	if rb := s.RecentBackup; rb != nil {
+		bs.RecentBackup = &spec.BackupStatus{
+			Size:             rb.Size,
+			Version:          rb.Version,
+			TimeTookInSecond: rb.TimeTookInSecond,
+		}
+	}
+	return bs
+}
