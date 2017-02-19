@@ -48,3 +48,4 @@ else
 	echo "Fail! ==="
 	exit 1
 fi
+./client/cliente2e/test

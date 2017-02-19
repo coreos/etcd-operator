@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+bin_dir="$(pwd)/_output/bin"
+GOBIN=${bin_dir} CGO_ENABLED=0 go install -installsuffix cgo ./client/cmd/cliente2e/
+
+docker build --tag "${IMAGE}" -f client/cliente2e//Dockerfile . 1>/dev/null
+# For gcr users, do "gcloud docker -a" to have access.
+docker push "${IMAGE}" 1>/dev/null
