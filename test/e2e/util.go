@@ -118,7 +118,6 @@ func waitSizeReachedWithAccept(t *testing.T, f *framework.Framework, clusterName
 		}
 		names = nil
 		var nodeNames []string
-		var podIPs []string
 		for i := range podList.Items {
 			pod := &podList.Items[i]
 			accepted := true
@@ -133,7 +132,6 @@ func waitSizeReachedWithAccept(t *testing.T, f *framework.Framework, clusterName
 			}
 			names = append(names, pod.Name)
 			nodeNames = append(nodeNames, pod.Spec.NodeName)
-			podIPs = append(podIPs, pod.Status.PodIP)
 		}
 		logfWithTimestamp(t, "waiting size (%d), etcd pods: names (%v), nodes (%v)", size, names, nodeNames)
 		if len(names) != size {
