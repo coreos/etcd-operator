@@ -49,6 +49,7 @@ function e2e_pass {
 }
 
 function unittest_pass {
+	# coverage.txt is the combined coverage report consumed by codecov
 	echo "mode: atomic" > coverage.txt
 	TEST_PKGS=`go list ./pkg/...`
 	for pkg in $TEST_PKGS
