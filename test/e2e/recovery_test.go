@@ -122,7 +122,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 	}
 	// No left pod to make a backup from. We need to back up ahead.
 	// If there is any left pod, ooperator should be able to make a backup from it.
-	if numToKill == len(names) {
+	if numToKill == testEtcd.Spec.Size {
 		if err := makeBackup(f, testEtcd.Metadata.Name); err != nil {
 			t.Fatalf("fail to make a latest backup: %v", err)
 		}
