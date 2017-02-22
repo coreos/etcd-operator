@@ -1,7 +1,7 @@
 # etcd operator
 
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-operator-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-master/)
-[![codecov](https://codecov.io/gh/coreos/etcd-operator/branch/master/graph/badge.svg?maxAge=300)](https://codecov.io/gh/coreos/etcd-operator)
+[![codecov](https://codecov.io/gh/coreos/etcd-operator/branch/master/graph/badge.svg?maxAge=300?precision=1)](https://codecov.io/gh/coreos/etcd-operator)
 
 ### Project status: beta
 
