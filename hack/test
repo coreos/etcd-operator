@@ -60,6 +60,8 @@ function unittest_pass {
 			rm profile.out
 		fi
 	done
+	# Send reports to codecov, CODECOV_TOKEN env must be present in Jenkins
+	curl -s https://codecov.io/bash | bash
 }
 
 for p in $PASSES; do
