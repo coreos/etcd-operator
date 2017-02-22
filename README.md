@@ -28,7 +28,7 @@ Read [Developer Guide](./doc/dev/developer_guide.md) for setting up development 
 
 ## Requirements
 
-- Kubernetes 1.4+
+- Kubernetes 1.5.3+
 - etcd 3.0+
 
 ## Demo
@@ -390,8 +390,6 @@ $ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
 Check the other two pods and you should see the same result.
 
 ## Limitations
-
-- The etcd operator does not work well with Kubernetes 1.5.0, 1.5.1, and 1.5.2: https://github.com/kubernetes/kubernetes/issues/39816.
 
 - The etcd operator only manages the etcd cluster created in the same namespace. Users need to create multiple operators in different namespaces to manage etcd clusters in different namespaces.
 
