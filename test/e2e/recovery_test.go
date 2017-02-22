@@ -126,6 +126,11 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 		if err := makeBackup(f, testEtcd.Metadata.Name); err != nil {
 			t.Fatalf("fail to make a latest backup: %v", err)
 		}
+	} else {
+		// Wait 2*5s to make sure the all pods are up and running.
+		// Otherwise, the last member could have not come up yet.
+		// Thus if we delete any member, it loses quorum and also exits.
+		time.Sleep(10 * time.Second)
 	}
 	toKill := names[:numToKill]
 	logfWithTimestamp(t, "killing pods: %v", toKill)
