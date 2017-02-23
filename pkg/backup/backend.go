@@ -26,5 +26,8 @@ type backend interface {
 	// total returns the total number of available backups.
 	total() (int, error)
 
+	// total returns the total size of the backups.
+	totalSize() (int64, error)
+
 	purge(maxBackupFiles int) error
 }

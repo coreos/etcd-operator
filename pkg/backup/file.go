@@ -125,3 +125,17 @@ func (fb *fileBackend) total() (int, error) {
 
 	return len(filterAndSortBackups(names)), nil
 }
+
+func (fb *fileBackend) totalSize() (int64, error) {
+	files, err := ioutil.ReadDir(fb.dir)
+	if err != nil {
+		return -1, err
+	}
+	var size int64
+
+	for _, f := range files {
+		size += f.Size()
+	}
+
+	return size, nil
+}
