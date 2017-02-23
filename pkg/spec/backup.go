@@ -14,6 +14,8 @@
 
 package spec
 
+import "time"
+
 // TODO: supports object store like s3
 type BackupStorageType string
 
@@ -71,6 +73,9 @@ type BackupServiceStatus struct {
 }
 
 type BackupStatus struct {
+	// Creation time of the backup.
+	CreationTime time.Time `json:"creationTime"`
+
 	// Size is the size of the backup.
 	Size int64 `json:"size"`
 

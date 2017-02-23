@@ -177,6 +177,7 @@ func backupServiceStatusToTPRBackupServiceStatu(s *backupapi.ServiceStatus) *spe
 	}
 	if rb := s.RecentBackup; rb != nil {
 		bs.RecentBackup = &spec.BackupStatus{
+			CreationTime:     rb.CreationTime,
 			Size:             rb.Size,
 			Version:          rb.Version,
 			TimeTookInSecond: rb.TimeTookInSecond,
