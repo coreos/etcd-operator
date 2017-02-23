@@ -2,6 +2,8 @@
 
 ### Added
 
+- Backup creation time is added in backup status.
+
 ### Changed
 
 ### Removed
