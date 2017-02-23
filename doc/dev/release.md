@@ -12,12 +12,15 @@ In version/version.go, bump it to:
 ```
 
 Bump the version of the operator image in example deployements.
+Change CHANGELOG.md .
 
 Send a PR. After it's merged, cut a tag:
 ```
 $ git tag $VERSION
 $ git push ${upstream_remote} tags/$VERSION
 ```
+
+Push image.
 
 Bump version again:
 ```go
