@@ -21,16 +21,19 @@ type ServiceStatus struct {
 	// the backup service
 	RecentBackup *BackupStatus `json:"recentBackup,omitempty"`
 
-	// Backups is the totoal number of existing backups
+	// Backups is the totoal number of existing backups.
 	Backups int `json:"backups"`
+
+	// BackupSize is the total size of existing backups in MB.
+	BackupSize float64 `json:"backupSize"`
 }
 
 type BackupStatus struct {
 	// Creation time of the backup.
 	CreationTime time.Time `json:"creationTime"`
 
-	// Size is the size of the backup.
-	Size int64 `json:"size"`
+	// Size is the size of the backup in MB.
+	Size float64 `json:"size"`
 
 	// Version is the version of the backup cluster.
 	Version string `json:"version"`

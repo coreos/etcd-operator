@@ -118,8 +118,14 @@ func (b *Backup) serveStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to get total number of backups", http.StatusInternalServerError)
 		return
 	}
+	ts, err := b.be.totalSize()
+	if err != nil {
+		http.Error(w, "failed to get total size of backups", http.StatusInternalServerError)
+		return
+	}
 	s := backupapi.ServiceStatus{
-		Backups: t,
+		Backups:    t,
+		BackupSize: toMB(ts),
 	}
 	if len(b.recentBackupsStatus) != 0 {
 		s.RecentBackup = &b.recentBackupsStatus[len(b.recentBackupsStatus)-1]

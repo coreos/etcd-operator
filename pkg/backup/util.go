@@ -86,3 +86,7 @@ func (bn backupNames) Less(i, j int) bool {
 func (bn backupNames) Swap(i, j int) {
 	bn[i], bn[j] = bn[j], bn[i]
 }
+
+func toMB(s int64) float64 {
+	return float64(s) / (1024 * 1024)
+}

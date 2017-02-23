@@ -104,10 +104,11 @@ func (s *S3) Delete(key string) error {
 }
 
 func (s *S3) List() ([]string, error) {
-	return s.list(s.prefix)
+	_, l, err := s.list(s.prefix)
+	return l, err
 }
 
-func (s *S3) list(prefix string) ([]string, error) {
+func (s *S3) list(prefix string) (int64, []string, error) {
 	resp, err := s.client.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(s.bucket),
 		// s3 doesn't have dir. It only recognizes prefix.
@@ -115,20 +116,27 @@ func (s *S3) list(prefix string) ([]string, error) {
 		Prefix: aws.String(path.Join(v1, prefix) + "/"),
 	})
 	if err != nil {
-		return nil, err
+		return -1, nil, err
 	}
 
 	keys := []string{}
+	var size int64
 	for _, key := range resp.Contents {
 		k := (*key.Key)[len(*resp.Prefix):]
 		keys = append(keys, k)
+		size += *key.Size
 	}
 
-	return keys, nil
+	return size, keys, nil
+}
+
+func (s *S3) TotalSize() (int64, error) {
+	size, _, err := s.list(s.prefix)
+	return size, err
 }
 
 func (s *S3) CopyPrefix(from string) error {
-	keys, err := s.list(from)
+	_, keys, err := s.list(from)
 	if err != nil {
 		return err
 	}

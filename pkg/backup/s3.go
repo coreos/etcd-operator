@@ -102,3 +102,7 @@ func (sb *s3Backend) total() (int, error) {
 	}
 	return len(filterAndSortBackups(names)), err
 }
+
+func (sb *s3Backend) totalSize() (int64, error) {
+	return sb.S3.TotalSize()
+}

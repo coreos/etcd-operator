@@ -3,6 +3,7 @@
 ### Added
 
 - Backup creation time is added in backup status.
+- Total size of backups time is added in backup service status.
 
 ### Changed
 
