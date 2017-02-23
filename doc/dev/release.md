@@ -20,14 +20,6 @@ $ git tag $VERSION
 $ git push ${upstream_remote} tags/$VERSION
 ```
 
-Push image.
-
-Bump version again:
-```go
-	Version = "$VERSION+git"
-```
-Send another PR and merge it.
-
 
 ## Push Quay image
 
@@ -58,3 +50,11 @@ Click "$VERSION" tag.
 Click "Edit Tag".
 Fill in title and release notes.
 If it's not stable release, click "This is a pre-release".
+
+## Bump version
+
+In version/version.go, bump version again:
+```go
+	Version = "$VERSION+git"
+```
+Send another PR and merge it.
