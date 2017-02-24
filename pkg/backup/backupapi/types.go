@@ -26,6 +26,9 @@ type ServiceStatus struct {
 
 	// BackupSize is the total size of existing backups in MB.
 	BackupSize float64 `json:"backupSize"`
+
+	// StorageStatus is the status of the storage the backup pod uses.
+	StorageStatus *StorageStatus `json:"storageStatus,omitempty"`
 }
 
 type BackupStatus struct {
@@ -40,4 +43,14 @@ type BackupStatus struct {
 
 	// TimeTookInSecond is the total time took to create the backup.
 	TimeTookInSecond int `json:"timeTookInSecond"`
+}
+
+type StorageStatus struct {
+	// PV is the status of Persist Volume
+	PV *PVStatus `json:"pv,omitempty"`
+}
+
+type PVStatus struct {
+	// Name is the name of the Persist Volume
+	Name string `json:"name"`
 }

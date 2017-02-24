@@ -16,6 +16,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -77,13 +78,15 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 }
 
 func (bm *backupManager) setup() error {
+	var name string
 	r := bm.cluster.Spec.Restore
 	restoreSameNameCluster := r != nil && r.BackupClusterName == bm.cluster.Metadata.Name
 
 	// There is only one case that we don't need to create underlying storage.
 	// That is, the storage already exists and we are restoring cluster from it.
 	if !restoreSameNameCluster {
-		if err := bm.s.Create(); err != nil {
+		var err error
+		if name, err = bm.s.Create(); err != nil {
 			return err
 		}
 	}
@@ -97,10 +100,10 @@ func (bm *backupManager) setup() error {
 		}
 	}
 
-	return bm.runSidecar()
+	return bm.runSidecar(name)
 }
 
-func (bm *backupManager) runSidecar() error {
+func (bm *backupManager) runSidecar(storageName string) error {
 	cl, c := bm.cluster, bm.config
 	podSpec, err := k8sutil.NewBackupPodSpec(cl.Metadata.Name, bm.config.ServiceAccount, cl.Spec.Backup)
 	if err != nil {
@@ -108,7 +111,7 @@ func (bm *backupManager) runSidecar() error {
 	}
 	switch cl.Spec.Backup.StorageType {
 	case spec.BackupStorageTypeDefault, spec.BackupStorageTypePersistentVolume:
-		podSpec = k8sutil.PodSpecWithPV(podSpec, cl.Metadata.Name)
+		podSpec = k8sutil.PodSpecWithPV(podSpec, cl.Metadata.Name, storageName)
 	case spec.BackupStorageTypeS3:
 		podSpec = k8sutil.PodSpecWithS3(podSpec, c.S3Context)
 	}
@@ -172,16 +175,15 @@ func (bm *backupManager) getStatus() (*backupapi.ServiceStatus, error) {
 }
 
 func backupServiceStatusToTPRBackupServiceStatu(s *backupapi.ServiceStatus) *spec.BackupServiceStatus {
-	bs := &spec.BackupServiceStatus{
-		Backups: s.Backups,
+	b, err := json.Marshal(s)
+	if err != nil {
+		panic("unexpected json error")
 	}
-	if rb := s.RecentBackup; rb != nil {
-		bs.RecentBackup = &spec.BackupStatus{
-			CreationTime:     rb.CreationTime,
-			Size:             rb.Size,
-			Version:          rb.Version,
-			TimeTookInSecond: rb.TimeTookInSecond,
-		}
+
+	var bs spec.BackupServiceStatus
+	err = json.Unmarshal(b, &bs)
+	if err != nil {
+		panic("unexpected json error")
 	}
-	return bs
+	return &bs
 }
