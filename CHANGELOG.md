@@ -11,6 +11,8 @@
 
 ### Fixed
 
+- [GH-823] Fixed backup service status not shown in TPR status
+
 ### Deprecated
 
 ### Security
