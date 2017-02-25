@@ -16,7 +16,6 @@ package spec
 
 import "time"
 
-// TODO: supports object store like s3
 type BackupStorageType string
 
 const (
