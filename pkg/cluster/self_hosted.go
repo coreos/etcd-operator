@@ -21,8 +21,8 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
+
 	"github.com/pborman/uuid"
 )
 

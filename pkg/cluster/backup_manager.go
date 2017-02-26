@@ -16,6 +16,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -172,16 +173,15 @@ func (bm *backupManager) getStatus() (*backupapi.ServiceStatus, error) {
 }
 
 func backupServiceStatusToTPRBackupServiceStatu(s *backupapi.ServiceStatus) *spec.BackupServiceStatus {
-	bs := &spec.BackupServiceStatus{
-		Backups: s.Backups,
+	b, err := json.Marshal(s)
+	if err != nil {
+		panic("unexpected json error")
 	}
-	if rb := s.RecentBackup; rb != nil {
-		bs.RecentBackup = &spec.BackupStatus{
-			CreationTime:     rb.CreationTime,
-			Size:             rb.Size,
-			Version:          rb.Version,
-			TimeTookInSecond: rb.TimeTookInSecond,
-		}
+
+	var bs spec.BackupServiceStatus
+	err = json.Unmarshal(b, &bs)
+	if err != nil {
+		panic("unexpected json error")
 	}
-	return bs
+	return &bs
 }

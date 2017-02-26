@@ -62,6 +62,9 @@ func TestBackupStatus(t *testing.T) {
 		if bs.Backups != 1 {
 			return true, fmt.Errorf("backups = %d, want 1", bs.Backups)
 		}
+		if bs.BackupSize == 0 {
+			return true, fmt.Errorf("backupsize = 0, want > 0")
+		}
 		return true, nil
 	})
 

@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+
 	"k8s.io/client-go/pkg/api/v1"
 )
 

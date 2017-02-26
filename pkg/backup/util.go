@@ -88,5 +88,14 @@ func (bn backupNames) Swap(i, j int) {
 }
 
 func toMB(s int64) float64 {
-	return float64(s) / (1024 * 1024)
+	n := float64(s) / (1024 * 1024)
+	// truncate to KB
+	sn := fmt.Sprintf("%.3f", n)
+
+	var err error
+	n, err = strconv.ParseFloat(sn, 64)
+	if err != nil {
+		panic("unexpected parse float error")
+	}
+	return n
 }
