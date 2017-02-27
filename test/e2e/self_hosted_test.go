@@ -38,7 +38,7 @@ func TestSelfHosted(t *testing.T) {
 
 func testCreateSelfHostedCluster(t *testing.T) {
 	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability")
+		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
 	}
 
 	f := framework.Global
@@ -62,7 +62,7 @@ func testCreateSelfHostedCluster(t *testing.T) {
 
 func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability")
+		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
 	}
 
 	dir, err := ioutil.TempDir("", "embed-etcd")

@@ -27,7 +27,7 @@ import (
 
 func TestBackupStatus(t *testing.T) {
 	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping...")
+		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
 	}
 
 	f := framework.Global

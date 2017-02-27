@@ -29,7 +29,7 @@ import (
 
 func TestClusterRestore(t *testing.T) {
 	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability")
+		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
 	}
 
 	t.Run("restore cluster from backup", func(t *testing.T) {
