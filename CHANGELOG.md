@@ -7,6 +7,8 @@
 
 ### Changed
 
+- PodPolicy `resourceRequirements` field is renamed to `resources`
+
 ### Removed
 
 ### Fixed
