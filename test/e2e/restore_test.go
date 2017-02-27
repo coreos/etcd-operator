@@ -40,7 +40,7 @@ func TestClusterRestore(t *testing.T) {
 
 func TestClusterRestoreS3(t *testing.T) {
 	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability")
+		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
 	}
 
 	if os.Getenv("AWS_TEST_ENABLED") != "true" {
