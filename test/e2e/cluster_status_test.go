@@ -50,20 +50,23 @@ func TestBackupStatus(t *testing.T) {
 		t.Fatalf("fail to make backup: %v", err)
 	}
 
-	err = retryutil.Retry(5*time.Second, 12, func() (done bool, err error) {
+	err = retryutil.Retry(5*time.Second, 6, func() (done bool, err error) {
 		c, err := k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
 		if err != nil {
 			t.Fatalf("faied to get cluster spec: %v", err)
 		}
 		bs := c.Status.BackupServiceStatus
 		if bs == nil {
+			logfWithTimestamp(t, "backup status is nil")
 			return false, nil
 		}
-		if bs.Backups != 1 {
-			return true, fmt.Errorf("backups = %d, want 1", bs.Backups)
+		// We expect it will make one backup eventually.
+		if bs.Backups < 1 {
+			logfWithTimestamp(t, "backup number is %v", bs.Backups)
+			return false, nil
 		}
 		if bs.BackupSize == 0 {
-			return true, fmt.Errorf("backupsize = 0, want > 0")
+			return false, fmt.Errorf("backupsize = 0, want > 0")
 		}
 		return true, nil
 	})
