@@ -73,7 +73,7 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, sta
 
 	c := etcdContainer(commands, cs.Version)
 	if cs.Pod != nil {
-		c = containerWithRequirements(c, cs.Pod.ResourceRequirements)
+		c = containerWithRequirements(c, cs.Pod.Resources)
 	}
 	c.Env = []v1.EnvVar{envPodIP}
 	pod := &v1.Pod{

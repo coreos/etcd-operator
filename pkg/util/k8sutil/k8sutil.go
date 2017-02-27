@@ -253,7 +253,7 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 	}
 	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version), etcdLivenessProbe())
 	if cs.Pod != nil {
-		container = containerWithRequirements(container, cs.Pod.ResourceRequirements)
+		container = containerWithRequirements(container, cs.Pod.Resources)
 	}
 	pod := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
