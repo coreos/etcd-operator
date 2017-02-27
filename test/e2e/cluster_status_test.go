@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -25,6 +26,10 @@ import (
 )
 
 func TestBackupStatus(t *testing.T) {
+	if os.Getenv(framework.EnvCloudProvider) == "aws" {
+		t.Skip("skipping...")
+	}
+
 	f := framework.Global
 
 	bp := newBackupPolicyPV()
