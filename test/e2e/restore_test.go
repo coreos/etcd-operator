@@ -28,6 +28,10 @@ import (
 )
 
 func TestClusterRestore(t *testing.T) {
+	if os.Getenv(framework.EnvCloudProvider) == "aws" {
+		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
+	}
+
 	t.Run("restore cluster from backup", func(t *testing.T) {
 		t.Run("restore from the same name cluster", testClusterRestoreSameName)
 		t.Run("restore from a different name cluster", testClusterRestoreDifferentName)
@@ -35,6 +39,10 @@ func TestClusterRestore(t *testing.T) {
 }
 
 func TestClusterRestoreS3(t *testing.T) {
+	if os.Getenv(framework.EnvCloudProvider) == "aws" {
+		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
+	}
+
 	if os.Getenv("AWS_TEST_ENABLED") != "true" {
 		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
 	}
