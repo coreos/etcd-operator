@@ -29,19 +29,11 @@ func TestFailureRecovery(t *testing.T) {
 		if os.Getenv(envParallelTest) == envParallelTestTrue {
 			t.Parallel()
 		}
-		t.Run("1 member (minority) down", testOneMemberRecovery)
-		t.Run("2 members (majority) down", testDisasterRecovery2Members)
-		t.Run("3 members (all) down", testDisasterRecoveryAll)
-	})
-}
-
-func TestS3DisasterRecovery(t *testing.T) {
-	if os.Getenv("AWS_TEST_ENABLED") != "true" {
-		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
-	}
-	t.Run("disaster recovery on S3", func(t *testing.T) {
-		t.Run("2 members (majority) down", testS3MajorityDown)
-		t.Run("3 members (all) down", testS3AllDown)
+		t.Run("PV: 1 member (minority) down", testOneMemberRecovery)
+		t.Run("PV: 2 members (majority) down", testDisasterRecovery2Members)
+		t.Run("PV: 3 members (all) down", testDisasterRecoveryAll)
+		t.Run("S3: 2 members (majority) down", testS3MajorityDown)
+		t.Run("S3: 3 members (all) down", testS3AllDown)
 	})
 }
 
@@ -148,6 +140,9 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 }
 
 func testS3MajorityDown(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -158,6 +153,9 @@ func testS3MajorityDown(t *testing.T) {
 func testS3AllDown(t *testing.T) {
 	if os.Getenv(framework.EnvCloudProvider) == "aws" {
 		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
+	}
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
 	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()

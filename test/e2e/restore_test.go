@@ -33,23 +33,10 @@ func TestClusterRestore(t *testing.T) {
 	}
 
 	t.Run("restore cluster from backup", func(t *testing.T) {
-		t.Run("restore from the same name cluster", testClusterRestoreSameName)
-		t.Run("restore from a different name cluster", testClusterRestoreDifferentName)
-	})
-}
-
-func TestClusterRestoreS3(t *testing.T) {
-	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
-	}
-
-	if os.Getenv("AWS_TEST_ENABLED") != "true" {
-		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
-	}
-
-	t.Run("restore cluster from backup on S3", func(t *testing.T) {
-		t.Run("restore from the same name cluster", testClusterRestoreS3SameName)
-		t.Run("restore from a different name cluster", testClusterRestoreS3DifferentName)
+		t.Run("PV: restore from the same name cluster", testClusterRestoreSameName)
+		t.Run("PV: restore from a different name cluster", testClusterRestoreDifferentName)
+		t.Run("S3: restore from the same name cluster", testClusterRestoreS3SameName)
+		t.Run("S3: restore from a different name cluster", testClusterRestoreS3DifferentName)
 	})
 }
 
@@ -189,6 +176,9 @@ func calculateRestoreWaitTime(needDataClone bool) time.Duration {
 }
 
 func testClusterRestoreS3SameName(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -197,6 +187,9 @@ func testClusterRestoreS3SameName(t *testing.T) {
 }
 
 func testClusterRestoreS3DifferentName(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
