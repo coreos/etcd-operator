@@ -63,6 +63,7 @@ spec:
 
 If a cluster `cluster-a` was created with backup, but deleted or failed later on,
 we can recover the cluster as long as the PV still exists.
+Note that delete `cluster-a` Cluster resource first if it still exists.
 
 Here's an example:
 
