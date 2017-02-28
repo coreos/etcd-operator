@@ -5,7 +5,7 @@ set -o nounset
 set -o pipefail
 
 if [ -z "${PASSES-}" ]; then
-	PASSES="fmt build e2e unittest"
+	PASSES="fmt build e2e unit cliente2e"
 fi
 
 find_files() {
@@ -49,7 +49,7 @@ function e2e_pass {
 	go test ${TEST_PKGS} -timeout 30m --race --kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
 }
 
-function unittest_pass {
+function unit_pass {
 	# coverage.txt is the combined coverage report consumed by codecov
 	echo "mode: atomic" > coverage.txt
 	TEST_PKGS=`go list ./pkg/...`
@@ -63,6 +63,10 @@ function unittest_pass {
 	done
 	# Send reports to codecov, CODECOV_TOKEN env must be present in Jenkins
 	curl -s https://codecov.io/bash | bash
+}
+
+function cliente2e_pass {
+	./client/cliente2e/test
 }
 
 for p in $PASSES; do
