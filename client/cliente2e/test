@@ -13,5 +13,5 @@ IMAGE=${E2E_IMAGE} ./client/cliente2e/build
 echo "test starts..."
 go test ./client/cliente2e \
   --e2e-image ${E2E_IMAGE} \
-  --kubeconfig ${KUBERNETES_KUBECONFIG_PATH} \
+  --kubeconfig ${KUBECONFIG} \
   --namespace ${TEST_NAMESPACE}
