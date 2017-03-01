@@ -44,7 +44,24 @@ function build_pass {
 	IMAGE=$OPERATOR_IMAGE hack/build/operator/build
 }
 
+function rbac_cleanup {
+	kubectl delete clusterrolebinding etcd-operator
+	kubectl delete clusterrole etcd-operator
+}
+
 function e2e_pass {
+	# Enable rbac if present
+	if kubectl --kubeconfig $KUBECONFIG get clusterrole 1> /dev/null ; then
+		trap rbac_cleanup EXIT
+		# Create role and binding
+		if "hack/ci/create_rbac_role"; then
+			echo "RBAC setup success! ==="
+		else
+			echo "RBAC setup fail! ==="
+			exit 1
+		fi
+	fi
+
 	TEST_PKGS=`go list ./test/e2e/... | grep -v framework`
 	go test ${TEST_PKGS} -timeout 30m --race --kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
 }
