@@ -52,7 +52,7 @@ See [example](../../example/example-etcd-cluster-with-backup.yaml) .
 ```yaml
 spec:
   size: 3
-  version: "3.1.0"
+  version: "3.1.2"
   backup:
     backupIntervalInSecond: 300
     maxBackups: 5
@@ -72,7 +72,7 @@ metadata:
   name: "cluster-a"
 spec:
   size: 3
-  version: "3.1.0"
+  version: "3.1.2"
   backup:
     backupIntervalInSecond: 300
     maxBackups: 5
@@ -93,7 +93,7 @@ metadata:
   name: "cluster-a"
 spec:
   size: 3
-  version: "3.1.0"
+  version: "3.1.2"
   backup:
     backupIntervalInSecond: 300
     maxBackups: 5
@@ -114,7 +114,7 @@ metadata:
   name: "cluster-b"
 spec:
   size: 3
-  version: "3.1.0"
+  version: "3.1.2"
   backup:
     backupIntervalInSecond: 300
     maxBackups: 5
