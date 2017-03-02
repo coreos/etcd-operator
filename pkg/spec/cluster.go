@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultVersion = "3.1.0"
+	defaultVersion = "3.1.2"
 
 	TPRKind        = "cluster"
 	TPRKindPlural  = "clusters"
@@ -75,10 +75,10 @@ type ClusterSpec struct {
 	// The etcd-operator will eventually make the etcd cluster version
 	// equal to the expected version.
 	//
-	// The version must follow the [semver]( http://semver.org) format, for example "3.1.0".
+	// The version must follow the [semver]( http://semver.org) format, for example "3.1.2".
 	// Only etcd released versions are supported: https://github.com/coreos/etcd/releases
 	//
-	// If version is not set, default is "3.1.0".
+	// If version is not set, default is "3.1.2".
 	Version string `json:"version"`
 
 	// Paused is to pause the control of the operator for the etcd cluster.
