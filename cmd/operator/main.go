@@ -39,7 +39,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/labels"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -78,7 +77,7 @@ func init() {
 	flag.Parse()
 
 	// Workaround for watching TPR resource.
-	restCfg, err := rest.InClusterConfig()
+	restCfg, err := k8sutil.InClusterConfig()
 	if err != nil {
 		panic(err)
 	}
