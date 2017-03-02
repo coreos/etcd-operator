@@ -144,43 +144,59 @@ func (c *Controller) Run() error {
 	go func() {
 		pt := newPanicTimer(time.Minute, "unexpected long blocking (> 1 Minute) when handling cluster event")
 
-		for event := range eventCh {
+		for ev := range eventCh {
 			pt.start()
-
-			clus := event.Object
-			clus.Spec.Cleanup()
-
-			switch event.Type {
-			case kwatch.Added:
-				stopC := make(chan struct{})
-				nc := cluster.New(c.makeClusterConfig(), clus, stopC, &c.waitCluster)
-
-				c.stopChMap[clus.Metadata.Name] = stopC
-				c.clusters[clus.Metadata.Name] = nc
-				c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
-
-				analytics.ClusterCreated()
-				clustersCreated.Inc()
-				clustersTotal.Inc()
-
-			case kwatch.Modified:
-				c.clusters[clus.Metadata.Name].Update(clus)
-				c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
-				clustersModified.Inc()
-
-			case kwatch.Deleted:
-				c.clusters[clus.Metadata.Name].Delete()
-				delete(c.clusters, clus.Metadata.Name)
-				delete(c.clusterRVs, clus.Metadata.Name)
-				analytics.ClusterDeleted()
-				clustersDeleted.Inc()
-				clustersTotal.Dec()
-			}
-
+			c.handleClusterEvent(ev)
 			pt.stop()
 		}
 	}()
 	return <-errCh
+}
+
+func (c *Controller) handleClusterEvent(event *Event) {
+	clus := event.Object
+
+	if clus.Status.IsFailed() {
+		c.logger.Infof("ignore failed cluster (%s). Please delete its TPR", clus.Metadata.Name)
+		return
+	}
+
+	clus.Spec.Cleanup()
+
+	switch event.Type {
+	case kwatch.Added:
+		stopC := make(chan struct{})
+		nc := cluster.New(c.makeClusterConfig(), clus, stopC, &c.waitCluster)
+
+		c.stopChMap[clus.Metadata.Name] = stopC
+		c.clusters[clus.Metadata.Name] = nc
+		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
+
+		analytics.ClusterCreated()
+		clustersCreated.Inc()
+		clustersTotal.Inc()
+
+	case kwatch.Modified:
+		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
+			c.logger.Warningf("unsafe state. cluster was never created but we received event (%s)", event.Type)
+			return
+		}
+		c.clusters[clus.Metadata.Name].Update(clus)
+		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
+		clustersModified.Inc()
+
+	case kwatch.Deleted:
+		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
+			c.logger.Warningf("unsafe state. cluster was never created but we received event (%s)", event.Type)
+			return
+		}
+		c.clusters[clus.Metadata.Name].Delete()
+		delete(c.clusters, clus.Metadata.Name)
+		delete(c.clusterRVs, clus.Metadata.Name)
+		analytics.ClusterDeleted()
+		clustersDeleted.Inc()
+		clustersTotal.Dec()
+	}
 }
 
 func (c *Controller) findAllClusters() (string, error) {
@@ -194,7 +210,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		clus := clusterList.Items[i]
 
 		if clus.Status.IsFailed() {
-			c.logger.Infof("ignore failed cluster %s", clus.Metadata.Name)
+			c.logger.Infof("ignore failed cluster (%s). Please delete its TPR", clus.Metadata.Name)
 			continue
 		}
 

@@ -17,17 +17,22 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
+
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 func TestBackupStatus(t *testing.T) {
-	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
 	}
 
 	f := framework.Global
@@ -79,4 +84,53 @@ func TestBackupStatus(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+}
+
+func TestUpdateClusterAfterItFailed(t *testing.T) {
+	f := framework.Global
+
+	cl := &spec.Cluster{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       strings.Title(spec.TPRKind),
+			APIVersion: spec.TPRGroup + "/" + spec.TPRVersion,
+		},
+		Metadata: v1.ObjectMeta{
+			GenerateName: "test-etcd-",
+		},
+		Spec: spec.ClusterSpec{
+			Size: 1,
+		},
+		Status: spec.ClusterStatus{
+			Phase: spec.ClusterPhaseFailed,
+		},
+	}
+	testEtcd, err := createCluster(t, f, cl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	testEtcd.Spec.Size = 3
+	if _, err := updateEtcdCluster(f, testEtcd); err != nil {
+		t.Fatal(err)
+	}
+	// make sure operator does not panic after a reasonable amount of time
+	time.Sleep(3 * time.Second)
+	if err := verifyOperatorRunning(f); err != nil {
+		t.Error(err)
+	}
+}
+
+func verifyOperatorRunning(f *framework.Framework) error {
+	pod, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get("etcd-operator")
+	if err != nil {
+		return err
+	}
+	if ph := pod.Status.Phase; ph != v1.PodRunning {
+		return fmt.Errorf("operator pod isn't running: phase (%s)", ph)
+	}
+	return nil
 }

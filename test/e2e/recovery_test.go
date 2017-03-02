@@ -26,9 +26,6 @@ import (
 
 func TestFailureRecovery(t *testing.T) {
 	t.Run("failure recovery", func(t *testing.T) {
-		if os.Getenv(envParallelTest) == envParallelTestTrue {
-			t.Parallel()
-		}
 		t.Run("1 member (minority) down", testOneMemberRecovery)
 		t.Run("2 members (majority) down", testDisasterRecovery2Members)
 		t.Run("3 members (all) down", testDisasterRecoveryAll)

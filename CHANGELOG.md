@@ -14,6 +14,7 @@
 
 ### Fixed
 
+- [GH-851] Fixed a race that caused nil pointer access panic
 - [GH-823] Fixed backup service status not shown in TPR status
 
 ### Deprecated

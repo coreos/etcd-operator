@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -161,7 +162,7 @@ func killMembers(f *framework.Framework, names ...string) error {
 func newClusterSpec(genName string, size int) *spec.Cluster {
 	return &spec.Cluster{
 		TypeMeta: unversioned.TypeMeta{
-			Kind:       "Cluster",
+			Kind:       strings.Title(spec.TPRKind),
 			APIVersion: spec.TPRGroup + "/" + spec.TPRVersion,
 		},
 		Metadata: v1.ObjectMeta{
