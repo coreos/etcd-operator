@@ -103,7 +103,7 @@ If you need use s3 backup, add these to above input:
   - secrets
   - configmaps
   verbs:
-  - read
+  - get
 ```
 
 ### Create Service Account
