@@ -8,6 +8,7 @@
 ### Changed
 
 - PodPolicy `resourceRequirements` field is renamed to `resources`
+- Default etcd version is changed to `3.1.2`
 
 ### Removed
 
