@@ -17,13 +17,6 @@ package cluster
 import (
 	"errors"
 
-	"fmt"
-	"io/ioutil"
-	"net/http"
-	"path"
-
-	"github.com/coreos/etcd-operator/pkg/backup"
-	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -229,47 +222,6 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 		}
 	}
 	return c.recover()
-}
-
-// TODO: make this private
-func RequestBackupNow(addr string, httpcli *http.Client) error {
-	resp, err := httpcli.Get(fmt.Sprintf("https://%s/backupnow", path.Join(addr, backup.PVBackupV1)))
-	if err != nil {
-		return fmt.Errorf("backupnow (%s) failed: %v", addr, err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			b = []byte(fmt.Sprintf("fail to read HTTP response: %v", err))
-		}
-		return fmt.Errorf("backupnow (%s) failed: unexpected status code (%v), response (%s)",
-			addr, resp.Status, string(b))
-	}
-	return nil
-}
-
-func checkBackupExist(addr, ver string, httpcli *http.Client) (bool, error) {
-
-	req := &http.Request{
-		Method: http.MethodHead,
-		URL:    backupapi.NewBackupURL("https", addr, ver),
-	}
-
-	resp, err := httpcli.Do(req)
-	if err != nil {
-		return false, fmt.Errorf("check backup (%s) failed: %v", addr, err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			b = []byte(fmt.Sprintf("fail to read HTTP response: %v", err))
-		}
-		return false, fmt.Errorf("check backup (%s) failed: unexpected status code (%v), response (%s)",
-			addr, resp.Status, string(b))
-	}
-	return true, nil
 }
 
 func needUpgrade(pods []*v1.Pod, cs spec.ClusterSpec) bool {
