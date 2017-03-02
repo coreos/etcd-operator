@@ -4,8 +4,14 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# Create ClusterRole
-cat <<EOF | kubectl create -f -
+function rbac_cleanup {
+	kubectl delete clusterrolebinding etcd-operator
+	kubectl delete clusterrole etcd-operator
+}
+
+function rbac_setup() {
+    # Create ClusterRole
+    cat <<EOF | kubectl create -f -
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
@@ -53,8 +59,8 @@ rules:
   - get
 EOF
 
-# Create ClusterRoleBinding in namespace
-cat <<EOF | kubectl create -f -
+    # Create ClusterRoleBinding in namespace
+    cat <<EOF | kubectl create -f -
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
@@ -68,7 +74,4 @@ subjects:
   name: default
   namespace: $TEST_NAMESPACE
 EOF
-
-# Check if ClusterRole and ClusterRoleBinding created
-kubectl --kubeconfig=$KUBECONFIG get clusterrole etcd-operator 1> /dev/null
-kubectl --kubeconfig=$KUBECONFIG get clusterrolebinding etcd-operator 1> /dev/null
+}
