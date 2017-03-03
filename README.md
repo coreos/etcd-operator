@@ -254,7 +254,7 @@ NAME                 TYPE
 etcd-backup-gce-pd   kubernetes.io/gce-pd
 ```
 
-This is used to request the persistent volume to store the backup data. (AWS EBS supported using --pv-provisioner=kubernetes.io/aws-ebs. See [AWS deployment](example/deployment-aws.yaml))
+This is used to request the persistent volume to store the backup data. See [other backup options](doc/user/backup_options.md).
 
 To enable backup, create an etcd cluster with [backup enabled spec](example/example-etcd-cluster-with-backup.yaml).
 
