@@ -67,9 +67,11 @@ func init() {
 	flag.BoolVar(&analyticsEnabled, "analytics", true, "Send analytical event (Cluster Created/Deleted etc.) to Google Analytics")
 
 	flag.StringVar(&pvProvisioner, "pv-provisioner", "kubernetes.io/gce-pd", "persistent volume provisioner type")
-	flag.StringVar(&awsSecret, "backup-aws-secret", "", "The name of the kube secret object that stores the aws credential file.")
-	flag.StringVar(&awsConfig, "backup-aws-config", "", "The name of the kube configmap object that presents the aws config file.")
-	flag.StringVar(&s3Bucket, "backup-s3-bucket", "", "The name of the aws S3 bucket to store backups.")
+	flag.StringVar(&awsSecret, "backup-aws-secret", "",
+		"The name of the kube secret object that stores the AWS credential file. The file name must be 'credentials'.")
+	flag.StringVar(&awsConfig, "backup-aws-config", "",
+		"The name of the kube configmap object that stores the AWS config file. The file name must be 'config'.")
+	flag.StringVar(&s3Bucket, "backup-s3-bucket", "", "The name of the AWS S3 bucket to store backups in.")
 	// chaos level will be removed once we have a formal tool to inject failures.
 	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the operator.")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
