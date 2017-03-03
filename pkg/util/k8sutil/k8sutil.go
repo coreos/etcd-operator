@@ -50,13 +50,13 @@ const (
 	ClientCAKeyName  = "client-ca-key.pem"
 	ClientCACertName = "client-ca-cert.pem"
 
-	NodeClientKeyName  = "node-client-key.pem"
-	NodeClientCertName = "node-client-cert.pem"
-	NodePeerKeyName    = "node-peer-key.pem"
-	NodePeerCertName   = "node-peer-cert.pem"
+	NodeClientKeyName  = "client-server-key.pem"
+	NodeClientCertName = "client-server-cert.pem"
+	NodePeerKeyName    = "peer-server-key.pem"
+	NodePeerCertName   = "peer-server-cert.pem"
 
-	EtcdClientKeyName  = "etcd-client-key.pem"
-	EtcdClientCertName = "etcd-client-cert.pem"
+	EtcdClientKeyName  = "client-key.pem"
+	EtcdClientCertName = "client-cert.pem"
 
 	// TODO: This is constant for current purpose. We might make it configurable later.
 	etcdDir      = "/var/etcd"
@@ -435,6 +435,10 @@ func etcdNodeTLSEnv() []v1.EnvVar {
 			Value: filepath.Join(nodeTLSDir, NodeClientKeyName),
 		},
 		{
+			Name:  "ETCD_CLIENT_CERT_AUTH",
+			Value: "false",
+		},
+		{
 			Name:  "ETCD_PEER_TRUSTED_CA_FILE",
 			Value: filepath.Join(caTLSDir, PeerCACertName),
 		},
@@ -445,6 +449,10 @@ func etcdNodeTLSEnv() []v1.EnvVar {
 		{
 			Name:  "ETCD_PEER_KEY_FILE",
 			Value: filepath.Join(nodeTLSDir, NodePeerKeyName),
+		},
+		{
+			Name:  "ETCD_PEER_CLIENT_CERT_AUTH",
+			Value: "false",
 		},
 	}
 }

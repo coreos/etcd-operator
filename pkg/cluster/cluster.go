@@ -15,6 +15,7 @@
 package cluster
 
 import (
+	"crypto/tls"
 	"fmt"
 	"math"
 	"net/http"
@@ -88,6 +89,8 @@ type Cluster struct {
 	gc *garbagecollection.GC
 
 	etcdHttpClient *http.Client
+
+	etcdTLSConfig *tls.Config
 }
 
 func New(config Config, cl *spec.Cluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
@@ -192,7 +195,7 @@ func (c *Cluster) create() error {
 func (c *Cluster) initializeBackupHTTPSClient() error {
 	staticSpec := c.cluster.Spec.ClusterTLS.Static
 	if staticSpec != nil {
-		httpcli, err := k8sutil.GetEtcdHTTPClientFromSecrets(
+		tlsConfig, err := k8sutil.GetEtcdClientTLSConfig(
 			staticSpec.ClientSecretName,
 			staticSpec.CASecretName,
 			c.cluster.Metadata.Namespace,
@@ -201,8 +204,11 @@ func (c *Cluster) initializeBackupHTTPSClient() error {
 		if err != nil {
 			return fmt.Errorf("error getting httpClient from secrets: %v", err)
 		}
-
-		c.etcdHttpClient = httpcli
+		c.etcdHttpClient = &http.Client{
+			Transport: &http.Transport{TLSClientConfig: tlsConfig},
+			Timeout:   30 * time.Second,
+		}
+		c.etcdTLSConfig = tlsConfig
 		return nil
 	}
 
@@ -356,7 +362,10 @@ func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
 }
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
-	m := &etcdutil.Member{Name: etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)}
+	m := &etcdutil.Member{
+		Name:      etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
+		Namespace: c.cluster.Metadata.Namespace,
+	}
 	ms := etcdutil.NewMemberSet(m)
 	if err := c.createPodAndService(ms, m, "new", recoverFromBackup); err != nil {
 		return fmt.Errorf("failed to create seed member (%s): %v", m.Name, err)

@@ -88,7 +88,7 @@ func (c *Cluster) migrateBootMember() error {
 
 	c.logger.Infof("migrating boot member (%s)", endpoint)
 
-	resp, err := etcdutil.ListMembers([]string{endpoint})
+	resp, err := etcdutil.ListMembers(c.etcdTLSConfig, []string{endpoint})
 	if err != nil {
 		return fmt.Errorf("failed to list members from boot member (%v)", err)
 	}
@@ -126,7 +126,7 @@ func (c *Cluster) migrateBootMember() error {
 		c.logger.Infof("wait %v before removing the boot member", delay)
 		time.Sleep(delay)
 
-		err = etcdutil.RemoveMember([]string{fmt.Sprintf("https://%s.%s.svc.cluster.local:2379", newMemberName, c.cluster.Metadata.Namespace)}, bootMember.ID)
+		err = etcdutil.RemoveMember(c.etcdTLSConfig, []string{fmt.Sprintf("https://%s.%s.svc.cluster.local:2379", newMemberName, c.cluster.Metadata.Namespace)}, bootMember.ID)
 		if err != nil {
 			c.logger.Errorf("boot member migration: failed to remove the boot member (%v)", err)
 		}

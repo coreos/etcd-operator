@@ -20,7 +20,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/tlsutil"
@@ -100,8 +99,8 @@ func NewSelfSignedClusterCASecret(secretName string, clientCACert, peerCACert *x
 			},
 		},
 		Data: map[string][]byte{
-			PeerCAKeyName:  tlsutil.EncodeCertificatePEM(peerCACert),
-			PeerCACertName: tlsutil.EncodeCertificatePEM(clientCACert),
+			ClientCACertName: tlsutil.EncodeCertificatePEM(peerCACert),
+			PeerCACertName:   tlsutil.EncodeCertificatePEM(clientCACert),
 		},
 	}
 	return &caSecret, nil
@@ -119,8 +118,8 @@ func getSecret(uri string, restcli rest.Interface) (*v1.Secret, error) {
 	return secret, nil
 }
 
-func GetEtcdHTTPClientFromSecrets(clientSecretName, caSecretName, ns string, restcli rest.Interface) (*http.Client, error) {
-	baseURI := "/apis/coreos.com/v1/namespaces/%s/secrets/%s"
+func GetEtcdClientTLSConfig(clientSecretName, caSecretName, ns string, restcli rest.Interface) (*tls.Config, error) {
+	baseURI := "/api/v1/namespaces/%s/secrets/%s"
 
 	// Fetch secrets from Kubernetes API
 	caSecret, err := getSecret(fmt.Sprintf(baseURI, ns, caSecretName), restcli)
@@ -135,20 +134,20 @@ func GetEtcdHTTPClientFromSecrets(clientSecretName, caSecretName, ns string, res
 	// Retrieve byte arrays from Data map
 	caCertBytes, ok := caSecret.Data[ClientCACertName]
 	if !ok {
-		return nil, fmt.Errorf("could not find %s data key in secret %s", PeerCACertName, caSecretName)
+		return nil, fmt.Errorf("could not find %s data key in secret %s", ClientCACertName, caSecretName)
 	}
 
-	clientKeyBytes, ok := clientSecret.Data[NodeClientKeyName]
+	clientKeyBytes, ok := clientSecret.Data[EtcdClientKeyName]
 	if !ok {
-		return nil, fmt.Errorf("could not find %s data key in secret %s", NodeClientKeyName, clientSecretName)
+		return nil, fmt.Errorf("could not find %s data key in secret %s", EtcdClientKeyName, clientSecretName)
 	}
 
-	clientCertBytes, ok := clientSecret.Data[NodeClientCertName]
+	clientCertBytes, ok := clientSecret.Data[EtcdClientCertName]
 	if !ok {
-		return nil, fmt.Errorf("could not find %s data key in secret %s", NodeClientCertName, clientSecretName)
+		return nil, fmt.Errorf("could not find %s data key in secret %s", EtcdClientCertName, clientSecretName)
 	}
 
-	keyPair, err := tls.X509KeyPair(clientKeyBytes, clientCertBytes)
+	keyPair, err := tls.X509KeyPair(clientCertBytes, clientKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tls key pair: %v", err)
 	}
@@ -157,15 +156,11 @@ func GetEtcdHTTPClientFromSecrets(clientSecretName, caSecretName, ns string, res
 	caCertPool.AppendCertsFromPEM(caCertBytes)
 
 	tlsConfig := &tls.Config{
+		MinVersion:   tls.VersionTLS12,
 		Certificates: []tls.Certificate{keyPair},
 		RootCAs:      caCertPool,
-	}
-	tlsConfig.BuildNameToCertificate()
-	client := &http.Client{
-		Transport: &http.Transport{TLSClientConfig: tlsConfig},
-		Timeout:   30 * time.Second,
+		ServerName:   "etcd-operator-client",
 	}
 
-	return client, nil
-
+	return tlsConfig, nil
 }
