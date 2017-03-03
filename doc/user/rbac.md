@@ -19,7 +19,7 @@ Then create cluster role binding:
 
 ```bash
 $ cat <<EOF | kubectl create -f -
-apiVersion: rbac.authorization.k8s.io/v1alpha1
+apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
   name: example-etcd-operator
@@ -53,7 +53,7 @@ Create the following ClusterRole
 
 ```bash
 $ cat <<EOF | kubectl create -f -
-apiVersion: rbac.authorization.k8s.io/v1alpha1
+apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
   name: etcd-operator
@@ -128,7 +128,7 @@ and create ClusterRoleBinding for etcd operator:
 
 ```bash
 $ cat <<EOF | kubectl create -f -
-apiVersion: rbac.authorization.k8s.io/v1alpha1
+apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
   name: etcd-operator
