@@ -17,6 +17,8 @@ package k8sutil
 import (
 	"encoding/json"
 	"fmt"
+	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -290,15 +292,31 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 }
 
 func MustNewKubeClient() kubernetes.Interface {
-	cfg, err := rest.InClusterConfig()
+	cfg, err := InClusterConfig()
 	if err != nil {
 		panic(err)
 	}
 	return kubernetes.NewForConfigOrDie(cfg)
 }
 
+func InClusterConfig() (*rest.Config, error) {
+	// Work around https://github.com/kubernetes/kubernetes/issues/40973
+	// See https://github.com/coreos/etcd-operator/issues/731#issuecomment-283804819
+	if len(os.Getenv("KUBERNETES_SERVICE_HOST")) == 0 {
+		addrs, err := net.LookupHost("kubernetes.default.svc")
+		if err != nil {
+			panic(err)
+		}
+		os.Setenv("KUBERNETES_SERVICE_HOST", addrs[0])
+	}
+	if len(os.Getenv("KUBERNETES_SERVICE_PORT")) == 0 {
+		os.Setenv("KUBERNETES_SERVICE_PORT", "443")
+	}
+	return rest.InClusterConfig()
+}
+
 func NewTPRClient() (*rest.RESTClient, error) {
-	config, err := rest.InClusterConfig()
+	config, err := InClusterConfig()
 	if err != nil {
 		return nil, err
 	}
