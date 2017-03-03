@@ -37,20 +37,7 @@ Read [Developer Guide](./doc/dev/developer_guide.md) for setting up development 
 
 ## Deploy etcd operator
 
-```bash
-$ kubectl create -f example/deployment.yaml
-deployment "etcd-operator" created
-```
-
-etcd operator will automatically create a Kubernetes *Third-Party Resource* (TPR) as followed:
-
-```bash
-$ kubectl get thirdpartyresources
-NAME                      DESCRIPTION             VERSION(S)
-cluster.etcd.coreos.com   Managed etcd clusters   v1beta1
-```
-
-Note that the etcd clusters managed by the etcd operator will not be deleted if the operator fails or the deployment of the operator is deleted. This is an intentional design to prevent accidental operator failure from killing all the etcd clusters.
+See [instructions on how to install/uninstall etcd operator](doc/user/op_guide.md) .
 
 ## Create and destroy an etcd cluster
 
