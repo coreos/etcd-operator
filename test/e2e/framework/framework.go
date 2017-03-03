@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -69,7 +70,7 @@ func Setup() error {
 }
 
 func Teardown() error {
-	if err := Global.DeleteEtcdOperator(); err != nil {
+	if err := Global.deleteEtcdOperator(); err != nil {
 		return err
 	}
 	// TODO: check all deleted and wait
@@ -142,7 +143,28 @@ func (f *Framework) SetupEtcdOperator() error {
 	return nil
 }
 
-func (f *Framework) DeleteEtcdOperator() error {
+func (f *Framework) DeleteEtcdOperatorCompletely() error {
+	err := f.deleteEtcdOperator()
+	if err != nil {
+		return err
+	}
+	err = retryutil.Retry(2*time.Second, 5, func() (bool, error) {
+		_, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get("etcd-operator")
+		if err == nil {
+			return false, nil
+		}
+		if k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return true, nil
+		}
+		return false, err
+	})
+	if err != nil {
+		return fmt.Errorf("fail to wait etcd operator pod gone from API: %v", err)
+	}
+	return nil
+}
+
+func (f *Framework) deleteEtcdOperator() error {
 	return f.KubeClient.CoreV1().Pods(f.Namespace).Delete("etcd-operator", v1.NewDeleteOptions(1))
 }
 

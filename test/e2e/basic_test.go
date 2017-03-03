@@ -91,21 +91,18 @@ func testStopOperator(t *testing.T, kill bool) {
 		// TODO: make this wait for reliable
 		time.Sleep(5 * time.Second)
 	} else {
-		if err := f.DeleteEtcdOperator(); err != nil {
+		if err := f.DeleteEtcdOperatorCompletely(); err != nil {
 			t.Fatalf("fail to delete etcd operator pod: %v", err)
 		}
-		// wait twice grace period
-		time.Sleep(2 * time.Second)
 	}
 
 	if err := killMembers(f, names[0]); err != nil {
 		t.Fatal(err)
 	}
-
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 2, 30*time.Second); err != nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 2, 10*time.Second); err != nil {
 		t.Fatalf("failed to wait for killed member to die: %v", err)
 	}
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 30*time.Second); err == nil {
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 10*time.Second); err == nil {
 		t.Fatalf("cluster should not be recovered: control is paused")
 	}
 
