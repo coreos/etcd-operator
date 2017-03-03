@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"net/url"
 	"path/filepath"
 	"strings"
 	"time"

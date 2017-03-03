@@ -18,11 +18,12 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
-	"github.com/coreos/etcd/clientv3"
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/coreos/etcd-operator/pkg/util/constants"
+	"github.com/coreos/etcd/clientv3"
 
 	"golang.org/x/net/context"
 )
