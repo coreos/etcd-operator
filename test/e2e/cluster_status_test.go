@@ -16,7 +16,6 @@ package e2e
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -30,11 +29,42 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
-func TestBackupStatus(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
+func TestReadyMembersStatus(t *testing.T) {
+	f := framework.Global
+	size := 1
+	testEtcd, err := createCluster(t, f, newClusterSpec("test-etcd-", size))
+	if err != nil {
+		t.Fatal(err)
 	}
 
+	defer func() {
+		if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, size, 30*time.Second); err != nil {
+		t.Fatalf("failed to create %d members etcd cluster: %v", size, err)
+	}
+
+	err = retryutil.Retry(5*time.Second, 3, func() (done bool, err error) {
+		currEtcd, err := k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
+		if err != nil {
+			logfWithTimestamp(t, "failed to get updated cluster object: %v", err)
+			return false, nil
+		}
+		if len(currEtcd.Status.ReadyMembers) != size {
+			logfWithTimestamp(t, "size of ready members want = %d, get = %d ReadyMembers(%v) UnreadyMembers(%v). Will retry checking ReadyMembers", size, len(currEtcd.Status.ReadyMembers), currEtcd.Status.ReadyMembers, currEtcd.Status.UnreadyMembers)
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		t.Fatalf("failed to get size of ReadyMembers to reach %d : %v", size, err)
+	}
+}
+
+func TestBackupStatus(t *testing.T) {
 	f := framework.Global
 
 	bp := newBackupPolicyPV()

@@ -268,16 +268,23 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 				c.status.Control()
 			}
 
-			running, pending, err := c.pollPods()
+			ready, unready, err := c.pollPods()
 			if err != nil {
 				c.logger.Errorf("fail to poll pods: %v", err)
 				continue
 			}
-			if len(pending) > 0 {
-				c.logger.Infof("skip reconciliation: running (%v), pending (%v)", k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
+			c.status.ReadyMembers = k8sutil.GetPodNames(ready)
+			c.status.UnreadyMembers = k8sutil.GetPodNames(unready)
+
+			if err := c.updateTPRStatus(); err != nil {
+				c.logger.Warningf("failed to update TPR status: %v", err)
+			}
+
+			if len(unready) > 0 {
+				c.logger.Infof("skip reconciliation: ready (%v), unready (%v)", k8sutil.GetPodNames(ready), k8sutil.GetPodNames(unready))
 				continue
 			}
-			if len(running) == 0 {
+			if len(ready) == 0 {
 				c.logger.Warningf("all etcd pods are dead. Trying to recover from a previous backup")
 				rerr = c.disasterRecovery(nil)
 				if rerr != nil {
@@ -289,13 +296,13 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 
 			// On controller restore, we could have "members == nil"
 			if rerr != nil || c.members == nil {
-				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted))
+				rerr = c.updateMembers(podsToMemberSet(ready, c.cluster.Spec.SelfHosted))
 				if rerr != nil {
 					c.logger.Errorf("failed to update members: %v", rerr)
 					break
 				}
 			}
-			rerr = c.reconcile(running)
+			rerr = c.reconcile(ready)
 			if rerr != nil {
 				c.logger.Errorf("failed to reconcile: %v", rerr)
 				break
@@ -448,7 +455,8 @@ func (c *Cluster) pollPods() ([]*v1.Pod, []*v1.Pod, error) {
 	}
 
 	var running []*v1.Pod
-	var pending []*v1.Pod
+	var ready []*v1.Pod
+	var unready []*v1.Pod
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 		if len(pod.OwnerReferences) < 1 {
@@ -464,11 +472,24 @@ func (c *Cluster) pollPods() ([]*v1.Pod, []*v1.Pod, error) {
 		case v1.PodRunning:
 			running = append(running, pod)
 		case v1.PodPending:
-			pending = append(pending, pod)
+			unready = append(unready, pod)
 		}
 	}
 
-	return running, pending, nil
+	for _, pod := range running {
+		url := fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
+		healthy, err := etcdutil.CheckHealth(url)
+		if err != nil {
+			c.logger.Warningf("Health check failed: %v", err)
+		}
+		if healthy {
+			ready = append(ready, pod)
+		} else {
+			unready = append(unready, pod)
+		}
+	}
+
+	return ready, unready, nil
 }
 
 func (c *Cluster) updateTPRStatus() error {
