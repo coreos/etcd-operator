@@ -16,7 +16,6 @@ package e2e
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -31,10 +30,6 @@ import (
 )
 
 func TestBackupStatus(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
-
 	f := framework.Global
 
 	bp := newBackupPolicyPV()
