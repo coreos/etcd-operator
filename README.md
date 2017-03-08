@@ -1,8 +1,9 @@
 # etcd operator
-Kubernetes stable :
+unit/integration:
+[![Build Status](https://jenkins-etcd-public.prod.coreos.systems/view/operator/job/etcd-operator-unit-master/badge/icon)](https://jenkins-etcd-public.prod.coreos.systems/view/operator/job/etcd-operator-unit-master/)
+e2e (Kubernetes stable):
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-operator-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-master/)
-
-Kubernetes master :
+e2e (Kubernetes master):
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-operator-master-k8s-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-master-k8s-master/)
 
 ### Project status: beta
