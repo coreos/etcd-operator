@@ -17,6 +17,7 @@ package k8sutil
 import (
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -61,11 +62,12 @@ func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, name string, p
 	return p
 }
 
-func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
+func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
+	selfHostedDataDir := path.Join(etcdVolumeMountDir, ns+"-"+name)
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
 		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
-		dataDir, name, strings.Join(initialCluster, ","), state)
+		selfHostedDataDir, name, strings.Join(initialCluster, ","), state)
 
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
@@ -94,9 +96,11 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, sta
 			// If we set it to Never, the pod won't restart. If etcd won't come up, nor does other k8s API components.
 			RestartPolicy: v1.RestartPolicyAlways,
 			HostNetwork:   true,
-			Volumes: []v1.Volume{
-				{Name: "etcd-data", VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}},
-			},
+			Volumes: []v1.Volume{{
+				Name: "etcd-data",
+				// TODO: configurable mount host path.
+				VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: etcdVolumeMountDir}},
+			}},
 		},
 	}
 

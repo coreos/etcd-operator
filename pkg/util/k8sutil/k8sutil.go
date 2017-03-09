@@ -43,9 +43,8 @@ import (
 )
 
 const (
-	// TODO: This is constant for current purpose. We might make it configurable later.
-	etcdDir                    = "/var/etcd"
-	dataDir                    = etcdDir + "/data"
+	etcdVolumeMountDir         = "/var/etcd"
+	dataDir                    = etcdVolumeMountDir + "/data"
 	backupFile                 = "/var/etcd/latest.backup"
 	etcdVersionAnnotationKey   = "etcd.version"
 	annotationPrometheusScrape = "prometheus.io/scrape"
@@ -77,9 +76,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 				"/bin/sh", "-c",
 				fmt.Sprintf("curl -o %s %s", backupFile, backupapi.NewBackupURL("http", backupAddr, version)),
 			},
-			VolumeMounts: []v1.VolumeMount{
-				{Name: "etcd-data", MountPath: etcdDir},
-			},
+			VolumeMounts: etcdVolumeMounts(),
 		},
 		{
 			Name:  "restore-datadir",
@@ -93,9 +90,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 					" --initial-advertise-peer-urls http://%[2]s:2380"+
 					" --data-dir %[4]s", backupFile, name, token, dataDir),
 			},
-			VolumeMounts: []v1.VolumeMount{
-				{Name: "etcd-data", MountPath: etcdDir},
-			},
+			VolumeMounts: etcdVolumeMounts(),
 		},
 	}
 	b, err := json.Marshal(spec)

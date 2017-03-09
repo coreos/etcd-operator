@@ -20,13 +20,17 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/pkg/netutil"
+
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 func TestSelfHosted(t *testing.T) {
@@ -34,6 +38,7 @@ func TestSelfHosted(t *testing.T) {
 		t.Run("create self hosted cluster from scratch", testCreateSelfHostedCluster)
 		t.Run("migrate boot member to self hosted cluster", testCreateSelfHostedClusterWithBootMember)
 	})
+	cleanupSelfHostedHostpath()
 }
 
 func testCreateSelfHostedCluster(t *testing.T) {
@@ -123,4 +128,61 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 120*time.Second); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
+}
+
+func cleanupSelfHostedHostpath() {
+	f := framework.Global
+	nodes, err := f.KubeClient.CoreV1().Nodes().List(v1.ListOptions{})
+	if err != nil {
+		return
+	}
+	var wg sync.WaitGroup
+	for i := range nodes.Items {
+		wg.Add(1)
+		go func(nodeName string) {
+			defer wg.Done()
+
+			name := fmt.Sprintf("cleanup-selfhosted-%s", nodeName)
+			p := &v1.Pod{
+				ObjectMeta: v1.ObjectMeta{
+					Name: name,
+				},
+				Spec: v1.PodSpec{
+					NodeName:      nodeName,
+					RestartPolicy: v1.RestartPolicyOnFailure,
+					Containers: []v1.Container{{
+						Name:  name,
+						Image: "busybox",
+						VolumeMounts: []v1.VolumeMount{
+							// TODO: This is an assumption on etcd container volume mount.
+							{Name: "etcd-data", MountPath: "/var/etcd"},
+						},
+						Command: []string{
+							// TODO: this is an assumption on the format of etcd data dir.
+							"/bin/sh", "-c", fmt.Sprintf("rm -rf /var/etcd/%s-*", f.Namespace),
+						},
+					}},
+					Volumes: []v1.Volume{{
+						Name: "etcd-data",
+						// TODO: This is an assumption on self hosted etcd volumes.
+						VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: "/var/etcd"}},
+					}},
+				},
+			}
+			_, err := f.KubeClient.CoreV1().Pods(f.Namespace).Create(p)
+			if err != nil {
+				return
+			}
+			retryutil.Retry(5*time.Second, 5, func() (bool, error) {
+				get, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get(name)
+				if err != nil {
+					return false, nil
+				}
+				ph := get.Status.Phase
+				return ph == v1.PodSucceeded || ph == v1.PodFailed, nil
+			})
+			f.KubeClient.CoreV1().Pods(f.Namespace).Delete(name, nil)
+		}(nodes.Items[i].Name)
+	}
+	wg.Wait()
 }
