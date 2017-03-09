@@ -315,12 +315,7 @@ func InClusterConfig() (*rest.Config, error) {
 	return rest.InClusterConfig()
 }
 
-func NewTPRClient() (*rest.RESTClient, error) {
-	config, err := InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
+func NewTPRClient(config *rest.Config) (*rest.RESTClient, error) {
 	config.GroupVersion = &unversioned.GroupVersion{
 		Group:   spec.TPRGroup,
 		Version: spec.TPRVersion,
