@@ -35,7 +35,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster := append(c.members.PeerURLPairs(), newMemberName+"="+peerURL)
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
+	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.cluster.Spec)
 
 	_, err := c.config.KubeCli.CoreV1().Pods(c.cluster.Metadata.Namespace).Create(pod)
@@ -71,7 +71,7 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	c.memberCounter++
 	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
+	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
 	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 30*time.Second)
 	if err != nil {
 		return err
@@ -107,7 +107,7 @@ func (c *Cluster) migrateBootMember() error {
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster = append(initialCluster, newMemberName+"="+peerURL)
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
+	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, []string{endpoint}, newMemberName, []string{peerURL}, c.cluster.Spec)
 	pod, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 30*time.Second)
 	if err != nil {

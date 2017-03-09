@@ -23,6 +23,12 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+func etcdVolumeMounts() []v1.VolumeMount {
+	return []v1.VolumeMount{
+		{Name: "etcd-data", MountPath: etcdVolumeMountDir},
+	}
+}
+
 func etcdContainer(commands, version string) v1.Container {
 	c := v1.Container{
 		// TODO: fix "sleep 5".
@@ -42,9 +48,7 @@ func etcdContainer(commands, version string) v1.Container {
 				Protocol:      v1.ProtocolTCP,
 			},
 		},
-		VolumeMounts: []v1.VolumeMount{
-			{Name: "etcd-data", MountPath: etcdDir},
-		},
+		VolumeMounts: etcdVolumeMounts(),
 	}
 
 	return c
