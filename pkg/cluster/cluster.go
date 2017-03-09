@@ -477,6 +477,7 @@ func (c *Cluster) pollPods() ([]*v1.Pod, []*v1.Pod, error) {
 	}
 
 	for _, pod := range running {
+		// TODO: Change to URL struct for TLS integration
 		url := fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
 		healthy, err := etcdutil.CheckHealth(url)
 		if err != nil {
