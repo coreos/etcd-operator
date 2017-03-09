@@ -32,10 +32,11 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	newMemberName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
 	c.memberCounter++
 
-	peerURL := "http://$(MY_POD_IP):2380"
+	peerURL := fmt.Sprintf("=https://%s.%s.svc.cluster.local:2380", newMemberName, c.cluster.Metadata.Namespace)
 	initialCluster := append(c.members.PeerURLPairs(), newMemberName+"="+peerURL)
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
+	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
+
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.cluster.Spec)
 
 	_, err := c.config.KubeCli.CoreV1().Pods(c.cluster.Metadata.Namespace).Create(pod)
@@ -69,10 +70,11 @@ func (c *Cluster) addOneSelfHostedMember() error {
 func (c *Cluster) newSelfHostedSeedMember() error {
 	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Metadata.Name, c.memberCounter)
 	c.memberCounter++
-	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
+	initialCluster := []string{fmt.Sprintf("%s=https://%s.%s.svc.cluster.local:2380", newMemberName, newMemberName, c.cluster.Metadata.Namespace)}
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
+	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
 	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 30*time.Second)
+
 	if err != nil {
 		return err
 	}
@@ -86,7 +88,7 @@ func (c *Cluster) migrateBootMember() error {
 
 	c.logger.Infof("migrating boot member (%s)", endpoint)
 
-	resp, err := etcdutil.ListMembers([]string{endpoint})
+	resp, err := etcdutil.ListMembers(c.etcdTLSConfig, []string{endpoint})
 	if err != nil {
 		return fmt.Errorf("failed to list members from boot member (%v)", err)
 	}
@@ -104,10 +106,11 @@ func (c *Cluster) migrateBootMember() error {
 	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Metadata.Name, c.memberCounter)
 	c.memberCounter++
 
-	peerURL := "http://$(MY_POD_IP):2380"
+	peerURL := fmt.Sprintf("https://%s.%s.svc.cluster.local:2380", newMemberName, c.cluster.Metadata.Namespace)
 	initialCluster = append(initialCluster, newMemberName+"="+peerURL)
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
+	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
+
 	pod = k8sutil.PodWithAddMemberInitContainer(pod, []string{endpoint}, newMemberName, []string{peerURL}, c.cluster.Spec)
 	pod, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 30*time.Second)
 	if err != nil {
@@ -123,7 +126,7 @@ func (c *Cluster) migrateBootMember() error {
 		c.logger.Infof("wait %v before removing the boot member", delay)
 		time.Sleep(delay)
 
-		err = etcdutil.RemoveMember([]string{"http://" + pod.Status.PodIP + ":2379"}, bootMember.ID)
+		err = etcdutil.RemoveMember(c.etcdTLSConfig, []string{fmt.Sprintf("https://%s.%s.svc.cluster.local:2379", newMemberName, c.cluster.Metadata.Namespace)}, bootMember.ID)
 		if err != nil {
 			c.logger.Errorf("boot member migration: failed to remove the boot member (%v)", err)
 		}

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -43,9 +44,29 @@ import (
 )
 
 const (
+	PeerCAKeyName    = "peer-ca-key.pem"
+	PeerCACertName   = "peer-ca-cert.pem"
+	ClientCAKeyName  = "client-ca-key.pem"
+	ClientCACertName = "client-ca-cert.pem"
+
+	NodeClientKeyName  = "client-server-key.pem"
+	NodeClientCertName = "client-server-cert.pem"
+	NodePeerKeyName    = "peer-server-key.pem"
+	NodePeerCertName   = "peer-server-cert.pem"
+
+	EtcdClientKeyName  = "client-key.pem"
+	EtcdClientCertName = "client-cert.pem"
+
 	// TODO: This is constant for current purpose. We might make it configurable later.
-	etcdDir                    = "/var/etcd"
-	dataDir                    = etcdDir + "/data"
+	etcdDir      = "/var/etcd"
+	dataDir      = etcdDir + "/data"
+	clientTLSDir = "/etc/etcd-operator/client-tls"
+	nodeTLSDir   = "/etc/etcd-operator/node-tls"
+	caTLSDir     = "/etc/etcd-operator/cluster-ca-tls"
+
+	clientInterfaceServerCertFile = "client-cert.pem"
+	clientInterfaceServerKeyFile  = "client-key.pem"
+
 	backupFile                 = "/var/etcd/latest.backup"
 	etcdVersionAnnotationKey   = "etcd.version"
 	annotationPrometheusScrape = "prometheus.io/scrape"
@@ -75,26 +96,35 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 			Image: "tutum/curl",
 			Command: []string{
 				"/bin/sh", "-c",
-				fmt.Sprintf("curl -o %s %s", backupFile, backupapi.NewBackupURL("http", backupAddr, version)),
+				fmt.Sprintf("curl -cacert %s -cert %s -key %s -o %s %s",
+					filepath.Join(caTLSDir, ClientCACertName),
+					filepath.Join(clientTLSDir, EtcdClientCertName),
+					filepath.Join(clientTLSDir, EtcdClientKeyName),
+					backupFile, backupapi.NewBackupURL("https", backupAddr, version)),
 			},
 			VolumeMounts: []v1.VolumeMount{
 				{Name: "etcd-data", MountPath: etcdDir},
+				{Name: "etcd-client-tls", MountPath: clientTLSDir, ReadOnly: true},
+				{Name: "etcd-operator-ca", MountPath: caTLSDir, ReadOnly: true},
 			},
 		},
 		{
 			Name:  "restore-datadir",
 			Image: EtcdImageName(version),
+			Env:   etcdctlTLSEnv(),
 			Command: []string{
 				"/bin/sh", "-c",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
 					" --name %[2]s"+
-					" --initial-cluster %[2]s=http://%[2]s:2380"+
+					" --initial-cluster %[2]s=https://%[2]s:2380"+
 					" --initial-cluster-token %[3]s"+
-					" --initial-advertise-peer-urls http://%[2]s:2380"+
+					" --initial-advertise-peer-urls https://%[2]s:2380"+
 					" --data-dir %[4]s", backupFile, name, token, dataDir),
 			},
 			VolumeMounts: []v1.VolumeMount{
 				{Name: "etcd-data", MountPath: etcdDir},
+				{Name: "etcd-client-tls", MountPath: clientTLSDir, ReadOnly: true},
+				{Name: "etcd-operator-ca", MountPath: caTLSDir, ReadOnly: true},
 			},
 		},
 	}
@@ -247,16 +277,19 @@ func addOwnerRefToObject(o meta.Object, r metatypes.OwnerReference) {
 
 func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
-		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
+		"--listen-peer-urls=https://0.0.0.0:2380 --listen-client-urls=https://0.0.0.0:2379 --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
 		dataDir, m.Name, m.PeerAddr(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
+
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
 	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version), etcdLivenessProbe())
+
 	if cs.Pod != nil {
 		container = containerWithRequirements(container, cs.Pod.Resources)
 	}
+
 	pod := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name: m.Name,
@@ -272,6 +305,15 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			RestartPolicy: v1.RestartPolicyNever,
 			Volumes: []v1.Volume{
 				{Name: "etcd-data", VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}},
+				{Name: "etcd-node-tls", VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
+					SecretName: cs.ClusterTLS.Static.NodeSecretName,
+				}}},
+				{Name: "etcd-client-tls", VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
+					SecretName: cs.ClusterTLS.Static.ClientSecretName,
+				}}},
+				{Name: "etcd-operator-ca", VolumeSource: v1.VolumeSource{Secret: &v1.SecretVolumeSource{
+					SecretName: cs.ClusterTLS.Static.CASecretName,
+				}}},
 			},
 		},
 	}
@@ -355,5 +397,61 @@ func newLablesForCluster(clusterName string) map[string]string {
 	return map[string]string{
 		"etcd_cluster": clusterName,
 		"app":          "etcd",
+	}
+}
+
+// requires etcd-client-tls and etcd-operator-ca secrets
+func etcdctlTLSEnv() []v1.EnvVar {
+	return []v1.EnvVar{
+		{
+			Name:  "ETCD_TRUSTED_CA_FILE",
+			Value: filepath.Join(caTLSDir, ClientCACertName),
+		},
+		{
+			Name:  "ETCD_CERT_FILE",
+			Value: filepath.Join(clientTLSDir, EtcdClientCertName),
+		},
+		{
+			Name:  "ETCD_KEY_FILE",
+			Value: filepath.Join(clientTLSDir, EtcdClientKeyName),
+		},
+	}
+}
+
+// requires etcd-node-tls and etcd-operator-ca secrets
+func etcdNodeTLSEnv() []v1.EnvVar {
+	return []v1.EnvVar{
+		{
+			Name:  "ETCD_TRUSTED_CA_FILE",
+			Value: filepath.Join(caTLSDir, ClientCACertName),
+		},
+		{
+			Name:  "ETCD_CERT_FILE",
+			Value: filepath.Join(nodeTLSDir, NodeClientCertName),
+		},
+		{
+			Name:  "ETCD_KEY_FILE",
+			Value: filepath.Join(nodeTLSDir, NodeClientKeyName),
+		},
+		{
+			Name:  "ETCD_CLIENT_CERT_AUTH",
+			Value: "false",
+		},
+		{
+			Name:  "ETCD_PEER_TRUSTED_CA_FILE",
+			Value: filepath.Join(caTLSDir, PeerCACertName),
+		},
+		{
+			Name:  "ETCD_PEER_CERT_FILE",
+			Value: filepath.Join(nodeTLSDir, NodePeerCertName),
+		},
+		{
+			Name:  "ETCD_PEER_KEY_FILE",
+			Value: filepath.Join(nodeTLSDir, NodePeerKeyName),
+		},
+		{
+			Name:  "ETCD_PEER_CLIENT_CERT_AUTH",
+			Value: "false",
+		},
 	}
 }

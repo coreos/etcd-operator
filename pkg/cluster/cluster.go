@@ -15,8 +15,10 @@
 package cluster
 
 import (
+	"crypto/tls"
 	"fmt"
 	"math"
+	"net/http"
 	"reflect"
 	"sync"
 	"time"
@@ -85,6 +87,10 @@ type Cluster struct {
 	backupDir string
 
 	gc *garbagecollection.GC
+
+	etcdHttpClient *http.Client
+
+	etcdTLSConfig *tls.Config
 }
 
 func New(config Config, cl *spec.Cluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
@@ -179,7 +185,35 @@ func (c *Cluster) create() error {
 	if err := c.createClientServiceLB(); err != nil {
 		return fmt.Errorf("cluster create: fail to create client service LB: %v", err)
 	}
+
+	if err := c.initializeBackupHTTPSClient(); err != nil {
+		return fmt.Errorf("error initializing backup https client: %v", err)
+	}
 	return nil
+}
+
+func (c *Cluster) initializeBackupHTTPSClient() error {
+	staticSpec := c.cluster.Spec.ClusterTLS.Static
+	if staticSpec != nil {
+		tlsConfig, err := k8sutil.GetEtcdClientTLSConfig(
+			staticSpec.ClientSecretName,
+			staticSpec.CASecretName,
+			c.cluster.Metadata.Namespace,
+			c.config.KubeCli.CoreV1().RESTClient(),
+		)
+		if err != nil {
+			return fmt.Errorf("error getting httpClient from secrets: %v", err)
+		}
+		c.etcdHttpClient = &http.Client{
+			Transport: &http.Transport{TLSClientConfig: tlsConfig},
+			Timeout:   30 * time.Second,
+		}
+		c.etcdTLSConfig = tlsConfig
+		return nil
+	}
+
+	return fmt.Errorf("no valid TLS config defined, could not create etcd https client")
+
 }
 
 func (c *Cluster) prepareSeedMember() error {
@@ -335,7 +369,10 @@ func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
 }
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
-	m := &etcdutil.Member{Name: etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)}
+	m := &etcdutil.Member{
+		Name:      etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
+		Namespace: c.cluster.Metadata.Namespace,
+	}
 	ms := etcdutil.NewMemberSet(m)
 	if err := c.createPodAndService(ms, m, "new", recoverFromBackup); err != nil {
 		return fmt.Errorf("failed to create seed member (%s): %v", m.Name, err)

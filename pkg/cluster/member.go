@@ -24,9 +24,9 @@ import (
 )
 
 func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
-	resp, err := etcdutil.ListMembers(known.ClientURLs())
+	resp, err := etcdutil.ListMembers(c.etcdTLSConfig, known.ClientURLs())
 	if err != nil {
-		return err
+		return fmt.Errorf("error listing members: %v", err)
 	}
 	members := etcdutil.MemberSet{}
 	for _, m := range resp.Members {
@@ -61,6 +61,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 
 		members[name] = &etcdutil.Member{
 			Name:       name,
+			Namespace:  c.cluster.Metadata.Namespace,
 			ID:         m.ID,
 			ClientURLs: m.ClientURLs,
 			PeerURLs:   m.PeerURLs,
@@ -73,10 +74,10 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 func podsToMemberSet(pods []*v1.Pod, selfHosted *spec.SelfHostedPolicy) etcdutil.MemberSet {
 	members := etcdutil.MemberSet{}
 	for _, pod := range pods {
-		m := &etcdutil.Member{Name: pod.Name}
+		m := &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace}
 		if selfHosted != nil {
-			m.ClientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
-			m.PeerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
+			m.ClientURLs = []string{fmt.Sprintf("https://%s.%s.svc.cluster.local:2379", pod.Name, pod.Namespace)}
+			m.PeerURLs = []string{fmt.Sprintf("https://%s.%s.svc.cluster.local:2380", pod.Name, pod.Namespace)}
 		}
 		members.Add(m)
 	}

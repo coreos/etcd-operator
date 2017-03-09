@@ -5,3 +5,8 @@ metadata:
 spec:
   size: 3
   version: "3.1.2"
+  clusterTLS:
+    static:
+      caSecretName: etcd-operator-ca
+      nodeSecretName: etcd-operator-generic-node-tls
+      clientSecretName: etcd-operator-client

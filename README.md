@@ -39,6 +39,26 @@ Read [Developer Guide](./doc/dev/developer_guide.md) for setting up development 
 
 ![etcd Operator demo](https://raw.githubusercontent.com/coreos/etcd-operator/master/doc/gif/demo.gif)
 
+## Generate self-signed TLS CA and Identities
+```bash
+$ go run ./cmd/operator-gen-selfsigned-tls/main.go --cluster-namespace etcd-operator-dev
+INFO[0001] Writing output files...
+INFO[0001]       |-> etcd-operator-selfsigned-tls/pem/peer-ca-key.pem
+INFO[0001]       |-> etcd-operator-selfsigned-tls/pem/peer-ca-cert.pem
+INFO[0001]       |-> etcd-operator-selfsigned-tls/pem/client-ca-key.pem
+
+...
+
+
+INFO[0001]       |-> etcd-operator-selfsigned-tls/kubernetes/etcd-operator-ca.json
+
+INFO[0001]       |-> etcd-operator-selfsigned-tls/kubernetes/etcd-operator-generic-node-tls.json
+
+INFO[0001]       |-> etcd-operator-selfsigned-tls/kubernetes/etcd-operator-client.json
+
+$ kubectl create -f create -f etcd-operator-selfsigned-tls/kubernetes/
+```
+
 ## Deploy etcd operator
 
 See [instructions on how to install/uninstall etcd operator](doc/user/op_guide.md) .

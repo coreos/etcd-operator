@@ -99,6 +99,9 @@ type ClusterSpec struct {
 	// SelfHosted determines if the etcd cluster is used for a self-hosted
 	// Kubernetes cluster.
 	SelfHosted *SelfHostedPolicy `json:"selfHosted,omitempty"`
+
+	// etcd cluster TLS configuration
+	ClusterTLS *ClusterTLSPolicy `json:"clusterTLS"`
 }
 
 // RestorePolicy defines the policy to restore cluster form existing backup if not nil.
