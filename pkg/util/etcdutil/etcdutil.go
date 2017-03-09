@@ -16,6 +16,7 @@ package etcdutil
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
@@ -72,4 +73,23 @@ func MemberNameFromPeerURL(pu string) (string, error) {
 		return "", err
 	}
 	return strings.Split(u.Host, ":")[0], nil
+}
+
+func CheckHealth(url string) (bool, error) {
+	cfg := clientv3.Config{
+		Endpoints:   []string{url},
+		DialTimeout: constants.DefaultDialTimeout,
+	}
+	etcdcli, err := clientv3.New(cfg)
+	if err != nil {
+		return false, fmt.Errorf("failed to create etcd client for %s: %v", url, err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	_, err = etcdcli.Get(ctx, "/", clientv3.WithSerializable())
+	cancel()
+	etcdcli.Close()
+	if err != nil {
+		return false, fmt.Errorf("etcd health probing failed for %s: %v ", url, err)
+	}
+	return true, nil
 }

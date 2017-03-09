@@ -193,10 +193,11 @@ type ClusterStatus struct {
 
 	// Size is the current size of the cluster
 	Size int `json:"size"`
-	// ReadyPods are the etcd pods that are ready to serve requests
-	ReadyPods []string `json:"readyPods"`
-	// UnreadyPods are the etcd pods not ready to serve requests
-	UnreadyPods []string `json:"unreadyPods"`
+	// ReadyMembers are the etcd members that are ready to serve requests
+	// The member names are the same as the etcd pod names
+	ReadyMembers []string `json:"readyMembers"`
+	// UnreadyPods are the etcd members not ready to serve requests
+	UnreadyMembers []string `json:"unreadyMembers"`
 	// CurrentVersion is the current cluster version
 	CurrentVersion string `json:"currentVersion"`
 	// TargetVersion is the version the cluster upgrading to.
