@@ -4,7 +4,7 @@
 
 - Backup creation time is added in backup status.
 - Total size of backups time is added in backup service status.
-- Cluster members that are ready and unready to serve requests are tracked via the ClusterStatus fields `ReadyMembers` and `UnreadyMembers`
+- Cluster members that are ready and unready to serve requests are tracked via the ClusterStatus fields `Members.Ready` and `Members.Unready`
 
 ### Changed
 

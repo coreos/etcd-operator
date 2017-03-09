@@ -193,11 +193,8 @@ type ClusterStatus struct {
 
 	// Size is the current size of the cluster
 	Size int `json:"size"`
-	// ReadyMembers are the etcd members that are ready to serve requests
-	// The member names are the same as the etcd pod names
-	ReadyMembers []string `json:"readyMembers"`
-	// UnreadyPods are the etcd members not ready to serve requests
-	UnreadyMembers []string `json:"unreadyMembers"`
+	// Members are the etcd members in the cluster
+	Members MembersStatus `json:"members"`
 	// CurrentVersion is the current cluster version
 	CurrentVersion string `json:"currentVersion"`
 	// TargetVersion is the version the cluster upgrading to.
@@ -208,6 +205,14 @@ type ClusterStatus struct {
 	// BackupServiceStatus only exists when backup is enabled in the
 	// cluster spec.
 	BackupServiceStatus *BackupServiceStatus `json:"backupServiceStatus,omitempty"`
+}
+
+type MembersStatus struct {
+	// Ready are the etcd members that are ready to serve requests
+	// The member names are the same as the etcd pod names
+	Ready []string `json:"ready,omitempty"`
+	// Unready are the etcd members not ready to serve requests
+	Unready []string `json:"unready,omitempty"`
 }
 
 func (cs ClusterStatus) Copy() ClusterStatus {

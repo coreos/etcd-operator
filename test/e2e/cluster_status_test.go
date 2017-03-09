@@ -53,8 +53,8 @@ func TestReadyMembersStatus(t *testing.T) {
 			logfWithTimestamp(t, "failed to get updated cluster object: %v", err)
 			return false, nil
 		}
-		if len(currEtcd.Status.ReadyMembers) != size {
-			logfWithTimestamp(t, "size of ready members want = %d, get = %d ReadyMembers(%v) UnreadyMembers(%v). Will retry checking ReadyMembers", size, len(currEtcd.Status.ReadyMembers), currEtcd.Status.ReadyMembers, currEtcd.Status.UnreadyMembers)
+		if len(currEtcd.Status.Members.Ready) != size {
+			logfWithTimestamp(t, "size of ready members want = %d, get = %d ReadyMembers(%v) UnreadyMembers(%v). Will retry checking ReadyMembers", size, len(currEtcd.Status.Members.Ready), currEtcd.Status.Members.Ready, currEtcd.Status.Members.Unready)
 			return false, nil
 		}
 		return true, nil

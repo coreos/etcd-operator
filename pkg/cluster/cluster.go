@@ -273,8 +273,8 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 				c.logger.Errorf("fail to poll pods: %v", err)
 				continue
 			}
-			c.status.ReadyMembers = k8sutil.GetPodNames(ready)
-			c.status.UnreadyMembers = k8sutil.GetPodNames(unready)
+			c.status.Members.Ready = k8sutil.GetPodNames(ready)
+			c.status.Members.Unready = k8sutil.GetPodNames(unready)
 
 			if err := c.updateTPRStatus(); err != nil {
 				c.logger.Warningf("failed to update TPR status: %v", err)
