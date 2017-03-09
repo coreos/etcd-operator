@@ -85,7 +85,7 @@ func CheckHealth(url string) (bool, error) {
 		return false, fmt.Errorf("failed to create etcd client for %s: %v", url, err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	_, err = etcdcli.Get(ctx, "/", clientv3.WithSerializable())
+	_, err = etcdcli.Get(ctx, "/")
 	cancel()
 	etcdcli.Close()
 	if err != nil {
