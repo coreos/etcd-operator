@@ -1,4 +1,19 @@
-## [Unreleased 0.2.2]
+## [Unreleased 0.2.3]
+
+### Added
+
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
+## [Release 0.2.2]
 
 ### Added
 
