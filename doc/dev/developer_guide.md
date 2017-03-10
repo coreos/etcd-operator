@@ -13,13 +13,13 @@ $ glide install --strip-vendor
 
 ## How to build
 
+This must be run on arch `linux/amd64`.
+
 We provide a script to build binaries, build image, and push image to registry.
 
 Required tools:
 - Docker
 - Go 1.7+
-
-The script should only be run on arch `linux/amd64`.
 
 Build in project root dir:
 
