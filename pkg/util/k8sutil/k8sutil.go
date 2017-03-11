@@ -103,11 +103,6 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 func EtcdImageName(version string) string {
 	return fmt.Sprintf("quay.io/coreos/etcd:v%v", version)
 }
-
-func GetNodePortString(srv *v1.Service) string {
-	return fmt.Sprint(srv.Spec.Ports[0].NodePort)
-}
-
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 	p.Spec.NodeSelector = ns
 	return p
