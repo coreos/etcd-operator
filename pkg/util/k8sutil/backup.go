@@ -180,7 +180,7 @@ func NewBackupPodSpec(clusterName, account string, policy *spec.BackupPolicy) (*
 				Image: BackupImage,
 				Command: []string{
 					"/bin/sh",
-					"-c",
+					"-ec",
 					"/usr/local/bin/etcd-backup --etcd-cluster=" + clusterName,
 				},
 				Env: []v1.EnvVar{{
@@ -275,7 +275,7 @@ func CopyVolume(kubecli kubernetes.Interface, fromClusterName, toClusterName, ns
 					Image: "alpine",
 					Command: []string{
 						"/bin/sh",
-						"-c",
+						"-ec",
 						fmt.Sprintf("mkdir -p %[2]s; cp -r %[1]s/* %[2]s/", from, to),
 					},
 					VolumeMounts: []v1.VolumeMount{{

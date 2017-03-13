@@ -48,7 +48,7 @@ func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, name string, p
 			Name:  "add-member",
 			Image: EtcdImageName(cs.Version),
 			Command: []string{
-				"/bin/sh", "-c",
+				"/bin/sh", "-ec",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), name, strings.Join(peerURLs, ",")),
 			},
 			Env: []v1.EnvVar{envPodIP},

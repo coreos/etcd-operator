@@ -39,7 +39,7 @@ func TestClient(t *testing.T) {
 			Containers: []v1.Container{{
 				Name:    name,
 				Image:   e2eImage,
-				Command: []string{"/bin/sh", "-c", "cliente2e"},
+				Command: []string{"/bin/sh", "-ec", "cliente2e"},
 				Env: []v1.EnvVar{{
 					Name:      "MY_POD_NAMESPACE",
 					ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},

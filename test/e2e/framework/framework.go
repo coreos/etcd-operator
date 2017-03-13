@@ -111,7 +111,7 @@ func (f *Framework) SetupEtcdOperator() error {
 					Name:  "etcd-operator",
 					Image: f.opImage,
 					Command: []string{
-						"/bin/sh", "-c", cmd,
+						"/bin/sh", "-ec", cmd,
 					},
 					Env: []v1.EnvVar{
 						{

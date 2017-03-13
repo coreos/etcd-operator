@@ -73,7 +73,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 			Name:  "fetch-backup",
 			Image: "tutum/curl",
 			Command: []string{
-				"/bin/sh", "-c",
+				"/bin/sh", "-ec",
 				fmt.Sprintf("curl -o %s %s", backupFile, backupapi.NewBackupURL("http", backupAddr, version)),
 			},
 			VolumeMounts: etcdVolumeMounts(),
@@ -82,7 +82,7 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 			Name:  "restore-datadir",
 			Image: EtcdImageName(version),
 			Command: []string{
-				"/bin/sh", "-c",
+				"/bin/sh", "-ec",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
 					" --name %[2]s"+
 					" --initial-cluster %[2]s=http://%[2]s:2380"+
