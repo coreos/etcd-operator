@@ -33,7 +33,7 @@ func etcdContainer(commands, version string) v1.Container {
 	c := v1.Container{
 		// TODO: fix "sleep 5".
 		// Without waiting some time, there is highly probable flakes in network setup.
-		Command: []string{"/bin/sh", "-c", fmt.Sprintf("sleep 5; %s", commands)},
+		Command: []string{"/bin/sh", "-ec", fmt.Sprintf("sleep 5; %s", commands)},
 		Name:    "etcd",
 		Image:   EtcdImageName(version),
 		Ports: []v1.ContainerPort{
@@ -69,7 +69,7 @@ func etcdLivenessProbe() *v1.Probe {
 	return &v1.Probe{
 		Handler: v1.Handler{
 			Exec: &v1.ExecAction{
-				Command: []string{"/bin/sh", "-c",
+				Command: []string{"/bin/sh", "-ec",
 					"ETCDCTL_API=3 etcdctl get foo"},
 			},
 		},

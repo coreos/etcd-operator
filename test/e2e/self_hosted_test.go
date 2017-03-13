@@ -159,7 +159,7 @@ func cleanupSelfHostedHostpath() {
 						},
 						Command: []string{
 							// TODO: this is an assumption on the format of etcd data dir.
-							"/bin/sh", "-c", fmt.Sprintf("rm -rf /var/etcd/%s-*", f.Namespace),
+							"/bin/sh", "-ec", fmt.Sprintf("rm -rf /var/etcd/%s-*", f.Namespace),
 						},
 					}},
 					Volumes: []v1.Volume{{
