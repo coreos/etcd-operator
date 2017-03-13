@@ -9,6 +9,7 @@
 ### Fixed
 
 - [GH-890] Fix a race that when majority of members went down cluster couldn't recover
+- Fix self-hosted cluster reboot case
 
 ### Deprecated
 
