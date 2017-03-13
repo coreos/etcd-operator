@@ -27,10 +27,10 @@ gitHash="github.com/coreos/etcd-operator/version.GitSHA=${GIT_SHA}"
 
 go_ldflags="-X ${ldKVPairs} -X ${gitHash}"
 
-GOBIN=${bin_dir} CGO_ENABLED=0 go install -installsuffix cgo -ldflags "$go_ldflags" ./cmd/operator/
+GOBIN=${bin_dir} GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go install -installsuffix cgo -ldflags "$go_ldflags" ./cmd/operator/
 mv ${bin_dir}/operator ${bin_dir}/etcd-operator
 
-GOBIN=${bin_dir} CGO_ENABLED=0 go install -installsuffix cgo -ldflags "$go_ldflags" ./cmd/backup/
+GOBIN=${bin_dir} GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go install -installsuffix cgo -ldflags "$go_ldflags" ./cmd/backup/
 mv ${bin_dir}/backup ${bin_dir}/etcd-backup
 
 docker build --tag "${IMAGE}" -f hack/build/operator/Dockerfile . 1>/dev/null
