@@ -14,7 +14,7 @@ Let's say we are releasing $VERSION (e.g. `v1.2.3`) .
 
 - Bump the version of the operator image in example deployements.
 
-TOOD: release checker should check the version in the deployemtn.
+TOOD: release checker should check the version in the deployment.
 
 - Change CHANGELOG.md.
 

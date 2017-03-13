@@ -20,7 +20,7 @@ This is essentially saving backups on an instance of AWS EBS.
 
 Saving backups to S3 is also supported. The following flags need to be passed to operator:
 - `backup-aws-secret`: The name of the kube secret object that stores the AWS credential file. The file name must be 'credentials'.
-For example, create secret as `kubectl create secret generic aws --from-file=$AWS_DIR/config`, and then set flag `--backup-aws-secret=aws`.
+For example, create secret as `kubectl create secret generic aws --from-file=$AWS_DIR/credentials`, and then set flag `--backup-aws-secret=aws`.
 - `backup-aws-config`: The name of the kube configmap object that stores the AWS config file. The file name must be 'config'.
 For example, create configmap as `kubectl create configmap aws --from-file=$AWS_DIR/config`, and then set flag `--backup-aws-config=aws`.
 - `backup-s3-bucket`: The name of the S3 bucket to store backups in.
