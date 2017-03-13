@@ -28,6 +28,9 @@ import (
 
 const (
 	shouldCheckpointAnnotation = "checkpointer.alpha.coreos.com/checkpoint" // = "true"
+	varLockVolumeName          = "var-lock"
+	varLockDir                 = "/var/lock"
+	etcdLockPath               = "/var/lock/etcd.lock"
 )
 
 var (
@@ -74,6 +77,19 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 	}
 
 	c := etcdContainer(commands, cs.Version)
+	// On node reboot, there will be two copies of etcd pod: scheduled and checkpointed one.
+	// Checkpointed one will start first. But then the scheduler will detect host port conflict,
+	// and set the pod (in APIServer) failed. This further affects etcd service by removing the endpoints.
+	// To make scheduling phase succeed, we work around by removing ports in spec.
+	// However, the scheduled pod will fail when running on node because resources (e.g. host port) are taken.
+	// Thus, we make etcd pod flock first before starting etcd server.
+	c.Ports = nil
+	c.VolumeMounts = append(c.VolumeMounts, v1.VolumeMount{
+		Name:      varLockVolumeName,
+		MountPath: varLockDir,
+		ReadOnly:  false,
+	})
+	c.Command = []string{"sh", "-ec", fmt.Sprintf("flock %s -c \"%s\"", etcdLockPath, commands)}
 	if cs.Pod != nil {
 		c = containerWithRequirements(c, cs.Pod.Resources)
 	}
@@ -100,6 +116,9 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 				Name: "etcd-data",
 				// TODO: configurable mount host path.
 				VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: etcdVolumeMountDir}},
+			}, {
+				Name:         varLockVolumeName,
+				VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: varLockDir}},
 			}},
 		},
 	}
