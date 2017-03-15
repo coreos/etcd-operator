@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- [GH-900] Fix looping of reconcile skip due to unready members
+
 ### Deprecated
 
 ### Security
