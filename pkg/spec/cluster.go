@@ -101,7 +101,7 @@ type ClusterSpec struct {
 	SelfHosted *SelfHostedPolicy `json:"selfHosted,omitempty"`
 
 	// etcd cluster TLS configuration
-	TLS *TLSPolicy `json:"TLS"`
+	TLS *TLSPolicy `json:"TLS,omitempty"`
 }
 
 // RestorePolicy defines the policy to restore cluster form existing backup if not nil.
