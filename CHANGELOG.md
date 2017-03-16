@@ -4,6 +4,8 @@
 
 ### Changed
 
+- TLSSpec json tag changed as `omitempty`
+
 ### Removed
 
 ### Fixed
