@@ -268,23 +268,18 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 				c.status.Control()
 			}
 
-			ready, unready, err := c.pollPods()
+			running, pending, err := c.pollPods()
 			if err != nil {
 				c.logger.Errorf("fail to poll pods: %v", err)
 				continue
 			}
-			c.status.Members.Ready = k8sutil.GetPodNames(ready)
-			c.status.Members.Unready = k8sutil.GetPodNames(unready)
 
-			if err := c.updateTPRStatus(); err != nil {
-				c.logger.Warningf("failed to update TPR status: %v", err)
-			}
-
-			if len(unready) > 0 {
-				c.logger.Infof("skip reconciliation: ready (%v), unready (%v)", k8sutil.GetPodNames(ready), k8sutil.GetPodNames(unready))
+			if len(pending) > 0 {
+				// Pod startup might take long, e.g. pulling image. It would deterministically become running or succeeded/failed later.
+				c.logger.Infof("skip reconciliation: running (%v), pending (%v)", k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
 				continue
 			}
-			if len(ready) == 0 {
+			if len(running) == 0 {
 				c.logger.Warningf("all etcd pods are dead. Trying to recover from a previous backup")
 				rerr = c.disasterRecovery(nil)
 				if rerr != nil {
@@ -296,13 +291,13 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 
 			// On controller restore, we could have "members == nil"
 			if rerr != nil || c.members == nil {
-				rerr = c.updateMembers(podsToMemberSet(ready, c.cluster.Spec.SelfHosted))
+				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted))
 				if rerr != nil {
 					c.logger.Errorf("failed to update members: %v", rerr)
 					break
 				}
 			}
-			rerr = c.reconcile(ready)
+			rerr = c.reconcile(running)
 			if rerr != nil {
 				c.logger.Errorf("failed to reconcile: %v", rerr)
 				break
@@ -311,7 +306,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 			if err := c.updateLocalBackupStatus(); err != nil {
 				c.logger.Warningf("failed to update local backup service status: %v", err)
 			}
-
+			c.updateMemberStatus(running)
 			if err := c.updateTPRStatus(); err != nil {
 				c.logger.Warningf("failed to update TPR status: %v", err)
 			}
@@ -448,15 +443,12 @@ func (c *Cluster) removePodAndService(name string) error {
 	return nil
 }
 
-func (c *Cluster) pollPods() ([]*v1.Pod, []*v1.Pod, error) {
+func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 	podList, err := c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).List(k8sutil.ClusterListOpt(c.cluster.Metadata.Name))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)
 	}
 
-	var running []*v1.Pod
-	var ready []*v1.Pod
-	var unready []*v1.Pod
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 		if len(pod.OwnerReferences) < 1 {
@@ -472,16 +464,21 @@ func (c *Cluster) pollPods() ([]*v1.Pod, []*v1.Pod, error) {
 		case v1.PodRunning:
 			running = append(running, pod)
 		case v1.PodPending:
-			unready = append(unready, pod)
+			pending = append(pending, pod)
 		}
 	}
 
-	for _, pod := range running {
+	return running, pending, nil
+}
+
+func (c *Cluster) updateMemberStatus(pods []*v1.Pod) {
+	var ready, unready []*v1.Pod
+	for _, pod := range pods {
 		// TODO: Change to URL struct for TLS integration
 		url := fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
 		healthy, err := etcdutil.CheckHealth(url)
 		if err != nil {
-			c.logger.Warningf("Health check failed: %v", err)
+			c.logger.Warningf("health check of etcd member (%s) failed: %v", url, err)
 		}
 		if healthy {
 			ready = append(ready, pod)
@@ -489,8 +486,8 @@ func (c *Cluster) pollPods() ([]*v1.Pod, []*v1.Pod, error) {
 			unready = append(unready, pod)
 		}
 	}
-
-	return ready, unready, nil
+	c.status.Members.Ready = k8sutil.GetPodNames(ready)
+	c.status.Members.Unready = k8sutil.GetPodNames(unready)
 }
 
 func (c *Cluster) updateTPRStatus() error {
