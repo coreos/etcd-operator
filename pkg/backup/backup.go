@@ -212,7 +212,7 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	}
 
 	bs := backupapi.BackupStatus{
-		CreationTime:     time.Now(),
+		CreationTime:     time.Now().Format(time.RFC3339),
 		Size:             toMB(n),
 		Version:          resp.Version,
 		TimeTookInSecond: int(time.Since(start).Seconds() + 1),

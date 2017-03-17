@@ -14,8 +14,6 @@
 
 package spec
 
-import "time"
-
 type BackupStorageType string
 
 const (
@@ -76,7 +74,7 @@ type BackupServiceStatus struct {
 
 type BackupStatus struct {
 	// Creation time of the backup.
-	CreationTime time.Time `json:"creationTime"`
+	CreationTime string `json:"creationTime"`
 
 	// Size is the size of the backup in MB.
 	Size float64 `json:"size"`

@@ -14,8 +14,6 @@
 
 package backupapi
 
-import "time"
-
 type ServiceStatus struct {
 	// RecentBackup is status of the most recent backup created by
 	// the backup service
@@ -30,7 +28,7 @@ type ServiceStatus struct {
 
 type BackupStatus struct {
 	// Creation time of the backup.
-	CreationTime time.Time `json:"creationTime"`
+	CreationTime string `json:"creationTime"`
 
 	// Size is the size of the backup in MB.
 	Size float64 `json:"size"`
