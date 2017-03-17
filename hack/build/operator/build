@@ -4,6 +4,16 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+function go_build {
+	if [ ! -z ${GOINSTALL+x} ] && [ "${GOINSTALL}" = "y" ]
+	then
+  		GOBIN=${bin_dir} GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go install -installsuffix cgo -ldflags "$go_ldflags" ./cmd/${1}/
+  		mv ${bin_dir}/${1} ${bin_dir}/etcd-${1}
+	else
+  		GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ${bin_dir}/etcd-${1} -installsuffix cgo -ldflags "$go_ldflags" ./cmd/${1}/
+	fi
+}
+
 if ! which go > /dev/null; then
 	echo "golang needs to be installed"
 	exit 1
@@ -27,11 +37,8 @@ gitHash="github.com/coreos/etcd-operator/version.GitSHA=${GIT_SHA}"
 
 go_ldflags="-X ${ldKVPairs} -X ${gitHash}"
 
-GOBIN=${bin_dir} GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go install -installsuffix cgo -ldflags "$go_ldflags" ./cmd/operator/
-mv ${bin_dir}/operator ${bin_dir}/etcd-operator
-
-GOBIN=${bin_dir} GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go install -installsuffix cgo -ldflags "$go_ldflags" ./cmd/backup/
-mv ${bin_dir}/backup ${bin_dir}/etcd-backup
+go_build operator
+go_build backup
 
 docker build --tag "${IMAGE}" -f hack/build/operator/Dockerfile . 1>/dev/null
 # For gcr users, do "gcloud docker -a" to have access.
