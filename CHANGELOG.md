@@ -5,10 +5,14 @@
 ### Changed
 
 - TLSSpec json tag changed as `omitempty`
+- Time related fields in spec, i.e. TransitionTime and CreationTime, is changed to type `string`.
+  This should be backward compatible and no effect on operator upgrade.
 
 ### Removed
 
 ### Fixed
+
+- [GH-910] Operator keeps updating status even if there is no change.
 
 ### Deprecated
 

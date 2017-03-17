@@ -165,7 +165,7 @@ type ClusterCondition struct {
 
 	Reason string `json:"reason"`
 
-	TransitionTime time.Time `json:"transitionTime"`
+	TransitionTime string `json:"transitionTime"`
 }
 
 type ClusterConditionType string
@@ -267,7 +267,7 @@ func (cs *ClusterStatus) AppendScalingUpCondition(from, to int) {
 	c := ClusterCondition{
 		Type:           ClusterConditionScalingUp,
 		Reason:         scalingReason(from, to),
-		TransitionTime: time.Now(),
+		TransitionTime: time.Now().Format(time.RFC3339),
 	}
 	cs.appendCondition(c)
 }
@@ -276,7 +276,7 @@ func (cs *ClusterStatus) AppendScalingDownCondition(from, to int) {
 	c := ClusterCondition{
 		Type:           ClusterConditionScalingDown,
 		Reason:         scalingReason(from, to),
-		TransitionTime: time.Now(),
+		TransitionTime: time.Now().Format(time.RFC3339),
 	}
 	cs.appendCondition(c)
 }
@@ -284,7 +284,7 @@ func (cs *ClusterStatus) AppendScalingDownCondition(from, to int) {
 func (cs *ClusterStatus) AppendRecoveringCondition() {
 	c := ClusterCondition{
 		Type:           ClusterConditionRecovering,
-		TransitionTime: time.Now(),
+		TransitionTime: time.Now().Format(time.RFC3339),
 	}
 	cs.appendCondition(c)
 }
@@ -295,7 +295,7 @@ func (cs *ClusterStatus) AppendUpgradingCondition(to string, member string) {
 	c := ClusterCondition{
 		Type:           ClusterConditionUpgrading,
 		Reason:         reason,
-		TransitionTime: time.Now(),
+		TransitionTime: time.Now().Format(time.RFC3339),
 	}
 	cs.appendCondition(c)
 }
@@ -306,7 +306,7 @@ func (cs *ClusterStatus) AppendRemovingDeadMember(name string) {
 	c := ClusterCondition{
 		Type:           ClusterConditionRemovingDeadMember,
 		Reason:         reason,
-		TransitionTime: time.Now(),
+		TransitionTime: time.Now().Format(time.RFC3339),
 	}
 	cs.appendCondition(c)
 }
@@ -314,7 +314,7 @@ func (cs *ClusterStatus) AppendRemovingDeadMember(name string) {
 func (cs *ClusterStatus) SetReadyCondition() {
 	c := ClusterCondition{
 		Type:           ClusterConditionReady,
-		TransitionTime: time.Now(),
+		TransitionTime: time.Now().Format(time.RFC3339),
 	}
 
 	if len(cs.Conditions) == 0 {
