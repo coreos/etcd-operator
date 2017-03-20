@@ -103,7 +103,7 @@ func (bm *backupManager) setup() error {
 
 func (bm *backupManager) runSidecar() error {
 	cl, c := bm.cluster, bm.config
-	podSpec, err := k8sutil.NewBackupPodSpec(cl.Metadata.Name, bm.config.ServiceAccount, cl.Spec.Backup)
+	podSpec, err := k8sutil.NewBackupPodSpec(cl.Metadata.Name, bm.config.ServiceAccount, cl.Spec)
 	if err != nil {
 		return err
 	}
