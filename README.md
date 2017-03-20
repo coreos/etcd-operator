@@ -24,6 +24,8 @@ The etcd operator manages etcd clusters deployed to [Kubernetes][k8s-home] and a
 - [Backup and restore a cluster](#disaster-recovery)
 - [Rolling upgrade](#upgrade-an-etcd-cluster)
 
+There are [more spec examples](./doc/user/spec_examples.md).
+
 Read [Best Practices](./doc/best_practices.md) for more information on how to better use etcd operator.
 
 Read [RBAC docs](./doc/user/rbac.md) for how to setup RBAC rules for etcd operator if RBAC is in place.
@@ -386,9 +388,9 @@ Check the other two pods and you should see the same result.
 
 - Backup works only for data in etcd3 storage, not for data in etcd2 storage.
 
-- Backup requires PV to work, and it only works on GCE(kubernetes.io/gce-pd) and AWS(kubernetes.io/aws-ebs) for now.
+- PV Backup only works on GCE(kubernetes.io/gce-pd) and AWS(kubernetes.io/aws-ebs) for now.
 
-- Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with all nodes running in the same Kubernetes cluster.
+- Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with its node running in the same Kubernetes cluster.
 
 **The operator collects anonymous usage statistics to help us learn how the software is being used and how we can improve it. To disable collection, run the operator with the flag `-analytics=false`.**
 
