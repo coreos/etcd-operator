@@ -166,14 +166,20 @@ func PodSpecWithS3(ps *v1.PodSpec, s3Ctx s3config.S3Context) *v1.PodSpec {
 	return ps
 }
 
-func NewBackupPodSpec(clusterName, account string, policy *spec.BackupPolicy) (*v1.PodSpec, error) {
-	bp, err := json.Marshal(policy)
+func NewBackupPodSpec(clusterName, account string, sp spec.ClusterSpec) (*v1.PodSpec, error) {
+	bp, err := json.Marshal(sp.Backup)
 	if err != nil {
 		return nil, err
 	}
 
+	var nsel map[string]string
+	if sp.Pod != nil {
+		nsel = sp.Pod.NodeSelector
+	}
+
 	ps := &v1.PodSpec{
 		ServiceAccountName: account,
+		NodeSelector:       nsel,
 		Containers: []v1.Container{
 			{
 				Name:  "backup",
