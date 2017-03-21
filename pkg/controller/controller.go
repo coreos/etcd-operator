@@ -40,6 +40,7 @@ var (
 	supportedPVProvisioners = map[string]struct{}{
 		"kubernetes.io/gce-pd":  {},
 		"kubernetes.io/aws-ebs": {},
+		"none":                  {},
 	}
 
 	ErrVersionOutdated = errors.New("requested version is outdated in apiserver")
@@ -247,15 +248,23 @@ func (c *Controller) initResource() (string, error) {
 				return "", err
 			}
 		} else {
-			return "", fmt.Errorf("fail to create TPR: %v", err)
+			_, listerr := k8sutil.GetClusterList(c.Config.KubeCli.CoreV1().RESTClient(), c.Config.Namespace)
+			if listerr != nil {
+				return "", fmt.Errorf("fail to create TPR and it does not exist in the api server: %v", err)
+			}
+			watchVersion, err = c.findAllClusters()
 		}
 	}
-	err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			return "", fmt.Errorf("fail to create storage class: %v", err)
+
+	if c.PVProvisioner != "none" {
+		err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
+		if err != nil {
+			if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+				return "", fmt.Errorf("fail to create storage class: %v", err)
+			}
 		}
 	}
+
 	return watchVersion, nil
 }
 
