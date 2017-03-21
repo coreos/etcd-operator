@@ -196,6 +196,9 @@ func NewMemberServiceManifest(etcdName, clusterName string, owner metatypes.Owne
 		ObjectMeta: v1.ObjectMeta{
 			Name: etcdName,
 			Labels: map[string]string{
+				// Member service is different from etcd (client) service.
+				// The owner of member service is the pod itself, so we can't use "app=etcd" which is used by GC.
+				"app":          "etcd-member-svc",
 				"etcd_cluster": clusterName,
 			},
 			Annotations: map[string]string{
