@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-set -o errexit
-set -o nounset
-set -o pipefail
+: ${TEST_NAMESPACE:?"Need to set TEST_NAMESPACE"}
 
 function rbac_cleanup {
 	kubectl delete clusterrolebinding etcd-operator
