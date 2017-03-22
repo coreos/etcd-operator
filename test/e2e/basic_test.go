@@ -145,13 +145,13 @@ func testEtcdUpgrade(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	testEtcd = etcdClusterWithVersion(testEtcd, "3.1.2")
+	testEtcd = etcdClusterWithVersion(testEtcd, "3.1.4")
 
 	if _, err := updateEtcdCluster(f, testEtcd); err != nil {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 
-	err = waitSizeAndVersionReached(t, f, testEtcd.Metadata.Name, "3.1.2", 3, 60*time.Second)
+	err = waitSizeAndVersionReached(t, f, testEtcd.Metadata.Name, "3.1.4", 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to wait new version etcd cluster: %v", err)
 	}

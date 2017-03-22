@@ -7,6 +7,7 @@
 - TLSSpec json tag changed as `omitempty`
 - Time related fields in spec, i.e. TransitionTime and CreationTime, is changed to type `string`.
   This should be backward compatible and no effect on operator upgrade.
+- Update default etcd version to 3.1.4
 
 ### Removed
 
