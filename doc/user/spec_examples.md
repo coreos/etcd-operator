@@ -14,7 +14,7 @@ This will use default version that etcd operator chooses.
 ```yaml
 spec:
   size: 3
-  version: 3.1.1
+  version: "3.1.4"
 ```
 
 ### Three members cluster with node selector and anti-affinity
@@ -52,7 +52,6 @@ See [example](../../example/example-etcd-cluster-with-backup.yaml) .
 ```yaml
 spec:
   size: 3
-  version: "3.1.2"
   backup:
     backupIntervalInSecond: 300
     maxBackups: 5
@@ -72,7 +71,6 @@ metadata:
   name: "cluster-a"
 spec:
   size: 3
-  version: "3.1.2"
   backup:
     backupIntervalInSecond: 300
     maxBackups: 5
@@ -93,7 +91,6 @@ metadata:
   name: "cluster-a"
 spec:
   size: 3
-  version: "3.1.2"
   backup:
     backupIntervalInSecond: 300
     maxBackups: 5
@@ -114,7 +111,6 @@ metadata:
   name: "cluster-b"
 spec:
   size: 3
-  version: "3.1.2"
   backup:
     backupIntervalInSecond: 300
     maxBackups: 5

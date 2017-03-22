@@ -349,7 +349,7 @@ Starting to serve on 127.0.0.1:8080
 ```
 
 Have following json file ready:
-(Note that the version field is changed from 3.0.16 to 3.1.2)
+(Note that the version field is changed from 3.0.16 to 3.1.4)
 
 ```
 $ cat body.json
@@ -361,7 +361,7 @@ $ cat body.json
   },
   "spec": {
     "size": 3,
-    "version": "3.1.2"
+    "version": "3.1.4"
   }
 }
 ```
@@ -373,11 +373,11 @@ $ curl -H 'Content-Type: application/json' -X PUT --data @body.json \
     http://127.0.0.1:8080/apis/etcd.coreos.com/v1beta1/namespaces/default/clusters/example-etcd-cluster
 ```
 
-Wait ~30 seconds. The container image version should be updated to v3.1.2:
+Wait ~30 seconds. The container image version should be updated to v3.1.4:
 
 ```
 $ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
-    image: quay.io/coreos/etcd:v3.1.2
+    image: quay.io/coreos/etcd:v3.1.4
 ```
 
 Check the other two pods and you should see the same result.
