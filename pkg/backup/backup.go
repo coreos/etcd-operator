@@ -48,8 +48,11 @@ type Backup struct {
 
 	clusterName string
 	namespace   string
-	policy      spec.BackupPolicy
-	listenAddr  string
+	// only exist for pv type storage
+	pvName string
+
+	policy     spec.BackupPolicy
+	listenAddr string
 
 	be backend
 
@@ -69,10 +72,14 @@ func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.Backu
 		panic(err)
 	}
 
-	var be backend
+	var (
+		be     backend
+		pvname string
+	)
 	switch policy.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		be = &fileBackend{dir: bdir}
+		pvname = os.Getenv(k8sutil.PVNameENVKey)
 	case spec.BackupStorageTypeS3:
 		prefix := clusterName + "/"
 		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), prefix, session.Options{
@@ -93,6 +100,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.Backu
 		kclient:     kclient,
 		clusterName: clusterName,
 		namespace:   ns,
+		pvName:      pvname,
 		policy:      policy,
 		listenAddr:  listenAddr,
 		be:          be,

@@ -37,9 +37,9 @@ func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, cluste
 	return s, nil
 }
 
-func (s *s3) Create() error {
+func (s *s3) Create() (string, error) {
 	// TODO: check if bucket/folder exists?
-	return nil
+	return "todo: s3 bucket name?", nil
 }
 
 func (s *s3) Clone(from string) error {

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
+	"github.com/coreos/etcd-operator/pkg/spec"
 
 	"github.com/Sirupsen/logrus"
 )
@@ -129,6 +130,15 @@ func (b *Backup) serveStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(b.recentBackupsStatus) != 0 {
 		s.RecentBackup = &b.recentBackupsStatus[len(b.recentBackupsStatus)-1]
+	}
+
+	switch b.policy.StorageType {
+	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+		s.StorageStatus = &backupapi.StorageStatus{
+			&backupapi.PVStatus{
+				Name: b.pvName,
+			},
+		}
 	}
 
 	je := json.NewEncoder(w)

@@ -46,7 +46,8 @@ const (
 	awsConfigVolName          = "config-aws"
 	fromDirMountDir           = "/mnt/backup/from"
 
-	PVBackupV1 = "v1" // TODO: refactor and combine this with pkg/backup.PVBackupV1
+	PVNameENVKey = "BACKUP_PV_NAME"
+	PVBackupV1   = "v1" // TODO: refactor and combine this with pkg/backup.PVBackupV1
 )
 
 func CreateStorageClass(kubecli kubernetes.Interface, pvProvisioner string) error {
@@ -62,7 +63,7 @@ func CreateStorageClass(kubecli kubernetes.Interface, pvProvisioner string) erro
 	return err
 }
 
-func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvisioner string, volumeSizeInMB int) error {
+func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvisioner string, volumeSizeInMB int) (*v1.PersistentVolumeClaim, error) {
 	name := makePVCName(clusterName)
 	storageClassName := storageClassPrefix + "-" + path.Base(pvProvisioner)
 	claim := &v1.PersistentVolumeClaim{
@@ -89,7 +90,7 @@ func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvision
 	}
 	_, err := kubecli.CoreV1().PersistentVolumeClaims(ns).Create(claim)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// TODO: We set timeout to 60s here since PVC binding could take up to 60s for GCE/PD. See https://github.com/kubernetes/kubernetes/issues/40972 .
@@ -107,19 +108,24 @@ func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvision
 	})
 	if err != nil {
 		wErr := fmt.Errorf("fail to wait PVC (%s) '(%v)/Bound': %v", name, claim.Status.Phase, err)
-		return wErr
+		return nil, wErr
 	}
 
-	return nil
+	return claim, nil
 }
 
 var BackupImage = "quay.io/coreos/etcd-operator:latest"
 
-func PodSpecWithPV(ps *v1.PodSpec, clusterName string) *v1.PodSpec {
+func PodSpecWithPV(ps *v1.PodSpec, clusterName, storageName string) *v1.PodSpec {
 	ps.Containers[0].VolumeMounts = []v1.VolumeMount{{
 		Name:      backupPVVolName,
 		MountPath: constants.BackupMountDir,
 	}}
+
+	ps.Containers[0].Env = append(ps.Containers[0].Env, v1.EnvVar{
+		Name:  PVNameENVKey,
+		Value: storageName})
+
 	ps.Volumes = []v1.Volume{{
 		Name: backupPVVolName,
 		VolumeSource: v1.VolumeSource{

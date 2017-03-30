@@ -26,8 +26,12 @@ func NewPVStorage(kubecli kubernetes.Interface, cn, ns, pvp string, backupPolicy
 	return s, nil
 }
 
-func (s *pv) Create() error {
-	return k8sutil.CreateAndWaitPVC(s.kubecli, s.clusterName, s.namespace, s.pvProvisioner, s.backupPolicy.PV.VolumeSizeInMB)
+func (s *pv) Create() (string, error) {
+	c, err := k8sutil.CreateAndWaitPVC(s.kubecli, s.clusterName, s.namespace, s.pvProvisioner, s.backupPolicy.PV.VolumeSizeInMB)
+	if err != nil {
+		return "", err
+	}
+	return c.Spec.VolumeName, nil
 }
 
 func (s *pv) Clone(from string) error {
