@@ -8,6 +8,8 @@
 - Time related fields in spec, i.e. TransitionTime and CreationTime, is changed to type `string`.
   This should be backward compatible and no effect on operator upgrade.
 - Update default etcd version to 3.1.4
+- Self-hosted etcd pod is started with "--metrics extensive" flag.
+  This is only available in etcd 3.1+.
 
 ### Removed
 
