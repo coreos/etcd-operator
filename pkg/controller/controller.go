@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
@@ -38,8 +39,9 @@ import (
 
 var (
 	supportedPVProvisioners = map[string]struct{}{
-		"kubernetes.io/gce-pd":  {},
-		"kubernetes.io/aws-ebs": {},
+		constants.PVProvisionerGCEPD:  {},
+		constants.PVProvisionerAWSEBS: {},
+		constants.PVProvisionerNone:   {},
 	}
 
 	ErrVersionOutdated = errors.New("requested version is outdated in apiserver")
@@ -250,10 +252,12 @@ func (c *Controller) initResource() (string, error) {
 			return "", fmt.Errorf("fail to create TPR: %v", err)
 		}
 	}
-	err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			return "", fmt.Errorf("fail to create storage class: %v", err)
+	if c.Config.PVProvisioner != constants.PVProvisionerNone {
+		err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
+		if err != nil {
+			if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+				return "", fmt.Errorf("fail to create storage class: %v", err)
+			}
 		}
 	}
 	return watchVersion, nil

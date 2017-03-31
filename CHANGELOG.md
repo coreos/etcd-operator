@@ -2,6 +2,9 @@
 
 ### Added
 
+- Add "none" PV provisioner option. If operator flag "pv-provisioner" is set to "none",
+  operator won’t create any storage class and users couldn’t make use of operator’s PV backup feature.
+
 ### Changed
 
 - TLSSpec json tag changed as `omitempty`

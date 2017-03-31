@@ -17,6 +17,7 @@ package cluster
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -28,12 +29,18 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (
 	defaultBackupHTTPTimeout     = 5 * time.Second
 	defaultBackupCreatingTimeout = 1 * time.Minute
+)
+
+var (
+	errNoPVForBackup       = errors.New("no backup could be created due to PVProvisioner (none) is set")
+	errNoS3ConfigForBackup = errors.New("no backup could be created due to S3 configuration not set")
 )
 
 type backupManager struct {
@@ -70,8 +77,14 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 	b := cl.Spec.Backup
 	switch b.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+		if c.PVProvisioner == constants.PVProvisionerNone {
+			return nil, errNoPVForBackup
+		}
 		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, c.PVProvisioner, *b)
 	case spec.BackupStorageTypeS3:
+		if len(c.S3Context.AWSConfig) == 0 {
+			return nil, errNoS3ConfigForBackup
+		}
 		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, *b)
 	}
 	return s, err

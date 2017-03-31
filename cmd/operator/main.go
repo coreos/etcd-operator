@@ -28,6 +28,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/chaos"
 	"github.com/coreos/etcd-operator/pkg/controller"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election/resourcelock"
@@ -66,7 +67,7 @@ var (
 func init() {
 	flag.BoolVar(&analyticsEnabled, "analytics", true, "Send analytical event (Cluster Created/Deleted etc.) to Google Analytics")
 
-	flag.StringVar(&pvProvisioner, "pv-provisioner", "kubernetes.io/gce-pd", "persistent volume provisioner type")
+	flag.StringVar(&pvProvisioner, "pv-provisioner", constants.PVProvisionerGCEPD, "persistent volume provisioner type")
 	flag.StringVar(&awsSecret, "backup-aws-secret", "",
 		"The name of the kube secret object that stores the AWS credential file. The file name must be 'credentials'.")
 	flag.StringVar(&awsConfig, "backup-aws-config", "",
