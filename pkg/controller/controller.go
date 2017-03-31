@@ -148,19 +148,25 @@ func (c *Controller) Run() error {
 
 		for ev := range eventCh {
 			pt.start()
-			c.handleClusterEvent(ev)
+			if err := c.handleClusterEvent(ev); err != nil {
+				c.logger.Warningf("fail to handle event: %v", err)
+			}
 			pt.stop()
 		}
 	}()
 	return <-errCh
 }
 
-func (c *Controller) handleClusterEvent(event *Event) {
+func (c *Controller) handleClusterEvent(event *Event) error {
 	clus := event.Object
 
 	if clus.Status.IsFailed() {
-		c.logger.Infof("ignore failed cluster (%s). Please delete its TPR", clus.Metadata.Name)
-		return
+		if event.Type == kwatch.Deleted {
+			delete(c.clusters, clus.Metadata.Name)
+			delete(c.clusterRVs, clus.Metadata.Name)
+			return nil
+		}
+		return fmt.Errorf("ignore failed cluster (%s). Please delete its TPR", clus.Metadata.Name)
 	}
 
 	clus.Spec.Cleanup()
@@ -180,8 +186,7 @@ func (c *Controller) handleClusterEvent(event *Event) {
 
 	case kwatch.Modified:
 		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
-			c.logger.Warningf("unsafe state. cluster was never created but we received event (%s)", event.Type)
-			return
+			return fmt.Errorf("unsafe state. cluster was never created but we received event (%s)", event.Type)
 		}
 		c.clusters[clus.Metadata.Name].Update(clus)
 		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
@@ -189,8 +194,7 @@ func (c *Controller) handleClusterEvent(event *Event) {
 
 	case kwatch.Deleted:
 		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
-			c.logger.Warningf("unsafe state. cluster was never created but we received event (%s)", event.Type)
-			return
+			return fmt.Errorf("unsafe state. cluster was never created but we received event (%s)", event.Type)
 		}
 		c.clusters[clus.Metadata.Name].Delete()
 		delete(c.clusters, clus.Metadata.Name)
@@ -199,6 +203,7 @@ func (c *Controller) handleClusterEvent(event *Event) {
 		clustersDeleted.Inc()
 		clustersTotal.Dec()
 	}
+	return nil
 }
 
 func (c *Controller) findAllClusters() (string, error) {
