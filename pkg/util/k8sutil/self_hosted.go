@@ -69,7 +69,7 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 	selfHostedDataDir := path.Join(etcdVolumeMountDir, ns+"-"+name)
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
 		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
-		"--initial-cluster=%s --initial-cluster-state=%s",
+		"--initial-cluster=%s --initial-cluster-state=%s --metrics extensive",
 		selfHostedDataDir, name, strings.Join(initialCluster, ","), state)
 
 	if state == "new" {
