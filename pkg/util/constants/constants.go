@@ -24,4 +24,8 @@ const (
 	DefaultBackupPodHTTPPort = 19999
 
 	BackupMountDir = "/var/etcd-backup"
+
+	PVProvisionerGCEPD  = "kubernetes.io/gce-pd"
+	PVProvisionerAWSEBS = "kubernetes.io/aws-ebs"
+	PVProvisionerNone   = "none"
 )
