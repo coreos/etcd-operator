@@ -159,7 +159,12 @@ func (c *Controller) handleClusterEvent(event *Event) {
 	clus := event.Object
 
 	if clus.Status.IsFailed() {
-		c.logger.Infof("ignore failed cluster (%s). Please delete its TPR", clus.Metadata.Name)
+		if event.Type == kwatch.Deleted {
+			delete(c.clusters, clus.Metadata.Name)
+			delete(c.clusterRVs, clus.Metadata.Name)
+		} else {
+			c.logger.Infof("ignore failed cluster (%s). Please delete its TPR", clus.Metadata.Name)
+		}
 		return
 	}
 
