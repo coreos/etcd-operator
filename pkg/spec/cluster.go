@@ -139,6 +139,11 @@ func (c *ClusterSpec) Validate() error {
 			return errors.New("spec: backup and restore storage types are different")
 		}
 	}
+	if c.Backup != nil {
+		if err := c.Backup.Validate(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

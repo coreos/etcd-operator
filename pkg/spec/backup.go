@@ -14,6 +14,8 @@
 
 package spec
 
+import "errors"
+
 type BackupStorageType string
 
 const (
@@ -21,6 +23,8 @@ const (
 	BackupStorageTypePersistentVolume = "PersistentVolume"
 	BackupStorageTypeS3               = "S3"
 )
+
+var errPVZeroSize = errors.New("PV backup should not have 0 size volume")
 
 type BackupPolicy struct {
 	// StorageType specifies the type of storage device to store backup files.
@@ -42,6 +46,15 @@ type BackupPolicy struct {
 	// CleanupBackupsOnClusterDelete tells whether to cleanup backup data if cluster is deleted.
 	// By default, operator will keep the backup data.
 	CleanupBackupsOnClusterDelete bool `json:"cleanupBackupsOnClusterDelete"`
+}
+
+func (bp *BackupPolicy) Validate() error {
+	if bp.StorageType == BackupStorageTypePersistentVolume {
+		if pv := bp.StorageSource.PV; pv == nil || pv.VolumeSizeInMB <= 0 {
+			return errPVZeroSize
+		}
+	}
+	return nil
 }
 
 type StorageSource struct {
