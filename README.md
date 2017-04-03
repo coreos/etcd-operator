@@ -24,7 +24,7 @@ The etcd operator manages etcd clusters deployed to [Kubernetes][k8s-home] and a
 - [Backup and restore a cluster](#disaster-recovery)
 - [Rolling upgrade](#upgrade-an-etcd-cluster)
 
-There are [more spec examples](./doc/user/spec_examples.md).
+There are [more spec examples](./doc/user/spec_examples.md) on setting up clusters with backup, restore, and other configurations.
 
 Read [Best Practices](./doc/best_practices.md) for more information on how to better use etcd operator.
 
@@ -247,7 +247,7 @@ NAME                 TYPE
 etcd-backup-gce-pd   kubernetes.io/gce-pd
 ```
 
-This is used to request the persistent volume to store the backup data. See [other backup options](doc/user/backup_options.md).
+This is used to request the persistent volume to store the backup data. See [other backup options](doc/user/backup_config.md).
 
 To enable backup, create an etcd cluster with [backup enabled spec](example/example-etcd-cluster-with-backup.yaml).
 
