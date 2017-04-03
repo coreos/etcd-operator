@@ -1,0 +1,26 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: etcd-operator
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: etcd-operator
+    spec:
+      containers:
+      - name: etcd-operator
+        image: quay.io/coreos/etcd-operator:v0.2.4
+        # Assuming the configmap and secret are both named 'aws'
+        # Set the name of the S3 bucket that will store the backups
+        command: ["/bin/sh", "-ec", "/usr/local/bin/etcd-operator --backup-aws-secret=aws --backup-aws-config=aws --backup-s3-bucket=<s3-bucket-name>"]
+        env:
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
