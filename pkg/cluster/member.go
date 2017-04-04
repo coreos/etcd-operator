@@ -61,6 +61,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 
 		members[name] = &etcdutil.Member{
 			Name:       name,
+			Namespace:  c.cluster.Metadata.Namespace,
 			ID:         m.ID,
 			ClientURLs: m.ClientURLs,
 			PeerURLs:   m.PeerURLs,
@@ -73,7 +74,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 func podsToMemberSet(pods []*v1.Pod, selfHosted *spec.SelfHostedPolicy) etcdutil.MemberSet {
 	members := etcdutil.MemberSet{}
 	for _, pod := range pods {
-		m := &etcdutil.Member{Name: pod.Name}
+		m := &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace}
 		if selfHosted != nil {
 			m.ClientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
 			m.PeerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}

@@ -15,13 +15,18 @@
 package etcdutil
 
 import (
+	"errors"
 	"fmt"
+	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 )
 
 type Member struct {
 	Name string
+	// Kubernetes namespace this member runs in.
+	Namespace string
 	// ID field can be 0, which is unknown ID.
 	// We know the ID of a member when we get the member information from etcd,
 	// but not from Kubernetes pod list.
@@ -33,12 +38,16 @@ type Member struct {
 	ClientURLs []string
 }
 
+func (m *Member) fqdn() string {
+	return fmt.Sprintf("%s.%s.svc.cluster.local", m.Name, m.Namespace)
+}
+
 func (m *Member) ClientAddr() string {
 	if len(m.ClientURLs) != 0 {
 		return strings.Join(m.ClientURLs, ",")
 	}
 
-	return fmt.Sprintf("http://%s:2379", m.Name)
+	return fmt.Sprintf("http://%s:2379", m.fqdn())
 }
 
 func (m *Member) PeerAddr() string {
@@ -46,7 +55,7 @@ func (m *Member) PeerAddr() string {
 		return strings.Join(m.PeerURLs, ",")
 	}
 
-	return fmt.Sprintf("http://%s:2380", m.Name)
+	return fmt.Sprintf("http://%s:2380", m.fqdn())
 }
 
 type MemberSet map[string]*Member
@@ -138,6 +147,22 @@ func GetCounterFromMemberName(name string) (int, error) {
 		return 0, err
 	}
 	return c, nil
+}
+
+var validPeerURL = regexp.MustCompile(`^\w+:\/\/[\w\.\-]+(:\d+)?$`)
+
+func MemberNameFromPeerURL(pu string) (string, error) {
+	// url.Parse has very loose validation. We do our own validation.
+	if !validPeerURL.MatchString(pu) {
+		return "", errors.New("invalid PeerURL format")
+	}
+	u, err := url.Parse(pu)
+	if err != nil {
+		return "", err
+	}
+	path := strings.Split(u.Host, ":")[0]
+	name := strings.Split(path, ".")[0]
+	return name, err
 }
 
 func CreateMemberName(clusterName string, member int) string {

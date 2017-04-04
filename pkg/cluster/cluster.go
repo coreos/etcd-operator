@@ -330,7 +330,10 @@ func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
 }
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
-	m := &etcdutil.Member{Name: etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)}
+	m := &etcdutil.Member{
+		Name:      etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
+		Namespace: c.cluster.Metadata.Namespace,
+	}
 	ms := etcdutil.NewMemberSet(m)
 	if err := c.createPodAndService(ms, m, "new", recoverFromBackup); err != nil {
 		return fmt.Errorf("failed to create seed member (%s): %v", m.Name, err)
