@@ -126,7 +126,7 @@ func (c *Cluster) addOneMember() error {
 	defer etcdcli.Close()
 
 	newMemberName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
-	newMember := &etcdutil.Member{Name: newMemberName}
+	newMember := &etcdutil.Member{Name: newMemberName, Namespace: c.cluster.Metadata.Namespace}
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
 	if err != nil {
@@ -232,7 +232,7 @@ func pickOneOldMember(pods []*v1.Pod, newVersion string) *etcdutil.Member {
 		if k8sutil.GetEtcdVersion(pod) == newVersion {
 			continue
 		}
-		return &etcdutil.Member{Name: pod.Name}
+		return &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace}
 	}
 	return nil
 }

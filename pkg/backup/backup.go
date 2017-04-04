@@ -229,7 +229,10 @@ func getMemberWithMaxRev(pods []*v1.Pod) (*etcdutil.Member, int64) {
 	var member *etcdutil.Member
 	maxRev := int64(0)
 	for _, pod := range pods {
-		m := &etcdutil.Member{Name: pod.Name}
+		m := &etcdutil.Member{
+			Name:      pod.Name,
+			Namespace: pod.Namespace,
+		}
 		cfg := clientv3.Config{
 			Endpoints:   []string{m.ClientAddr()},
 			DialTimeout: constants.DefaultDialTimeout,
