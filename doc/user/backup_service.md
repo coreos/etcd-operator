@@ -1,7 +1,9 @@
 ## Backup service
 
 A backup service will be created if the etcd cluster has backup enabled.
-The backup service saves backup for the etcd cluster based on the requirement of the backup spec.
+The backup service saves backup for the etcd cluster based on the requirement of the [backup spec](https://github.com/coreos/etcd-operator/blob/3ec1a1d38e0fc91a2e757ed322227c6816e5f110/example/example-etcd-cluster-with-backup.yaml#L8-L12).
+
+The backup service will skip creating a new snapshot if the etcd cluster revision has not changed since the last snapshot, i.e the etcd-cluster data has not been modified (e.g., `Put`, `Delete`, `Txn`).
 
 It also exposes an HTTP API for requesting a new backup and retrieving existing backups.
 
