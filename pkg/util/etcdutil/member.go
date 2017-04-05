@@ -39,7 +39,7 @@ type Member struct {
 }
 
 func (m *Member) fqdn() string {
-	return fmt.Sprintf("%s.%s.svc.cluster.local", m.Name, m.Namespace)
+	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
 }
 
 func (m *Member) ClientAddr() string {
@@ -167,4 +167,12 @@ func MemberNameFromPeerURL(pu string) (string, error) {
 
 func CreateMemberName(clusterName string, member int) string {
 	return fmt.Sprintf("%s-%04d", clusterName, member)
+}
+
+func clusterNameFromMemberName(mn string) string {
+	i := strings.LastIndex(mn, "-")
+	if i == -1 {
+		panic(fmt.Sprintf("unexpected member name: %s", mn))
+	}
+	return mn[:i]
 }
