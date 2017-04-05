@@ -4,6 +4,7 @@
 
 - Add "none" PV provisioner option. If operator flag "pv-provisioner" is set to "none",
   operator won’t create any storage class and users couldn’t make use of operator’s PV backup feature.
+- Add headless service `${clusterName}` which selects etcd pods of given cluster.
 
 ### Changed
 
@@ -13,6 +14,10 @@
 - Update default etcd version to 3.1.4
 - Self-hosted etcd pod is started with "--metrics extensive" flag.
   This is only available in etcd 3.1+.
+- Change client LB service name to `${clusterName}-client`.
+- Add hostname and subdomain to etcd pods, which makes them have A records formatted in `${memberName}.${clusterName}.${namespace}.svc.cluster.local` .
+  For more info, see https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/ .
+  We also change PeerURL of etcd members to use such hostnames.
 
 ### Removed
 
