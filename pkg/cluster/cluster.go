@@ -176,7 +176,7 @@ func (c *Cluster) create() error {
 		}
 	}
 
-	if err := c.createClientServiceLB(); err != nil {
+	if err := c.setupServices(); err != nil {
 		return fmt.Errorf("cluster create: fail to create client service LB: %v", err)
 	}
 	return nil
@@ -373,17 +373,23 @@ func (c *Cluster) delete() {
 	}
 }
 
-func (c *Cluster) createClientServiceLB() error {
-	if _, err := k8sutil.CreateEtcdService(c.config.KubeCli, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, c.cluster.AsOwner()); err != nil {
-		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			return err
-		}
+func (c *Cluster) setupServices() error {
+	err := k8sutil.CreateClientService(c.config.KubeCli, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, c.cluster.AsOwner())
+	if err != nil {
+		return err
 	}
-	return nil
+
+	return k8sutil.CreatePeerService(c.config.KubeCli, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, c.cluster.AsOwner())
 }
 
 func (c *Cluster) deleteClientServiceLB() error {
-	err := c.config.KubeCli.Core().Services(c.cluster.Metadata.Namespace).Delete(c.cluster.Metadata.Name, nil)
+	err := c.config.KubeCli.Core().Services(c.cluster.Metadata.Namespace).Delete(k8sutil.ClientServiceName(c.cluster.Metadata.Name), nil)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+	}
+	err = c.config.KubeCli.Core().Services(c.cluster.Metadata.Namespace).Delete(c.cluster.Metadata.Name, nil)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
@@ -400,7 +406,7 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 
 	pod := k8sutil.NewEtcdPod(m, members.PeerURLPairs(), c.cluster.Metadata.Name, state, token, c.cluster.Spec, c.cluster.AsOwner())
 	if needRecovery {
-		k8sutil.AddRecoveryToPod(pod, c.cluster.Metadata.Name, m.Name, token, c.cluster.Spec)
+		k8sutil.AddRecoveryToPod(pod, c.cluster.Metadata.Name, token, m, c.cluster.Spec)
 	}
 	p, err := c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).Create(pod)
 	if err != nil {

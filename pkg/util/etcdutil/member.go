@@ -39,7 +39,7 @@ type Member struct {
 }
 
 func (m *Member) fqdn() string {
-	return fmt.Sprintf("%s.%s.%s.pod.cluster.local", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
+	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
 }
 
 func (m *Member) ClientAddr() string {
@@ -172,7 +172,7 @@ func CreateMemberName(clusterName string, member int) string {
 func clusterNameFromMemberName(mn string) string {
 	i := strings.LastIndex(mn, "-")
 	if i == -1 {
-		return mn
+		panic(fmt.Sprintf("unexpected member name: %s", mn))
 	}
 	return mn[:i]
 }

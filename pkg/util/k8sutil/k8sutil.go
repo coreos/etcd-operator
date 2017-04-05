@@ -70,7 +70,7 @@ func GetPodNames(pods []*v1.Pod) []string {
 	return res
 }
 
-func makeRestoreInitContainerSpec(backupAddr, name, token, version string) string {
+func makeRestoreInitContainerSpec(backupAddr, token, version string, m *etcdutil.Member) string {
 	spec := []v1.Container{
 		{
 			Name:  "fetch-backup",
@@ -88,10 +88,10 @@ func makeRestoreInitContainerSpec(backupAddr, name, token, version string) strin
 				"/bin/sh", "-ec",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
 					" --name %[2]s"+
-					" --initial-cluster %[2]s=http://%[2]s:2380"+
-					" --initial-cluster-token %[3]s"+
-					" --initial-advertise-peer-urls http://%[2]s:2380"+
-					" --data-dir %[4]s", backupFile, name, token, dataDir),
+					" --initial-cluster %[2]s=%[3]s"+
+					" --initial-cluster-token %[4]s"+
+					" --initial-advertise-peer-urls %[3]s"+
+					" --data-dir %[5]s", backupFile, m.Name, m.PeerAddr(), token, dataDir),
 			},
 			VolumeMounts: etcdVolumeMounts(),
 		},
@@ -127,14 +127,23 @@ func CreateMemberService(kubecli kubernetes.Interface, ns string, svc *v1.Servic
 	return retSvc, nil
 }
 
-func CreateEtcdService(kubecli kubernetes.Interface, clusterName, ns string, owner metatypes.OwnerReference) (*v1.Service, error) {
-	svc := newEtcdServiceManifest(clusterName)
+func CreateClientService(kubecli kubernetes.Interface, clusterName, ns string, owner metatypes.OwnerReference) error {
+	return createService(kubecli, ClientServiceName(clusterName), clusterName, ns, "", owner)
+}
+
+func ClientServiceName(clusterName string) string {
+	return clusterName + "-client"
+}
+
+func CreatePeerService(kubecli kubernetes.Interface, clusterName, ns string, owner metatypes.OwnerReference) error {
+	return createService(kubecli, clusterName, clusterName, ns, v1.ClusterIPNone, owner)
+}
+
+func createService(kubecli kubernetes.Interface, svcName, clusterName, ns, clusterIP string, owner metatypes.OwnerReference) error {
+	svc := newEtcdServiceManifest(svcName, clusterName, clusterIP)
 	addOwnerRefToObject(svc.GetObjectMeta(), owner)
-	retSvc, err := kubecli.CoreV1().Services(ns).Create(svc)
-	if err != nil {
-		return nil, err
-	}
-	return retSvc, nil
+	_, err := kubecli.CoreV1().Services(ns).Create(svc)
+	return err
 }
 
 // CreateAndWaitPod is a workaround for self hosted and util for testing.
@@ -165,14 +174,14 @@ func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, time
 	return retPod, nil
 }
 
-func newEtcdServiceManifest(clusterName string) *v1.Service {
+func newEtcdServiceManifest(svcName, clusterName string, clusterIP string) *v1.Service {
 	labels := map[string]string{
 		"app":          "etcd",
 		"etcd_cluster": clusterName,
 	}
 	svc := &v1.Service{
 		ObjectMeta: v1.ObjectMeta{
-			Name:   clusterName,
+			Name:   svcName,
 			Labels: labels,
 		},
 		Spec: v1.ServiceSpec{
@@ -184,7 +193,8 @@ func newEtcdServiceManifest(clusterName string) *v1.Service {
 					Protocol:   v1.ProtocolTCP,
 				},
 			},
-			Selector: labels,
+			Selector:  labels,
+			ClusterIP: clusterIP,
 		},
 	}
 	return svc
@@ -229,9 +239,9 @@ func NewMemberServiceManifest(etcdName, clusterName string, owner metatypes.Owne
 	return svc
 }
 
-func AddRecoveryToPod(pod *v1.Pod, clusterName, name, token string, cs spec.ClusterSpec) {
+func AddRecoveryToPod(pod *v1.Pod, clusterName, token string, m *etcdutil.Member, cs spec.ClusterSpec) {
 	pod.Annotations[v1.PodInitContainersBetaAnnotationKey] =
-		makeRestoreInitContainerSpec(BackupServiceAddr(clusterName), name, token, cs.Version)
+		makeRestoreInitContainerSpec(BackupServiceAddr(clusterName), token, cs.Version, m)
 }
 
 func addOwnerRefToObject(o meta.Object, r metatypes.OwnerReference) {
@@ -266,9 +276,9 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			Volumes: []v1.Volume{
 				{Name: "etcd-data", VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}},
 			},
-			// DNS A record: [m.Name].[clusterName].Namespace.pod.cluster.local.
+			// DNS A record: [m.Name].[clusterName].Namespace.svc.cluster.local.
 			// For example, etcd-0000 in default namesapce will have DNS name
-			// `etcd-0000.etcd.default.pod.cluster.local`.
+			// `etcd-0000.etcd.default.svc.cluster.local`.
 			Hostname:  m.Name,
 			Subdomain: clusterName,
 		},
