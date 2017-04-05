@@ -17,26 +17,25 @@ package cluster
 import (
 	"fmt"
 
-	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 )
 
-func (c *Cluster) upgradeOneMember(m *etcdutil.Member) error {
-	c.status.AppendUpgradingCondition(c.cluster.Spec.Version, m.Name)
+func (c *Cluster) upgradeOneMember(memberName string) error {
+	c.status.AppendUpgradingCondition(c.cluster.Spec.Version, memberName)
 
 	ns := c.cluster.Metadata.Namespace
 
-	pod, err := c.config.KubeCli.CoreV1().Pods(ns).Get(m.Name)
+	pod, err := c.config.KubeCli.CoreV1().Pods(ns).Get(memberName)
 	if err != nil {
-		return fmt.Errorf("fail to get pod (%s): %v", m.Name, err)
+		return fmt.Errorf("fail to get pod (%s): %v", memberName, err)
 	}
-	c.logger.Infof("upgrading the etcd member %v from %s to %s", m.Name, k8sutil.GetEtcdVersion(pod), c.cluster.Spec.Version)
+	c.logger.Infof("upgrading the etcd member %v from %s to %s", memberName, k8sutil.GetEtcdVersion(pod), c.cluster.Spec.Version)
 	pod.Spec.Containers[0].Image = k8sutil.EtcdImageName(c.cluster.Spec.Version)
 	k8sutil.SetEtcdVersion(pod, c.cluster.Spec.Version)
 	_, err = c.config.KubeCli.CoreV1().Pods(ns).Update(pod)
 	if err != nil {
-		return fmt.Errorf("fail to update the etcd member (%s): %v", m.Name, err)
+		return fmt.Errorf("fail to update the etcd member (%s): %v", memberName, err)
 	}
-	c.logger.Infof("finished upgrading the etcd member %v", m.Name)
+	c.logger.Infof("finished upgrading the etcd member %v", memberName)
 	return nil
 }

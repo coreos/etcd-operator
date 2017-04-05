@@ -49,7 +49,7 @@ func (c *Cluster) reconcile(pods []*v1.Pod) error {
 		c.status.UpgradeVersionTo(sp.Version)
 
 		m := pickOneOldMember(pods, sp.Version)
-		return c.upgradeOneMember(m)
+		return c.upgradeOneMember(m.Name)
 	}
 
 	c.status.SetVersion(sp.Version)
