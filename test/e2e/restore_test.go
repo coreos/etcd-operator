@@ -145,8 +145,8 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	checkEtcdData(t, fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
 }
 
-func putDataToEtcd(addr string) error {
-	etcdcli, err := createEtcdClient(addr)
+func putDataToEtcd(url string) error {
+	etcdcli, err := createEtcdClient(url)
 	if err != nil {
 		return err
 	}
@@ -157,8 +157,8 @@ func putDataToEtcd(addr string) error {
 	return err
 }
 
-func checkEtcdData(t *testing.T, addr string) {
-	etcdcli, err := createEtcdClient(addr)
+func checkEtcdData(t *testing.T, url string) {
+	etcdcli, err := createEtcdClient(url)
 	if err != nil {
 		t.Fatal(err)
 	}
