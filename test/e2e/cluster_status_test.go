@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -24,7 +25,17 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
-func TestReadyMembersStatus(t *testing.T) {
+func TestClusterStatus(t *testing.T) {
+	t.Run("cluster status test", func(t *testing.T) {
+		t.Run("ready member status", testReadyMembersStatus)
+		t.Run("backup status", testBackupStatus)
+	})
+}
+
+func testReadyMembersStatus(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	f := framework.Global
 	size := 1
 	testEtcd, err := createCluster(t, f, newClusterSpec("test-etcd-", size))
@@ -59,7 +70,10 @@ func TestReadyMembersStatus(t *testing.T) {
 	}
 }
 
-func TestBackupStatus(t *testing.T) {
+func testBackupStatus(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	f := framework.Global
 
 	bp := newBackupPolicyPV()
