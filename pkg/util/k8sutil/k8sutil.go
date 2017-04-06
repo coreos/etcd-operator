@@ -119,14 +119,6 @@ func BackupServiceName(clusterName string) string {
 	return fmt.Sprintf("%s-backup-sidecar", clusterName)
 }
 
-func CreateMemberService(kubecli kubernetes.Interface, ns string, svc *v1.Service) (*v1.Service, error) {
-	retSvc, err := kubecli.CoreV1().Services(ns).Create(svc)
-	if err != nil {
-		return nil, err
-	}
-	return retSvc, nil
-}
-
 func CreateClientService(kubecli kubernetes.Interface, clusterName, ns string, owner metatypes.OwnerReference) error {
 	return createService(kubecli, ClientServiceName(clusterName), clusterName, ns, "", owner)
 }
@@ -197,45 +189,6 @@ func newEtcdServiceManifest(svcName, clusterName string, clusterIP string) *v1.S
 			ClusterIP: clusterIP,
 		},
 	}
-	return svc
-}
-
-// TODO: converge the port logic with member ClientAddr() and PeerAddr()
-func NewMemberServiceManifest(etcdName, clusterName string, owner metatypes.OwnerReference) *v1.Service {
-	svc := &v1.Service{
-		ObjectMeta: v1.ObjectMeta{
-			Name: etcdName,
-			Labels: map[string]string{
-				"etcd_cluster": clusterName,
-			},
-			Annotations: map[string]string{
-				annotationPrometheusScrape: "true",
-				annotationPrometheusPort:   "2379",
-			},
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{
-					Name:       "server",
-					Port:       2380,
-					TargetPort: intstr.FromInt(2380),
-					Protocol:   v1.ProtocolTCP,
-				},
-				{
-					Name:       "client",
-					Port:       2379,
-					TargetPort: intstr.FromInt(2379),
-					Protocol:   v1.ProtocolTCP,
-				},
-			},
-			Selector: map[string]string{
-				"app":          "etcd",
-				"etcd_node":    etcdName,
-				"etcd_cluster": clusterName,
-			},
-		},
-	}
-	addOwnerRefToObject(svc.GetObjectMeta(), owner)
 	return svc
 }
 

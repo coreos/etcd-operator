@@ -32,7 +32,6 @@ import (
 	"github.com/pborman/uuid"
 	"k8s.io/client-go/kubernetes"
 	apierrors "k8s.io/client-go/pkg/api/errors"
-	"k8s.io/client-go/pkg/api/meta/metatypes"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -335,7 +334,7 @@ func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 		Namespace: c.cluster.Metadata.Namespace,
 	}
 	ms := etcdutil.NewMemberSet(m)
-	if err := c.createPodAndService(ms, m, "new", recoverFromBackup); err != nil {
+	if err := c.createPod(ms, m, "new", recoverFromBackup); err != nil {
 		return fmt.Errorf("failed to create seed member (%s): %v", m.Name, err)
 	}
 	c.memberCounter++
@@ -398,7 +397,7 @@ func (c *Cluster) deleteClientServiceLB() error {
 	return nil
 }
 
-func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
+func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
 	token := ""
 	if state == "new" {
 		token = uuid.New()
@@ -408,27 +407,9 @@ func (c *Cluster) createPodAndService(members etcdutil.MemberSet, m *etcdutil.Me
 	if needRecovery {
 		k8sutil.AddRecoveryToPod(pod, c.cluster.Metadata.Name, token, m, c.cluster.Spec)
 	}
-	p, err := c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).Create(pod)
+	_, err := c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).Create(pod)
 	if err != nil {
 		return err
-	}
-
-	// Each member's service will be owned by its pod. That means, if the pod is removed, the service will also be removed.
-	// Failure case 1: pod created but service not. On such case, we relies on liveness probe to eventually delete the pod.
-	// Before that, this member is "partitioned".
-	// Failure case 2: service belongs to previous pod and waits to be GC-ed. On such case, we are OK to return on this method.
-	// Once the service is GC-ed, it's the same as case 1, and we relies on liveness probe to delete the pod.
-	svc := k8sutil.NewMemberServiceManifest(m.Name, c.cluster.Metadata.Name, metatypes.OwnerReference{
-		// The Pod result from kubecli doesn't contain TypeMeta.
-		APIVersion: "v1",
-		Kind:       "Pod",
-		Name:       p.Name,
-		UID:        p.UID,
-	})
-	if _, err := k8sutil.CreateMemberService(c.config.KubeCli, c.cluster.Metadata.Namespace, svc); err != nil {
-		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			return err
-		}
 	}
 	return nil
 }

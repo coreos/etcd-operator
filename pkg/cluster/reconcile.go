@@ -136,7 +136,7 @@ func (c *Cluster) addOneMember() error {
 	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)
 
-	if err := c.createPodAndService(c.members, newMember, "existing", false); err != nil {
+	if err := c.createPod(c.members, newMember, "existing", false); err != nil {
 		c.logger.Errorf("fail to create member (%s): %v", newMember.Name, err)
 		return err
 	}
