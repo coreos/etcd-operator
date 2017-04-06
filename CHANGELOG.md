@@ -21,6 +21,8 @@
 
 ### Removed
 
+- Individual etcd member's services were removed. Use hostname and subdomain of etcd pod instead.
+
 ### Fixed
 
 - [GH-910] Operator keeps updating status even if there is no change.
