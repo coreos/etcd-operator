@@ -76,6 +76,7 @@ type Config struct {
 	Namespace      string
 	ServiceAccount string
 	PVProvisioner  string
+	StorageClass   string
 	s3config.S3Context
 	KubeCli    kubernetes.Interface
 	KubeExtCli apiextensionsclient.Interface
@@ -245,6 +246,7 @@ func (c *Controller) findAllClusters() (string, error) {
 func (c *Controller) makeClusterConfig() cluster.Config {
 	return cluster.Config{
 		PVProvisioner:  c.PVProvisioner,
+		StorageClass:   c.StorageClass,
 		ServiceAccount: c.Config.ServiceAccount,
 		S3Context:      c.S3Context,
 
@@ -266,7 +268,7 @@ func (c *Controller) initResource() (string, error) {
 			return "", fmt.Errorf("fail to create CRD: %v", err)
 		}
 	}
-	if c.Config.PVProvisioner != constants.PVProvisionerNone {
+	if c.Config.PVProvisioner != constants.PVProvisionerNone && c.Config.StorageClass != "" {
 		err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
 		if err != nil {
 			if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
