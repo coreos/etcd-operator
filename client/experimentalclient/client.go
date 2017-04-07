@@ -62,7 +62,11 @@ type operator struct {
 }
 
 func NewOperator(namespace string) (Operator, error) {
-	tprclient, err := k8sutil.NewTPRClient()
+	config, err := k8sutil.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	tprclient, err := k8sutil.NewTPRClient(config)
 	if err != nil {
 		return nil, err
 	}

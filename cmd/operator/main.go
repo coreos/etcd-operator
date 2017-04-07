@@ -85,7 +85,7 @@ func init() {
 		panic(err)
 	}
 	controller.MasterHost = restCfg.Host
-	restcli, err := k8sutil.NewTPRClient()
+	restcli, err := k8sutil.NewTPRClient(restCfg)
 	if err != nil {
 		panic(err)
 	}
