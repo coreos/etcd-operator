@@ -21,7 +21,12 @@ type backend interface {
 	// It returns the size of the snapshot saved.
 	save(etcdVersion string, rev int64, r io.Reader) (size int64, err error)
 
-	getLatest() (name string, rc io.ReadCloser, err error)
+	// get latest backup's name.
+	// If no backup is available, returns empty string name.
+	getLatest() (name string, err error)
+
+	// open a backup file for reading
+	open(name string) (rc io.ReadCloser, err error)
 
 	// total returns the total number of available backups.
 	total() (int, error)
