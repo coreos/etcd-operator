@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"path"
-	"strings"
 
 	"github.com/coreos/etcd-operator/pkg/backup/env"
 
@@ -58,7 +57,7 @@ func New(bucket, prefix string, option session.Options) (*S3, error) {
 
 	s := &S3{
 		client: client,
-		prefix: strings.Trim(prefix, "/"),
+		prefix: prefix,
 		bucket: bucket,
 	}
 	return s, nil

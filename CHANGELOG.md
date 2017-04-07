@@ -18,6 +18,7 @@
 - Add hostname and subdomain to etcd pods, which makes them have A records formatted in `${memberName}.${clusterName}.${namespace}.svc.cluster.local` .
   For more info, see https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/ .
   We also change PeerURL of etcd members to use such hostnames.
+- S3 backup path on S3 bucket is changed to `${BUCKET_NAME}/v1/${NAMESPACE}/${CLUSTER_NAME}/`.
 
 ### Removed
 
