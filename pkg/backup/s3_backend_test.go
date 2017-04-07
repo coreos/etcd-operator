@@ -16,18 +16,33 @@ package backup
 
 import (
 	"bytes"
-	"crypto/rand"
-	"encoding/base64"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
 )
+
+var r *rand.Rand // Rand for this package.
+
+func init() {
+	r = rand.New(rand.NewSource(time.Now().UnixNano()))
+}
+
+func randString(strlen int) string {
+	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+	result := make([]byte, strlen)
+	for i := range result {
+		result[i] = chars[r.Intn(len(chars))]
+	}
+	return string(result)
+}
 
 func TestS3BackendPurge(t *testing.T) {
 	if os.Getenv("RUN_INTEGRATION_TEST") != "true" {
@@ -74,13 +89,4 @@ func TestS3BackendPurge(t *testing.T) {
 	if err := s3cli.Delete(makeBackupName("3.1.0", 2)); err != nil {
 		t.Fatal(err)
 	}
-}
-
-func randString(l int) string {
-	b := make([]byte, l)
-	rand.Read(b)
-	en := base64.StdEncoding
-	d := make([]byte, en.EncodedLen(len(b)))
-	en.Encode(d, b)
-	return string(d)
 }
