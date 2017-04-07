@@ -51,6 +51,7 @@ import (
 var (
 	analyticsEnabled bool
 	pvProvisioner    string
+	storageClass     string
 	namespace        string
 	name             string
 	awsSecret        string
@@ -74,6 +75,7 @@ func init() {
 	flag.BoolVar(&analyticsEnabled, "analytics", true, "Send analytical event (Cluster Created/Deleted etc.) to Google Analytics")
 
 	flag.StringVar(&pvProvisioner, "pv-provisioner", constants.PVProvisionerGCEPD, "persistent volume provisioner type")
+	flag.StringVar(&storageClass, "storageclass", "", "Storage class type")
 	flag.StringVar(&awsSecret, "backup-aws-secret", "",
 		"The name of the kube secret object that stores the AWS credential file. The file name must be 'credentials'.")
 	flag.StringVar(&awsConfig, "backup-aws-config", "",
@@ -206,6 +208,7 @@ func newControllerConfig() controller.Config {
 		Namespace:      namespace,
 		ServiceAccount: serviceAccount,
 		PVProvisioner:  pvProvisioner,
+		StorageClass:   storageClass,
 		S3Context: s3config.S3Context{
 			AWSSecret: awsSecret,
 			AWSConfig: awsConfig,

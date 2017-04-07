@@ -2,6 +2,7 @@
 
 In etcd operator, we provide the following options to save cluster backups to:
 - Persistent Volume (PV) on GCE or AWS
+- Persistent Volume (PV) with StorageClasses
 - S3 bucket on AWS
 
 This docs talks about how to configure etcd operator to use these backup options.
@@ -17,6 +18,12 @@ This is essentially saving backups to an instance of GCE PD.
 If running on AWS Kubernetes, pass the flag `--pv-provisioner=kubernetes.io/aws-ebs` to operator.
 See [AWS deployment](../../example/deployment-aws.yaml).
 This is essentially saving backups on an instance of AWS EBS.
+
+## PV with StorageClass
+
+If your Kubernetes supports [StorageClass](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#storageclasses), pass the flag `--storageclass=Name of StorageClass` to operator.
+With StorageClass can can control more in detail how to persist date on PersistentVolumes. See [Deployment](../../example/deployment-storageclass.yaml).
+This is essentially saving backups on an PersistentVolumes with a predefined Storageclasses.
 
 ## S3 on AWS
 

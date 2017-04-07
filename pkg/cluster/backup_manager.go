@@ -80,7 +80,7 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 		if c.PVProvisioner == constants.PVProvisionerNone {
 			return nil, errNoPVForBackup
 		}
-		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, c.PVProvisioner, *b)
+		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, c.PVProvisioner, c.StorageClass, *b)
 	case spec.BackupStorageTypeS3:
 		if len(c.S3Context.AWSConfig) == 0 && b.S3 == nil {
 			return nil, errNoS3ConfigForBackup
