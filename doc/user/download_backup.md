@@ -12,7 +12,7 @@ $ kubectl get svc
 etcd-cluster-backup-sidecar   10.39.243.229   <none>        19999/TCP           4m
 ```
 
-Given the etcd version of the cluster, you can download backup via HTTP endpoint
+Given the etcd version of the cluster, you can download backup via service endpoint
 `http://${CLUSTER_NAME}-backup-sidecar:19999/v1/backup?etcdVersion=${ETCD_VERSION}` . For example:
 ```
 $ curl "http://etcd-cluster-backup-sidecar:19999/v1/backup?etcdVersion=3.1.0" -o 3.1.0_etcd.backup
@@ -21,7 +21,10 @@ $ curl "http://etcd-cluster-backup-sidecar:19999/v1/backup?etcdVersion=3.1.0" -o
 On success, the backup's etcd version should be compatible with given version.
 Otherwise, it would return non-OK response.
 
-It's up to users to decide how to access the backup service, e.g. using [ingress](https://kubernetes.io/docs/user-guide/ingress/) .
+If sending the request from a pod in a different namespace, use FQDN `${CLUSTER_NAME}-backup-sidecar.${NAMESPACE}.svc.cluster.local` .
+
+Outside kubernetes cluster, we need additional step to access the backup service,
+e.g. using [ingress](https://kubernetes.io/docs/user-guide/ingress/) .
 
 ## Get backup from S3
 
