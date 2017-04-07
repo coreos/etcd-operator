@@ -74,8 +74,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.Backu
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		be = &fileBackend{dir: bdir}
 	case spec.BackupStorageTypeS3:
-		prefix := clusterName + "/"
-		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), prefix, session.Options{
+		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), clusterName, session.Options{
 			SharedConfigState: session.SharedConfigEnable,
 		})
 		if err != nil {
