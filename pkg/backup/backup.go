@@ -104,7 +104,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.Backu
 func (b *Backup) Run() {
 	go b.startHTTP()
 
-	lastSnapRev := int64(0)
+	lastSnapRev := b.getLatestBackupRev()
 	interval := constants.DefaultSnapshotInterval
 	if b.policy.BackupIntervalInSecond != 0 {
 		interval = time.Duration(b.policy.BackupIntervalInSecond) * time.Second
@@ -259,4 +259,20 @@ func getMemberWithMaxRev(pods []*v1.Pod) (*etcdutil.Member, int64) {
 		}
 	}
 	return member, maxRev
+}
+
+func (b *Backup) getLatestBackupRev() int64 {
+	// If there is any error, we just exit backup sidecar because we can't serve the backup any way.
+	name, err := b.be.getLatest()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	if len(name) == 0 {
+		return 0
+	}
+	rev, err := getRev(name)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	return rev
 }

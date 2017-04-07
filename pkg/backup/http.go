@@ -62,7 +62,7 @@ func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
-	fname, rc, err := b.be.getLatest()
+	fname, err := b.be.getLatest()
 	if err != nil {
 		logrus.Errorf("fail to serve backup: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -72,6 +72,13 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	rc, err := b.be.open(fname)
+	if err != nil {
+		logrus.Errorf("fail to open backup (%s): %v", fname, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rc.Close()
 
 	serV, err := getMajorMinorVersionFromBackup(fname)
 	if err != nil {
