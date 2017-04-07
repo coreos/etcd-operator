@@ -12,7 +12,7 @@ $ kubectl get svc
 etcd-cluster-backup-sidecar   10.39.243.229   <none>        19999/TCP           4m
 ```
 
-Given the etcd version of the cluster, you can download backup via HTTP endpoint
+Given the etcd version of the cluster, you can download backup via service endpoint
 `http://${CLUSTER_NAME}-backup-sidecar:19999/v1/backup?etcdVersion=${ETCD_VERSION}` . For example:
 ```
 $ curl "http://etcd-cluster-backup-sidecar:19999/v1/backup?etcdVersion=3.1.0" -o 3.1.0_etcd.backup
@@ -21,7 +21,10 @@ $ curl "http://etcd-cluster-backup-sidecar:19999/v1/backup?etcdVersion=3.1.0" -o
 On success, the backup's etcd version should be compatible with given version.
 Otherwise, it would return non-OK response.
 
-It's up to users to decide how to access the backup service, e.g. using [ingress](https://kubernetes.io/docs/user-guide/ingress/) .
+In other namespace, use FQDN `${CLUSTER_NAME}-backup-sidecar.${NAMESPACE}.svc.cluster.local` .
+
+Outside kubernetes cluster, we need additional step to access the backup service,
+e.g. using [ingress](https://kubernetes.io/docs/user-guide/ingress/) .
 
 ## Get backup from S3
 
@@ -35,11 +38,11 @@ If backup storage type is "S3", users have to get the backup directly from S3.
 First of all, setup aws cli: https://aws.amazon.com/cli/ .
 
 Given the S3 bucket name that you passed to when starting etcd operator and the cluster name,
-backups are saved under prefix `${BUCKET_NAME}/v1/${CLUSTER_NAME}/` .
+backups are saved under prefix `${BUCKET_NAME}/v1/${NAMESPACE}/${CLUSTER_NAME}/` .
 
 List all backup files:
 ```
-$ aws s3 ls ${BUCKET_NAME}/v1/${CLUSTER_NAME}/
+$ aws s3 ls ${BUCKET_NAME}/v1/${NAMESPACE}/${CLUSTER_NAME}/
 2017-01-24 02:13:30    24608    3.1.0_0000000000000002_etcd.backup
 ...                             3.1.0_000000000000000f_etcd.backup
 ```
