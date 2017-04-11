@@ -15,6 +15,9 @@
 package garbagecollection
 
 import (
+	"bytes"
+	"io"
+
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
@@ -87,12 +90,30 @@ func (gc *GC) collectResources(option v1.ListOptions, runningSet map[types.UID]b
 }
 
 func (gc *GC) collectPods(option v1.ListOptions, runningSet map[types.UID]bool) error {
-	pods, err := gc.kubecli.CoreV1().Pods(gc.ns).List(option)
+	podInterface := gc.kubecli.CoreV1().Pods(gc.ns)
+	pods, err := podInterface.List(option)
 	if err != nil {
 		return err
 	}
 
 	for _, p := range pods.Items {
+		gc.logger.Infof("attempting to stream last 100 lines of logs for pod %s before collection.", p.GetName())
+		buf := &bytes.Buffer{}
+		tailLines := int64(100)
+		req := podInterface.GetLogs(p.GetName(), &v1.PodLogOptions{
+			TailLines: &tailLines,
+		})
+
+		resp, err := req.Stream()
+		if err != nil {
+			gc.logger.Errorf("failed streaming logs for collected pod %s: %v", p.GetName(), err)
+		} else {
+			if _, err := io.Copy(buf, resp); err != nil {
+				gc.logger.Errorf("failed copying logs for collected pod %s: %v", p.GetName(), err)
+			}
+		}
+		gc.logger.Info(buf.String())
+		gc.logger.Info("### END POD LOGS ###")
 		if len(p.OwnerReferences) == 0 {
 			gc.logger.Warningf("failed to check pod %s: no owner", p.GetName())
 			continue
