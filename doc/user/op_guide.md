@@ -2,6 +2,8 @@
 
 ## Install etcd operator
 
+Before you create the etcd-operator make sure you setup the necessary [rbac rules](./rbac.md) if your Kubernetes version is 1.6 or higher.
+
 Create deployment:
 
 ```bash
