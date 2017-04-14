@@ -121,3 +121,7 @@ spec:
     backupClusterName: "cluster-a"
     storageType: "PersistentVolume"
 ```
+
+### TLS
+
+See [cluster TLS docs](./cluster_tls.md).

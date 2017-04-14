@@ -65,6 +65,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 			ID:         m.ID,
 			ClientURLs: m.ClientURLs,
 			PeerURLs:   m.PeerURLs,
+			SecurePeer: c.isSecurePeer(),
 		}
 	}
 	c.members = members

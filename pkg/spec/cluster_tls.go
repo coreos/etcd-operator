@@ -22,8 +22,15 @@ type TLSPolicy struct {
 }
 
 type StaticTLS struct {
-	// ServerSecretName contains peer-interface and client-interface server x509 key/cert, along with peer and client CA cert.
-	ServerSecretName string `json:"serverSecretName"`
-	// ClientSecretName contains etcd client key/cert, along with client CA cert.
-	ClientSecretName string `json:"clientSecretName"`
+	// Member contains secrets containing TLS certs used by each etcd member pod.
+	Member MemberSecret `json:"member"`
+}
+
+type MemberSecret struct {
+	// PeerSecret is the secret containing TLS certs used by each etcd member pod
+	// for the communication between etcd peers.
+	PeerSecret string `json:"peerSecret"`
+	// ClientSecret is the secret containing TLS certs used by each etcd member pod
+	// for the communication between etcd and its clients.
+	ClientSecret string `json:"clientSecret"`
 }

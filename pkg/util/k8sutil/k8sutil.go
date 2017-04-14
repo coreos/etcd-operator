@@ -49,6 +49,8 @@ const (
 	etcdVersionAnnotationKey   = "etcd.version"
 	annotationPrometheusScrape = "prometheus.io/scrape"
 	annotationPrometheusPort   = "prometheus.io/port"
+	peerTLSDir                 = "/etc/etcd-operator/member/peer-tls"
+	peerTLSVolume              = "member-peer-tls"
 )
 
 func GetEtcdVersion(pod *v1.Pod) string {
@@ -91,7 +93,7 @@ func makeRestoreInitContainerSpec(backupAddr, token, version string, m *etcdutil
 					" --initial-cluster %[2]s=%[3]s"+
 					" --initial-cluster-token %[4]s"+
 					" --initial-advertise-peer-urls %[3]s"+
-					" --data-dir %[5]s", backupFile, m.Name, m.PeerAddr(), token, dataDir),
+					" --data-dir %[5]s", backupFile, m.Name, m.PeerURL(), token, dataDir),
 			},
 			VolumeMounts: etcdVolumeMounts(),
 		},
@@ -120,7 +122,7 @@ func BackupServiceName(clusterName string) string {
 }
 
 func CreateClientService(kubecli kubernetes.Interface, clusterName, ns string, owner metatypes.OwnerReference) error {
-	return createService(kubecli, ClientServiceName(clusterName), clusterName, ns, "", owner)
+	return createService(kubecli, ClientServiceName(clusterName), clusterName, ns, "", 2379, owner)
 }
 
 func ClientServiceName(clusterName string) string {
@@ -128,11 +130,11 @@ func ClientServiceName(clusterName string) string {
 }
 
 func CreatePeerService(kubecli kubernetes.Interface, clusterName, ns string, owner metatypes.OwnerReference) error {
-	return createService(kubecli, clusterName, clusterName, ns, v1.ClusterIPNone, owner)
+	return createService(kubecli, clusterName, clusterName, ns, v1.ClusterIPNone, 2380, owner)
 }
 
-func createService(kubecli kubernetes.Interface, svcName, clusterName, ns, clusterIP string, owner metatypes.OwnerReference) error {
-	svc := newEtcdServiceManifest(svcName, clusterName, clusterIP)
+func createService(kubecli kubernetes.Interface, svcName, clusterName, ns, clusterIP string, port int32, owner metatypes.OwnerReference) error {
+	svc := newEtcdServiceManifest(svcName, clusterName, clusterIP, port)
 	addOwnerRefToObject(svc.GetObjectMeta(), owner)
 	_, err := kubecli.CoreV1().Services(ns).Create(svc)
 	return err
@@ -166,7 +168,7 @@ func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, time
 	return retPod, nil
 }
 
-func newEtcdServiceManifest(svcName, clusterName string, clusterIP string) *v1.Service {
+func newEtcdServiceManifest(svcName, clusterName string, clusterIP string, port int32) *v1.Service {
 	labels := map[string]string{
 		"app":          "etcd",
 		"etcd_cluster": clusterName,
@@ -180,8 +182,8 @@ func newEtcdServiceManifest(svcName, clusterName string, clusterIP string) *v1.S
 			Ports: []v1.ServicePort{
 				{
 					Name:       "client",
-					Port:       2379,
-					TargetPort: intstr.FromInt(2379),
+					Port:       port,
+					TargetPort: intstr.FromInt(int(port)),
 					Protocol:   v1.ProtocolTCP,
 				},
 			},
@@ -203,16 +205,35 @@ func addOwnerRefToObject(o meta.Object, r metatypes.OwnerReference) {
 
 func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metatypes.OwnerReference) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
-		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
+		"--listen-peer-urls=%s --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
-		dataDir, m.Name, m.PeerAddr(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
+		dataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
+	if m.SecurePeer {
+		commands += fmt.Sprintf(" --peer-client-cert-auth=true --peer-trusted-ca-file=%[1]s/peer-ca-crt.pem --peer-cert-file=%[1]s/peer-crt.pem --peer-key-file=%[1]s/peer-key.pem", peerTLSDir)
+	}
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
+
 	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version), etcdLivenessProbe())
 	if cs.Pod != nil {
 		container = containerWithRequirements(container, cs.Pod.Resources)
 	}
+
+	volumes := []v1.Volume{
+		{Name: "etcd-data", VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}},
+	}
+
+	if m.SecurePeer {
+		container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
+			MountPath: peerTLSDir,
+			Name:      peerTLSVolume,
+		})
+		volumes = append(volumes, v1.Volume{Name: peerTLSVolume, VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.Member.PeerSecret},
+		}})
+	}
+
 	pod := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name: m.Name,
@@ -226,9 +247,7 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		Spec: v1.PodSpec{
 			Containers:    []v1.Container{container},
 			RestartPolicy: v1.RestartPolicyNever,
-			Volumes: []v1.Volume{
-				{Name: "etcd-data", VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}},
-			},
+			Volumes:       volumes,
 			// DNS A record: [m.Name].[clusterName].Namespace.svc.cluster.local.
 			// For example, etcd-0000 in default namesapce will have DNS name
 			// `etcd-0000.etcd.default.svc.cluster.local`.

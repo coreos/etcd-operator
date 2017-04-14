@@ -36,6 +36,8 @@ type Member struct {
 	PeerURLs []string
 	// ClientURLs is only used for self-hosted setup.
 	ClientURLs []string
+
+	SecurePeer bool
 }
 
 func (m *Member) fqdn() string {
@@ -50,12 +52,23 @@ func (m *Member) ClientAddr() string {
 	return fmt.Sprintf("http://%s:2379", m.fqdn())
 }
 
-func (m *Member) PeerAddr() string {
+func (m *Member) scheme() string {
+	if m.SecurePeer {
+		return "https"
+	}
+	return "http"
+}
+
+func (m *Member) ListenPeerURL() string {
+	return fmt.Sprintf("%s://0.0.0.0:2380", m.scheme())
+}
+
+func (m *Member) PeerURL() string {
 	if len(m.PeerURLs) != 0 {
 		return strings.Join(m.PeerURLs, ",")
 	}
 
-	return fmt.Sprintf("http://%s:2380", m.fqdn())
+	return fmt.Sprintf("%s://%s:2380", m.scheme(), m.fqdn())
 }
 
 type MemberSet map[string]*Member
@@ -116,7 +129,7 @@ func (ms MemberSet) PickOne() *Member {
 func (ms MemberSet) PeerURLPairs() []string {
 	ps := make([]string, 0)
 	for _, m := range ms {
-		ps = append(ps, fmt.Sprintf("%s=%s", m.Name, m.PeerAddr()))
+		ps = append(ps, fmt.Sprintf("%s=%s", m.Name, m.PeerURL()))
 	}
 	return ps
 }

@@ -330,8 +330,9 @@ func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	m := &etcdutil.Member{
-		Name:      etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
-		Namespace: c.cluster.Metadata.Namespace,
+		Name:       etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
+		Namespace:  c.cluster.Metadata.Namespace,
+		SecurePeer: c.isSecurePeer(),
 	}
 	ms := etcdutil.NewMemberSet(m)
 	if err := c.createPod(ms, m, "new", recoverFromBackup); err != nil {
@@ -341,6 +342,10 @@ func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	c.members = ms
 	c.logger.Infof("cluster created with seed member (%s)", m.Name)
 	return nil
+}
+
+func (c *Cluster) isSecurePeer() bool {
+	return c.cluster.Spec.TLS != nil
 }
 
 // bootstrap creates the seed etcd member for a new cluster.
