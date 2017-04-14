@@ -66,3 +66,30 @@ metadata:
   ```
 
   These files are similar too the `--cert-file`,`--key-file`, and `--ca-file` arguments (respectively) to `etcdctl`.
+
+## Generate static tls assets
+
+* **Optional: use example tls-enabled etcd cluster**:
+
+  ```sh
+  kubectl -n <your-namespace> create -f example/example-etcd-cluster-tls.yaml
+  ```
+
+* **Generate self-signed TLS assets for your cluster**:
+
+  ```sh
+  ./operator-gen-selfsigned-tls --cluster-name=example-etcd-cluster --cluster-namespace=<your namespace>
+
+  INFO[0000] Writing output files...
+  INFO[0000]       |-> example-etcd-cluster/pem/peer-ca-key.pem
+  INFO[0000]       |-> example-etcd-cluster/pem/peer-ca-crt.pem
+  INFO[0000]       |-> example-etcd-cluster/pem/peer-key.pem
+  INFO[0000]       |-> example-etcd-cluster/pem/peer-crt.pem
+  INFO[0000]       |-> example-etcd-cluster/kubernetes/etcd-operator-peer-tls.json
+  ```
+  Note: If you are not using the example cluster, run `./operator-gen-selfsigned-tls --help` and determine what additional parameters are necessary for your cluster TPR spec.
+
+* **Load self-signed TLS assets as secrets into the cluster**:
+  ```sh
+  kubectl -n <your-namespace> create -f example-etcd-cluster/kubernetes
+  ```
