@@ -42,8 +42,7 @@ var (
 	//Certificate Authority
 	peerCACfg tlsutil.CACertConfig
 	//Node Server Certificates
-	peerCfg tlsutil.CertConfig
-
+	peerCfg                          tlsutil.CertConfig
 	peerCertDuration, peerCADuration time.Duration
 	prettyPrint                      bool
 	outputDir                        string
@@ -79,12 +78,9 @@ func init() {
 	now := time.Now().UTC()
 	peerCACfg.NotBefore = now
 	peerCACfg.NotAfter = now.Add(peerCADuration).UTC()
-
 	peerCfg.NotBefore = now
 	peerCfg.NotAfter = now.Add(peerCertDuration).UTC()
-
 	peerCfg.Organization = peerCACfg.Organization
-
 	peerCfg.DNSNames = []string{fmt.Sprintf("*.%s.%s.svc.cluster.local", clusterName, clusterNamespace)}
 }
 
