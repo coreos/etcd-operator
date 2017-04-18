@@ -23,7 +23,10 @@ type TLSPolicy struct {
 
 type StaticTLS struct {
 	// Member contains secrets containing TLS certs used by each etcd member pod.
-	Member MemberSecret `json:"member"`
+	Member *MemberSecret `json:"member"`
+	// OperatorSecret is the secret containing TLS certs used by operator to
+	// talk securely to this cluster.
+	OperatorSecret string `json:"operatorSecret"`
 }
 
 type MemberSecret struct {
