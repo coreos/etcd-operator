@@ -37,7 +37,7 @@ func TestPeerTLS(t *testing.T) {
 	c.Metadata.Name = clusterName
 	c.Spec.TLS = &spec.TLSPolicy{
 		Static: &spec.StaticTLS{
-			Member: spec.MemberSecret{
+			Member: &spec.MemberSecret{
 				PeerSecret: secretName,
 			},
 		},

@@ -23,17 +23,17 @@ spec:
       member:
         peerSecret: etcd-server-peer-tls
         clientSecret: etcd-server-client-tls
+      operatorSecret: operator-etcd-client-tls
 ```
 
 ### member.peerSecret
 
 `member.peerSecret` contains pem-encoded private keys and x509 certificates for etcd peer communication.
 
-The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc.cluster.local`.
-In this case, it is `*.example.default.svc.cluster.local`.
-
 The peer TLS assets should have the following:
 - **peer-crt.pem**: peer communication cert.
+  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc.cluster.local`.
+  In this case, it is `*.example.default.svc.cluster.local`.
 - **peer-key.pem**: peer communication key.
 - **peer-ca-crt.pem**: CA cert for this peer key-cert pair.
 
@@ -49,15 +49,35 @@ Once passed, etcd-operator will mount this secret at `/etc/etcd-operator/member/
 
 `member.clientSecret` contains pem-encoded private keys and x509 certificates for etcd client communication on server side.
 
-(TODO: How to specify SAN)
+The client TLS assets should have the following:
+- **client-crt.pem**: client communication cert.
+  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc.cluster.local` and `${clusterName}.${namespace}.svc.cluster.local`.
+  In this case, it is `*.example.default.svc.cluster.local` and `example.default.svc.cluster.local`.
+- **client-key.pem**: client communication key.
+- **client-ca-crt.pem**: CA cert for this client key-cert pair.
+
+Create a secret containing those:
+```
+$ kubectl create secret generic etcd-server-client-tls --from-file=client-ca-crt.pem --from-file=client-crt.pem --from-file=client-key.pem
+```
 
 etcd-operator will mount this secret at `/etc/etcd-operator/member/client-tls/` for each etcd member pod in the cluster.
 
-The client TLS assets are expected to conform to the following structure:
 
-```text
-/etc/etcd-operator/member/client-tls/
-      client-crt.pem
-      client-key.pem
-      client-ca-crt.pem
+### operatorSecret
+
+Operator needs to send client requests e.g. snapshot, healthy check, add/remove member in order to maintain this cluster.
+`operatorSecret` contains pem-encoded private keys and x509 certificates for communicating with etcd server via client URL.
+
+The operator's etcd TLS assets should have the following:
+- **etcd-crt.pem**: operator's etcd x509 client cert.
+- **etcd-key.pem**: operator's etcd x509 client key.
+- **etcd-ca-crt.pem**: CA cert for above key-cert pair.
+They are similar to the `cert-file`,`key-file`, and `ca-file` arguments of `etcdctl`.
+
+Create a secret containing those:
 ```
+$ kubectl create secret generic operator-etcd-client-tls --from-file=etcd-ca-crt.pem --from-file=etcd-crt.pem --from-file=etcd-key.pem
+```
+
+Pass `operator-etcd-client-tls` to `operatorSecret` field.

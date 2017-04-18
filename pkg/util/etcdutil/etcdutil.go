@@ -23,9 +23,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-func ListMembers(endpoints []string) (*clientv3.MemberListResponse, error) {
+func ListMembers(clientURLs []string) (*clientv3.MemberListResponse, error) {
 	cfg := clientv3.Config{
-		Endpoints:   endpoints,
+		Endpoints:   clientURLs,
 		DialTimeout: constants.DefaultDialTimeout,
 	}
 	etcdcli, err := clientv3.New(cfg)
