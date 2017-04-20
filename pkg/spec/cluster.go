@@ -127,6 +127,9 @@ type PodPolicy struct {
 	// Resources is the resource requirements for the etcd container.
 	// This field cannot be updated once the cluster is created.
 	Resources v1.ResourceRequirements `json:"resources"`
+
+	// Tolerations specifies the pod's tolerations.
+	Tolerations []v1.Toleration `json:"tolerations"`
 }
 
 func (c *ClusterSpec) Validate() error {
