@@ -15,11 +15,9 @@
 package k8sutil
 
 import (
-	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -82,7 +80,7 @@ func etcdLivenessProbe() *v1.Probe {
 
 func PodWithAntiAffinity(pod *v1.Pod, clusterName string) *v1.Pod {
 	// set pod anti-affinity with the pods that belongs to the same etcd cluster
-	affinity := v1.Affinity{
+	affinity := &v1.Affinity{
 		PodAntiAffinity: &v1.PodAntiAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
 				{
@@ -97,11 +95,6 @@ func PodWithAntiAffinity(pod *v1.Pod, clusterName string) *v1.Pod {
 		},
 	}
 
-	affinityb, err := json.Marshal(affinity)
-	if err != nil {
-		panic("failed to marshal affinty struct")
-	}
-
-	pod.Annotations[api.AffinityAnnotationKey] = string(affinityb)
+	pod.Spec.Affinity = affinity
 	return pod
 }
