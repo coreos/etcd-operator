@@ -35,11 +35,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
-	// for gcp auth
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // for gcp auth
 	"k8s.io/client-go/rest"
 )
 
@@ -340,4 +340,24 @@ func newLablesForCluster(clusterName string) map[string]string {
 		"etcd_cluster": clusterName,
 		"app":          "etcd",
 	}
+}
+
+func CreatePatch(o, n, datastruct interface{}) ([]byte, error) {
+	oldData, err := json.Marshal(o)
+	if err != nil {
+		return nil, err
+	}
+	newData, err := json.Marshal(n)
+	if err != nil {
+		return nil, err
+	}
+	return strategicpatch.CreateTwoWayMergePatch(oldData, newData, datastruct)
+}
+
+func ClonePod(p *v1.Pod) *v1.Pod {
+	np, err := api.Scheme.DeepCopy(p)
+	if err != nil {
+		panic("cannot deep copy pod")
+	}
+	return np.(*v1.Pod)
 }
