@@ -32,14 +32,15 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election/resourcelock"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/version"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"golang.org/x/time/rate"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/labels"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -209,7 +210,7 @@ func newControllerConfig() controller.Config {
 func getMyPodServiceAccount(kubecli kubernetes.Interface) (string, error) {
 	var sa string
 	err := retryutil.Retry(5*time.Second, 100, func() (bool, error) {
-		pod, err := kubecli.CoreV1().Pods(namespace).Get(name)
+		pod, err := kubecli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
 			logrus.Errorf("fail to get operator pod (%s): %v", name, err)
 			return false, nil

@@ -53,10 +53,10 @@ import (
 	"reflect"
 	"time"
 
-	"k8s.io/client-go/pkg/api/errors"
-	"k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/util/runtime"
-	"k8s.io/client-go/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	rl "github.com/coreos/etcd-operator/pkg/util/k8sutil/election/resourcelock"
 	"github.com/golang/glog"
@@ -211,7 +211,7 @@ func (le *LeaderElector) renew() {
 // else it tries to renew the lease if it has already been acquired. Returns true
 // on success else returns false.
 func (le *LeaderElector) tryAcquireOrRenew() bool {
-	now := unversioned.Now()
+	now := metav1.Now()
 	leaderElectionRecord := rl.LeaderElectionRecord{
 		HolderIdentity:       le.config.Lock.Identity(),
 		LeaseDurationSeconds: int(le.config.LeaseDuration / time.Second),

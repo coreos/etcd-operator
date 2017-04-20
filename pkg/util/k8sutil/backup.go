@@ -26,14 +26,13 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/meta/metatypes"
-	"k8s.io/client-go/pkg/api/resource"
-	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	v1beta1extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	v1beta1storage "k8s.io/client-go/pkg/apis/storage/v1beta1"
-	"k8s.io/client-go/pkg/util/intstr"
 )
 
 const (
@@ -53,7 +52,7 @@ func CreateStorageClass(kubecli kubernetes.Interface, pvProvisioner string) erro
 	// We need to get rid of prefix because naming doesn't support "/".
 	name := storageClassPrefix + "-" + path.Base(pvProvisioner)
 	class := &v1beta1storage.StorageClass{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		Provisioner: pvProvisioner,
@@ -66,7 +65,7 @@ func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvision
 	name := makePVCName(clusterName)
 	storageClassName := storageClassPrefix + "-" + path.Base(pvProvisioner)
 	claim := &v1.PersistentVolumeClaim{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
 				"etcd_cluster": clusterName,
@@ -96,7 +95,7 @@ func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvision
 	//       Change the wait time once there are official p99 SLA.
 	err = retryutil.Retry(4*time.Second, 15, func() (bool, error) {
 		var err error
-		claim, err = kubecli.CoreV1().PersistentVolumeClaims(ns).Get(name)
+		claim, err = kubecli.CoreV1().PersistentVolumeClaims(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -211,17 +210,17 @@ func backupNameAndLabel(clusterName string) (string, map[string]string) {
 	return name, labels
 }
 
-func NewBackupReplicaSetManifest(clusterName string, ps v1.PodSpec, owner metatypes.OwnerReference) *v1beta1extensions.ReplicaSet {
+func NewBackupReplicaSetManifest(clusterName string, ps v1.PodSpec, owner metav1.OwnerReference) *v1beta1extensions.ReplicaSet {
 	name, labels := backupNameAndLabel(clusterName)
 	rs := &v1beta1extensions.ReplicaSet{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: newLablesForCluster(clusterName),
 		},
 		Spec: v1beta1extensions.ReplicaSetSpec{
-			Selector: &unversioned.LabelSelector{MatchLabels: labels},
+			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: v1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 				},
 				Spec: ps,
@@ -232,10 +231,10 @@ func NewBackupReplicaSetManifest(clusterName string, ps v1.PodSpec, owner metaty
 	return rs
 }
 
-func NewBackupServiceManifest(clusterName string, owner metatypes.OwnerReference) *v1.Service {
+func NewBackupServiceManifest(clusterName string, owner metav1.OwnerReference) *v1.Service {
 	name, labels := backupNameAndLabel(clusterName)
 	svc := &v1.Service{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: newLablesForCluster(clusterName),
 		},
@@ -268,7 +267,7 @@ func CopyVolume(kubecli kubernetes.Interface, fromClusterName, toClusterName, ns
 	to := path.Join(constants.BackupMountDir, PVBackupV1, toClusterName)
 
 	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: copyVolumePodName(toClusterName),
 			Labels: map[string]string{
 				"etcd_cluster": toClusterName,
@@ -319,7 +318,7 @@ func CopyVolume(kubecli kubernetes.Interface, fromClusterName, toClusterName, ns
 	var phase v1.PodPhase
 	// Delay could be very long due to k8s controller detaching the volume
 	err := retryutil.Retry(10*time.Second, 12, func() (bool, error) {
-		p, err := kubecli.CoreV1().Pods(ns).Get(pod.Name)
+		p, err := kubecli.CoreV1().Pods(ns).Get(pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -340,7 +339,7 @@ func CopyVolume(kubecli kubernetes.Interface, fromClusterName, toClusterName, ns
 		return fmt.Errorf("failed to wait backup copy pod (%s, phase: %s) to succeed: %v", pod.Name, phase, err)
 	}
 	// Delete the pod to detach the volume from the node
-	return kubecli.CoreV1().Pods(ns).Delete(pod.Name, v1.NewDeleteOptions(0))
+	return kubecli.CoreV1().Pods(ns).Delete(pod.Name, metav1.NewDeleteOptions(0))
 }
 
 func copyVolumePodName(clusterName string) string {

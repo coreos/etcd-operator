@@ -17,7 +17,7 @@ package cluster
 import (
 	"testing"
 
-	"k8s.io/client-go/pkg/api/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -26,7 +26,7 @@ import (
 func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
 	cfg := Config{PVProvisioner: constants.PVProvisionerNone}
 	cl := &spec.Cluster{
-		Metadata: v1.ObjectMeta{Name: "testing"},
+		Metadata: metav1.ObjectMeta{Name: "testing"},
 		Spec: spec.ClusterSpec{
 			Backup: &spec.BackupPolicy{
 				StorageType: spec.BackupStorageTypePersistentVolume,
@@ -46,7 +46,7 @@ func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
 func TestNewBackupManagerWithoutS3Config(t *testing.T) {
 	cfg := Config{}
 	cl := &spec.Cluster{
-		Metadata: v1.ObjectMeta{Name: "testing"},
+		Metadata: metav1.ObjectMeta{Name: "testing"},
 		Spec: spec.ClusterSpec{
 			Backup: &spec.BackupPolicy{
 				StorageType: spec.BackupStorageTypeS3,

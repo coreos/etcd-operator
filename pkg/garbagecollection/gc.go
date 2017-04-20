@@ -18,10 +18,11 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/labels"
-	"k8s.io/client-go/pkg/types"
 )
 
 const (
@@ -64,7 +65,7 @@ func (gc *GC) FullyCollect() error {
 		clusterUIDSet[c.Metadata.UID] = true
 	}
 
-	option := v1.ListOptions{
+	option := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
 			"app": "etcd",
 		}).String(),
@@ -74,7 +75,7 @@ func (gc *GC) FullyCollect() error {
 	return nil
 }
 
-func (gc *GC) collectResources(option v1.ListOptions, runningSet map[types.UID]bool) {
+func (gc *GC) collectResources(option metav1.ListOptions, runningSet map[types.UID]bool) {
 	if err := gc.collectPods(option, runningSet); err != nil {
 		gc.logger.Errorf("gc pods failed: %v", err)
 	}
@@ -86,7 +87,7 @@ func (gc *GC) collectResources(option v1.ListOptions, runningSet map[types.UID]b
 	}
 }
 
-func (gc *GC) collectPods(option v1.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectPods(option metav1.ListOptions, runningSet map[types.UID]bool) error {
 	pods, err := gc.kubecli.CoreV1().Pods(gc.ns).List(option)
 	if err != nil {
 		return err
@@ -100,7 +101,7 @@ func (gc *GC) collectPods(option v1.ListOptions, runningSet map[types.UID]bool) 
 		// Pods failed due to liveness probe are also collected
 		if !runningSet[p.OwnerReferences[0].UID] || p.Status.Phase == v1.PodFailed {
 			// kill bad pods without grace period to kill it immediately
-			err = gc.kubecli.CoreV1().Pods(gc.ns).Delete(p.GetName(), v1.NewDeleteOptions(0))
+			err = gc.kubecli.CoreV1().Pods(gc.ns).Delete(p.GetName(), metav1.NewDeleteOptions(0))
 			if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
 				return err
 			}
@@ -110,7 +111,7 @@ func (gc *GC) collectPods(option v1.ListOptions, runningSet map[types.UID]bool) 
 	return nil
 }
 
-func (gc *GC) collectServices(option v1.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectServices(option metav1.ListOptions, runningSet map[types.UID]bool) error {
 	srvs, err := gc.kubecli.CoreV1().Services(gc.ns).List(option)
 	if err != nil {
 		return err
@@ -133,7 +134,7 @@ func (gc *GC) collectServices(option v1.ListOptions, runningSet map[types.UID]bo
 	return nil
 }
 
-func (gc *GC) collectReplicaSet(option v1.ListOptions, runningSet map[types.UID]bool) error {
+func (gc *GC) collectReplicaSet(option metav1.ListOptions, runningSet map[types.UID]bool) error {
 	rss, err := gc.kubecli.ExtensionsV1beta1().ReplicaSets(gc.ns).List(option)
 	if err != nil {
 		return err
@@ -151,7 +152,7 @@ func (gc *GC) collectReplicaSet(option v1.ListOptions, runningSet map[types.UID]
 			orphanOption := false
 			// set gracePeriod to delete the replica set immediately
 			gracePeriod := int64(0)
-			err = gc.kubecli.ExtensionsV1beta1().ReplicaSets(gc.ns).Delete(rs.GetName(), &v1.DeleteOptions{
+			err = gc.kubecli.ExtensionsV1beta1().ReplicaSets(gc.ns).Delete(rs.GetName(), &metav1.DeleteOptions{
 				OrphanDependents:   &orphanOption,
 				GracePeriodSeconds: &gracePeriod,
 			})

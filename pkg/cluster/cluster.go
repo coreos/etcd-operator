@@ -30,8 +30,9 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/pborman/uuid"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	apierrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -428,7 +429,7 @@ func (c *Cluster) removePodAndService(name string) error {
 		}
 	}
 
-	opts := v1.NewDeleteOptions(podTerminationGracePeriod)
+	opts := metav1.NewDeleteOptions(podTerminationGracePeriod)
 	err = c.config.KubeCli.Core().Pods(ns).Delete(name, opts)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {

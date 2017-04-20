@@ -21,15 +21,16 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 func setupS3Env(kubecli kubernetes.Interface, s3Ctx s3config.S3Context, ns string) error {
-	cm, err := kubecli.CoreV1().ConfigMaps(ns).Get(s3Ctx.AWSConfig)
+	cm, err := kubecli.CoreV1().ConfigMaps(ns).Get(s3Ctx.AWSConfig, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	se, err := kubecli.CoreV1().Secrets(ns).Get(s3Ctx.AWSSecret)
+	se, err := kubecli.CoreV1().Secrets(ns).Get(s3Ctx.AWSSecret, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

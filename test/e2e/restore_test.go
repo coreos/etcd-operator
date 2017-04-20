@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
 	"golang.org/x/net/context"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestClusterRestore(t *testing.T) {
@@ -85,7 +86,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	pod, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get(names[0])
+	pod, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get(names[0], metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +139,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	pod, err = f.KubeClient.CoreV1().Pods(f.Namespace).Get(names[0])
+	pod, err = f.KubeClient.CoreV1().Pods(f.Namespace).Get(names[0], metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

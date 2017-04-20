@@ -22,8 +22,8 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 
-	"k8s.io/client-go/pkg/api/unversioned"
-	kwatch "k8s.io/client-go/pkg/watch"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kwatch "k8s.io/apimachinery/pkg/watch"
 )
 
 type rawEvent struct {
@@ -31,7 +31,7 @@ type rawEvent struct {
 	Object json.RawMessage
 }
 
-func pollEvent(decoder *json.Decoder) (*Event, *unversioned.Status, error) {
+func pollEvent(decoder *json.Decoder) (*Event, *metav1.Status, error) {
 	re := &rawEvent{}
 	err := decoder.Decode(re)
 	if err != nil {
@@ -42,10 +42,10 @@ func pollEvent(decoder *json.Decoder) (*Event, *unversioned.Status, error) {
 	}
 
 	if re.Type == kwatch.Error {
-		status := &unversioned.Status{}
+		status := &metav1.Status{}
 		err = json.Unmarshal(re.Object, status)
 		if err != nil {
-			return nil, nil, fmt.Errorf("fail to decode (%s) into unversioned.Status (%v)", re.Object, err)
+			return nil, nil, fmt.Errorf("fail to decode (%s) into metav1.Status (%v)", re.Object, err)
 		}
 		return nil, status, nil
 	}

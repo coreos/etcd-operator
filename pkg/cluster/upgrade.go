@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (c *Cluster) upgradeOneMember(memberName string) error {
@@ -25,7 +26,7 @@ func (c *Cluster) upgradeOneMember(memberName string) error {
 
 	ns := c.cluster.Metadata.Namespace
 
-	pod, err := c.config.KubeCli.CoreV1().Pods(ns).Get(memberName)
+	pod, err := c.config.KubeCli.CoreV1().Pods(ns).Get(memberName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("fail to get pod (%s): %v", memberName, err)
 	}

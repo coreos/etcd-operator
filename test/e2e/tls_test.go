@@ -22,6 +22,8 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPeerTLS(t *testing.T) {
@@ -58,7 +60,7 @@ func TestPeerTLS(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	pod, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get(members[0])
+	pod, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get(members[0], metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

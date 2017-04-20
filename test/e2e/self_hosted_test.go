@@ -27,9 +27,10 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
+
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/pkg/netutil"
-
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -132,7 +133,7 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 
 func cleanupSelfHostedHostpath() {
 	f := framework.Global
-	nodes, err := f.KubeClient.CoreV1().Nodes().List(v1.ListOptions{})
+	nodes, err := f.KubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return
 	}
@@ -144,7 +145,7 @@ func cleanupSelfHostedHostpath() {
 
 			name := fmt.Sprintf("cleanup-selfhosted-%s", nodeName)
 			p := &v1.Pod{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: name,
 				},
 				Spec: v1.PodSpec{
@@ -174,7 +175,7 @@ func cleanupSelfHostedHostpath() {
 				return
 			}
 			retryutil.Retry(5*time.Second, 5, func() (bool, error) {
-				get, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get(name)
+				get, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get(name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
 				}

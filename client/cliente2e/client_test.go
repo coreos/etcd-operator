@@ -8,8 +8,11 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
+	// for gcp auth
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -31,7 +34,7 @@ func TestClient(t *testing.T) {
 	kubecli := mustNewKubeClient()
 
 	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		Spec: v1.PodSpec{
@@ -50,9 +53,9 @@ func TestClient(t *testing.T) {
 	if _, err := kubecli.CoreV1().Pods(namespace).Create(pod); err != nil {
 		t.Fatalf("fail to create job (%s): %v", name, err)
 	}
-	defer kubecli.CoreV1().Pods(namespace).Delete(name, v1.NewDeleteOptions(1))
+	defer kubecli.CoreV1().Pods(namespace).Delete(name, metav1.NewDeleteOptions(1))
 	err := retryutil.Retry(5*time.Second, 6, func() (bool, error) {
-		pod, err := kubecli.CoreV1().Pods(namespace).Get(name)
+		pod, err := kubecli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}

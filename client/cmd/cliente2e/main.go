@@ -22,7 +22,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 
 	"github.com/Sirupsen/logrus"
-	apierrors "k8s.io/client-go/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func main() {

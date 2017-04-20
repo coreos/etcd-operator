@@ -18,8 +18,8 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/watch"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -29,7 +29,7 @@ func TestHandleClusterEventUpdateFailedCluster(t *testing.T) {
 	c := New(Config{})
 
 	clus := &spec.Cluster{
-		Metadata: v1.ObjectMeta{
+		Metadata: metav1.ObjectMeta{
 			Name: "test",
 		},
 		Status: spec.ClusterStatus{
@@ -51,7 +51,7 @@ func TestHandleClusterEventDeleteFailedCluster(t *testing.T) {
 	c := New(Config{})
 	name := "tests"
 	clus := &spec.Cluster{
-		Metadata: v1.ObjectMeta{
+		Metadata: metav1.ObjectMeta{
 			Name: name,
 		},
 		Status: spec.ClusterStatus{
