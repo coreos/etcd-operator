@@ -174,7 +174,7 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 		logrus.Warning(msg)
 		return lastSnapRev, fmt.Errorf(msg)
 	}
-	member, rev := getMemberWithMaxRev(pods)
+	member, rev := b.getMemberWithMaxRev(pods)
 	if member == nil {
 		logrus.Warning("no reachable member")
 		return lastSnapRev, fmt.Errorf("no reachable member")
@@ -196,11 +196,7 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	start := time.Now()
 
-	cfg := clientv3.Config{
-		Endpoints:   []string{m.ClientAddr()},
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
+	etcdcli, err := etcdutil.NewClient([]string{m.ClientAddr()}, b.etcdTLSConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create etcd client (%v)", err)
 	}
@@ -240,7 +236,7 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	return nil
 }
 
-func getMemberWithMaxRev(pods []*v1.Pod) (*etcdutil.Member, int64) {
+func (b *Backup) getMemberWithMaxRev(pods []*v1.Pod) (*etcdutil.Member, int64) {
 	var member *etcdutil.Member
 	maxRev := int64(0)
 	for _, pod := range pods {
@@ -248,11 +244,7 @@ func getMemberWithMaxRev(pods []*v1.Pod) (*etcdutil.Member, int64) {
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
 		}
-		cfg := clientv3.Config{
-			Endpoints:   []string{m.ClientAddr()},
-			DialTimeout: constants.DefaultDialTimeout,
-		}
-		etcdcli, err := clientv3.New(cfg)
+		etcdcli, err := etcdutil.NewClient([]string{m.ClientAddr()}, b.etcdTLSConfig)
 		if err != nil {
 			logrus.Warningf("failed to create etcd client for pod (%v): %v", pod.Name, err)
 			continue
