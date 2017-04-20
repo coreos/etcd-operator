@@ -15,6 +15,7 @@
 package backup
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
+	clustertls "github.com/coreos/etcd-operator/pkg/cluster/tls"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -46,10 +48,11 @@ const (
 type Backup struct {
 	kclient kubernetes.Interface
 
-	clusterName string
-	namespace   string
-	policy      spec.BackupPolicy
-	listenAddr  string
+	clusterName   string
+	namespace     string
+	policy        spec.BackupPolicy
+	listenAddr    string
+	etcdTLSConfig *tls.Config
 
 	be backend
 
@@ -65,7 +68,8 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 	// tmp dir is used to store intermediate snapshot files.
 	// It will be no-op if target dir existed.
 	tmpDir := path.Join(bdir, backupTmpDir)
-	if err := os.MkdirAll(tmpDir, 0700); err != nil {
+	err := os.MkdirAll(tmpDir, 0700)
+	if err != nil {
 		panic(err)
 	}
 
@@ -88,13 +92,22 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 		logrus.Fatalf("unsupported storage type: %v", sp.Backup.StorageType)
 	}
 
+	var tc *tls.Config
+	if clustertls.IsSecureClient(sp) {
+		tc, err = clustertls.NewTLSConfig(kclient, ns, *sp.TLS)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	return &Backup{
-		kclient:     kclient,
-		clusterName: clusterName,
-		namespace:   ns,
-		policy:      *sp.Backup,
-		listenAddr:  listenAddr,
-		be:          be,
+		kclient:       kclient,
+		clusterName:   clusterName,
+		namespace:     ns,
+		policy:        *sp.Backup,
+		listenAddr:    listenAddr,
+		be:            be,
+		etcdTLSConfig: tc,
 
 		backupNow: make(chan chan error),
 	}

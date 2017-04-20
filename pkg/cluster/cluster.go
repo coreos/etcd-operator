@@ -15,6 +15,7 @@
 package cluster
 
 import (
+	"crypto/tls"
 	"fmt"
 	"math"
 	"reflect"
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
+	clustertls "github.com/coreos/etcd-operator/pkg/cluster/tls"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -84,6 +86,8 @@ type Cluster struct {
 	bm        *backupManager
 	backupDir string
 
+	tlsConfig *tls.Config
+
 	gc *garbagecollection.GC
 }
 
@@ -137,6 +141,13 @@ func (c *Cluster) setup() error {
 
 	default:
 		return fmt.Errorf("unexpected cluster phase: %s", c.status.Phase)
+	}
+
+	if clustertls.IsSecureClient(c.cluster.Spec) {
+		c.tlsConfig, err = clustertls.NewTLSConfig(c.config.KubeCli, c.cluster.Metadata.Namespace, *c.cluster.Spec.TLS)
+		if err != nil {
+			return err
+		}
 	}
 
 	if b := c.cluster.Spec.Backup; b != nil && b.MaxBackups > 0 {
