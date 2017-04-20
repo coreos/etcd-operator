@@ -18,8 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -86,7 +86,7 @@ func PodWithAntiAffinity(pod *v1.Pod, clusterName string) *v1.Pod {
 		PodAntiAffinity: &v1.PodAntiAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
 				{
-					LabelSelector: &unversioned.LabelSelector{
+					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"etcd_cluster": clusterName,
 						},

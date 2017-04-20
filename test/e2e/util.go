@@ -34,9 +34,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/coreos/etcd/clientv3"
-	"k8s.io/client-go/pkg/api/unversioned"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/labels"
 )
 
 const (
@@ -55,7 +55,7 @@ func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Du
 		"etcd_cluster": clusterName,
 	}).String()
 	return retryutil.Retry(5*time.Second, int(timeout/(5*time.Second)), func() (done bool, err error) {
-		podList, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(v1.ListOptions{
+		podList, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(metav1.ListOptions{
 			LabelSelector: ls,
 		})
 		if err != nil {
@@ -75,7 +75,7 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 		"app":          k8sutil.BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
 	}).String()
-	podList, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(v1.ListOptions{
+	podList, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(metav1.ListOptions{
 		LabelSelector: ls,
 	})
 	if err != nil {
@@ -151,7 +151,7 @@ func waitSizeReachedWithAccept(t *testing.T, f *framework.Framework, clusterName
 
 func killMembers(f *framework.Framework, names ...string) error {
 	for _, name := range names {
-		err := f.KubeClient.CoreV1().Pods(f.Namespace).Delete(name, v1.NewDeleteOptions(0))
+		err := f.KubeClient.CoreV1().Pods(f.Namespace).Delete(name, metav1.NewDeleteOptions(0))
 		if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
@@ -161,11 +161,11 @@ func killMembers(f *framework.Framework, names ...string) error {
 
 func newClusterSpec(genName string, size int) *spec.Cluster {
 	return &spec.Cluster{
-		TypeMeta: unversioned.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       strings.Title(spec.TPRKind),
 			APIVersion: spec.TPRGroup + "/" + spec.TPRVersion,
 		},
-		Metadata: v1.ObjectMeta{
+		Metadata: metav1.ObjectMeta{
 			GenerateName: genName,
 		},
 		Spec: spec.ClusterSpec{
@@ -321,7 +321,7 @@ func waitBackupDeleted(f *framework.Framework, c *spec.Cluster) error {
 			"app":          k8sutil.BackupPodSelectorAppField,
 			"etcd_cluster": c.Metadata.Name,
 		}).String()
-		pl, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(v1.ListOptions{
+		pl, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(metav1.ListOptions{
 			LabelSelector: ls,
 		})
 		if err != nil {

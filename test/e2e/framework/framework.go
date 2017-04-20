@@ -26,6 +26,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -101,7 +102,7 @@ func (f *Framework) SetupEtcdOperator() error {
 		cmd += " --backup-aws-secret=aws --backup-aws-config=aws --backup-s3-bucket=jenkins-etcd-operator"
 	}
 	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   "etcd-operator",
 			Labels: map[string]string{"name": "etcd-operator"},
 		},
@@ -149,7 +150,7 @@ func (f *Framework) DeleteEtcdOperatorCompletely() error {
 		return err
 	}
 	err = retryutil.Retry(2*time.Second, 5, func() (bool, error) {
-		_, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get("etcd-operator")
+		_, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get("etcd-operator", metav1.GetOptions{})
 		if err == nil {
 			return false, nil
 		}
@@ -165,7 +166,7 @@ func (f *Framework) DeleteEtcdOperatorCompletely() error {
 }
 
 func (f *Framework) deleteEtcdOperator() error {
-	return f.KubeClient.CoreV1().Pods(f.Namespace).Delete("etcd-operator", v1.NewDeleteOptions(1))
+	return f.KubeClient.CoreV1().Pods(f.Namespace).Delete("etcd-operator", metav1.NewDeleteOptions(1))
 }
 
 func (f *Framework) setupAWS() error {

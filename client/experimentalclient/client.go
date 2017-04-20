@@ -7,10 +7,10 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/rest"
 )
 
@@ -34,7 +34,7 @@ type Operator interface {
 }
 
 var (
-	groupversion = unversioned.GroupVersion{
+	groupversion = schema.GroupVersion{
 		Group:   spec.TPRGroup,
 		Version: spec.TPRVersion,
 	}
@@ -47,8 +47,8 @@ func init() {
 				groupversion,
 				&spec.Cluster{},
 				&spec.ClusterList{},
-				&v1.ListOptions{},
-				&v1.DeleteOptions{},
+				&metav1.ListOptions{},
+				&metav1.DeleteOptions{},
 			)
 			return nil
 		})
@@ -77,7 +77,7 @@ func NewOperator(namespace string) (Operator, error) {
 
 func (o *operator) Create(ctx context.Context, name string, cspec spec.ClusterSpec) error {
 	cluster := &spec.Cluster{
-		Metadata: v1.ObjectMeta{
+		Metadata: metav1.ObjectMeta{
 			Name: name,
 		},
 		Spec: cspec,
@@ -145,7 +145,7 @@ func (o *operator) List(ctx context.Context) (*spec.ClusterList, error) {
 	err := o.tprClient.Get().
 		Resource(o.tprKindPlural).
 		Namespace(o.ns).
-		VersionedParams(&v1.ListOptions{}, api.ParameterCodec).
+		VersionedParams(&metav1.ListOptions{}, api.ParameterCodec).
 		Do().Into(clusters)
 
 	if err != nil {

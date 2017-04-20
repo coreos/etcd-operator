@@ -31,10 +31,10 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kwatch "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
 	v1beta1extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	kwatch "k8s.io/client-go/pkg/watch"
 )
 
 var (
@@ -270,7 +270,7 @@ func (c *Controller) initResource() (string, error) {
 
 func (c *Controller) createTPR() error {
 	tpr := &v1beta1extensions.ThirdPartyResource{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: spec.TPRName(),
 		},
 		Versions: []v1beta1extensions.APIVersion{
