@@ -342,9 +342,10 @@ func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	m := &etcdutil.Member{
-		Name:       etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
-		Namespace:  c.cluster.Metadata.Namespace,
-		SecurePeer: c.isSecurePeer(),
+		Name:         etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
+		Namespace:    c.cluster.Metadata.Namespace,
+		SecurePeer:   c.isSecurePeer(),
+		SecureClient: clustertls.IsSecureClient(c.cluster.Spec),
 	}
 	ms := etcdutil.NewMemberSet(m)
 	if err := c.createPod(ms, m, "new", recoverFromBackup); err != nil {

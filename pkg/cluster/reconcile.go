@@ -17,6 +17,7 @@ package cluster
 import (
 	"errors"
 
+	clustertls "github.com/coreos/etcd-operator/pkg/cluster/tls"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -122,9 +123,10 @@ func (c *Cluster) addOneMember() error {
 
 	newMemberName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
 	newMember := &etcdutil.Member{
-		Name:       newMemberName,
-		Namespace:  c.cluster.Metadata.Namespace,
-		SecurePeer: c.isSecurePeer(),
+		Name:         newMemberName,
+		Namespace:    c.cluster.Metadata.Namespace,
+		SecurePeer:   c.isSecurePeer(),
+		SecureClient: clustertls.IsSecureClient(c.cluster.Spec),
 	}
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerURL()})
