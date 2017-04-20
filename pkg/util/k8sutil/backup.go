@@ -166,7 +166,7 @@ func PodSpecWithS3(ps *v1.PodSpec, s3Ctx s3config.S3Context) *v1.PodSpec {
 }
 
 func NewBackupPodSpec(clusterName, account string, sp spec.ClusterSpec) (*v1.PodSpec, error) {
-	bp, err := json.Marshal(sp.Backup)
+	b, err := json.Marshal(sp)
 	if err != nil {
 		return nil, err
 	}
@@ -191,8 +191,8 @@ func NewBackupPodSpec(clusterName, account string, sp spec.ClusterSpec) (*v1.Pod
 					Name:      "MY_POD_NAMESPACE",
 					ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 				}, {
-					Name:  backupenv.BackupPolicy,
-					Value: string(bp),
+					Name:  backupenv.ClusterSpec,
+					Value: string(b),
 				}},
 			},
 		},
