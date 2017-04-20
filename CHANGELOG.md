@@ -5,6 +5,7 @@
 - Add "none" PV provisioner option. If operator flag "pv-provisioner" is set to "none",
   operator won’t create any storage class and users couldn’t make use of operator’s PV backup feature.
 - Add headless service `${clusterName}` which selects etcd pods of given cluster.
+- Pod Tolerations.
 
 ### Changed
 

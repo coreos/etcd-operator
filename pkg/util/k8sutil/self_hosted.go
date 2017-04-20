@@ -126,8 +126,13 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 	SetEtcdVersion(pod, cs.Version)
 
 	pod = PodWithAntiAffinity(pod, clusterName)
-	if cs.Pod != nil && len(cs.Pod.NodeSelector) != 0 {
-		pod = PodWithNodeSelector(pod, cs.Pod.NodeSelector)
+	if cs.Pod != nil {
+		if len(cs.Pod.NodeSelector) != 0 {
+			pod = PodWithNodeSelector(pod, cs.Pod.NodeSelector)
+		}
+		if len(cs.Pod.Tolerations) != 0 {
+			pod.Spec.Tolerations = cs.Pod.Tolerations
+		}
 	}
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod

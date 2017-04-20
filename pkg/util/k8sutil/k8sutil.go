@@ -267,6 +267,9 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		if len(cs.Pod.NodeSelector) != 0 {
 			pod = PodWithNodeSelector(pod, cs.Pod.NodeSelector)
 		}
+		if len(cs.Pod.Tolerations) != 0 {
+			pod.Spec.Tolerations = cs.Pod.Tolerations
+		}
 	}
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
