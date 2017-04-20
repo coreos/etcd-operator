@@ -18,7 +18,10 @@ import (
 	"fmt"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 func (c *Cluster) upgradeOneMember(memberName string) error {
@@ -30,10 +33,18 @@ func (c *Cluster) upgradeOneMember(memberName string) error {
 	if err != nil {
 		return fmt.Errorf("fail to get pod (%s): %v", memberName, err)
 	}
+	oldpod := k8sutil.ClonePod(pod)
+
 	c.logger.Infof("upgrading the etcd member %v from %s to %s", memberName, k8sutil.GetEtcdVersion(pod), c.cluster.Spec.Version)
 	pod.Spec.Containers[0].Image = k8sutil.EtcdImageName(c.cluster.Spec.Version)
 	k8sutil.SetEtcdVersion(pod, c.cluster.Spec.Version)
-	_, err = c.config.KubeCli.CoreV1().Pods(ns).Update(pod)
+
+	patchdata, err := k8sutil.CreatePatch(oldpod, pod, v1.Pod{})
+	if err != nil {
+		return fmt.Errorf("error creating patch: %v", err)
+	}
+
+	_, err = c.config.KubeCli.CoreV1().Pods(ns).Patch(pod.GetName(), types.StrategicMergePatchType, patchdata)
 	if err != nil {
 		return fmt.Errorf("fail to update the etcd member (%s): %v", memberName, err)
 	}
