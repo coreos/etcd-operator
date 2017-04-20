@@ -24,7 +24,7 @@ import (
 )
 
 func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
-	resp, err := etcdutil.ListMembers(known.ClientURLs())
+	resp, err := etcdutil.ListMembers(known.ClientURLs(), c.tlsConfig)
 	if err != nil {
 		return err
 	}

@@ -22,7 +22,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
-	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"golang.org/x/net/context"
 	"k8s.io/client-go/pkg/api/v1"
@@ -115,11 +114,7 @@ func (c *Cluster) resize() error {
 func (c *Cluster) addOneMember() error {
 	c.status.AppendScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
 
-	cfg := clientv3.Config{
-		Endpoints:   c.members.ClientURLs(),
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
+	etcdcli, err := etcdutil.NewClient(c.members.ClientURLs(), c.tlsConfig)
 	if err != nil {
 		return err
 	}
@@ -163,7 +158,7 @@ func (c *Cluster) removeDeadMember(toRemove *etcdutil.Member) error {
 }
 
 func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
-	err := etcdutil.RemoveMember(c.members.ClientURLs(), toRemove.ID)
+	err := etcdutil.RemoveMember(c.members.ClientURLs(), c.tlsConfig, toRemove.ID)
 	if err != nil {
 		switch err {
 		case rpctypes.ErrMemberNotFound:

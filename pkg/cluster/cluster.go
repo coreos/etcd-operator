@@ -483,7 +483,7 @@ func (c *Cluster) updateMemberStatus(pods []*v1.Pod) {
 	for _, pod := range pods {
 		// TODO: Change to URL struct for TLS integration
 		url := fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
-		healthy, err := etcdutil.CheckHealth(url)
+		healthy, err := etcdutil.CheckHealth(url, c.tlsConfig)
 		if err != nil {
 			c.logger.Warningf("health check of etcd member (%s) failed: %v", url, err)
 		}
