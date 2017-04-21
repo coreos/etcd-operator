@@ -15,7 +15,6 @@
 package k8sutil
 
 import (
-	"encoding/json"
 	"fmt"
 	"path"
 	"strings"
@@ -45,32 +44,34 @@ var (
 	}
 )
 
-func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, name string, peerURLs []string, cs spec.ClusterSpec) *v1.Pod {
+func selfHostedDataDir(ns, name string) string {
+	return path.Join(etcdVolumeMountDir, ns+"-"+name)
+}
+
+func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, ns, name, peerURL string, cs spec.ClusterSpec) *v1.Pod {
 	containerSpec := []v1.Container{
 		{
 			Name:  "add-member",
 			Image: EtcdImageName(cs.Version),
 			Command: []string{
+				// NOTE: Init container will be re-executed on restart. We are taking the datadir as a signal of restart.
 				"/bin/sh", "-ec",
-				fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), name, strings.Join(peerURLs, ",")),
+				fmt.Sprintf("[ -d %s ] || ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s",
+					selfHostedDataDir(ns, name), strings.Join(endpoints, ","), name, peerURL),
 			},
-			Env: []v1.EnvVar{envPodIP},
+			Env:          []v1.EnvVar{envPodIP},
+			VolumeMounts: etcdVolumeMounts(),
 		},
 	}
-	b, err := json.Marshal(containerSpec)
-	if err != nil {
-		panic(err)
-	}
-	p.Annotations[v1.PodInitContainersBetaAnnotationKey] = string(b)
+	p.Spec.InitContainers = containerSpec
 	return p
 }
 
 func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns, state, token string, cs spec.ClusterSpec, owner metav1.OwnerReference) *v1.Pod {
-	selfHostedDataDir := path.Join(etcdVolumeMountDir, ns+"-"+name)
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(MY_POD_IP):2380 "+
 		"--listen-peer-urls=http://$(MY_POD_IP):2380 --listen-client-urls=http://$(MY_POD_IP):2379 --advertise-client-urls=http://$(MY_POD_IP):2379 "+
 		"--initial-cluster=%s --initial-cluster-state=%s --metrics extensive",
-		selfHostedDataDir, name, strings.Join(initialCluster, ","), state)
+		selfHostedDataDir(ns, name), name, strings.Join(initialCluster, ","), state)
 
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
