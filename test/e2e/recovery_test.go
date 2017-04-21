@@ -64,7 +64,8 @@ func testOneMemberRecovery(t *testing.T) {
 	}
 	fmt.Println("reached to 3 members cluster")
 
-	if err := killMembers(f, names[0]); err != nil {
+	// The last pod could have not come up serving yet. If we are not killing the last pod, we should wait.
+	if err := killMembers(f, names[2]); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 60*time.Second); err != nil {
