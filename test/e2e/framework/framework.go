@@ -149,7 +149,9 @@ func (f *Framework) DeleteEtcdOperatorCompletely() error {
 	if err != nil {
 		return err
 	}
-	err = retryutil.Retry(2*time.Second, 5, func() (bool, error) {
+	// On k8s 1.6.1, grace period isn't accurate. It took ~10s for operator pod to completely disappear.
+	// We work around by increasing the wait time. Revisit this later.
+	err = retryutil.Retry(5*time.Second, 6, func() (bool, error) {
 		_, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get("etcd-operator", metav1.GetOptions{})
 		if err == nil {
 			return false, nil
