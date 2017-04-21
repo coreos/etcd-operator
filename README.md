@@ -34,7 +34,7 @@ Read [Developer Guide](./doc/dev/developer_guide.md) for setting up development 
 
 ## Requirements
 
-- Kubernetes 1.5.3+
+- Kubernetes 1.6+
 - etcd 3.0+
 
 ## Demo
@@ -84,48 +84,33 @@ $ kubectl delete -f example/example-etcd-cluster.yaml
 
 ## Resize an etcd cluster
 
-`kubectl apply` doesn't work for TPR at the moment. See [kubernetes/#29542](https://github.com/kubernetes/kubernetes/issues/29542).
-As a workaround, we use cURL to resize the cluster.
+**Note**: In order to use `kubectl apply` you will need Kubernetes 1.6 or higher. Otherwise you will have to post the changes to the API server directly using `curl`.
 
 Create an etcd cluster:
 
 ```
-$ kubectl create -f example/example-etcd-cluster.yaml
+$ kubectl apply -f example/example-etcd-cluster.yaml
 ```
 
-Use kubectl to create a reverse proxy:
+In `example/example-etcd-cluster.yaml` the initial cluster size is 3.
+Modify the file and change `size` from 3 to 5.
 
 ```
-$ kubectl proxy --port=8080
-Starting to serve on 127.0.0.1:8080
-```
-Now we can talk to apiserver via "http://127.0.0.1:8080".
-
-Create a json file with the new configuration:
-
-```
-$ cat body.json
-{
-  "apiVersion": "etcd.coreos.com/v1beta1",
-  "kind": "Cluster",
-  "metadata": {
-    "name": "example-etcd-cluster",
-    "namespace": "default"
-  },
-  "spec": {
-    "size": 5
-  }
-}
+$ cat example/example-etcd-cluster.yaml
+apiVersion: "etcd.coreos.com/v1beta1"
+kind: "Cluster"
+metadata:
+  name: "example-etcd-cluster"
+spec:
+  size: 5
+  version: "3.1.4"
 ```
 
-In another terminal, use the following command to change the cluster size from 3 to 5.
-
+Apply the size change to the cluster TPR:
 ```
-$ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/etcd.coreos.com/v1beta1/namespaces/default/clusters/example-etcd-cluster
+$ kubectl apply -f example/example-etcd-cluster.yaml
 ```
-
-We should see
-
+The etcd cluster will scale to 5 members (5 pods):
 ```
 $ kubectl get pods
 NAME                            READY     STATUS    RESTARTS   AGE
@@ -136,29 +121,20 @@ example-etcd-cluster-0003       1/1       Running   0          1m
 example-etcd-cluster-0004       1/1       Running   0          1m
 ```
 
-Now we can decrease the size of cluster from 5 back to 3.
-
-Create a json file with cluster size of 3:
+Similarly we can decrease the size of cluster from 5 back to 3 by changing the size field again and reapplying the change.
 
 ```
-$ cat body.json
-{
-  "apiVersion": "etcd.coreos.com/v1beta1",
-  "kind": "Cluster",
-  "metadata": {
-    "name": "example-etcd-cluster",
-    "namespace": "default"
-  },
-  "spec": {
-    "size": 3
-  }
-}
+$ cat example/example-etcd-cluster.yaml
+apiVersion: "etcd.coreos.com/v1beta1"
+kind: "Cluster"
+metadata:
+  name: "example-etcd-cluster"
+spec:
+  size: 3
+  version: "3.1.4"
 ```
-
-Apply it to API Server:
-
 ```
-$ curl -H 'Content-Type: application/json' -X PUT --data @body.json http://127.0.0.1:8080/apis/etcd.coreos.com/v1beta1/namespaces/default/clusters/example-etcd-cluster
+$ kubectl apply -f example/example-etcd-cluster.yaml
 ```
 
 We should see that etcd cluster will eventually reduce to 3 pods:
@@ -323,7 +299,7 @@ spec:
 Create an etcd cluster with the version specified (3.0.16) in the yaml file:
 
 ```
-$ kubectl create -f 3.0-etcd-cluster.yaml
+$ kubectl apply -f 3.0-etcd-cluster.yaml
 $ kubectl get pods
 NAME                           READY     STATUS    RESTARTS   AGE
 example-etcd-cluster-0000      1/1       Running   0          37s
@@ -338,39 +314,23 @@ $ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
     image: quay.io/coreos/etcd:v3.0.16
 ```
 
-`kubectl apply` doesn't work for TPR at the moment. See [kubernetes/#29542](https://github.com/kubernetes/kubernetes/issues/29542).
-We use cURL to update the cluster as a workaround.
-
-Use kubectl to create a reverse proxy:
+Now modify the file `3.0-etcd-cluster.yaml` and change the `version` from 3.0.16 to 3.1.4:
 
 ```
-$ kubectl proxy --port=8080
-Starting to serve on 127.0.0.1:8080
+$ cat 3.0-etcd-cluster.yaml
+apiVersion: "etcd.coreos.com/v1beta1"
+kind: "Cluster"
+metadata:
+  name: "example-etcd-cluster"
+spec:
+  size: 3
+  version: "3.1.4"
 ```
 
-Have following json file ready:
-(Note that the version field is changed from 3.0.16 to 3.1.4)
+Apply the version change to the cluster TPR:
 
 ```
-$ cat body.json
-{
-  "apiVersion": "etcd.coreos.com/v1beta1",
-  "kind": "Cluster",
-  "metadata": {
-    "name": "example-etcd-cluster"
-  },
-  "spec": {
-    "size": 3,
-    "version": "3.1.4"
-  }
-}
-```
-
-Then we update the version in spec.
-
-```
-$ curl -H 'Content-Type: application/json' -X PUT --data @body.json \
-    http://127.0.0.1:8080/apis/etcd.coreos.com/v1beta1/namespaces/default/clusters/example-etcd-cluster
+$ kubectl apply -f 3.0-etcd-cluster.yaml
 ```
 
 Wait ~30 seconds. The container image version should be updated to v3.1.4:
