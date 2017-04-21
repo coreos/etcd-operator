@@ -13,9 +13,8 @@ spec:
       - name: etcd-operator
         image: quay.io/coreos/etcd-operator:v0.2.4
         command: 
-        - "/bin/sh"
-        - "-ec"
-        - "/usr/local/bin/etcd-operator --pv-provisioner=kubernetes.io/aws-ebs"
+        - /usr/local/bin/etcd-operator
+        - --pv-provisioner=kubernetes.io/aws-ebs
         env:
         - name: MY_POD_NAMESPACE
           valueFrom:

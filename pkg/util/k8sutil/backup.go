@@ -184,9 +184,8 @@ func NewBackupPodSpec(clusterName, account string, sp spec.ClusterSpec) (*v1.Pod
 				Name:  "backup",
 				Image: BackupImage,
 				Command: []string{
-					"/bin/sh",
-					"-ec",
-					"/usr/local/bin/etcd-backup --etcd-cluster=" + clusterName,
+					"/usr/local/bin/etcd-backup",
+					"--etcd-cluster=" + clusterName,
 				},
 				Env: []v1.EnvVar{{
 					Name:      "MY_POD_NAMESPACE",
