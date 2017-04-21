@@ -99,6 +99,7 @@ type ClusterSpec struct {
 	// Kubernetes cluster.
 	SelfHosted *SelfHostedPolicy `json:"selfHosted,omitempty"`
 
+	// NOTE: This field is half finished. It will be ignored.
 	// etcd cluster TLS configuration
 	TLS *TLSPolicy `json:"TLS,omitempty"`
 }
@@ -156,6 +157,9 @@ func (c *ClusterSpec) Cleanup() {
 		c.Version = defaultVersion
 	}
 	c.Version = strings.TrimLeft(c.Version, "v")
+
+	// TODO: remove this once we fully implement TLS
+	c.TLS = nil
 }
 
 type ClusterPhase string
