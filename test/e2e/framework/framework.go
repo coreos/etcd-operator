@@ -97,9 +97,9 @@ func (f *Framework) setup() error {
 
 func (f *Framework) SetupEtcdOperator() error {
 	// TODO: unify this and the yaml file in example/
-	cmd := "/usr/local/bin/etcd-operator --analytics=false"
+	cmd := []string{"/usr/local/bin/etcd-operator", "--analytics=false"}
 	if os.Getenv("AWS_TEST_ENABLED") == "true" {
-		cmd += " --backup-aws-secret=aws --backup-aws-config=aws --backup-s3-bucket=jenkins-etcd-operator"
+		cmd = append(cmd, "--backup-aws-secret=aws", "--backup-aws-config=aws", "--backup-s3-bucket=jenkins-etcd-operator")
 	}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -109,11 +109,9 @@ func (f *Framework) SetupEtcdOperator() error {
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
-					Name:  "etcd-operator",
-					Image: f.opImage,
-					Command: []string{
-						"/bin/sh", "-ec", cmd,
-					},
+					Name:    "etcd-operator",
+					Image:   f.opImage,
+					Command: cmd,
 					Env: []v1.EnvVar{
 						{
 							Name:      "MY_POD_NAMESPACE",
