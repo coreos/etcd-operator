@@ -51,8 +51,8 @@ Once passed, etcd-operator will mount this secret at `/etc/etcd-operator/member/
 
 The client TLS assets should have the following:
 - **client-crt.pem**: etcd server's client communication cert.
-  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc.cluster.local` and `${clusterName}.${namespace}.svc.cluster.local`.
-  In this case, it is `*.example.default.svc.cluster.local` and `example.default.svc.cluster.local`.
+  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc.cluster.local` and `${clusterName}-client.${namespace}.svc.cluster.local`.
+  In this case, it is `*.example.default.svc.cluster.local` and `example-client.default.svc.cluster.local`.
 - **client-key.pem**: etcd server's client communication key.
 - **client-ca-crt.pem**: CA cert for validating the certs of etcd clients.
 
@@ -73,7 +73,7 @@ The operator's etcd TLS assets should have the following:
 - **etcd-crt.pem**: operator's etcd x509 client cert.
 - **etcd-key.pem**: operator's etcd x509 client key.
 - **etcd-ca-crt.pem**: CA cert for validating the certs of etcd members.
-They are similar to the `cert-file`,`key-file`, and `ca-file` arguments of `etcdctl`.
+They corresponds to the `--cert`,`--key`, and `--cacert` arguments of `etcdctl`.
 
 Create a secret containing those:
 ```
