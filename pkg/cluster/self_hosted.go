@@ -35,10 +35,11 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster := append(c.members.PeerURLPairs(), newMemberName+"="+peerURL)
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
-	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.cluster.Spec)
+	ns := c.cluster.Metadata.Namespace
+	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, ns, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
+	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), ns, newMemberName, peerURL, c.cluster.Spec)
 
-	_, err := c.config.KubeCli.CoreV1().Pods(c.cluster.Metadata.Namespace).Create(pod)
+	_, err := c.config.KubeCli.CoreV1().Pods(ns).Create(pod)
 	if err != nil {
 		return err
 	}
@@ -107,9 +108,10 @@ func (c *Cluster) migrateBootMember() error {
 	peerURL := "http://$(MY_POD_IP):2380"
 	initialCluster = append(initialCluster, newMemberName+"="+peerURL)
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
-	pod = k8sutil.PodWithAddMemberInitContainer(pod, []string{endpoint}, newMemberName, []string{peerURL}, c.cluster.Spec)
-	pod, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 30*time.Second)
+	ns := c.cluster.Metadata.Namespace
+	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, ns, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
+	pod = k8sutil.PodWithAddMemberInitContainer(pod, []string{endpoint}, ns, newMemberName, peerURL, c.cluster.Spec)
+	pod, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, ns, pod, 30*time.Second)
 	if err != nil {
 		return err
 	}
