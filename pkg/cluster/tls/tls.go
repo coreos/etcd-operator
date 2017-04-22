@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd/pkg/transport"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -33,7 +34,7 @@ const (
 )
 
 func NewTLSConfig(kubecli kubernetes.Interface, ns string, tp spec.TLSPolicy) (*tls.Config, error) {
-	secret, err := kubecli.CoreV1().Secrets(ns).Get(tp.Static.OperatorSecret)
+	secret, err := kubecli.CoreV1().Secrets(ns).Get(tp.Static.OperatorSecret, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

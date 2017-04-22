@@ -50,10 +50,12 @@ const (
 	etcdVersionAnnotationKey   = "etcd.version"
 	annotationPrometheusScrape = "prometheus.io/scrape"
 	annotationPrometheusPort   = "prometheus.io/port"
-	peerTLSDir                 = "/etc/etcd-operator/member/peer-tls"
+	peerTLSDir                 = "/etc/etcdtls/member/peer-tls"
 	peerTLSVolume              = "member-peer-tls"
-	clientTLSDir               = "/etc/etcd-operator/member/client-tls"
+	clientTLSDir               = "/etc/etcdtls/member/client-tls"
 	clientTLSVolume            = "member-client-tls"
+	operatorEtcdTLSDir         = "/etc/etcdtls/operator/etcd-tls"
+	operatorEtcdTLSVolume      = "operator-etcd-tls"
 )
 
 func GetEtcdVersion(pod *v1.Pod) string {
@@ -221,7 +223,7 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
 
-	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version), etcdLivenessProbe())
+	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version), etcdLivenessProbe(m.SecureClient))
 	if cs.Pod != nil {
 		container = containerWithRequirements(container, cs.Pod.Resources)
 	}
@@ -244,9 +246,14 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
 			MountPath: clientTLSDir,
 			Name:      clientTLSVolume,
+		}, v1.VolumeMount{
+			MountPath: operatorEtcdTLSDir,
+			Name:      operatorEtcdTLSVolume,
 		})
 		volumes = append(volumes, v1.Volume{Name: clientTLSVolume, VolumeSource: v1.VolumeSource{
 			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.Member.ClientSecret},
+		}}, v1.Volume{Name: operatorEtcdTLSVolume, VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.OperatorSecret},
 		}})
 	}
 

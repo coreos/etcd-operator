@@ -40,7 +40,7 @@ func (c *Cluster) reconcile(pods []*v1.Pod) error {
 	}()
 
 	sp := c.cluster.Spec
-	running := podsToMemberSet(pods, c.cluster.Spec.SelfHosted)
+	running := podsToMemberSet(pods, c.cluster.Spec.SelfHosted, clustertls.IsSecureClient(c.cluster.Spec))
 	if !running.IsEqual(c.members) || c.members.Size() != sp.Size {
 		return c.reconcileMembers(running)
 	}
