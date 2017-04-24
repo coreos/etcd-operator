@@ -1,4 +1,6 @@
-## [Unreleased 0.2.5]
+## [Unreleased 0.2.6]
+
+## [Release 0.2.5]
 
 ### Added
 
