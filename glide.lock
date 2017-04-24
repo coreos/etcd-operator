@@ -1,5 +1,5 @@
-hash: 8bec73c23e5c1484e17b25f56c1f30b60274c0682eef7342b106b5ed0c698ec5
-updated: 2017-04-19T21:29:22.204693932-07:00
+hash: eac8c747435471de58f18991feb03c0d697a9bc51658b28d6bb9a649dbb49640
+updated: 2017-04-24T13:46:26.04449296-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -37,7 +37,7 @@ imports:
   - service/s3
   - service/sts
 - name: github.com/beorn7/perks
-  version: b965b613227fddccbfffe13eae360ed3fa822f8d
+  version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
   - quantile
 - name: github.com/boltdb/bolt
@@ -45,7 +45,7 @@ imports:
 - name: github.com/cockroachdb/cmux
   version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
 - name: github.com/coreos/etcd
-  version: 8ba2897a21e4fc51b298ca553d251318425f93ae
+  version: e5b7ee2d03627ca33201da428b8110ef7c3e95f1
   subpackages:
   - alarm
   - auth
@@ -75,6 +75,7 @@ imports:
   - pkg/adt
   - pkg/contention
   - pkg/cors
+  - pkg/cpuutil
   - pkg/crc
   - pkg/fileutil
   - pkg/httputil
