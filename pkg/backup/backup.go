@@ -15,6 +15,7 @@
 package backup
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
+	clustertls "github.com/coreos/etcd-operator/pkg/cluster/tls"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -46,10 +48,11 @@ const (
 type Backup struct {
 	kclient kubernetes.Interface
 
-	clusterName string
-	namespace   string
-	policy      spec.BackupPolicy
-	listenAddr  string
+	clusterName   string
+	namespace     string
+	policy        spec.BackupPolicy
+	listenAddr    string
+	etcdTLSConfig *tls.Config
 
 	be backend
 
@@ -59,18 +62,19 @@ type Backup struct {
 	recentBackupsStatus []backupapi.BackupStatus
 }
 
-func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.BackupPolicy, listenAddr string) *Backup {
+func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSpec, listenAddr string) *Backup {
 	bdir := path.Join(constants.BackupMountDir, PVBackupV1, clusterName)
 	// We created not only backup dir and but also tmp dir under it.
 	// tmp dir is used to store intermediate snapshot files.
 	// It will be no-op if target dir existed.
 	tmpDir := path.Join(bdir, backupTmpDir)
-	if err := os.MkdirAll(tmpDir, 0700); err != nil {
+	err := os.MkdirAll(tmpDir, 0700)
+	if err != nil {
 		panic(err)
 	}
 
 	var be backend
-	switch policy.StorageType {
+	switch sp.Backup.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		be = &fileBackend{dir: bdir}
 	case spec.BackupStorageTypeS3:
@@ -85,16 +89,25 @@ func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.Backu
 			S3:  s3cli,
 		}
 	default:
-		logrus.Fatalf("unsupported storage type: %v", policy.StorageType)
+		logrus.Fatalf("unsupported storage type: %v", sp.Backup.StorageType)
+	}
+
+	var tc *tls.Config
+	if clustertls.IsSecureClient(sp) {
+		tc, err = clustertls.NewTLSConfig(kclient, ns, *sp.TLS)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return &Backup{
-		kclient:     kclient,
-		clusterName: clusterName,
-		namespace:   ns,
-		policy:      policy,
-		listenAddr:  listenAddr,
-		be:          be,
+		kclient:       kclient,
+		clusterName:   clusterName,
+		namespace:     ns,
+		policy:        *sp.Backup,
+		listenAddr:    listenAddr,
+		be:            be,
+		etcdTLSConfig: tc,
 
 		backupNow: make(chan chan error),
 	}
@@ -158,7 +171,7 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 		logrus.Warning(msg)
 		return lastSnapRev, fmt.Errorf(msg)
 	}
-	member, rev := getMemberWithMaxRev(pods)
+	member, rev := b.getMemberWithMaxRev(pods)
 	if member == nil {
 		logrus.Warning("no reachable member")
 		return lastSnapRev, fmt.Errorf("no reachable member")
@@ -180,11 +193,7 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	start := time.Now()
 
-	cfg := clientv3.Config{
-		Endpoints:   []string{m.ClientAddr()},
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
+	etcdcli, err := etcdutil.NewClient([]string{m.ClientAddr()}, b.etcdTLSConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create etcd client (%v)", err)
 	}
@@ -224,7 +233,7 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	return nil
 }
 
-func getMemberWithMaxRev(pods []*v1.Pod) (*etcdutil.Member, int64) {
+func (b *Backup) getMemberWithMaxRev(pods []*v1.Pod) (*etcdutil.Member, int64) {
 	var member *etcdutil.Member
 	maxRev := int64(0)
 	for _, pod := range pods {
@@ -232,11 +241,7 @@ func getMemberWithMaxRev(pods []*v1.Pod) (*etcdutil.Member, int64) {
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
 		}
-		cfg := clientv3.Config{
-			Endpoints:   []string{m.ClientAddr()},
-			DialTimeout: constants.DefaultDialTimeout,
-		}
-		etcdcli, err := clientv3.New(cfg)
+		etcdcli, err := etcdutil.NewClient([]string{m.ClientAddr()}, b.etcdTLSConfig)
 		if err != nil {
 			logrus.Warningf("failed to create etcd client for pod (%v): %v", pod.Name, err)
 			continue

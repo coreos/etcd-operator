@@ -15,6 +15,7 @@
 package etcdutil
 
 import (
+	"crypto/tls"
 	"fmt"
 
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -23,12 +24,17 @@ import (
 	"golang.org/x/net/context"
 )
 
-func ListMembers(clientURLs []string) (*clientv3.MemberListResponse, error) {
+func NewClient(clientURLs []string, tc *tls.Config) (*clientv3.Client, error) {
 	cfg := clientv3.Config{
 		Endpoints:   clientURLs,
 		DialTimeout: constants.DefaultDialTimeout,
+		TLS:         tc,
 	}
-	etcdcli, err := clientv3.New(cfg)
+	return clientv3.New(cfg)
+}
+
+func ListMembers(clientURLs []string, tc *tls.Config) (*clientv3.MemberListResponse, error) {
+	etcdcli, err := NewClient(clientURLs, tc)
 	if err != nil {
 		return nil, err
 	}
@@ -40,12 +46,8 @@ func ListMembers(clientURLs []string) (*clientv3.MemberListResponse, error) {
 	return resp, err
 }
 
-func RemoveMember(clientURLs []string, id uint64) error {
-	cfg := clientv3.Config{
-		Endpoints:   clientURLs,
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
+func RemoveMember(clientURLs []string, tc *tls.Config, id uint64) error {
+	etcdcli, err := NewClient(clientURLs, tc)
 	if err != nil {
 		return err
 	}
@@ -57,12 +59,8 @@ func RemoveMember(clientURLs []string, id uint64) error {
 	return err
 }
 
-func CheckHealth(url string) (bool, error) {
-	cfg := clientv3.Config{
-		Endpoints:   []string{url},
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	etcdcli, err := clientv3.New(cfg)
+func CheckHealth(url string, tc *tls.Config) (bool, error) {
+	etcdcli, err := NewClient([]string{url}, tc)
 	if err != nil {
 		return false, fmt.Errorf("failed to create etcd client for %s: %v", url, err)
 	}

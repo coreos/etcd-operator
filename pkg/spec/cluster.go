@@ -157,9 +157,6 @@ func (c *ClusterSpec) Cleanup() {
 		c.Version = defaultVersion
 	}
 	c.Version = strings.TrimLeft(c.Version, "v")
-
-	// TODO: remove this once we fully implement TLS
-	c.TLS = nil
 }
 
 type ClusterPhase string

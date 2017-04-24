@@ -15,6 +15,7 @@
 package cluster
 
 import (
+	"crypto/tls"
 	"fmt"
 	"math"
 	"reflect"
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
+	clustertls "github.com/coreos/etcd-operator/pkg/cluster/tls"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -84,6 +86,8 @@ type Cluster struct {
 	bm        *backupManager
 	backupDir string
 
+	tlsConfig *tls.Config
+
 	gc *garbagecollection.GC
 }
 
@@ -137,6 +141,13 @@ func (c *Cluster) setup() error {
 
 	default:
 		return fmt.Errorf("unexpected cluster phase: %s", c.status.Phase)
+	}
+
+	if clustertls.IsSecureClient(c.cluster.Spec) {
+		c.tlsConfig, err = clustertls.NewTLSConfig(c.config.KubeCli, c.cluster.Metadata.Namespace, *c.cluster.Spec.TLS)
+		if err != nil {
+			return err
+		}
 	}
 
 	if b := c.cluster.Spec.Backup; b != nil && b.MaxBackups > 0 {
@@ -291,7 +302,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 
 			// On controller restore, we could have "members == nil"
 			if rerr != nil || c.members == nil {
-				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted))
+				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted, clustertls.IsSecureClient(c.cluster.Spec)))
 				if rerr != nil {
 					c.logger.Errorf("failed to update members: %v", rerr)
 					break
@@ -331,9 +342,10 @@ func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	m := &etcdutil.Member{
-		Name:       etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
-		Namespace:  c.cluster.Metadata.Namespace,
-		SecurePeer: c.isSecurePeer(),
+		Name:         etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
+		Namespace:    c.cluster.Metadata.Namespace,
+		SecurePeer:   c.isSecurePeer(),
+		SecureClient: clustertls.IsSecureClient(c.cluster.Spec),
 	}
 	ms := etcdutil.NewMemberSet(m)
 	if err := c.createPod(ms, m, "new", recoverFromBackup); err != nil {
@@ -470,9 +482,18 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 func (c *Cluster) updateMemberStatus(pods []*v1.Pod) {
 	var ready, unready []*v1.Pod
 	for _, pod := range pods {
-		// TODO: Change to URL struct for TLS integration
-		url := fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
-		healthy, err := etcdutil.CheckHealth(url)
+		var url string
+		if c.cluster.Spec.SelfHosted != nil {
+			url = fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
+		} else {
+			m := &etcdutil.Member{
+				Name:         pod.Name,
+				Namespace:    pod.Namespace,
+				SecureClient: true,
+			}
+			url = m.ClientAddr()
+		}
+		healthy, err := etcdutil.CheckHealth(url, c.tlsConfig)
 		if err != nil {
 			c.logger.Warningf("health check of etcd member (%s) failed: %v", url, err)
 		}
