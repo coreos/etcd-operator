@@ -70,11 +70,7 @@ func (s *S3) Put(key string, rs io.ReadSeeker) error {
 		Body:   rs,
 	})
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (s *S3) Get(key string) (io.ReadCloser, error) {
@@ -95,11 +91,7 @@ func (s *S3) Delete(key string) error {
 		Key:    aws.String(path.Join(v1, s.prefix, key)),
 	})
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (s *S3) List() ([]string, error) {

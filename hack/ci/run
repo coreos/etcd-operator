@@ -14,6 +14,7 @@ mkdir -p $GOPATH
 cd $GOPATH
 export GOPATH=`pwd`
 echo "GOPATH: ${GOPATH}"
+export PATH=$GOPATH/bin:$PATH
 
 mkdir -p $GOPATH/src/github.com/coreos
 ln -s "${origpwd}" $GOPATH/src/github.com/coreos/etcd-operator

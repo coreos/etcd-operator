@@ -81,8 +81,7 @@ type Cluster struct {
 	// process runs in.
 	members etcdutil.MemberSet
 
-	bm        *backupManager
-	backupDir string
+	bm *backupManager
 
 	gc *garbagecollection.GC
 }
@@ -387,22 +386,6 @@ func (c *Cluster) setupServices() error {
 	return k8sutil.CreatePeerService(c.config.KubeCli, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, c.cluster.AsOwner())
 }
 
-func (c *Cluster) deleteClientServiceLB() error {
-	err := c.config.KubeCli.Core().Services(c.cluster.Metadata.Namespace).Delete(k8sutil.ClientServiceName(c.cluster.Metadata.Name), nil)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-	}
-	err = c.config.KubeCli.Core().Services(c.cluster.Metadata.Namespace).Delete(c.cluster.Metadata.Name, nil)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-	}
-	return nil
-}
-
 func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
 	token := ""
 	if state == "new" {
@@ -414,10 +397,7 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 		k8sutil.AddRecoveryToPod(pod, c.cluster.Metadata.Name, token, m, c.cluster.Spec)
 	}
 	_, err := c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).Create(pod)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (c *Cluster) removePodAndService(name string) error {

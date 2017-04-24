@@ -44,14 +44,12 @@ import (
 )
 
 const (
-	etcdVolumeMountDir         = "/var/etcd"
-	dataDir                    = etcdVolumeMountDir + "/data"
-	backupFile                 = "/var/etcd/latest.backup"
-	etcdVersionAnnotationKey   = "etcd.version"
-	annotationPrometheusScrape = "prometheus.io/scrape"
-	annotationPrometheusPort   = "prometheus.io/port"
-	peerTLSDir                 = "/etc/etcd-operator/member/peer-tls"
-	peerTLSVolume              = "member-peer-tls"
+	etcdVolumeMountDir       = "/var/etcd"
+	dataDir                  = etcdVolumeMountDir + "/data"
+	backupFile               = "/var/etcd/latest.backup"
+	etcdVersionAnnotationKey = "etcd.version"
+	peerTLSDir               = "/etc/etcd-operator/member/peer-tls"
+	peerTLSVolume            = "member-peer-tls"
 )
 
 func GetEtcdVersion(pod *v1.Pod) string {
