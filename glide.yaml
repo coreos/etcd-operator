@@ -3,7 +3,7 @@ import:
 - package: k8s.io/client-go
   version: v3.0.0-beta.0
 - package: github.com/coreos/etcd
-  version: v3.1.0
+  version: v3.1.6
 - package: github.com/Sirupsen/logrus
   version: v0.11.2
 - package: github.com/aws/aws-sdk-go
