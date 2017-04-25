@@ -16,6 +16,7 @@ package cluster
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -42,6 +43,11 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 			bcurl := c.cluster.Spec.SelfHosted.BootMemberClientEndpoint
 			if curl == bcurl {
 				return fmt.Errorf("skipping update members for self hosted cluster: waiting for the boot member (%s) to be removed...", m.Name)
+			}
+
+			if !strings.HasPrefix(m.Name, c.cluster.Metadata.GetName()) {
+				c.logger.Errorf("member %s does not belong to this cluster.", m.Name)
+				return errInvalidMemberName
 			}
 		} else {
 			name, err = etcdutil.MemberNameFromPeerURL(m.PeerURLs[0])
