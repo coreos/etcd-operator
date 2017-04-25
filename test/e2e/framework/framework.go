@@ -135,11 +135,7 @@ func (f *Framework) SetupEtcdOperator() error {
 	logrus.Infof("etcd operator pod is running on node (%s)", p.Spec.NodeName)
 
 	err = k8sutil.WaitEtcdTPRReady(f.KubeClient.Core().RESTClient(), 5*time.Second, 60*time.Second, f.Namespace)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (f *Framework) DeleteEtcdOperatorCompletely() error {
