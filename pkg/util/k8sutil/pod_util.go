@@ -27,7 +27,7 @@ func etcdVolumeMounts() []v1.VolumeMount {
 	}
 }
 
-func etcdContainer(commands, version string) v1.Container {
+func etcdContainer(commands, version string, env []v1.EnvVar) v1.Container {
 	c := v1.Container{
 		// TODO: fix "sleep 5".
 		// Without waiting some time, there is highly probable flakes in network setup.
@@ -46,6 +46,7 @@ func etcdContainer(commands, version string) v1.Container {
 				Protocol:      v1.ProtocolTCP,
 			},
 		},
+		Env:          env,
 		VolumeMounts: etcdVolumeMounts(),
 	}
 

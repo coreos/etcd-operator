@@ -214,7 +214,12 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
 
-	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version), etcdLivenessProbe())
+	var env []v1.EnvVar
+	if cs.Pod != nil {
+		env = cs.Pod.EtcdEnv
+	}
+
+	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version, env), etcdLivenessProbe())
 	if cs.Pod != nil {
 		container = containerWithRequirements(container, cs.Pod.Resources)
 	}

@@ -131,6 +131,13 @@ type PodPolicy struct {
 
 	// Tolerations specifies the pod's tolerations.
 	Tolerations []v1.Toleration `json:"tolerations"`
+
+	// List of environment variables to set in the etcd container.
+	// This is used to configure etcd process. etcd cluster cannot be created, when
+	// bad environement variables are provided. Do not overwrite any flags used to
+	// bootstrap the cluster (for example `--initial-cluster` flag).
+	// This field cannot be updated.
+	EtcdEnv []v1.EnvVar `json:"etcdEnv"`
 }
 
 func (c *ClusterSpec) Validate() error {
