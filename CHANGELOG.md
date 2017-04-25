@@ -1,5 +1,21 @@
 ## [Unreleased 0.2.6]
 
+### Added
+
+### Changed
+
+- Self-hosted etcd pod's anti-affinity label selector is changed to select `{"app": "etcd"}`.
+  That is, no two etcd pods should sit on the same node, even if they belongs to different clusters.
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
 ## [Release 0.2.5]
 
 ### Added
