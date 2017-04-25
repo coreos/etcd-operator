@@ -77,9 +77,9 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
 
-	var env []v1.EnvVar
+	env := []v1.EnvVar{envPodIP}
 	if cs.Pod != nil {
-		env = cs.Pod.EtcdEnv
+		env = append(env, cs.Pod.EtcdEnv...)
 	}
 
 	c := etcdContainer(commands, cs.Version, env)
@@ -99,7 +99,6 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 	if cs.Pod != nil {
 		c = containerWithRequirements(c, cs.Pod.Resources)
 	}
-	c.Env = []v1.EnvVar{envPodIP}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
