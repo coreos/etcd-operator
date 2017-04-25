@@ -62,12 +62,12 @@ func main() {
 		panic("clusterName not set")
 	}
 
-	p := &spec.BackupPolicy{}
-	ps := os.Getenv(env.BackupPolicy)
-	if err := json.Unmarshal([]byte(ps), p); err != nil {
-		logrus.Fatalf("fail to parse backup policy (%s): %v", ps, err)
+	var cs spec.ClusterSpec
+	sps := os.Getenv(env.ClusterSpec)
+	if err := json.Unmarshal([]byte(sps), &cs); err != nil {
+		logrus.Fatalf("fail to parse backup policy (%s): %v", sps, err)
 	}
 
 	kclient := k8sutil.MustNewKubeClient()
-	backup.New(kclient, clusterName, namespace, *p, listenAddr).Run()
+	backup.New(kclient, clusterName, namespace, cs, listenAddr).Run()
 }

@@ -59,7 +59,7 @@ type Backup struct {
 	recentBackupsStatus []backupapi.BackupStatus
 }
 
-func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.BackupPolicy, listenAddr string) *Backup {
+func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSpec, listenAddr string) *Backup {
 	bdir := path.Join(constants.BackupMountDir, PVBackupV1, clusterName)
 	// We created not only backup dir and but also tmp dir under it.
 	// tmp dir is used to store intermediate snapshot files.
@@ -70,7 +70,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.Backu
 	}
 
 	var be backend
-	switch policy.StorageType {
+	switch sp.Backup.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		be = &fileBackend{dir: bdir}
 	case spec.BackupStorageTypeS3:
@@ -85,14 +85,14 @@ func New(kclient kubernetes.Interface, clusterName, ns string, policy spec.Backu
 			S3:  s3cli,
 		}
 	default:
-		logrus.Fatalf("unsupported storage type: %v", policy.StorageType)
+		logrus.Fatalf("unsupported storage type: %v", sp.Backup.StorageType)
 	}
 
 	return &Backup{
 		kclient:     kclient,
 		clusterName: clusterName,
 		namespace:   ns,
-		policy:      policy,
+		policy:      *sp.Backup,
 		listenAddr:  listenAddr,
 		be:          be,
 
