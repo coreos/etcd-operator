@@ -67,7 +67,8 @@ If backup storage type is "PV", users need to get backup directly from PV.
 
 TODO: document how to find and mount the disk.
 
-Given the cluster name, backups are stored under dir `/var/etcd-backup/v1/${CLUSTER_NAME}/` .
+Backups will be stored to (and restored from) the PVC named as `${CLUSTER_NAME}-pvc`
+under the directory `/var/etcd-backup/v1/${CLUSTER_NAME}/`.
 
 List all backup files:
 ```
