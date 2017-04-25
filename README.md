@@ -61,10 +61,9 @@ example-etcd-cluster-0001       1/1       Running   0          1m
 example-etcd-cluster-0002       1/1       Running   0          1m
 
 $ kubectl get services
-NAME                        CLUSTER-IP    EXTERNAL-IP   PORT(S)             AGE
-example-etcd-cluster-0000   10.0.6.23     <none>        2380/TCP,2379/TCP   2m
-example-etcd-cluster-0001   10.0.64.204   <none>        2380/TCP,2379/TCP   1m
-example-etcd-cluster-0002   10.0.199.80   <none>        2380/TCP,2379/TCP   1m
+NAME                          CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
+example-etcd-cluster          None          <none>        2380/TCP   1m
+example-etcd-cluster-client   10.0.69.135   <none>        2379/TCP   1m
 ```
 
 If you are working with [minikube locally](https://github.com/kubernetes/minikube#minikube) create a nodePort service and test out that etcd is responding:
@@ -243,7 +242,7 @@ Let's try to write some data into etcd:
 
 ```
 $ kubectl run --rm -i --tty fun --image quay.io/coreos/etcd --restart=Never -- /bin/sh
-/ # ETCDCTL_API=3 etcdctl --endpoints http://example-etcd-cluster-with-backup-0002:2379 put foo bar
+/ # ETCDCTL_API=3 etcdctl --endpoints http://example-etcd-cluster-with-backup-client:2379 put foo bar
 OK
 (ctrl-D to exit)
 ```
