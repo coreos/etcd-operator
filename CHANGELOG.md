@@ -2,6 +2,8 @@
 
 ### Added
 
+- PodPolicy provides `EtcdEnv` option to add custom env to etcd process.
+
 ### Changed
 
 - Self-hosted etcd pod's anti-affinity label selector is changed to select `{"app": "etcd"}`.
