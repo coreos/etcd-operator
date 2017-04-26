@@ -160,6 +160,11 @@ func (c *ClusterSpec) Validate() error {
 			return err
 		}
 	}
+	if c.TLS != nil {
+		if err := c.TLS.Validate(); err != nil {
+			return err
+		}
+	}
 
 	if c.Pod != nil {
 		for k := range c.Pod.Labels {
@@ -168,7 +173,6 @@ func (c *ClusterSpec) Validate() error {
 			}
 		}
 	}
-
 	return nil
 }
 
