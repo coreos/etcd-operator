@@ -15,6 +15,7 @@
 package backup
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"os"
@@ -46,10 +47,11 @@ const (
 type Backup struct {
 	kclient kubernetes.Interface
 
-	clusterName string
-	namespace   string
-	policy      spec.BackupPolicy
-	listenAddr  string
+	clusterName   string
+	namespace     string
+	policy        spec.BackupPolicy
+	listenAddr    string
+	etcdTLSConfig *tls.Config
 
 	be backend
 
@@ -59,14 +61,15 @@ type Backup struct {
 	recentBackupsStatus []backupapi.BackupStatus
 }
 
-func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSpec, listenAddr string) *Backup {
+func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSpec, listenAddr string) (*Backup, error) {
 	bdir := path.Join(constants.BackupMountDir, PVBackupV1, clusterName)
 	// We created not only backup dir and but also tmp dir under it.
 	// tmp dir is used to store intermediate snapshot files.
 	// It will be no-op if target dir existed.
 	tmpDir := path.Join(bdir, backupTmpDir)
-	if err := os.MkdirAll(tmpDir, 0700); err != nil {
-		panic(err)
+	err := os.MkdirAll(tmpDir, 0700)
+	if err != nil {
+		return nil, err
 	}
 
 	var be backend
@@ -78,26 +81,39 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 			SharedConfigState: session.SharedConfigEnable,
 		})
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		be = &s3Backend{
 			dir: tmpDir,
 			S3:  s3cli,
 		}
 	default:
-		logrus.Fatalf("unsupported storage type: %v", sp.Backup.StorageType)
+		return nil, fmt.Errorf("unsupported storage type: %v", sp.Backup.StorageType)
+	}
+
+	var tc *tls.Config
+	if sp.TLS.IsSecureClient() {
+		d, err := k8sutil.GetTLSDataFromSecret(kclient, ns, sp.TLS.Static.OperatorSecret)
+		if err != nil {
+			return nil, err
+		}
+		tc, err = etcdutil.NewTLSConfig(d.CertData, d.KeyData, d.CAData)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &Backup{
-		kclient:     kclient,
-		clusterName: clusterName,
-		namespace:   ns,
-		policy:      *sp.Backup,
-		listenAddr:  listenAddr,
-		be:          be,
+		kclient:       kclient,
+		clusterName:   clusterName,
+		namespace:     ns,
+		policy:        *sp.Backup,
+		listenAddr:    listenAddr,
+		be:            be,
+		etcdTLSConfig: tc,
 
 		backupNow: make(chan chan error),
-	}
+	}, nil
 }
 
 func (b *Backup) Run() {
