@@ -37,7 +37,8 @@ type Member struct {
 	// ClientURLs is only used for self-hosted setup.
 	ClientURLs []string
 
-	SecurePeer bool
+	SecurePeer   bool
+	SecureClient bool
 }
 
 func (m *Member) fqdn() string {
@@ -49,10 +50,17 @@ func (m *Member) ClientAddr() string {
 		return strings.Join(m.ClientURLs, ",")
 	}
 
-	return fmt.Sprintf("http://%s:2379", m.fqdn())
+	return fmt.Sprintf("%s://%s:2379", m.clientScheme(), m.fqdn())
 }
 
-func (m *Member) scheme() string {
+func (m *Member) clientScheme() string {
+	if m.SecureClient {
+		return "https"
+	}
+	return "http"
+}
+
+func (m *Member) peerScheme() string {
 	if m.SecurePeer {
 		return "https"
 	}
@@ -60,7 +68,7 @@ func (m *Member) scheme() string {
 }
 
 func (m *Member) ListenPeerURL() string {
-	return fmt.Sprintf("%s://0.0.0.0:2380", m.scheme())
+	return fmt.Sprintf("%s://0.0.0.0:2380", m.peerScheme())
 }
 
 func (m *Member) PeerURL() string {
@@ -68,7 +76,7 @@ func (m *Member) PeerURL() string {
 		return strings.Join(m.PeerURLs, ",")
 	}
 
-	return fmt.Sprintf("%s://%s:2380", m.scheme(), m.fqdn())
+	return fmt.Sprintf("%s://%s:2380", m.peerScheme(), m.fqdn())
 }
 
 type MemberSet map[string]*Member
