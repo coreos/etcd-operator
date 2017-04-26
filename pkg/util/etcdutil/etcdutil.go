@@ -15,6 +15,7 @@
 package etcdutil
 
 import (
+	"crypto/tls"
 	"fmt"
 
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -23,10 +24,11 @@ import (
 	"golang.org/x/net/context"
 )
 
-func ListMembers(clientURLs []string) (*clientv3.MemberListResponse, error) {
+func ListMembers(clientURLs []string, tc *tls.Config) (*clientv3.MemberListResponse, error) {
 	cfg := clientv3.Config{
 		Endpoints:   clientURLs,
 		DialTimeout: constants.DefaultDialTimeout,
+		TLS:         tc,
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
@@ -40,10 +42,11 @@ func ListMembers(clientURLs []string) (*clientv3.MemberListResponse, error) {
 	return resp, err
 }
 
-func RemoveMember(clientURLs []string, id uint64) error {
+func RemoveMember(clientURLs []string, tc *tls.Config, id uint64) error {
 	cfg := clientv3.Config{
 		Endpoints:   clientURLs,
 		DialTimeout: constants.DefaultDialTimeout,
+		TLS:         tc,
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
@@ -57,10 +60,11 @@ func RemoveMember(clientURLs []string, id uint64) error {
 	return err
 }
 
-func CheckHealth(url string) (bool, error) {
+func CheckHealth(url string, tc *tls.Config) (bool, error) {
 	cfg := clientv3.Config{
 		Endpoints:   []string{url},
 		DialTimeout: constants.DefaultDialTimeout,
+		TLS:         tc,
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {

@@ -87,7 +87,7 @@ func (c *Cluster) migrateBootMember() error {
 
 	c.logger.Infof("migrating boot member (%s)", endpoint)
 
-	resp, err := etcdutil.ListMembers([]string{endpoint})
+	resp, err := etcdutil.ListMembers([]string{endpoint}, c.tlsConfig)
 	if err != nil {
 		return fmt.Errorf("failed to list members from boot member (%v)", err)
 	}
@@ -125,7 +125,7 @@ func (c *Cluster) migrateBootMember() error {
 		c.logger.Infof("wait %v before removing the boot member", delay)
 		time.Sleep(delay)
 
-		err = etcdutil.RemoveMember([]string{"http://" + pod.Status.PodIP + ":2379"}, bootMember.ID)
+		err = etcdutil.RemoveMember([]string{"http://" + pod.Status.PodIP + ":2379"}, c.tlsConfig, bootMember.ID)
 		if err != nil {
 			c.logger.Errorf("boot member migration: failed to remove the boot member (%v)", err)
 		}
