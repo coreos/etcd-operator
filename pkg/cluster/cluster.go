@@ -15,6 +15,7 @@
 package cluster
 
 import (
+	"crypto/tls"
 	"fmt"
 	"math"
 	"reflect"
@@ -83,6 +84,8 @@ type Cluster struct {
 
 	bm *backupManager
 
+	tlsConfig *tls.Config
+
 	gc *garbagecollection.GC
 }
 
@@ -136,6 +139,17 @@ func (c *Cluster) setup() error {
 
 	default:
 		return fmt.Errorf("unexpected cluster phase: %s", c.status.Phase)
+	}
+
+	if c.isSecureClient() {
+		d, err := k8sutil.GetTLSSecret(c.config.KubeCli, c.cluster.Metadata.Namespace, c.cluster.Spec.TLS.Static.OperatorSecret)
+		if err != nil {
+			return err
+		}
+		c.tlsConfig, err = etcdutil.NewTLSConfig(d.CertData, d.KeyData, d.CAData)
+		if err != nil {
+			return err
+		}
 	}
 
 	if b := c.cluster.Spec.Backup; b != nil && b.MaxBackups > 0 {
@@ -345,7 +359,11 @@ func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 }
 
 func (c *Cluster) isSecurePeer() bool {
-	return c.cluster.Spec.TLS != nil
+	return c.cluster.Spec.TLS.IsSecurePeer()
+}
+
+func (c *Cluster) isSecureClient() bool {
+	return c.cluster.Spec.TLS.IsSecureClient()
 }
 
 // bootstrap creates the seed etcd member for a new cluster.
@@ -452,7 +470,7 @@ func (c *Cluster) updateMemberStatus(pods []*v1.Pod) {
 	for _, pod := range pods {
 		// TODO: Change to URL struct for TLS integration
 		url := fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
-		healthy, err := etcdutil.CheckHealth(url)
+		healthy, err := etcdutil.CheckHealth(url, c.tlsConfig)
 		if err != nil {
 			c.logger.Warningf("health check of etcd member (%s) failed: %v", url, err)
 		}

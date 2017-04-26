@@ -28,4 +28,8 @@ const (
 	PVProvisionerGCEPD  = "kubernetes.io/gce-pd"
 	PVProvisionerAWSEBS = "kubernetes.io/aws-ebs"
 	PVProvisionerNone   = "none"
+
+	EtcdCliCertFile = "etcd-crt.pem"
+	EtcdCliKeyFile  = "etcd-key.pem"
+	EtcdCliCAFile   = "etcd-ca-crt.pem"
 )

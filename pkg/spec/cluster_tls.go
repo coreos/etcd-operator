@@ -37,3 +37,25 @@ type MemberSecret struct {
 	// for the communication between etcd and its clients.
 	ClientSecret string `json:"clientSecret"`
 }
+
+func (tp *TLSPolicy) IsSecureClient() bool {
+	if tp == nil {
+		return false
+	}
+	st := tp.Static
+	if st == nil || st.Member == nil {
+		return false
+	}
+	return len(st.Member.ClientSecret) != 0 && len(st.OperatorSecret) == 0
+}
+
+func (tp *TLSPolicy) IsSecurePeer() bool {
+	if tp == nil {
+		return false
+	}
+	st := tp.Static
+	if st == nil || st.Member == nil {
+		return false
+	}
+	return len(st.Member.PeerSecret) != 0
+}
