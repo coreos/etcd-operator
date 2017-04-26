@@ -116,6 +116,12 @@ type RestorePolicy struct {
 
 // PodPolicy defines the policy to create pod for the etcd container.
 type PodPolicy struct {
+	// Labels specifies the labels to attach to pods the operator creates for the
+	// etcd cluster.
+	// "app" and "etcd_*" labels are reserved for the internal use of the etcd operator.
+	// Do not overwrite them.
+	Labels map[string]string `json:"labels,omitempty"`
+
 	// NodeSelector specifies a map of key-value pairs. For the pod to be eligible
 	// to run on a node, the node must have each of the indicated key-value pairs as
 	// labels.
@@ -154,6 +160,15 @@ func (c *ClusterSpec) Validate() error {
 			return err
 		}
 	}
+
+	if c.Pod != nil {
+		for k := range c.Pod.Labels {
+			if k == "app" || strings.HasPrefix(k, "etcd_") {
+				return errors.New("spec: pod labels contains reserved label")
+			}
+		}
+	}
+
 	return nil
 }
 
