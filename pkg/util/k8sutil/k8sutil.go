@@ -215,8 +215,15 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 	}
 
 	var env []v1.EnvVar
+	labels := map[string]string{
+		"app":          "etcd",
+		"etcd_node":    m.Name,
+		"etcd_cluster": clusterName,
+	}
+
 	if cs.Pod != nil {
 		env = cs.Pod.EtcdEnv
+		mergeLabels(labels, cs.Pod.Labels)
 	}
 
 	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version, env), etcdLivenessProbe())
@@ -240,12 +247,8 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: m.Name,
-			Labels: map[string]string{
-				"app":          "etcd",
-				"etcd_node":    m.Name,
-				"etcd_cluster": clusterName,
-			},
+			Name:        m.Name,
+			Labels:      labels,
 			Annotations: map[string]string{},
 		},
 		Spec: v1.PodSpec{
@@ -363,4 +366,14 @@ func ClonePod(p *v1.Pod) *v1.Pod {
 		panic("cannot deep copy pod")
 	}
 	return np.(*v1.Pod)
+}
+
+// mergeLables merges l2 into l1. Conflicting label will be skipped.
+func mergeLabels(l1, l2 map[string]string) {
+	for k, v := range l2 {
+		if _, ok := l1[k]; ok {
+			continue
+		}
+		l1[k] = v
+	}
 }

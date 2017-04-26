@@ -2,7 +2,8 @@
 
 ### Added
 
-- PodPolicy provides `EtcdEnv` option to add custom env to etcd process.
+- PodPolicy provides `EtcdEnv` option to add custom env to the etcd process.
+- PodPolicy provides `Labels` option to add custom labels to the etcd pod.
 
 ### Changed
 

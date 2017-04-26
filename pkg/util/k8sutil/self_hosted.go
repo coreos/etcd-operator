@@ -78,8 +78,14 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 	}
 
 	env := []v1.EnvVar{envPodIP}
+	labels := map[string]string{
+		"app":          "etcd",
+		"etcd_node":    name,
+		"etcd_cluster": clusterName,
+	}
 	if cs.Pod != nil {
 		env = append(env, cs.Pod.EtcdEnv...)
+		mergeLabels(labels, cs.Pod.Labels)
 	}
 
 	c := etcdContainer(commands, cs.Version, env)
@@ -101,12 +107,8 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 	}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-			Labels: map[string]string{
-				"app":          "etcd",
-				"etcd_node":    name,
-				"etcd_cluster": clusterName,
-			},
+			Name:   name,
+			Labels: labels,
 			Annotations: map[string]string{
 				shouldCheckpointAnnotation: "true",
 			},
