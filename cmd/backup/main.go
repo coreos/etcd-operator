@@ -69,5 +69,9 @@ func main() {
 	}
 
 	kclient := k8sutil.MustNewKubeClient()
-	backup.New(kclient, clusterName, namespace, cs, listenAddr).Run()
+	bk, err := backup.New(kclient, clusterName, namespace, cs, listenAddr)
+	if err != nil {
+		panic(err)
+	}
+	bk.Run()
 }
