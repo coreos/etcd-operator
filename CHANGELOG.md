@@ -10,6 +10,8 @@
 - Self-hosted etcd pod's anti-affinity label selector is changed to select `{"app": "etcd"}`.
   That is, no two etcd pods should sit on the same node, even if they belongs to different clusters.
 
+- S3 backup path is changed to `${BUCKET_NAME}/v1/${NAMESPACE}/${CLUSTER_NAME}/`.
+
 ### Removed
 
 ### Fixed

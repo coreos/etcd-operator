@@ -38,11 +38,11 @@ If backup storage type is "S3", users have to get the backup directly from S3.
 First of all, setup aws cli: https://aws.amazon.com/cli/ .
 
 Given the S3 bucket name that you passed to when starting etcd operator and the cluster name,
-backups are saved under prefix `${BUCKET_NAME}/v1/${CLUSTER_NAME}/` .
+backups are saved under prefix `${BUCKET_NAME}/v1/${NAMESPACE}/${CLUSTER_NAME}/` .
 
 List all backup files:
 ```
-$ aws s3 ls ${BUCKET_NAME}/v1/${CLUSTER_NAME}/
+$ aws s3 ls ${BUCKET_NAME}/v1/${NAMESPACE}/${CLUSTER_NAME}/
 2017-01-24 02:13:30    24608    3.1.0_0000000000000002_etcd.backup
 ...                             3.1.0_000000000000000f_etcd.backup
 ```
