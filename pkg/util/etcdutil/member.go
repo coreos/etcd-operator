@@ -67,6 +67,9 @@ func (m *Member) peerScheme() string {
 	return "http"
 }
 
+func (m *Member) ListenClientURL() string {
+	return fmt.Sprintf("%s://0.0.0.0:2379", m.clientScheme())
+}
 func (m *Member) ListenPeerURL() string {
 	return fmt.Sprintf("%s://0.0.0.0:2380", m.peerScheme())
 }

@@ -17,6 +17,8 @@ package k8sutil
 import (
 	"fmt"
 
+	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
 )
@@ -63,13 +65,17 @@ func containerWithRequirements(c v1.Container, r v1.ResourceRequirements) v1.Con
 	return c
 }
 
-func etcdLivenessProbe() *v1.Probe {
+func etcdLivenessProbe(isSecure bool) *v1.Probe {
 	// etcd pod is alive only if a linearizable get succeeds.
+	cmd := "ETCDCTL_API=3 etcdctl get foo"
+	if isSecure {
+		tlsFlags := fmt.Sprintf("--cert %[1]s/%[2]s --key %[1]s/%[3]s --cacert %[1]s/%[4]s", operatorEtcdTLSDir, etcdutil.CliCertFile, etcdutil.CliKeyFile, etcdutil.CliCAFile)
+		cmd = fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=https://localhost:2379 %s get foo", tlsFlags)
+	}
 	return &v1.Probe{
 		Handler: v1.Handler{
 			Exec: &v1.ExecAction{
-				Command: []string{"/bin/sh", "-ec",
-					"ETCDCTL_API=3 etcdctl get foo"},
+				Command: []string{"/bin/sh", "-ec", cmd},
 			},
 		},
 		InitialDelaySeconds: 10,
