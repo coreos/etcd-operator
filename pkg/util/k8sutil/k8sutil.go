@@ -48,8 +48,12 @@ const (
 	dataDir                  = etcdVolumeMountDir + "/data"
 	backupFile               = "/var/etcd/latest.backup"
 	etcdVersionAnnotationKey = "etcd.version"
-	peerTLSDir               = "/etc/etcd-operator/member/peer-tls"
+	peerTLSDir               = "/etc/etcdtls/member/peer-tls"
 	peerTLSVolume            = "member-peer-tls"
+	clientTLSDir             = "/etc/etcdtls/member/client-tls"
+	clientTLSVolume          = "member-client-tls"
+	operatorEtcdTLSDir       = "/etc/etcdtls/operator/etcd-tls"
+	operatorEtcdTLSVolume    = "operator-etcd-tls"
 )
 
 func GetEtcdVersion(pod *v1.Pod) string {
@@ -204,11 +208,14 @@ func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
 
 func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metav1.OwnerReference) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
-		"--listen-peer-urls=%s --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
+		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
-		dataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
+		dataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ListenClientURL(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
 	if m.SecurePeer {
 		commands += fmt.Sprintf(" --peer-client-cert-auth=true --peer-trusted-ca-file=%[1]s/peer-ca-crt.pem --peer-cert-file=%[1]s/peer-crt.pem --peer-key-file=%[1]s/peer-key.pem", peerTLSDir)
+	}
+	if m.SecureClient {
+		commands += fmt.Sprintf(" --client-cert-auth=true --trusted-ca-file=%[1]s/client-ca-crt.pem --cert-file=%[1]s/client-crt.pem --key-file=%[1]s/client-key.pem", clientTLSDir)
 	}
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
@@ -226,7 +233,7 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		mergeLabels(labels, cs.Pod.Labels)
 	}
 
-	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version, env), etcdLivenessProbe())
+	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version, env), etcdLivenessProbe(cs.TLS.IsSecureClient()))
 	if cs.Pod != nil {
 		container = containerWithRequirements(container, cs.Pod.Resources)
 	}
@@ -242,6 +249,20 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		})
 		volumes = append(volumes, v1.Volume{Name: peerTLSVolume, VolumeSource: v1.VolumeSource{
 			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.Member.PeerSecret},
+		}})
+	}
+	if m.SecureClient {
+		container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
+			MountPath: clientTLSDir,
+			Name:      clientTLSVolume,
+		}, v1.VolumeMount{
+			MountPath: operatorEtcdTLSDir,
+			Name:      operatorEtcdTLSVolume,
+		})
+		volumes = append(volumes, v1.Volume{Name: clientTLSVolume, VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.Member.ClientSecret},
+		}}, v1.Volume{Name: operatorEtcdTLSVolume, VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.OperatorSecret},
 		}})
 	}
 

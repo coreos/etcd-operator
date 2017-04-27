@@ -42,7 +42,7 @@ Create a secret containing those:
 $ kubectl create secret generic etcd-server-peer-tls --from-file=peer-ca-crt.pem --from-file=peer-crt.pem --from-file=peer-key.pem
 ```
 
-Once passed, etcd-operator will mount this secret at `/etc/etcd-operator/member/peer-tls/` for each etcd member pod in the cluster.
+Once passed, etcd-operator will mount this secret at `/etc/etcdtls/member/peer-tls/` for each etcd member pod in the cluster.
 
 
 ### member.clientSecret
@@ -51,8 +51,9 @@ Once passed, etcd-operator will mount this secret at `/etc/etcd-operator/member/
 
 The client TLS assets should have the following:
 - **client-crt.pem**: etcd server's client communication cert.
-  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc.cluster.local` and `${clusterName}-client.${namespace}.svc.cluster.local`.
-  In this case, it is `*.example.default.svc.cluster.local` and `example-client.default.svc.cluster.local`.
+  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc.cluster.local`,
+  `${clusterName}-client.${namespace}.svc.cluster.local`, `localhost`.
+  In this case, it is `*.example.default.svc.cluster.local`, `example-client.default.svc.cluster.local`, and `localhost`.
 - **client-key.pem**: etcd server's client communication key.
 - **client-ca-crt.pem**: CA cert for validating the certs of etcd clients.
 
@@ -61,7 +62,7 @@ Create a secret containing those:
 $ kubectl create secret generic etcd-server-client-tls --from-file=client-ca-crt.pem --from-file=client-crt.pem --from-file=client-key.pem
 ```
 
-etcd-operator will mount this secret at `/etc/etcd-operator/member/client-tls/` for each etcd member pod in the cluster.
+etcd-operator will mount this secret at `/etc/etcdtls/member/client-tls/` for each etcd member pod in the cluster.
 
 
 ### operatorSecret
