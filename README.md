@@ -71,7 +71,7 @@ If you are working with [minikube locally](https://github.com/kubernetes/minikub
 ```bash
 $ kubectl create -f example/example-etcd-cluster-nodeport-service.json
 $ export ETCDCTL_API=3
-$ export ETCDCTL_ENDPOINTS=$(minikube service example-etcd-cluster-client-service --url)
+$ export ETCDCTL_ENDPOINTS=$(minikube service example-etcd-cluster-client --url)
 $ etcdctl put foo bar
 ```
 
