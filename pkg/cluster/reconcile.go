@@ -40,7 +40,7 @@ func (c *Cluster) reconcile(pods []*v1.Pod) error {
 	}()
 
 	sp := c.cluster.Spec
-	running := podsToMemberSet(pods, c.cluster.Spec.SelfHosted)
+	running := podsToMemberSet(pods, c.cluster.Spec.SelfHosted, c.isSecureClient())
 	if !running.IsEqual(c.members) || c.members.Size() != sp.Size {
 		return c.reconcileMembers(running)
 	}
@@ -128,9 +128,10 @@ func (c *Cluster) addOneMember() error {
 
 	newMemberName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
 	newMember := &etcdutil.Member{
-		Name:       newMemberName,
-		Namespace:  c.cluster.Metadata.Namespace,
-		SecurePeer: c.isSecurePeer(),
+		Name:         newMemberName,
+		Namespace:    c.cluster.Metadata.Namespace,
+		SecurePeer:   c.isSecurePeer(),
+		SecureClient: c.isSecureClient(),
 	}
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerURL()})

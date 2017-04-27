@@ -304,7 +304,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 
 			// On controller restore, we could have "members == nil"
 			if rerr != nil || c.members == nil {
-				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted))
+				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted, c.isSecureClient()))
 				if rerr != nil {
 					c.logger.Errorf("failed to update members: %v", rerr)
 					break
@@ -344,9 +344,10 @@ func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	m := &etcdutil.Member{
-		Name:       etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
-		Namespace:  c.cluster.Metadata.Namespace,
-		SecurePeer: c.isSecurePeer(),
+		Name:         etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
+		Namespace:    c.cluster.Metadata.Namespace,
+		SecurePeer:   c.isSecurePeer(),
+		SecureClient: c.isSecureClient(),
 	}
 	ms := etcdutil.NewMemberSet(m)
 	if err := c.createPod(ms, m, "new", recoverFromBackup); err != nil {
@@ -468,8 +469,13 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 func (c *Cluster) updateMemberStatus(pods []*v1.Pod) {
 	var ready, unready []*v1.Pod
 	for _, pod := range pods {
-		// TODO: Change to URL struct for TLS integration
-		url := fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
+		var url string
+		if c.cluster.Spec.SelfHosted != nil {
+			url = fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
+		} else {
+			m := &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace, SecureClient: c.isSecureClient()}
+			url = m.ClientAddr()
+		}
 		healthy, err := etcdutil.CheckHealth(url, c.tlsConfig)
 		if err != nil {
 			c.logger.Warningf("health check of etcd member (%s) failed: %v", url, err)
