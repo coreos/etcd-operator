@@ -19,7 +19,9 @@ type s3 struct {
 }
 
 func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
-	s3cli, err := backups3.New(s3Ctx.S3Bucket, clusterName, session.Options{
+	prefix := ns + "/" + clusterName
+
+	s3cli, err := backups3.New(s3Ctx.S3Bucket, prefix, session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
 	if err != nil {
@@ -43,7 +45,14 @@ func (s *s3) Create() error {
 }
 
 func (s *s3) Clone(from string) error {
-	return s.s3cli.CopyPrefix(from)
+	// for backward compatibility.
+	err := s.s3cli.CopyPrefix(from)
+	if err != nil {
+		return err
+	}
+
+	prefix := s.namespace + "/" + from
+	return s.s3cli.CopyPrefix(prefix)
 }
 
 func (s *s3) Delete() error {
