@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
@@ -82,6 +83,11 @@ func testStopOperator(t *testing.T, kill bool) {
 	}
 
 	if !kill {
+		testEtcd, err = k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
+		if err != nil {
+			t.Fatalf("failed to get cluster TPR object:%v", err)
+		}
+
 		testEtcd.Spec.Paused = true
 		if testEtcd, err = updateEtcdCluster(f, testEtcd); err != nil {
 			t.Fatalf("failed to pause control: %v", err)
@@ -107,6 +113,11 @@ func testStopOperator(t *testing.T, kill bool) {
 	}
 
 	if !kill {
+		testEtcd, err = k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
+		if err != nil {
+			t.Fatalf("failed to get cluster TPR object:%v", err)
+		}
+
 		testEtcd.Spec.Paused = false
 		if _, err = updateEtcdCluster(f, testEtcd); err != nil {
 			t.Fatalf("failed to resume control: %v", err)
@@ -143,6 +154,11 @@ func testEtcdUpgrade(t *testing.T) {
 	err = waitSizeAndVersionReached(t, f, testEtcd.Metadata.Name, "3.0.16", 3, 60*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
+	}
+
+	testEtcd, err = k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
+	if err != nil {
+		t.Fatalf("failed to get cluster TPR object:%v", err)
 	}
 
 	testEtcd = etcdClusterWithVersion(testEtcd, "3.1.4")

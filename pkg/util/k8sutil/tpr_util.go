@@ -83,13 +83,6 @@ func UpdateClusterTPRObject(restcli rest.Interface, ns string, c *spec.Cluster) 
 	return updateClusterTPRObject(restcli, ns, c)
 }
 
-// UpdateClusterTPRObjectUnconditionally updates the given TPR object.
-// This should only be used in tests.
-func UpdateClusterTPRObjectUnconditionally(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
-	c.Metadata.ResourceVersion = ""
-	return updateClusterTPRObject(restcli, ns, c)
-}
-
 func updateClusterTPRObject(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, c.Metadata.Name)
 	b, err := restcli.Put().RequestURI(uri).Body(c).DoRaw()

@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
@@ -51,6 +52,11 @@ func testResizeCluster3to5(t *testing.T) {
 	}
 	fmt.Println("reached to 3 members cluster")
 
+	testEtcd, err = k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
+	if err != nil {
+		t.Fatalf("failed to get cluster TPR object:%v", err)
+	}
+
 	testEtcd.Spec.Size = 5
 	if _, err := updateEtcdCluster(f, testEtcd); err != nil {
 		t.Fatal(err)
@@ -81,6 +87,11 @@ func testResizeCluster5to3(t *testing.T) {
 		t.Fatalf("failed to create 5 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 5 members cluster")
+
+	testEtcd, err = k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
+	if err != nil {
+		t.Fatalf("failed to get cluster TPR object:%v", err)
+	}
 
 	testEtcd.Spec.Size = 3
 	if _, err := updateEtcdCluster(f, testEtcd); err != nil {
