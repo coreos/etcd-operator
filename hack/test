@@ -38,14 +38,16 @@ function fmt_pass {
 		fi
 	done
 
+	checkPkgs=$(go list ./client/... ./cmd/... ./pkg/... ./test/e2e/...)
+	
 	go get honnef.co/go/tools/cmd/gosimple || true
 	if which gosimple >/dev/null; then
 		echo "Checking gosimple..."
-		checkRes=$(gosimple $(go list ./client/... ./cmd/... ./pkg/... ./test/e2e/...)) || true
-			if [ -n "${checkRes}" ]; then
-				echo -e "gosimple checking failed:\n${checkRes}"
-				exit 255
-			fi
+		checkRes=$(gosimple $checkPkgs) || true
+		if [ -n "${checkRes}" ]; then
+			echo -e "gosimple checking failed:\n${checkRes}"
+			exit 255
+		fi
 	else
 		echo "Skipping gosimple: failed to install"
 	fi
@@ -53,7 +55,7 @@ function fmt_pass {
 	go get honnef.co/go/tools/cmd/unused || true
 	if which unused >/dev/null; then
 		echo "Checking unused..."
-		checkRes=$(unused $(go list ./client/... ./cmd/... ./pkg/... ./test/e2e/...)) || true
+		checkRes=$(unused $checkPkgs) || true
 		if [ -n "${checkRes}" ]; then
 				echo -e "unused checking failed:\n${checkRes}"
 				exit 255
