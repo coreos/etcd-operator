@@ -89,6 +89,13 @@ function e2e_pass {
 	go test "./test/e2e/" -run "$E2E_TEST_SELECTOR" -timeout 30m --race --kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
 }
 
+function upgrade_pass {
+	go test ./test/e2e/upgradetest/ --kubeconfig=$KUBECONFIG --kube-ns=$TEST_NAMESPACE \
+		--old-image=$UPGRADE_FROM \
+		--new-image=$UPGRADE_TO
+
+}
+
 function unit_pass {
 	# coverage.txt is the combined coverage report consumed by codecov
 	echo "mode: atomic" > coverage.txt
