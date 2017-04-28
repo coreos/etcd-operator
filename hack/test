@@ -82,10 +82,9 @@ function e2e_pass {
 		fi
 	fi
 
-	TEST_PKGS=`go list ./test/e2e/... | grep -v framework`
 	# Run all the tests by default
 	E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-.*}
-	go test ${TEST_PKGS} -run "$E2E_TEST_SELECTOR" -timeout 30m --race --kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
+	go test "./test/e2e/" -run "$E2E_TEST_SELECTOR" -timeout 30m --race --kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
 }
 
 function unit_pass {
