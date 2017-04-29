@@ -16,7 +16,6 @@ package k8sutil
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -29,6 +28,10 @@ import (
 )
 
 // TODO: replace this package with Operator client
+
+// ClusterTPRUpdateFunc is a function to be used when atomically
+// updating a Cluster TPR.
+type ClusterTPRUpdateFunc func(*spec.Cluster)
 
 func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
 	return httpClient.Get(fmt.Sprintf("%s/apis/%s/%s/namespaces/%s/clusters?watch=true&resourceVersion=%s",
@@ -74,16 +77,32 @@ func GetClusterTPRObject(restcli rest.Interface, ns, name string) (*spec.Cluster
 	return readOutCluster(b)
 }
 
-// UpdateClusterTPRObject updates the given TPR object.
-// ResourceVersion of the object MUST be set or update will fail.
-func UpdateClusterTPRObject(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
-	if len(c.Metadata.ResourceVersion) == 0 {
-		return nil, errors.New("k8sutil: resource version is not provided")
-	}
-	return updateClusterTPRObject(restcli, ns, c)
+// AtomicUpdateClusterTPRObject will get the latest result of a cluster,
+// let user modify it, and update the cluster with modified result
+// The entire process would be retried if there is a conflict of resource version
+func AtomicUpdateClusterTPRObject(restcli rest.Interface, name, namespace string, maxRetries int, updateFunc ClusterTPRUpdateFunc) (*spec.Cluster, error) {
+	var updatedCluster *spec.Cluster
+	err := retryutil.Retry(1*time.Second, maxRetries, func() (done bool, err error) {
+		currCluster, err := GetClusterTPRObject(restcli, namespace, name)
+		if err != nil {
+			return false, err
+		}
+
+		updateFunc(currCluster)
+
+		updatedCluster, err = UpdateClusterTPRObject(restcli, namespace, currCluster)
+		if err != nil {
+			if apierrors.IsConflict(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+	return updatedCluster, err
 }
 
-func updateClusterTPRObject(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+func UpdateClusterTPRObject(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, c.Metadata.Name)
 	b, err := restcli.Put().RequestURI(uri).Body(c).DoRaw()
 	if err != nil {

@@ -19,7 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
@@ -83,13 +84,10 @@ func testStopOperator(t *testing.T, kill bool) {
 	}
 
 	if !kill {
-		testEtcd, err = k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
-		if err != nil {
-			t.Fatalf("failed to get cluster TPR object:%v", err)
+		updateFunc := func(cl *spec.Cluster) {
+			cl.Spec.Paused = true
 		}
-
-		testEtcd.Spec.Paused = true
-		if testEtcd, err = updateEtcdCluster(f, testEtcd); err != nil {
+		if testEtcd, err = e2eutil.UpdateEtcdCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 			t.Fatalf("failed to pause control: %v", err)
 		}
 
@@ -113,13 +111,10 @@ func testStopOperator(t *testing.T, kill bool) {
 	}
 
 	if !kill {
-		testEtcd, err = k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
-		if err != nil {
-			t.Fatalf("failed to get cluster TPR object:%v", err)
+		updateFunc := func(cl *spec.Cluster) {
+			cl.Spec.Paused = false
 		}
-
-		testEtcd.Spec.Paused = false
-		if _, err = updateEtcdCluster(f, testEtcd); err != nil {
+		if _, err = e2eutil.UpdateEtcdCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 			t.Fatalf("failed to resume control: %v", err)
 		}
 	} else {
@@ -156,14 +151,10 @@ func testEtcdUpgrade(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	testEtcd, err = k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
-	if err != nil {
-		t.Fatalf("failed to get cluster TPR object:%v", err)
+	updateFunc := func(cl *spec.Cluster) {
+		cl = etcdClusterWithVersion(cl, "3.1.4")
 	}
-
-	testEtcd = etcdClusterWithVersion(testEtcd, "3.1.4")
-
-	if _, err := updateEtcdCluster(f, testEtcd); err != nil {
+	if _, err := e2eutil.UpdateEtcdCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 
