@@ -103,7 +103,7 @@ func createCluster() (*spec.Cluster, error) {
 }
 
 func updateEtcdCluster(cl *spec.Cluster) (*spec.Cluster, error) {
-	return k8sutil.UpdateClusterTPRObjectUnconditionally(testF.KubeCli.CoreV1().RESTClient(), testF.KubeNS, cl)
+	return k8sutil.UpdateClusterTPRObject(testF.KubeCli.CoreV1().RESTClient(), testF.KubeNS, cl)
 }
 
 func deleteCluster() error {
