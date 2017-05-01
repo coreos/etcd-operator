@@ -221,19 +221,13 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
 
-	var env []v1.EnvVar
 	labels := map[string]string{
 		"app":          "etcd",
 		"etcd_node":    m.Name,
 		"etcd_cluster": clusterName,
 	}
 
-	if cs.Pod != nil {
-		env = cs.Pod.EtcdEnv
-		mergeLabels(labels, cs.Pod.Labels)
-	}
-
-	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version, env), etcdLivenessProbe(cs.TLS.IsSecureClient()))
+	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version, nil), etcdLivenessProbe(cs.TLS.IsSecureClient()))
 	if cs.Pod != nil {
 		container = containerWithRequirements(container, cs.Pod.Resources)
 	}
@@ -284,20 +278,10 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		},
 	}
 
+	applyPodPolicy(clusterName, pod, cs.Pod)
+
 	SetEtcdVersion(pod, cs.Version)
 
-	if cs.Pod != nil {
-		if cs.Pod.AntiAffinity {
-			pod = PodWithAntiAffinity(pod, clusterName)
-		}
-
-		if len(cs.Pod.NodeSelector) != 0 {
-			pod = PodWithNodeSelector(pod, cs.Pod.NodeSelector)
-		}
-		if len(cs.Pod.Tolerations) != 0 {
-			pod.Spec.Tolerations = cs.Pod.Tolerations
-		}
-	}
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
 }

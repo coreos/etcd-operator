@@ -83,10 +83,6 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 		"etcd_node":    name,
 		"etcd_cluster": clusterName,
 	}
-	if cs.Pod != nil {
-		env = append(env, cs.Pod.EtcdEnv...)
-		mergeLabels(labels, cs.Pod.Labels)
-	}
 
 	c := etcdContainer(commands, cs.Version, env)
 	// On node reboot, there will be two copies of etcd pod: scheduled and checkpointed one.
@@ -133,14 +129,8 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 	SetEtcdVersion(pod, cs.Version)
 
 	pod = selfHostedPodWithAntiAffinity(pod)
-	if cs.Pod != nil {
-		if len(cs.Pod.NodeSelector) != 0 {
-			pod = PodWithNodeSelector(pod, cs.Pod.NodeSelector)
-		}
-		if len(cs.Pod.Tolerations) != 0 {
-			pod.Spec.Tolerations = cs.Pod.Tolerations
-		}
-	}
+	applyPodPolicy(clusterName, pod, cs.Pod)
+
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
 }

@@ -17,6 +17,7 @@ package k8sutil
 import (
 	"fmt"
 
+	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -107,4 +108,26 @@ func podWithAntiAffinity(pod *v1.Pod, ls *metav1.LabelSelector) *v1.Pod {
 
 	pod.Spec.Affinity = affinity
 	return pod
+}
+
+func applyPodPolicy(clusterName string, pod *v1.Pod, policy *spec.PodPolicy) {
+	if policy == nil {
+		return
+	}
+
+	if policy.AntiAffinity {
+		pod = PodWithAntiAffinity(pod, clusterName)
+	}
+
+	if len(policy.NodeSelector) != 0 {
+		pod = PodWithNodeSelector(pod, policy.NodeSelector)
+	}
+	if len(policy.Tolerations) != 0 {
+		pod.Spec.Tolerations = policy.Tolerations
+	}
+
+	mergeLabels(pod.Labels, policy.Labels)
+	for i := range pod.Spec.Containers {
+		pod.Spec.Containers[i].Env = append(pod.Spec.Containers[i].Env, policy.EtcdEnv...)
+	}
 }
