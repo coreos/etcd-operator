@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
+	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
 	"golang.org/x/net/context"
@@ -76,7 +77,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	f := framework.Global
 
 	origEtcd := newClusterSpec("test-etcd-", 3)
-	testEtcd, err := createCluster(t, f, etcdClusterWithBackup(origEtcd, backupPolicy))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, etcdClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +125,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	})
 
 	backupPolicy.CleanupBackupsOnClusterDelete = true
-	testEtcd, err = createCluster(t, f, etcdClusterWithBackup(origEtcd, backupPolicy))
+	testEtcd, err = e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, etcdClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}

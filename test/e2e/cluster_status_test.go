@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
+	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
@@ -38,7 +39,7 @@ func testReadyMembersStatus(t *testing.T) {
 	}
 	f := framework.Global
 	size := 1
-	testEtcd, err := createCluster(t, f, newClusterSpec("test-etcd-", size))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, newClusterSpec("test-etcd-", size))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +79,7 @@ func testBackupStatus(t *testing.T) {
 
 	bp := newBackupPolicyPV()
 	bp.CleanupBackupsOnClusterDelete = true
-	testEtcd, err := createCluster(t, f, etcdClusterWithBackup(newClusterSpec("test-etcd-", 1), bp))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, etcdClusterWithBackup(newClusterSpec("test-etcd-", 1), bp))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -37,7 +37,7 @@ func testResizeCluster3to5(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := createCluster(t, f, newClusterSpec("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, newClusterSpec("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func testResizeCluster5to3(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := createCluster(t, f, newClusterSpec("test-etcd-", 5))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, newClusterSpec("test-etcd-", 5))
 	if err != nil {
 		t.Fatal(err)
 	}

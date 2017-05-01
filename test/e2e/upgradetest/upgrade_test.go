@@ -15,7 +15,6 @@
 package upgradetest
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -49,7 +48,7 @@ func TestResize(t *testing.T) {
 		}
 		time.Sleep(10 * time.Second)
 	}()
-	testClus, err := createCluster()
+	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, newClusterSpec())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,8 +79,8 @@ func TestResize(t *testing.T) {
 	}
 }
 
-func createCluster() (*spec.Cluster, error) {
-	cl := &spec.Cluster{
+func newClusterSpec() *spec.Cluster {
+	return &spec.Cluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       strings.Title(spec.TPRKind),
 			APIVersion: spec.TPRGroup + "/" + spec.TPRVersion,
@@ -93,16 +92,6 @@ func createCluster() (*spec.Cluster, error) {
 			Size: 3,
 		},
 	}
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, testF.KubeNS)
-	b, err := testF.KubeCli.CoreV1().RESTClient().Post().Body(cl).RequestURI(uri).DoRaw()
-	if err != nil {
-		return nil, err
-	}
-	res := &spec.Cluster{}
-	if err := json.Unmarshal(b, res); err != nil {
-		return nil, err
-	}
-	return res, nil
 }
 
 func deleteCluster() error {
