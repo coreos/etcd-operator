@@ -20,7 +20,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
@@ -52,13 +53,10 @@ func testResizeCluster3to5(t *testing.T) {
 	}
 	fmt.Println("reached to 3 members cluster")
 
-	testEtcd, err = k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
-	if err != nil {
-		t.Fatalf("failed to get cluster TPR object:%v", err)
+	updateFunc := func(cl *spec.Cluster) {
+		cl.Spec.Size = 5
 	}
-
-	testEtcd.Spec.Size = 5
-	if _, err := updateEtcdCluster(f, testEtcd); err != nil {
+	if _, err := e2eutil.UpdateEtcdCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -88,13 +86,10 @@ func testResizeCluster5to3(t *testing.T) {
 	}
 	fmt.Println("reached to 5 members cluster")
 
-	testEtcd, err = k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
-	if err != nil {
-		t.Fatalf("failed to get cluster TPR object:%v", err)
+	updateFunc := func(cl *spec.Cluster) {
+		cl.Spec.Size = 3
 	}
-
-	testEtcd.Spec.Size = 3
-	if _, err := updateEtcdCluster(f, testEtcd); err != nil {
+	if _, err := e2eutil.UpdateEtcdCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatal(err)
 	}
 

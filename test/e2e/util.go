@@ -232,10 +232,6 @@ func createCluster(t *testing.T, f *framework.Framework, cl *spec.Cluster) (*spe
 	return res, nil
 }
 
-func updateEtcdCluster(f *framework.Framework, c *spec.Cluster) (*spec.Cluster, error) {
-	return k8sutil.UpdateClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, c)
-}
-
 func deleteEtcdCluster(t *testing.T, f *framework.Framework, c *spec.Cluster) error {
 	podList, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
 	if err != nil {

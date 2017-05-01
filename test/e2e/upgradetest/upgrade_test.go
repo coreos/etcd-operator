@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
+	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
@@ -66,9 +67,11 @@ func TestResize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testClus.Spec.Size = 5
-	_, err = updateEtcdCluster(testClus)
-	if err != nil {
+
+	updateFunc := func(cl *spec.Cluster) {
+		cl.Spec.Size = 5
+	}
+	if _, err := e2eutil.UpdateEtcdCluster(testF.KubeCli, testClus, 10, updateFunc); err != nil {
 		t.Fatal(err)
 	}
 	_, err = waitUntilSizeReached(testClus.Metadata.Name, 5, 60*time.Second)
@@ -100,10 +103,6 @@ func createCluster() (*spec.Cluster, error) {
 		return nil, err
 	}
 	return res, nil
-}
-
-func updateEtcdCluster(cl *spec.Cluster) (*spec.Cluster, error) {
-	return k8sutil.UpdateClusterTPRObject(testF.KubeCli.CoreV1().RESTClient(), testF.KubeNS, cl)
 }
 
 func deleteCluster() error {
