@@ -44,7 +44,7 @@ func TestPeerTLS(t *testing.T) {
 			},
 		},
 	}
-	c, err = createCluster(t, f, c)
+	c, err = e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
 	}

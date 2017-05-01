@@ -17,7 +17,6 @@ package e2e
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -216,20 +215,6 @@ func etcdClusterWithVersion(cl *spec.Cluster, version string) *spec.Cluster {
 func clusterWithSelfHosted(cl *spec.Cluster, sh *spec.SelfHostedPolicy) *spec.Cluster {
 	cl.Spec.SelfHosted = sh
 	return cl
-}
-
-func createCluster(t *testing.T, f *framework.Framework, cl *spec.Cluster) (*spec.Cluster, error) {
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, f.Namespace)
-	b, err := f.KubeClient.CoreV1().RESTClient().Post().Body(cl).RequestURI(uri).DoRaw()
-	if err != nil {
-		return nil, err
-	}
-	res := &spec.Cluster{}
-	if err := json.Unmarshal(b, res); err != nil {
-		return nil, err
-	}
-	logfWithTimestamp(t, "created etcd cluster: %v", res.Metadata.Name)
-	return res, nil
 }
 
 func deleteEtcdCluster(t *testing.T, f *framework.Framework, c *spec.Cluster) error {

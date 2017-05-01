@@ -41,7 +41,7 @@ func testCreateCluster(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := createCluster(t, f, newClusterSpec("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, newClusterSpec("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func testPauseControl(t *testing.T) {
 
 func testStopOperator(t *testing.T, kill bool) {
 	f := framework.Global
-	testEtcd, err := createCluster(t, f, newClusterSpec("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, newClusterSpec("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func testEtcdUpgrade(t *testing.T) {
 	f := framework.Global
 	origEtcd := newClusterSpec("test-etcd-", 3)
 	origEtcd = etcdClusterWithVersion(origEtcd, "3.0.16")
-	testEtcd, err := createCluster(t, f, origEtcd)
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, origEtcd)
 	if err != nil {
 		t.Fatal(err)
 	}

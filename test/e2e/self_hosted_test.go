@@ -26,6 +26,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
+	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
 	"github.com/coreos/etcd/embed"
@@ -50,7 +51,7 @@ func testCreateSelfHostedCluster(t *testing.T) {
 	f := framework.Global
 	c := newClusterSpec("test-etcd-", 3)
 	c = clusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
-	testEtcd, err := createCluster(t, f, c)
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +116,7 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	c = clusterWithSelfHosted(c, &spec.SelfHostedPolicy{
 		BootMemberClientEndpoint: embedCfg.ACUrls[0].String(),
 	})
-	testEtcd, err := createCluster(t, f, c)
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
 	}
