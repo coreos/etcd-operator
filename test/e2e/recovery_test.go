@@ -54,7 +54,7 @@ func testOneMemberRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
+		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -109,7 +109,18 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
+		var storageCheckerOptions *e2eutil.StorageCheckerOptions
+		switch testEtcd.Spec.Backup.StorageType {
+		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+			storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
+		case spec.BackupStorageTypeS3:
+			storageCheckerOptions = &e2eutil.StorageCheckerOptions{
+				S3Cli:    f.S3Cli,
+				S3Bucket: f.S3Bucket,
+			}
+		}
+
+		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
 			t.Fatal(err)
 		}
 	}()

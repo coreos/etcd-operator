@@ -43,7 +43,7 @@ func testResizeCluster3to5(t *testing.T) {
 	}
 
 	defer func() {
-		if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
+		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -76,7 +76,7 @@ func testResizeCluster5to3(t *testing.T) {
 	}
 
 	defer func() {
-		if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
+		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()

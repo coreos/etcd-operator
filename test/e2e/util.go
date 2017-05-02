@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -30,10 +29,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/coreos/etcd/clientv3"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/pkg/api/v1"
@@ -216,154 +212,6 @@ func etcdClusterWithVersion(cl *spec.Cluster, version string) *spec.Cluster {
 func clusterWithSelfHosted(cl *spec.Cluster, sh *spec.SelfHostedPolicy) *spec.Cluster {
 	cl.Spec.SelfHosted = sh
 	return cl
-}
-
-func deleteEtcdCluster(t *testing.T, f *framework.Framework, c *spec.Cluster) error {
-	podList, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
-	if err != nil {
-		return err
-	}
-	for i := range podList.Items {
-		pod := &podList.Items[i]
-		t.Logf("pod (%v): status (%v), node (%v) cmd (%v)", pod.Name, pod.Status.Phase, pod.Spec.NodeName, pod.Spec.Containers[0].Command)
-	}
-
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, f.Namespace, c.Metadata.Name)
-	if _, err := f.KubeClient.CoreV1().RESTClient().Delete().RequestURI(uri).DoRaw(); err != nil {
-		return err
-	}
-	return waitResourcesDeleted(t, f, c)
-}
-
-func waitResourcesDeleted(t *testing.T, f *framework.Framework, c *spec.Cluster) error {
-	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		list, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
-		if err != nil {
-			return false, err
-		}
-		if len(list.Items) > 0 {
-			p := list.Items[0]
-			logfWithTimestamp(t, "waiting pod (%s) to be deleted.", p.Name)
-
-			buf := bytes.NewBuffer(nil)
-			buf.WriteString("init container status:\n")
-			printContainerStatus(buf, p.Status.InitContainerStatuses)
-			buf.WriteString("container status:\n")
-			printContainerStatus(buf, p.Status.ContainerStatuses)
-			t.Logf("pod (%s) status.phase is (%s): %v", p.Name, p.Status.Phase, buf.String())
-
-			return false, nil
-		}
-		return true, nil
-	})
-	if err != nil {
-		return fmt.Errorf("fail to wait pods deleted: %v", err)
-	}
-
-	err = retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		list, err := f.KubeClient.CoreV1().Services(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
-		if err != nil {
-			return false, err
-		}
-		if len(list.Items) > 0 {
-			logfWithTimestamp(t, "waiting service (%s) to be deleted", list.Items[0].Name)
-			return false, nil
-		}
-		return true, nil
-	})
-	if err != nil {
-		return fmt.Errorf("fail to wait services deleted: %v", err)
-	}
-
-	if c.Spec.Backup != nil {
-		err := waitBackupDeleted(f, c)
-		if err != nil {
-			return fmt.Errorf("fail to wait backup deleted: %v", err)
-		}
-	}
-	return nil
-}
-
-func waitBackupDeleted(f *framework.Framework, c *spec.Cluster) error {
-	err := retryutil.Retry(5*time.Second, 5, func() (bool, error) {
-		_, err := f.KubeClient.AppsV1beta1().Deployments(f.Namespace).Get(k8sutil.BackupSidecarName(c.Metadata.Name), metav1.GetOptions{})
-		if err == nil {
-			return false, nil
-		}
-		if apierrors.IsNotFound(err) {
-			return true, nil
-		}
-		return false, err
-	})
-	if err != nil {
-		return fmt.Errorf("failed to wait backup Deployment deleted: %v", err)
-	}
-	err = retryutil.Retry(5*time.Second, 2, func() (done bool, err error) {
-		ls := labels.SelectorFromSet(map[string]string{
-			"app":          k8sutil.BackupPodSelectorAppField,
-			"etcd_cluster": c.Metadata.Name,
-		}).String()
-		pl, err := f.KubeClient.CoreV1().Pods(f.Namespace).List(metav1.ListOptions{
-			LabelSelector: ls,
-		})
-		if err != nil {
-			return false, err
-		}
-		if len(pl.Items) == 0 {
-			return true, nil
-		}
-		if pl.Items[0].DeletionTimestamp != nil {
-			return true, nil
-		}
-		return false, nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to wait backup pod terminated: %v", err)
-	}
-	// The rest is to track backup storage, e.g. PV or S3 "dir" deleted.
-	// If CleanupBackupsOnClusterDelete=false, we don't delete them and thus don't check them.
-	if !c.Spec.Backup.CleanupBackupsOnClusterDelete {
-		return nil
-	}
-	err = retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		switch c.Spec.Backup.StorageType {
-		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-			pl, err := f.KubeClient.CoreV1().PersistentVolumeClaims(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
-			if err != nil {
-				return false, err
-			}
-			if len(pl.Items) > 0 {
-				return false, nil
-			}
-		case spec.BackupStorageTypeS3:
-			resp, err := f.S3Cli.ListObjects(&s3.ListObjectsInput{
-				Bucket: aws.String(f.S3Bucket),
-				Prefix: aws.String(c.Metadata.Name + "/"),
-			})
-			if err != nil {
-				return false, err
-			}
-			if len(resp.Contents) > 0 {
-				return false, nil
-			}
-		}
-		return true, nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to wait storage (%s) to be deleted: %v", c.Spec.Backup.StorageType, err)
-	}
-	return nil
-}
-
-func printContainerStatus(buf *bytes.Buffer, ss []v1.ContainerStatus) {
-	for _, s := range ss {
-		if s.State.Waiting != nil {
-			buf.WriteString(fmt.Sprintf("%s: Waiting: message (%s) reason (%s)\n", s.Name, s.State.Waiting.Message, s.State.Waiting.Reason))
-		}
-		if s.State.Terminated != nil {
-			buf.WriteString(fmt.Sprintf("%s: Terminated: message (%s) reason (%s)\n", s.Name, s.State.Terminated.Message, s.State.Terminated.Reason))
-		}
-	}
 }
 
 func logfWithTimestamp(t *testing.T, format string, args ...interface{}) {

@@ -102,7 +102,18 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	if err := makeBackup(f, testEtcd.Metadata.Name); err != nil {
 		t.Fatalf("fail to make a backup: %v", err)
 	}
-	if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
+
+	var storageCheckerOptions *e2eutil.StorageCheckerOptions
+	switch testEtcd.Spec.Backup.StorageType {
+	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+		storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
+	case spec.BackupStorageTypeS3:
+		storageCheckerOptions = &e2eutil.StorageCheckerOptions{
+			S3Cli:    f.S3Cli,
+			S3Bucket: f.S3Bucket,
+		}
+	}
+	if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
 		t.Fatal(err)
 	}
 	// waits a bit to make sure resources are finally deleted on APIServer.
@@ -130,7 +141,17 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := deleteEtcdCluster(t, f, testEtcd); err != nil {
+		var storageCheckerOptions *e2eutil.StorageCheckerOptions
+		switch testEtcd.Spec.Backup.StorageType {
+		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+			storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
+		case spec.BackupStorageTypeS3:
+			storageCheckerOptions = &e2eutil.StorageCheckerOptions{
+				S3Cli:    f.S3Cli,
+				S3Bucket: f.S3Bucket,
+			}
+		}
+		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
 			t.Fatal(err)
 		}
 	}()
