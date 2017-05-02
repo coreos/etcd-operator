@@ -41,17 +41,16 @@ func TestResize(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(10 * time.Second)
-	defer func() {
-		err = deleteCluster()
-		if err != nil {
-			t.Fatal(err)
-		}
-		time.Sleep(10 * time.Second)
-	}()
 	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, newClusterSpec())
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		if err := e2eutil.DeleteEtcdCluster(t, testF.KubeCli, testClus, &e2eutil.StorageCheckerOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(10 * time.Second)
+	}()
 	_, err = waitUntilSizeReached(testClus.Metadata.Name, 3, 60*time.Second)
 	if err != nil {
 		t.Fatal(err)
@@ -92,12 +91,6 @@ func newClusterSpec() *spec.Cluster {
 			Size: 3,
 		},
 	}
-}
-
-func deleteCluster() error {
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, testF.KubeNS, "upgrade-test")
-	_, err := testF.KubeCli.CoreV1().RESTClient().Delete().RequestURI(uri).DoRaw()
-	return err
 }
 
 func waitUntilSizeReached(clusterName string, size int, timeout time.Duration) ([]string, error) {
