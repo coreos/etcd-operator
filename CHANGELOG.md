@@ -1,5 +1,12 @@
 ## [Unreleased 0.2.6]
 
+### Upgrade Notice
+
+- Once operator is upgraded, all backup-enabled cluster will go through an upgrade process that
+  deletes backup sidecar's ReplicaSet and creates new Deployment for sidecar.
+  If upgrading failed for any reason, cluster TPR's `status.phase` will be FAILED.
+  Recreate of the cluster TPR is needed on failure case.
+
 ### Added
 
 - PodPolicy provides `EtcdEnv` option to add custom env to the etcd process.
@@ -9,7 +16,7 @@
 
 - Self-hosted etcd pod's anti-affinity label selector is changed to select `{"app": "etcd"}`.
   That is, no two etcd pods should sit on the same node, even if they belongs to different clusters.
-
+- Using Deployment to manage backup sidecar instead of ReplicaSet.
 - S3 backup path is changed to `${BUCKET_NAME}/v1/${NAMESPACE}/${CLUSTER_NAME}/`.
 
 ### Removed

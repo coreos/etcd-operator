@@ -82,8 +82,8 @@ func (gc *GC) collectResources(option metav1.ListOptions, runningSet map[types.U
 	if err := gc.collectServices(option, runningSet); err != nil {
 		gc.logger.Errorf("gc services failed: %v", err)
 	}
-	if err := gc.collectReplicaSet(option, runningSet); err != nil {
-		gc.logger.Errorf("gc replica set failed: %v", err)
+	if err := gc.collectDeployment(option, runningSet); err != nil {
+		gc.logger.Errorf("gc deployments failed: %v", err)
 	}
 }
 
@@ -134,34 +134,31 @@ func (gc *GC) collectServices(option metav1.ListOptions, runningSet map[types.UI
 	return nil
 }
 
-func (gc *GC) collectReplicaSet(option metav1.ListOptions, runningSet map[types.UID]bool) error {
-	rss, err := gc.kubecli.ExtensionsV1beta1().ReplicaSets(gc.ns).List(option)
+func (gc *GC) collectDeployment(option metav1.ListOptions, runningSet map[types.UID]bool) error {
+	ds, err := gc.kubecli.AppsV1beta1().Deployments(gc.ns).List(option)
 	if err != nil {
 		return err
 	}
 
-	for _, rs := range rss.Items {
-		if len(rs.OwnerReferences) == 0 {
-			gc.logger.Warningf("failed to check replica set %s: no owner", rs.GetName())
+	for _, d := range ds.Items {
+		if len(d.OwnerReferences) == 0 {
+			gc.logger.Warningf("failed to GC deployment (%s): no owner", d.GetName())
 			continue
 		}
-		if !runningSet[rs.OwnerReferences[0].UID] {
-			// set orphanOption to false to enable Kubernetes GC to remove the objects that
-			// depends on this replica set.
-			// See https://kubernetes.io/docs/user-guide/garbage-collection/ for more details.
-			orphanOption := false
-			// set gracePeriod to delete the replica set immediately
-			gracePeriod := int64(0)
-			err = gc.kubecli.ExtensionsV1beta1().ReplicaSets(gc.ns).Delete(rs.GetName(), &metav1.DeleteOptions{
-				OrphanDependents:   &orphanOption,
-				GracePeriodSeconds: &gracePeriod,
+		if !runningSet[d.OwnerReferences[0].UID] {
+			err = gc.kubecli.AppsV1beta1().Deployments(gc.ns).Delete(d.GetName(), &metav1.DeleteOptions{
+				GracePeriodSeconds: func(t int64) *int64 { return &t }(0),
+				PropagationPolicy: func() *metav1.DeletionPropagation {
+					foreground := metav1.DeletePropagationForeground
+					return &foreground
+				}(),
 			})
 			if err != nil {
 				if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 					return err
 				}
 			}
-			gc.logger.Infof("deleted replica set (%s)", rs.GetName())
+			gc.logger.Infof("deleted deployment (%s)", d.GetName())
 		}
 	}
 

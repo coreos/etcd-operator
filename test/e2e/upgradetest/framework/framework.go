@@ -20,7 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -109,7 +108,7 @@ func (f *Framework) UpgradeOperator() error {
 	if err != nil {
 		return err
 	}
-	cd := cloneDeployment(d)
+	cd := k8sutil.CloneDeployment(d)
 	cd.Spec.Template.Spec.Containers[0].Image = image
 	patchData, err := k8sutil.CreatePatch(d, cd, appsv1beta1.Deployment{})
 	if err != nil {
@@ -117,12 +116,4 @@ func (f *Framework) UpgradeOperator() error {
 	}
 	_, err = f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Patch(d.Name, types.StrategicMergePatchType, patchData)
 	return err
-}
-
-func cloneDeployment(d *appsv1beta1.Deployment) *appsv1beta1.Deployment {
-	cd, err := api.Scheme.DeepCopy(d)
-	if err != nil {
-		panic("cannot deep copy pod")
-	}
-	return cd.(*appsv1beta1.Deployment)
 }

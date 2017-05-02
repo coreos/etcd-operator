@@ -30,8 +30,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
-	v1beta1extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 	v1beta1storage "k8s.io/client-go/pkg/apis/storage/v1beta1"
 )
 
@@ -165,10 +166,10 @@ func PodSpecWithS3(ps *v1.PodSpec, s3Ctx s3config.S3Context) *v1.PodSpec {
 	return ps
 }
 
-func NewBackupPodSpec(clusterName, account string, sp spec.ClusterSpec) (*v1.PodSpec, error) {
+func NewBackupPodSpec(clusterName, account string, sp spec.ClusterSpec) *v1.PodSpec {
 	b, err := json.Marshal(sp)
 	if err != nil {
-		return nil, err
+		panic("unexpected json error " + err.Error())
 	}
 
 	var nsel map[string]string
@@ -197,45 +198,37 @@ func NewBackupPodSpec(clusterName, account string, sp spec.ClusterSpec) (*v1.Pod
 			},
 		},
 	}
-	return ps, nil
+	return ps
 }
 
-func backupNameAndLabel(clusterName string) (string, map[string]string) {
-	labels := map[string]string{
-		"app":          BackupPodSelectorAppField,
-		"etcd_cluster": clusterName,
-	}
-	name := BackupServiceName(clusterName)
-	return name, labels
-}
-
-func NewBackupReplicaSetManifest(clusterName string, ps v1.PodSpec, owner metav1.OwnerReference) *v1beta1extensions.ReplicaSet {
-	name, labels := backupNameAndLabel(clusterName)
-	rs := &v1beta1extensions.ReplicaSet{
+func NewBackupDeploymentManifest(name string, dplSel, podSel map[string]string, ps v1.PodSpec, owner metav1.OwnerReference) *appsv1beta1.Deployment {
+	d := &appsv1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
-			Labels: newLablesForCluster(clusterName),
+			Labels: dplSel,
 		},
-		Spec: v1beta1extensions.ReplicaSetSpec{
-			Selector: &metav1.LabelSelector{MatchLabels: labels},
+		Spec: appsv1beta1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: podSel},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Labels: podSel,
 				},
 				Spec: ps,
 			},
 		},
 	}
-	addOwnerRefToObject(rs.GetObjectMeta(), owner)
-	return rs
+	addOwnerRefToObject(d.GetObjectMeta(), owner)
+	return d
 }
 
 func NewBackupServiceManifest(clusterName string, owner metav1.OwnerReference) *v1.Service {
-	name, labels := backupNameAndLabel(clusterName)
+	selector := BackupSidecarLabels(clusterName)
+	name := BackupSidecarName(clusterName)
+
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
-			Labels: newLablesForCluster(clusterName),
+			Labels: LabelsForCluster(clusterName),
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
@@ -246,7 +239,7 @@ func NewBackupServiceManifest(clusterName string, owner metav1.OwnerReference) *
 					Protocol:   v1.ProtocolTCP,
 				},
 			},
-			Selector: labels,
+			Selector: selector,
 		},
 	}
 	addOwnerRefToObject(svc.GetObjectMeta(), owner)
@@ -347,4 +340,27 @@ func copyVolumePodName(clusterName string) string {
 
 func makePVCName(clusterName string) string {
 	return fmt.Sprintf("%s-pvc", clusterName)
+}
+
+func BackupServiceAddr(clusterName string) string {
+	return fmt.Sprintf("%s:%d", BackupSidecarName(clusterName), constants.DefaultBackupPodHTTPPort)
+}
+
+func BackupSidecarName(clusterName string) string {
+	return fmt.Sprintf("%s-backup-sidecar", clusterName)
+}
+
+func BackupSidecarLabels(clusterName string) map[string]string {
+	return map[string]string{
+		"app":          BackupPodSelectorAppField,
+		"etcd_cluster": clusterName,
+	}
+}
+
+func CloneDeployment(d *appsv1beta1.Deployment) *appsv1beta1.Deployment {
+	cd, err := api.Scheme.DeepCopy(d)
+	if err != nil {
+		panic("cannot deep copy pod")
+	}
+	return cd.(*appsv1beta1.Deployment)
 }

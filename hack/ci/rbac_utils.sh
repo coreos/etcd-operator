@@ -43,9 +43,9 @@ rules:
   verbs:
   - "*"
 - apiGroups:
-  - extensions
+  - apps
   resources:
-  - replicasets
+  - deployments
   verbs:
   - "*"
 - apiGroups:
