@@ -254,8 +254,9 @@ func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config) (*etcdutil.Member, int6
 	maxRev := int64(0)
 	for _, pod := range pods {
 		m := &etcdutil.Member{
-			Name:      pod.Name,
-			Namespace: pod.Namespace,
+			Name:         pod.Name,
+			Namespace:    pod.Namespace,
+			SecureClient: tc != nil,
 		}
 		cfg := clientv3.Config{
 			Endpoints:   []string{m.ClientAddr()},
