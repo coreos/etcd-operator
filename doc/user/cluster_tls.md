@@ -1,7 +1,8 @@
 # Cluster TLS guide
 
 Cluster TLS policy is configured on a per-cluster basis via the TPR spec provided to etcd-operator.
-For etcd's TLS support and requirements, please read the relevant section in etcd [operations guide](https://coreos.com/etcd/docs/latest/op-guide/security.html).
+For etcd's TLS support and requirements, see [etcd security guide](https://coreos.com/etcd/docs/latest/op-guide/security.html).
+To learn about generating self-signed TLS certs, see [this tutorial](https://coreos.com/os/docs/latest/generate-self-signed-certificates.html).
 
 
 ## Static cluster TLS Policy
