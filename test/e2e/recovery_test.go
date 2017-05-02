@@ -59,7 +59,7 @@ func testOneMemberRecovery(t *testing.T) {
 		}
 	}()
 
-	names, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 60*time.Second)
+	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -69,7 +69,7 @@ func testOneMemberRecovery(t *testing.T) {
 	if err := killMembers(f, names[2]); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 60*time.Second); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }
@@ -125,7 +125,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 		}
 	}()
 
-	names, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 60*time.Second)
+	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -146,12 +146,12 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 		time.Sleep(10 * time.Second)
 	}
 	toKill := names[:numToKill]
-	logfWithTimestamp(t, "killing pods: %v", toKill)
+	e2eutil.LogfWithTimestamp(t, "killing pods: %v", toKill)
 	// TODO: race: members could be recovered between being deleted one by one.
 	if err := killMembers(f, toKill...); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 120*time.Second); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 120*time.Second, testEtcd); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 	// TODO: add checking of data in etcd

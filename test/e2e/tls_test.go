@@ -55,7 +55,7 @@ func TestPeerTLS(t *testing.T) {
 		}
 	}()
 
-	members, err := waitUntilSizeReached(t, f, c.Metadata.Name, 3, 60*time.Second)
+	members, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, c)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}

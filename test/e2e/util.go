@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"testing"
 	"time"
 
 	"github.com/coreos/etcd-operator/client/experimentalclient"
@@ -40,8 +39,6 @@ const (
 	etcdKeyFoo = "foo"
 	etcdValBar = "bar"
 )
-
-type acceptFunc func(*v1.Pod) bool
 
 func waitBackupPodUp(f *framework.Framework, clusterName string, timeout time.Duration) error {
 	ls := labels.SelectorFromSet(map[string]string{
@@ -93,56 +90,6 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 	return nil
 }
 
-func waitUntilSizeReached(t *testing.T, f *framework.Framework, clusterName string, size int, timeout time.Duration) ([]string, error) {
-	return waitSizeReachedWithAccept(t, f, clusterName, size, timeout)
-}
-
-func waitSizeAndVersionReached(t *testing.T, f *framework.Framework, clusterName, version string, size int, timeout time.Duration) error {
-	_, err := waitSizeReachedWithAccept(t, f, clusterName, size, timeout, func(pod *v1.Pod) bool {
-		return k8sutil.GetEtcdVersion(pod) == version
-	})
-	return err
-}
-
-func waitSizeReachedWithAccept(t *testing.T, f *framework.Framework, clusterName string, size int, timeout time.Duration, accepts ...acceptFunc) ([]string, error) {
-	var names []string
-	err := retryutil.Retry(10*time.Second, int(timeout/(10*time.Second)), func() (done bool, err error) {
-		podList, err := f.KubeClient.Core().Pods(f.Namespace).List(k8sutil.ClusterListOpt(clusterName))
-		if err != nil {
-			return false, err
-		}
-		names = nil
-		var nodeNames []string
-		for i := range podList.Items {
-			pod := &podList.Items[i]
-			if pod.Status.Phase != v1.PodRunning {
-				continue
-			}
-			accepted := true
-			for _, acceptPod := range accepts {
-				if !acceptPod(pod) {
-					accepted = false
-					break
-				}
-			}
-			if !accepted {
-				continue
-			}
-			names = append(names, pod.Name)
-			nodeNames = append(nodeNames, pod.Spec.NodeName)
-		}
-		logfWithTimestamp(t, "waiting size (%d), etcd pods: names (%v), nodes (%v)", size, names, nodeNames)
-		if len(names) != size {
-			return false, nil
-		}
-		return true, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return names, nil
-}
-
 func killMembers(f *framework.Framework, names ...string) error {
 	for _, name := range names {
 		err := f.KubeClient.CoreV1().Pods(f.Namespace).Delete(name, metav1.NewDeleteOptions(0))
@@ -151,10 +98,6 @@ func killMembers(f *framework.Framework, names ...string) error {
 		}
 	}
 	return nil
-}
-
-func logfWithTimestamp(t *testing.T, format string, args ...interface{}) {
-	t.Log(time.Now(), fmt.Sprintf(format, args...))
 }
 
 func createEtcdClient(addr string) (*clientv3.Client, error) {

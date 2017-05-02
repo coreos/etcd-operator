@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -42,7 +41,7 @@ func CreateCluster(t *testing.T, kubeClient kubernetes.Interface, namespace stri
 	if err := json.Unmarshal(b, res); err != nil {
 		return nil, err
 	}
-	logfWithTimestamp(t, "created etcd cluster: %v", res.Metadata.Name)
+	LogfWithTimestamp(t, "created etcd cluster: %v", res.Metadata.Name)
 	return res, nil
 }
 
@@ -65,8 +64,4 @@ func DeleteCluster(t *testing.T, kubeClient kubernetes.Interface, cl *spec.Clust
 		}
 	}
 	return nil
-}
-
-func logfWithTimestamp(t *testing.T, format string, args ...interface{}) {
-	t.Log(time.Now(), fmt.Sprintf(format, args...))
 }

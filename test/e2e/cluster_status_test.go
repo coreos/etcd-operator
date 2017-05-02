@@ -51,18 +51,18 @@ func testReadyMembersStatus(t *testing.T) {
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, size, 30*time.Second); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, size, 30*time.Second, testEtcd); err != nil {
 		t.Fatalf("failed to create %d members etcd cluster: %v", size, err)
 	}
 
 	err = retryutil.Retry(5*time.Second, 3, func() (done bool, err error) {
 		currEtcd, err := k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Metadata.Name)
 		if err != nil {
-			logfWithTimestamp(t, "failed to get updated cluster object: %v", err)
+			e2eutil.LogfWithTimestamp(t, "failed to get updated cluster object: %v", err)
 			return false, nil
 		}
 		if len(currEtcd.Status.Members.Ready) != size {
-			logfWithTimestamp(t, "size of ready members want = %d, get = %d ReadyMembers(%v) UnreadyMembers(%v). Will retry checking ReadyMembers", size, len(currEtcd.Status.Members.Ready), currEtcd.Status.Members.Ready, currEtcd.Status.Members.Unready)
+			e2eutil.LogfWithTimestamp(t, "size of ready members want = %d, get = %d ReadyMembers(%v) UnreadyMembers(%v). Will retry checking ReadyMembers", size, len(currEtcd.Status.Members.Ready), currEtcd.Status.Members.Ready, currEtcd.Status.Members.Unready)
 			return false, nil
 		}
 		return true, nil
@@ -101,7 +101,7 @@ func testBackupStatus(t *testing.T) {
 		}
 	}()
 
-	_, err = waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 1, 60*time.Second)
+	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 1, 60*time.Second, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 1 members etcd cluster: %v", err)
 	}
@@ -119,12 +119,12 @@ func testBackupStatus(t *testing.T) {
 		}
 		bs := c.Status.BackupServiceStatus
 		if bs == nil {
-			logfWithTimestamp(t, "backup status is nil")
+			e2eutil.LogfWithTimestamp(t, "backup status is nil")
 			return false, nil
 		}
 		// We expect it will make one backup eventually.
 		if bs.Backups < 1 {
-			logfWithTimestamp(t, "backup number is %v", bs.Backups)
+			e2eutil.LogfWithTimestamp(t, "backup number is %v", bs.Backups)
 			return false, nil
 		}
 		if bs.BackupSize == 0 {
