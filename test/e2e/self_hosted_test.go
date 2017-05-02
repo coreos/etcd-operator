@@ -49,15 +49,15 @@ func testCreateSelfHostedCluster(t *testing.T) {
 	}
 
 	f := framework.Global
-	c := newClusterSpec("test-etcd-", 3)
-	c = clusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
+	c := e2eutil.NewCluster("test-etcd-", 3)
+	c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
 	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -112,8 +112,8 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 
 	f := framework.Global
 
-	c := newClusterSpec("test-etcd-", 3)
-	c = clusterWithSelfHosted(c, &spec.SelfHostedPolicy{
+	c := e2eutil.NewCluster("test-etcd-", 3)
+	c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{
 		BootMemberClientEndpoint: embedCfg.ACUrls[0].String(),
 	})
 	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
@@ -122,7 +122,7 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()

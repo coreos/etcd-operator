@@ -40,13 +40,13 @@ func testReadyMembersStatus(t *testing.T) {
 	}
 	f := framework.Global
 	size := 1
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, newClusterSpec("test-etcd-", size))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", size))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -78,9 +78,9 @@ func testBackupStatus(t *testing.T) {
 	}
 	f := framework.Global
 
-	bp := newBackupPolicyPV()
+	bp := e2eutil.NewPVBackupPolicy()
 	bp.CleanupBackupsOnClusterDelete = true
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, etcdClusterWithBackup(newClusterSpec("test-etcd-", 1), bp))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.ClusterWithBackup(e2eutil.NewCluster("test-etcd-", 1), bp))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func testBackupStatus(t *testing.T) {
 			}
 		}
 
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
 			t.Fatal(err)
 		}
 	}()
