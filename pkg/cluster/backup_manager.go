@@ -30,7 +30,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
-	"k8s.io/client-go/pkg/api/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 )
 
 const (
@@ -115,36 +118,34 @@ func (bm *backupManager) setup() error {
 }
 
 func (bm *backupManager) runSidecar() error {
-	cl, c := bm.cluster, bm.config
-	podSpec, err := k8sutil.NewBackupPodSpec(cl.Metadata.Name, bm.config.ServiceAccount, cl.Spec)
-	if err != nil {
-		return err
+	if err := bm.createSidecarDeployment(); err != nil {
+		return fmt.Errorf("failed to create backup sidecar Deployment: %v", err)
 	}
+	if err := bm.createBackupService(); err != nil {
+		return fmt.Errorf("failed to create backup sidecar service: %v", err)
+	}
+	bm.logger.Info("backup sidecar deployment and service created")
+	return nil
+}
+
+func (bm *backupManager) createSidecarDeployment() error {
+	cl, c := bm.cluster, bm.config
+
+	podSpec := k8sutil.NewBackupPodSpec(cl.Metadata.Name, bm.config.ServiceAccount, cl.Spec)
 	switch cl.Spec.Backup.StorageType {
 	case spec.BackupStorageTypeDefault, spec.BackupStorageTypePersistentVolume:
 		podSpec = k8sutil.PodSpecWithPV(podSpec, cl.Metadata.Name)
 	case spec.BackupStorageTypeS3:
 		podSpec = k8sutil.PodSpecWithS3(podSpec, c.S3Context)
 	}
-	if err = bm.createBackupReplicaSet(*podSpec); err != nil {
-		return fmt.Errorf("failed to create backup replica set: %v", err)
-	}
-	if err = bm.createBackupService(); err != nil {
-		return fmt.Errorf("failed to create backup service: %v", err)
-	}
-	bm.logger.Info("backup replica set and service created")
-	return nil
-}
 
-func (bm *backupManager) createBackupReplicaSet(podSpec v1.PodSpec) error {
-	rs := k8sutil.NewBackupReplicaSetManifest(bm.cluster.Metadata.Name, podSpec, bm.cluster.AsOwner())
-	_, err := bm.config.KubeCli.ExtensionsV1beta1().ReplicaSets(bm.cluster.Metadata.Namespace).Create(rs)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			return err
-		}
-	}
-	return nil
+	name := k8sutil.BackupSidecarName(cl.Metadata.Name)
+	podSel := k8sutil.BackupSidecarLabels(cl.Metadata.Name)
+	dplSel := k8sutil.LabelsForCluster(cl.Metadata.Name)
+
+	d := k8sutil.NewBackupDeploymentManifest(name, dplSel, podSel, *podSpec, bm.cluster.AsOwner())
+	_, err := c.KubeCli.AppsV1beta1().Deployments(cl.Metadata.Namespace).Create(d)
+	return err
 }
 
 func (bm *backupManager) createBackupService() error {
@@ -197,4 +198,41 @@ func backupServiceStatusToTPRBackupServiceStatu(s *backupapi.ServiceStatus) *spe
 		panic("unexpected json error")
 	}
 	return &bs
+}
+
+func (bm *backupManager) upgradeIfNeeded() error {
+	cl, c := bm.cluster, bm.config
+	sidecarName := k8sutil.BackupSidecarName(cl.Metadata.Name)
+
+	// backward compatibility: backup sidecar replica set existed and we need change that to deployment.
+	// TODO: remove this after v0.2.6 .
+	_, err := c.KubeCli.ExtensionsV1beta1().ReplicaSets(cl.Metadata.Namespace).Get(sidecarName, metav1.GetOptions{})
+	if err == nil {
+		err = c.KubeCli.ExtensionsV1beta1().ReplicaSets(cl.Metadata.Namespace).Delete(sidecarName, &metav1.DeleteOptions{
+			GracePeriodSeconds: func(t int64) *int64 { return &t }(0),
+			PropagationPolicy: func() *metav1.DeletionPropagation {
+				foreground := metav1.DeletePropagationForeground
+				return &foreground
+			}(),
+		})
+		if err != nil {
+			return err
+		}
+		// Note: If RS was deleted but deployment failed to be created, then the cluster's phase would be switched to FAILED.
+		return bm.createSidecarDeployment()
+	}
+	if !apierrors.IsNotFound(err) {
+		return err
+	}
+	// The following path should be run only if no previous backup RS existed.
+
+	d, err := c.KubeCli.AppsV1beta1().Deployments(cl.Metadata.Namespace).Get(sidecarName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	cd := k8sutil.CloneDeployment(d)
+	cd.Spec.Template.Spec.Containers[0].Image = k8sutil.BackupImage
+	patchData, err := k8sutil.CreatePatch(d, cd, appsv1beta1.Deployment{})
+	_, err = c.KubeCli.AppsV1beta1().Deployments(cl.Metadata.Namespace).Patch(d.Name, types.StrategicMergePatchType, patchData)
+	return err
 }

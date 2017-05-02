@@ -33,6 +33,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/coreos/etcd/clientv3"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/pkg/api/v1"
@@ -284,18 +285,18 @@ func waitResourcesDeleted(t *testing.T, f *framework.Framework, c *spec.Cluster)
 }
 
 func waitBackupDeleted(f *framework.Framework, c *spec.Cluster) error {
-	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		rl, err := f.KubeClient.Extensions().ReplicaSets(f.Namespace).List(k8sutil.ClusterListOpt(c.Metadata.Name))
-		if err != nil {
-			return false, err
-		}
-		if len(rl.Items) > 0 {
+	err := retryutil.Retry(5*time.Second, 5, func() (bool, error) {
+		_, err := f.KubeClient.AppsV1beta1().Deployments(f.Namespace).Get(k8sutil.BackupSidecarName(c.Metadata.Name), metav1.GetOptions{})
+		if err == nil {
 			return false, nil
 		}
-		return true, nil
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
 	})
 	if err != nil {
-		return fmt.Errorf("failed to wait backup RS deleted: %v", err)
+		return fmt.Errorf("failed to wait backup Deployment deleted: %v", err)
 	}
 	err = retryutil.Retry(5*time.Second, 2, func() (done bool, err error) {
 		ls := labels.SelectorFromSet(map[string]string{

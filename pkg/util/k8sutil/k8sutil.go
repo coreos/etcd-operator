@@ -24,7 +24,6 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
@@ -114,14 +113,6 @@ func EtcdImageName(version string) string {
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 	p.Spec.NodeSelector = ns
 	return p
-}
-
-func BackupServiceAddr(clusterName string) string {
-	return fmt.Sprintf("%s:%d", BackupServiceName(clusterName), constants.DefaultBackupPodHTTPPort)
-}
-
-func BackupServiceName(clusterName string) string {
-	return fmt.Sprintf("%s-backup-sidecar", clusterName)
 }
 
 func CreateClientService(kubecli kubernetes.Interface, clusterName, ns string, owner metav1.OwnerReference) error {
@@ -342,11 +333,11 @@ func IsKubernetesResourceNotFoundError(err error) bool {
 // We are using internal api types for cluster related.
 func ClusterListOpt(clusterName string) metav1.ListOptions {
 	return metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(newLablesForCluster(clusterName)).String(),
+		LabelSelector: labels.SelectorFromSet(LabelsForCluster(clusterName)).String(),
 	}
 }
 
-func newLablesForCluster(clusterName string) map[string]string {
+func LabelsForCluster(clusterName string) map[string]string {
 	return map[string]string{
 		"etcd_cluster": clusterName,
 		"app":          "etcd",
