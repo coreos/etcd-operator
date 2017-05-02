@@ -15,16 +15,12 @@
 package upgradetest
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
-
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 func TestResize(t *testing.T) {
@@ -49,7 +45,7 @@ func TestResize(t *testing.T) {
 		}
 		time.Sleep(10 * time.Second)
 	}()
-	_, err = waitUntilSizeReached(testClus.Metadata.Name, 3, 60*time.Second)
+	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testClus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,37 +66,8 @@ func TestResize(t *testing.T) {
 	if _, err := e2eutil.UpdateCluster(testF.KubeCli, testClus, 10, updateFunc); err != nil {
 		t.Fatal(err)
 	}
-	_, err = waitUntilSizeReached(testClus.Metadata.Name, 5, 60*time.Second)
+	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 5, 60*time.Second, testClus)
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-
-func waitUntilSizeReached(clusterName string, size int, timeout time.Duration) ([]string, error) {
-	var names []string
-	err := retryutil.Retry(10*time.Second, int(timeout/(10*time.Second)), func() (bool, error) {
-		podList, err := testF.KubeCli.CoreV1().Pods(testF.KubeNS).List(k8sutil.ClusterListOpt(clusterName))
-		if err != nil {
-			return false, err
-		}
-		names = nil
-		var nodeNames []string
-		for i := range podList.Items {
-			pod := &podList.Items[i]
-			if pod.Status.Phase != v1.PodRunning {
-				continue
-			}
-			names = append(names, pod.Name)
-			nodeNames = append(nodeNames, pod.Spec.NodeName)
-		}
-		fmt.Println("names:", names)
-		if len(names) != size {
-			return false, nil
-		}
-		return true, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return names, nil
 }

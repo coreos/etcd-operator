@@ -62,7 +62,7 @@ func testCreateSelfHostedCluster(t *testing.T) {
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 240*time.Second); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 240*time.Second, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members self-hosted etcd cluster: %v", err)
 	}
 }
@@ -127,7 +127,7 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 		}
 	}()
 
-	if _, err := waitUntilSizeReached(t, f, testEtcd.Metadata.Name, 3, 120*time.Second); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 120*time.Second, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 }
