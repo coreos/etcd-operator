@@ -39,7 +39,7 @@ func TestResize(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(10 * time.Second)
-	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test", 3))
+	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
