@@ -27,6 +27,8 @@ spec:
       operatorSecret: operator-etcd-client-tls
 ```
 
+The example cluster YAML manifest and example certs can be found in [example/tls/ directory](../../example/tls/).
+
 ### member.peerSecret
 
 `member.peerSecret` contains pem-encoded private keys and x509 certificates for etcd peer communication.
