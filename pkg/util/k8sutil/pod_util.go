@@ -127,7 +127,28 @@ func applyPodPolicy(clusterName string, pod *v1.Pod, policy *spec.PodPolicy) {
 	}
 
 	mergeLabels(pod.Labels, policy.Labels)
+
 	for i := range pod.Spec.Containers {
-		pod.Spec.Containers[i].Env = append(pod.Spec.Containers[i].Env, policy.EtcdEnv...)
+		if pod.Spec.Containers[i].Name == "etcd" {
+			pod.Spec.Containers[i].Env = append(pod.Spec.Containers[i].Env, policy.EtcdEnv...)
+		}
 	}
+}
+
+// only used for backup pod.
+func applyPodPolicyToPodTemplateSpec(clusterName string, pod *v1.PodTemplateSpec, policy *spec.PodPolicy) {
+	if policy == nil {
+		return
+	}
+
+	// TODO: anti-affinity for backup pod?
+
+	if len(policy.NodeSelector) != 0 {
+		pod.Spec.NodeSelector = policy.NodeSelector
+	}
+	if len(policy.Tolerations) != 0 {
+		pod.Spec.Tolerations = policy.Tolerations
+	}
+
+	mergeLabels(pod.Labels, policy.Labels)
 }

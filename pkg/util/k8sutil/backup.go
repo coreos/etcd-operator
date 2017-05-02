@@ -115,7 +115,7 @@ func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvision
 
 var BackupImage = "quay.io/coreos/etcd-operator:latest"
 
-func PodSpecWithPV(ps *v1.PodSpec, clusterName string) *v1.PodSpec {
+func PodSpecWithPV(ps *v1.PodSpec, clusterName string) {
 	ps.Containers[0].VolumeMounts = []v1.VolumeMount{{
 		Name:      backupPVVolName,
 		MountPath: constants.BackupMountDir,
@@ -128,10 +128,9 @@ func PodSpecWithPV(ps *v1.PodSpec, clusterName string) *v1.PodSpec {
 			},
 		},
 	}}
-	return ps
 }
 
-func PodSpecWithS3(ps *v1.PodSpec, s3Ctx s3config.S3Context) *v1.PodSpec {
+func PodSpecWithS3(ps *v1.PodSpec, s3Ctx s3config.S3Context) {
 	ps.Containers[0].VolumeMounts = []v1.VolumeMount{{
 		Name:      awsSecretVolName,
 		MountPath: awsCredentialDir,
@@ -163,23 +162,16 @@ func PodSpecWithS3(ps *v1.PodSpec, s3Ctx s3config.S3Context) *v1.PodSpec {
 		Name:  backupenv.AWSS3Bucket,
 		Value: s3Ctx.S3Bucket,
 	})
-	return ps
 }
 
-func NewBackupPodSpec(clusterName, account string, sp spec.ClusterSpec) *v1.PodSpec {
+func NewBackupPodTemplate(clusterName, account string, sp spec.ClusterSpec) v1.PodTemplateSpec {
 	b, err := json.Marshal(sp)
 	if err != nil {
 		panic("unexpected json error " + err.Error())
 	}
 
-	var nsel map[string]string
-	if sp.Pod != nil {
-		nsel = sp.Pod.NodeSelector
-	}
-
-	ps := &v1.PodSpec{
+	ps := v1.PodSpec{
 		ServiceAccountName: account,
-		NodeSelector:       nsel,
 		Containers: []v1.Container{
 			{
 				Name:  "backup",
@@ -198,23 +190,29 @@ func NewBackupPodSpec(clusterName, account string, sp spec.ClusterSpec) *v1.PodS
 			},
 		},
 	}
-	return ps
+
+	pl := v1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   clusterName,
+			Labels: BackupSidecarLabels(clusterName),
+		},
+		Spec: ps,
+	}
+
+	applyPodPolicyToPodTemplateSpec(clusterName, &pl, sp.Backup.Pod)
+
+	return pl
 }
 
-func NewBackupDeploymentManifest(name string, dplSel, podSel map[string]string, ps v1.PodSpec, owner metav1.OwnerReference) *appsv1beta1.Deployment {
+func NewBackupDeploymentManifest(name string, dplSel map[string]string, pl v1.PodTemplateSpec, owner metav1.OwnerReference) *appsv1beta1.Deployment {
 	d := &appsv1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: dplSel,
 		},
 		Spec: appsv1beta1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{MatchLabels: podSel},
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: podSel,
-				},
-				Spec: ps,
-			},
+			Selector: &metav1.LabelSelector{MatchLabels: pl.ObjectMeta.Labels},
+			Template: pl,
 		},
 	}
 	addOwnerRefToObject(d.GetObjectMeta(), owner)
