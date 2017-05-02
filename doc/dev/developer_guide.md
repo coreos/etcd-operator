@@ -17,7 +17,7 @@ We provide a script to build binaries, build image, and push image to registry.
 
 Required tools:
 - Docker
-- Go 1.7+
+- Go 1.8+
 
 Build in project root dir:
 
