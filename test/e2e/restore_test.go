@@ -70,14 +70,14 @@ func testClusterRestoreDifferentName(t *testing.T) {
 }
 
 func testClusterRestore(t *testing.T, needDataClone bool) {
-	testClusterRestoreWithBackupPolicy(t, needDataClone, newBackupPolicyPV())
+	testClusterRestoreWithBackupPolicy(t, needDataClone, e2eutil.NewPVBackupPolicy())
 }
 
 func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backupPolicy *spec.BackupPolicy) {
 	f := framework.Global
 
-	origEtcd := newClusterSpec("test-etcd-", 3)
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, etcdClusterWithBackup(origEtcd, backupPolicy))
+	origEtcd := e2eutil.NewCluster("test-etcd-", 3)
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 			S3Bucket: f.S3Bucket,
 		}
 	}
-	if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
+	if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
 		t.Fatal(err)
 	}
 	// waits a bit to make sure resources are finally deleted on APIServer.
@@ -130,13 +130,13 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	}
 	waitRestoreTimeout := calculateRestoreWaitTime(needDataClone)
 
-	origEtcd = etcdClusterWithRestore(origEtcd, &spec.RestorePolicy{
+	origEtcd = e2eutil.ClusterWithRestore(origEtcd, &spec.RestorePolicy{
 		BackupClusterName: testEtcd.Metadata.Name,
 		StorageType:       backupPolicy.StorageType,
 	})
 
 	backupPolicy.CleanupBackupsOnClusterDelete = true
-	testEtcd, err = e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, etcdClusterWithBackup(origEtcd, backupPolicy))
+	testEtcd, err = e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 				S3Bucket: f.S3Bucket,
 			}
 		}
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -216,7 +216,7 @@ func testClusterRestoreS3SameName(t *testing.T) {
 		t.Parallel()
 	}
 
-	testClusterRestoreWithBackupPolicy(t, false, newBackupPolicyS3())
+	testClusterRestoreWithBackupPolicy(t, false, e2eutil.NewS3BackupPolicy())
 }
 
 func testClusterRestoreS3DifferentName(t *testing.T) {
@@ -224,5 +224,5 @@ func testClusterRestoreS3DifferentName(t *testing.T) {
 		t.Parallel()
 	}
 
-	testClusterRestoreWithBackupPolicy(t, true, newBackupPolicyS3())
+	testClusterRestoreWithBackupPolicy(t, true, e2eutil.NewS3BackupPolicy())
 }

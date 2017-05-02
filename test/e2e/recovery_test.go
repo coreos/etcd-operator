@@ -49,12 +49,12 @@ func testOneMemberRecovery(t *testing.T) {
 	}
 
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, newClusterSpec("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -96,15 +96,15 @@ func testDisasterRecoveryAll(t *testing.T) {
 }
 
 func testDisasterRecovery(t *testing.T, numToKill int) {
-	testDisasterRecoveryWithBackupPolicy(t, numToKill, newBackupPolicyPV())
+	testDisasterRecoveryWithBackupPolicy(t, numToKill, e2eutil.NewPVBackupPolicy())
 }
 
 func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPolicy *spec.BackupPolicy) {
 	f := framework.Global
 
 	backupPolicy.CleanupBackupsOnClusterDelete = true
-	origEtcd := newClusterSpec("test-etcd-", 3)
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, etcdClusterWithBackup(origEtcd, backupPolicy))
+	origEtcd := e2eutil.NewCluster("test-etcd-", 3)
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 			}
 		}
 
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -162,7 +162,7 @@ func testS3MajorityDown(t *testing.T) {
 		t.Parallel()
 	}
 
-	testDisasterRecoveryWithBackupPolicy(t, 2, newBackupPolicyS3())
+	testDisasterRecoveryWithBackupPolicy(t, 2, e2eutil.NewS3BackupPolicy())
 }
 
 func testS3AllDown(t *testing.T) {
@@ -173,5 +173,5 @@ func testS3AllDown(t *testing.T) {
 		t.Parallel()
 	}
 
-	testDisasterRecoveryWithBackupPolicy(t, 3, newBackupPolicyS3())
+	testDisasterRecoveryWithBackupPolicy(t, 3, e2eutil.NewS3BackupPolicy())
 }

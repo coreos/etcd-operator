@@ -46,11 +46,11 @@ func CreateCluster(t *testing.T, kubeClient kubernetes.Interface, namespace stri
 	return res, nil
 }
 
-func UpdateEtcdCluster(kubeClient kubernetes.Interface, cl *spec.Cluster, maxRetries int, updateFunc k8sutil.ClusterTPRUpdateFunc) (*spec.Cluster, error) {
+func UpdateCluster(kubeClient kubernetes.Interface, cl *spec.Cluster, maxRetries int, updateFunc k8sutil.ClusterTPRUpdateFunc) (*spec.Cluster, error) {
 	return k8sutil.AtomicUpdateClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Metadata.Name, cl.Metadata.Namespace, maxRetries, updateFunc)
 }
 
-func DeleteEtcdCluster(t *testing.T, kubeClient kubernetes.Interface, cl *spec.Cluster, storageCheckerOptions *StorageCheckerOptions) error {
+func DeleteCluster(t *testing.T, kubeClient kubernetes.Interface, cl *spec.Cluster, storageCheckerOptions *StorageCheckerOptions) error {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, cl.Metadata.Namespace, cl.Metadata.Name)
 	if _, err := kubeClient.CoreV1().RESTClient().Delete().RequestURI(uri).DoRaw(); err != nil {
 		return err

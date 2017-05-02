@@ -16,7 +16,6 @@ package upgradetest
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -25,7 +24,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -41,12 +39,12 @@ func TestResize(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(10 * time.Second)
-	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, newClusterSpec())
+	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := e2eutil.DeleteEtcdCluster(t, testF.KubeCli, testClus, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, testF.KubeCli, testClus, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 		time.Sleep(10 * time.Second)
@@ -69,27 +67,12 @@ func TestResize(t *testing.T) {
 	updateFunc := func(cl *spec.Cluster) {
 		cl.Spec.Size = 5
 	}
-	if _, err := e2eutil.UpdateEtcdCluster(testF.KubeCli, testClus, 10, updateFunc); err != nil {
+	if _, err := e2eutil.UpdateCluster(testF.KubeCli, testClus, 10, updateFunc); err != nil {
 		t.Fatal(err)
 	}
 	_, err = waitUntilSizeReached(testClus.Metadata.Name, 5, 60*time.Second)
 	if err != nil {
 		t.Fatal(err)
-	}
-}
-
-func newClusterSpec() *spec.Cluster {
-	return &spec.Cluster{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       strings.Title(spec.TPRKind),
-			APIVersion: spec.TPRGroup + "/" + spec.TPRVersion,
-		},
-		Metadata: metav1.ObjectMeta{
-			Name: "upgrade-test",
-		},
-		Spec: spec.ClusterSpec{
-			Size: 3,
-		},
 	}
 }
 

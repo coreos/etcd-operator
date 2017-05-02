@@ -18,12 +18,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd-operator/client/experimentalclient"
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -153,65 +151,6 @@ func killMembers(f *framework.Framework, names ...string) error {
 		}
 	}
 	return nil
-}
-
-func newClusterSpec(genName string, size int) *spec.Cluster {
-	return &spec.Cluster{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       strings.Title(spec.TPRKind),
-			APIVersion: spec.TPRGroup + "/" + spec.TPRVersion,
-		},
-		Metadata: metav1.ObjectMeta{
-			GenerateName: genName,
-		},
-		Spec: spec.ClusterSpec{
-			Size: size,
-		},
-	}
-}
-
-func etcdClusterWithBackup(cl *spec.Cluster, backupPolicy *spec.BackupPolicy) *spec.Cluster {
-	cl.Spec.Backup = backupPolicy
-	return cl
-}
-
-func newBackupPolicyS3() *spec.BackupPolicy {
-	return &spec.BackupPolicy{
-		BackupIntervalInSecond: 60 * 60,
-		MaxBackups:             5,
-		StorageType:            spec.BackupStorageTypeS3,
-		StorageSource: spec.StorageSource{
-			S3: &spec.S3Source{},
-		},
-	}
-}
-
-func newBackupPolicyPV() *spec.BackupPolicy {
-	return &spec.BackupPolicy{
-		BackupIntervalInSecond: 60 * 60,
-		MaxBackups:             5,
-		StorageType:            spec.BackupStorageTypePersistentVolume,
-		StorageSource: spec.StorageSource{
-			PV: &spec.PVSource{
-				VolumeSizeInMB: 512,
-			},
-		},
-	}
-}
-
-func etcdClusterWithRestore(cl *spec.Cluster, restorePolicy *spec.RestorePolicy) *spec.Cluster {
-	cl.Spec.Restore = restorePolicy
-	return cl
-}
-
-func etcdClusterWithVersion(cl *spec.Cluster, version string) *spec.Cluster {
-	cl.Spec.Version = version
-	return cl
-}
-
-func clusterWithSelfHosted(cl *spec.Cluster, sh *spec.SelfHostedPolicy) *spec.Cluster {
-	cl.Spec.SelfHosted = sh
-	return cl
 }
 
 func logfWithTimestamp(t *testing.T, format string, args ...interface{}) {

@@ -37,13 +37,13 @@ func testResizeCluster3to5(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, newClusterSpec("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -56,7 +56,7 @@ func testResizeCluster3to5(t *testing.T) {
 	updateFunc := func(cl *spec.Cluster) {
 		cl.Spec.Size = 5
 	}
-	if _, err := e2eutil.UpdateEtcdCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+	if _, err := e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -70,13 +70,13 @@ func testResizeCluster5to3(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, newClusterSpec("test-etcd-", 5))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 5))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -89,7 +89,7 @@ func testResizeCluster5to3(t *testing.T) {
 	updateFunc := func(cl *spec.Cluster) {
 		cl.Spec.Size = 3
 	}
-	if _, err := e2eutil.UpdateEtcdCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+	if _, err := e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatal(err)
 	}
 

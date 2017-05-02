@@ -41,13 +41,13 @@ func testCreateCluster(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, newClusterSpec("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -68,12 +68,12 @@ func testPauseControl(t *testing.T) {
 
 func testStopOperator(t *testing.T, kill bool) {
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, newClusterSpec("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -87,7 +87,7 @@ func testStopOperator(t *testing.T, kill bool) {
 		updateFunc := func(cl *spec.Cluster) {
 			cl.Spec.Paused = true
 		}
-		if testEtcd, err = e2eutil.UpdateEtcdCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+		if testEtcd, err = e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 			t.Fatalf("failed to pause control: %v", err)
 		}
 
@@ -114,7 +114,7 @@ func testStopOperator(t *testing.T, kill bool) {
 		updateFunc := func(cl *spec.Cluster) {
 			cl.Spec.Paused = false
 		}
-		if _, err = e2eutil.UpdateEtcdCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+		if _, err = e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 			t.Fatalf("failed to resume control: %v", err)
 		}
 	} else {
@@ -133,15 +133,15 @@ func testEtcdUpgrade(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	origEtcd := newClusterSpec("test-etcd-", 3)
-	origEtcd = etcdClusterWithVersion(origEtcd, "3.0.16")
+	origEtcd := e2eutil.NewCluster("test-etcd-", 3)
+	origEtcd = e2eutil.ClusterWithVersion(origEtcd, "3.0.16")
 	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, origEtcd)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -152,9 +152,9 @@ func testEtcdUpgrade(t *testing.T) {
 	}
 
 	updateFunc := func(cl *spec.Cluster) {
-		cl = etcdClusterWithVersion(cl, "3.1.4")
+		cl = e2eutil.ClusterWithVersion(cl, "3.1.4")
 	}
-	if _, err := e2eutil.UpdateEtcdCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+	if _, err := e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 

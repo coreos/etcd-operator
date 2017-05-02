@@ -35,7 +35,7 @@ func TestPeerTLS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c := newClusterSpec("", 3)
+	c := e2eutil.NewCluster("", 3)
 	c.Metadata.Name = clusterName
 	c.Spec.TLS = &spec.TLSPolicy{
 		Static: &spec.StaticTLS{
@@ -50,7 +50,7 @@ func TestPeerTLS(t *testing.T) {
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteEtcdCluster(t, f.KubeClient, c, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, c, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
