@@ -131,19 +131,18 @@ func (bm *backupManager) runSidecar() error {
 func (bm *backupManager) createSidecarDeployment() error {
 	cl, c := bm.cluster, bm.config
 
-	podSpec := k8sutil.NewBackupPodSpec(cl.Metadata.Name, bm.config.ServiceAccount, cl.Spec)
+	podTemplate := k8sutil.NewBackupPodTemplate(cl.Metadata.Name, bm.config.ServiceAccount, cl.Spec)
 	switch cl.Spec.Backup.StorageType {
 	case spec.BackupStorageTypeDefault, spec.BackupStorageTypePersistentVolume:
-		podSpec = k8sutil.PodSpecWithPV(podSpec, cl.Metadata.Name)
+		k8sutil.PodSpecWithPV(&podTemplate.Spec, cl.Metadata.Name)
 	case spec.BackupStorageTypeS3:
-		podSpec = k8sutil.PodSpecWithS3(podSpec, c.S3Context)
+		k8sutil.PodSpecWithS3(&podTemplate.Spec, c.S3Context)
 	}
 
 	name := k8sutil.BackupSidecarName(cl.Metadata.Name)
-	podSel := k8sutil.BackupSidecarLabels(cl.Metadata.Name)
 	dplSel := k8sutil.LabelsForCluster(cl.Metadata.Name)
 
-	d := k8sutil.NewBackupDeploymentManifest(name, dplSel, podSel, *podSpec, bm.cluster.AsOwner())
+	d := k8sutil.NewBackupDeploymentManifest(name, dplSel, podTemplate, bm.cluster.AsOwner())
 	_, err := c.KubeCli.AppsV1beta1().Deployments(cl.Metadata.Namespace).Create(d)
 	return err
 }

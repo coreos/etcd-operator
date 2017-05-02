@@ -83,7 +83,7 @@ type ClusterSpec struct {
 	// Paused is to pause the control of the operator for the etcd cluster.
 	Paused bool `json:"paused,omitempty"`
 
-	// Pod defines the policy to create pod for the etcd container.
+	// Pod defines the policy to create pod for the etcd pod.
 	Pod *PodPolicy `json:"pod,omitempty"`
 
 	// Backup defines the policy to backup data of etcd cluster if not nil.

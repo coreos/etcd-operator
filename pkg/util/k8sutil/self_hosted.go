@@ -128,8 +128,9 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 
 	SetEtcdVersion(pod, cs.Version)
 
-	pod = selfHostedPodWithAntiAffinity(pod)
 	applyPodPolicy(clusterName, pod, cs.Pod)
+	// overwrites the antiAffinity setting for self hosted cluster.
+	pod = selfHostedPodWithAntiAffinity(pod)
 
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
