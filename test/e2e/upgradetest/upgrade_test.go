@@ -34,7 +34,10 @@ func TestResize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(10 * time.Second)
+	if err = k8sutil.WaitEtcdTPRReady(testF.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, testF.KubeNS); err != nil {
+		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
+	}
+
 	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test-", 3))
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +46,6 @@ func TestResize(t *testing.T) {
 		if err := e2eutil.DeleteCluster(t, testF.KubeCli, testClus, &e2eutil.StorageCheckerOptions{}); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(10 * time.Second)
 	}()
 	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testClus)
 	if err != nil {
@@ -53,7 +55,6 @@ func TestResize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(5 * time.Second)
 
 	testClus, err = k8sutil.GetClusterTPRObject(testF.KubeCli.CoreV1().RESTClient(), testF.KubeNS, testClus.Metadata.Name)
 	if err != nil {
