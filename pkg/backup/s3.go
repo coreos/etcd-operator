@@ -68,11 +68,7 @@ func (sb *s3Backend) getLatest() (string, error) {
 		return "", fmt.Errorf("failed to list s3 bucket: %v", err)
 	}
 
-	key := getLatestBackupName(keys)
-	if key == "" {
-		return "", nil
-	}
-	return key, err
+	return getLatestBackupName(keys), nil
 }
 
 func (sb *s3Backend) open(name string) (io.ReadCloser, error) {
