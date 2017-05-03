@@ -11,6 +11,8 @@
 
 - PodPolicy provides `EtcdEnv` option to add custom env to the etcd process.
 - PodPolicy provides `Labels` option to add custom labels to the etcd pod.
+- TLS feature: user can now create TLS-secured cluster via operator.
+  See [TLS guide](https://github.com/coreos/etcd-operator/blob/master/doc/user/cluster_tls.md).
 
 ### Changed
 
