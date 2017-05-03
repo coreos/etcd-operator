@@ -1,4 +1,21 @@
-## [Unreleased 0.2.6]
+## [Unreleased 0.2.7]
+
+### Upgrade Notice
+
+### Added
+
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
+## [Release 0.2.6]
 
 ### Upgrade Notice
 
