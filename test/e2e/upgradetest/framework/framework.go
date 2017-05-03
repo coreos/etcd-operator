@@ -73,9 +73,10 @@ func (f *Framework) CreateOperator() error {
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{{
-						Name:    "etcd-operator",
-						Image:   image,
-						Command: cmd,
+						Name:            "etcd-operator",
+						Image:           image,
+						ImagePullPolicy: v1.PullAlways,
+						Command:         cmd,
 						Env: []v1.EnvVar{
 							{
 								Name:      "MY_POD_NAMESPACE",

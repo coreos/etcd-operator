@@ -109,9 +109,10 @@ func (f *Framework) SetupEtcdOperator() error {
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
-					Name:    "etcd-operator",
-					Image:   f.opImage,
-					Command: cmd,
+					Name:            "etcd-operator",
+					Image:           f.opImage,
+					ImagePullPolicy: v1.PullAlways,
+					Command:         cmd,
 					Env: []v1.EnvVar{
 						{
 							Name:      "MY_POD_NAMESPACE",

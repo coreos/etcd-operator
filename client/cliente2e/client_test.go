@@ -40,9 +40,10 @@ func TestClient(t *testing.T) {
 		Spec: v1.PodSpec{
 			RestartPolicy: v1.RestartPolicyNever,
 			Containers: []v1.Container{{
-				Name:    name,
-				Image:   e2eImage,
-				Command: []string{"cliente2e"},
+				Name:            name,
+				Image:           e2eImage,
+				ImagePullPolicy: v1.PullAlways,
+				Command:         []string{"cliente2e"},
 				Env: []v1.EnvVar{{
 					Name:      "MY_POD_NAMESPACE",
 					ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
