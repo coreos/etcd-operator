@@ -17,6 +17,7 @@ package e2eutil
 import (
 	"bytes"
 	"fmt"
+	"path"
 	"testing"
 	"time"
 
@@ -182,7 +183,7 @@ func waitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, storag
 		case spec.BackupStorageTypeS3:
 			resp, err := storageCheckerOptions.S3Cli.ListObjects(&s3.ListObjectsInput{
 				Bucket: aws.String(storageCheckerOptions.S3Bucket),
-				Prefix: aws.String(cl.Metadata.Name + "/"),
+				Prefix: aws.String(path.Join("v1", cl.Metadata.Namespace, cl.Metadata.Name) + "/"),
 			})
 			if err != nil {
 				return false, err
