@@ -61,7 +61,7 @@ example-etcd-cluster-0001       1/1       Running   0          1m
 example-etcd-cluster-0002       1/1       Running   0          1m
 ```
 
-See [client service](doc/user/client-service.md) for how to access etcd clusters created by operator.
+See [client service](doc/user/client_service.md) for how to access etcd clusters created by operator.
 
 If you are working with [minikube locally](https://github.com/kubernetes/minikube#minikube) create a nodePort service and test out that etcd is responding:
 
