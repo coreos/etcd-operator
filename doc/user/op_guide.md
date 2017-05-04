@@ -34,3 +34,10 @@ Delete leader election endpoint
 ```bash
 $ kubectl delete endpoints etcd-operator
 ```
+
+## Installation via Helm
+
+etcd-operator is available as a [Helm
+chart](https://github.com/kubernetes/charts/tree/master/stable/etcd-operator).
+Follow the instructions on the chart to install etcd-operator on your cluster.
+ 
