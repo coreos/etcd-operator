@@ -31,7 +31,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
 	"k8s.io/client-go/kubernetes"
@@ -77,10 +76,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		be = &fileBackend{dir: bdir}
 	case spec.BackupStorageTypeS3:
-		prefix := ns + "/" + clusterName
-		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), prefix, session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		})
+		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), path.Join(ns, clusterName))
 		if err != nil {
 			return nil, err
 		}

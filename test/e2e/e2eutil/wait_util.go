@@ -21,12 +21,11 @@ import (
 	"testing"
 	"time"
 
+	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -181,14 +180,13 @@ func waitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, storag
 				return false, nil
 			}
 		case spec.BackupStorageTypeS3:
-			resp, err := storageCheckerOptions.S3Cli.ListObjects(&s3.ListObjectsInput{
-				Bucket: aws.String(storageCheckerOptions.S3Bucket),
-				Prefix: aws.String(path.Join("v1", cl.Metadata.Namespace, cl.Metadata.Name) + "/"),
-			})
+			s3cli := backups3.NewFromClient(storageCheckerOptions.S3Bucket,
+				path.Join(cl.Metadata.Namespace, cl.Metadata.Name), storageCheckerOptions.S3Cli)
+			keys, err := s3cli.List()
 			if err != nil {
 				return false, err
 			}
-			if len(resp.Contents) > 0 {
+			if len(keys) > 0 {
 				return false, nil
 			}
 		}
