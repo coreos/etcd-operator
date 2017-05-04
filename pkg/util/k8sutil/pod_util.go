@@ -34,11 +34,11 @@ func etcdVolumeMounts() []v1.VolumeMount {
 	}
 }
 
-func etcdContainer(commands, version string) v1.Container {
+func etcdContainer(commands, imageName, version string) v1.Container {
 	c := v1.Container{
 		Command: []string{"/bin/sh", "-ec", commands},
 		Name:    "etcd",
-		Image:   EtcdImageName(version),
+		Image:   EtcdImageName(imageName, version),
 		Ports: []v1.ContainerPort{
 			{
 				Name:          "server",
