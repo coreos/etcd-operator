@@ -59,12 +59,9 @@ NAME                            READY     STATUS    RESTARTS   AGE
 example-etcd-cluster-0000       1/1       Running   0          1m
 example-etcd-cluster-0001       1/1       Running   0          1m
 example-etcd-cluster-0002       1/1       Running   0          1m
-
-$ kubectl get services
-NAME                          CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
-example-etcd-cluster          None          <none>        2380/TCP   1m
-example-etcd-cluster-client   10.0.69.135   <none>        2379/TCP   1m
 ```
+
+See [client service](doc/user/client-service.md) for how to access etcd clusters created by operator.
 
 If you are working with [minikube locally](https://github.com/kubernetes/minikube#minikube) create a nodePort service and test out that etcd is responding:
 
