@@ -1,11 +1,12 @@
 package backupstorage
 
 import (
+	"path"
+
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/spec"
 
-	"github.com/aws/aws-sdk-go/aws/session"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -19,11 +20,7 @@ type s3 struct {
 }
 
 func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
-	prefix := ns + "/" + clusterName
-
-	s3cli, err := backups3.New(s3Ctx.S3Bucket, prefix, session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
+	s3cli, err := backups3.New(s3Ctx.S3Bucket, path.Join(ns, clusterName))
 	if err != nil {
 		return nil, err
 	}

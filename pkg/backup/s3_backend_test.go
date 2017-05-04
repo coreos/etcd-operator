@@ -48,8 +48,8 @@ func TestS3BackendPurge(t *testing.T) {
 	if os.Getenv("RUN_INTEGRATION_TEST") != "true" {
 		t.Skip("skipping integration test due to RUN_INTEGRATION_TEST not set")
 	}
-	prefix := randString(8)
-	s3cli, err := s3.New("test-bucket", prefix, session.Options{
+	rs := randString(10)
+	sessOpt := session.Options{
 		Config: aws.Config{
 			Credentials:      credentials.NewStaticCredentials(os.Getenv("MINIO_ACCESS_KEY_ID"), os.Getenv("MINIO_SECRET_ACCESS_KEY"), ""),
 			Endpoint:         aws.String("http://localhost:9000"),
@@ -57,7 +57,9 @@ func TestS3BackendPurge(t *testing.T) {
 			DisableSSL:       aws.Bool(true),
 			S3ForcePathStyle: aws.Bool(true),
 		},
-	})
+	}
+	buc := "test-bucket" // This is pre-set bucket
+	s3cli, err := s3.NewFromSessionOpt(buc, rs, sessOpt)
 	if err != nil {
 		t.Fatal(err)
 	}

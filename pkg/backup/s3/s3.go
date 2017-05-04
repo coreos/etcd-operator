@@ -15,11 +15,8 @@
 package s3
 
 import (
-	"fmt"
 	"io"
 	"path"
-
-	"github.com/coreos/etcd-operator/pkg/backup/env"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -30,37 +27,42 @@ const (
 	v1 = "v1/"
 )
 
-// S3 represents AWS S3 service.
+// S3 is a helper layer to wrap complex S3 logic.
 type S3 struct {
 	bucket string
 	prefix string
 	client *s3.S3
 }
 
+// New returns a S3 translator from default shared config.
 // Please refer to http://docs.aws.amazon.com/sdk-for-go/api/aws/session/
-// for how to set credentials and configuration when creating a session.
-func New(bucket, prefix string, option session.Options) (*S3, error) {
-	if bucket == "" {
-		return nil, fmt.Errorf("env (%s) must be set", env.AWSS3Bucket)
-	}
-	sess, err := session.NewSessionWithOptions(option)
+// for setting up credentials and configuration.
+func New(bucket, prefix string) (*S3, error) {
+	return NewFromSessionOpt(bucket, prefix, session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
+}
+
+func NewFromSessionOpt(bucket, prefix string, so session.Options) (*S3, error) {
+	sess, err := session.NewSessionWithOptions(so)
 	if err != nil {
 		return nil, err
 	}
+	cli := s3.New(sess)
 
-	client := s3.New(sess)
-
-	_, err = client.HeadBucket(&s3.HeadBucketInput{Bucket: &bucket})
-	if err != nil {
-		return nil, fmt.Errorf("unable to access bucket %s: %v", bucket, err)
-	}
-
-	s := &S3{
-		client: client,
-		prefix: prefix,
+	return &S3{
 		bucket: bucket,
+		prefix: prefix,
+		client: cli,
+	}, nil
+}
+
+func NewFromClient(bucket, prefix string, cli *s3.S3) *S3 {
+	return &S3{
+		bucket: bucket,
+		prefix: prefix,
+		client: cli,
 	}
-	return s, nil
 }
 
 func (s *S3) Put(key string, rs io.ReadSeeker) error {
