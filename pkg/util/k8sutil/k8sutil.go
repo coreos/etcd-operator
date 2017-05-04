@@ -74,7 +74,7 @@ func GetPodNames(pods []*v1.Pod) []string {
 	return res
 }
 
-func makeRestoreInitContainerSpec(backupAddr, token, version string, m *etcdutil.Member) string {
+func makeRestoreInitContainerSpec(backupAddr, token, imageName,version string, m *etcdutil.Member) string {
 	spec := []v1.Container{
 		{
 			Name:  "fetch-backup",
@@ -87,7 +87,7 @@ func makeRestoreInitContainerSpec(backupAddr, token, version string, m *etcdutil
 		},
 		{
 			Name:  "restore-datadir",
-			Image: EtcdImageName(version),
+			Image: EtcdImageName(imageName, version),
 			Command: []string{
 				"/bin/sh", "-ec",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
@@ -107,8 +107,8 @@ func makeRestoreInitContainerSpec(backupAddr, token, version string, m *etcdutil
 	return string(b)
 }
 
-func EtcdImageName(version string) string {
-	return fmt.Sprintf("quay.io/coreos/etcd:v%v", version)
+func EtcdImageName(imageName, version string) string {
+	return fmt.Sprintf("%s:v%v", imageName, version)
 }
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 	p.Spec.NodeSelector = ns
@@ -190,7 +190,7 @@ func newEtcdServiceManifest(svcName, clusterName string, clusterIP string, port 
 
 func AddRecoveryToPod(pod *v1.Pod, clusterName, token string, m *etcdutil.Member, cs spec.ClusterSpec) {
 	pod.Annotations[v1.PodInitContainersBetaAnnotationKey] =
-		makeRestoreInitContainerSpec(BackupServiceAddr(clusterName), token, cs.Version, m)
+		makeRestoreInitContainerSpec(BackupServiceAddr(clusterName), token, cs.Image, cs.Version, m)
 }
 
 func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
@@ -218,7 +218,7 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		"etcd_cluster": clusterName,
 	}
 
-	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version, nil), etcdLivenessProbe(cs.TLS.IsSecureClient()))
+	container := containerWithLivenessProbe(etcdContainer(commands, cs.Image, cs.Version, nil), etcdLivenessProbe(cs.TLS.IsSecureClient()))
 	if cs.Pod != nil {
 		container = containerWithRequirements(container, cs.Pod.Resources)
 	}
