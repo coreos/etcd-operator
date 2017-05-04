@@ -27,9 +27,9 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
-func KillMembers(kubecli kubernetes.Interface, ns string, names ...string) error {
+func KillMembers(kubecli kubernetes.Interface, namespace string, names ...string) error {
 	for _, name := range names {
-		err := kubecli.CoreV1().Pods(ns).Delete(name, metav1.NewDeleteOptions(0))
+		err := kubecli.CoreV1().Pods(namespace).Delete(name, metav1.NewDeleteOptions(0))
 		if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}

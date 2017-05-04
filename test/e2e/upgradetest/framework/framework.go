@@ -15,9 +15,13 @@
 package framework
 
 import (
+	"time"
+
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
@@ -98,9 +102,25 @@ func (f *Framework) CreateOperator() error {
 
 func (f *Framework) DeleteOperator() error {
 	foreground := metav1.DeletePropagationForeground
-	return f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Delete("etcd-operator", &metav1.DeleteOptions{
+	err := f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Delete("etcd-operator", &metav1.DeleteOptions{
 		GracePeriodSeconds: func(t int64) *int64 { return &t }(0),
 		PropagationPolicy:  &foreground,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Wait until the etcd-operator pod is actually gone and not just terminating
+	ls := labels.SelectorFromSet(map[string]string{"name": "etcd-operator"})
+	return retryutil.Retry(5*time.Second, 5, func() (bool, error) {
+		podList, err := f.KubeCli.CoreV1().Pods(f.Config.KubeNS).List(metav1.ListOptions{LabelSelector: ls.String()})
+		if err != nil {
+			return false, err
+		}
+		if len(podList.Items) == 0 {
+			return true, nil
+		}
+		return false, nil
 	})
 }
 
