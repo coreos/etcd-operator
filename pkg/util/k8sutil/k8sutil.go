@@ -74,7 +74,7 @@ func GetPodNames(pods []*v1.Pod) []string {
 	return res
 }
 
-func makeRestoreInitContainerSpec(backupAddr, token, imageName,version string, m *etcdutil.Member) string {
+func makeRestoreInitContainerSpec(backupAddr, token, imageName, version string, m *etcdutil.Member) string {
 	spec := []v1.Container{
 		{
 			Name:  "fetch-backup",

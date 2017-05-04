@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	defaultImage = "quay.io/coreos/etcd"
+	defaultImage   = "quay.io/coreos/etcd"
 	defaultVersion = "3.1.4"
 
 	TPRKind        = "cluster"
@@ -188,7 +188,7 @@ func (c *ClusterSpec) Cleanup() {
 		c.Version = defaultVersion
 	}
 
-	if len(c.Image) == 0{
+	if len(c.Image) == 0 {
 		c.Image = defaultImage
 	}
 
