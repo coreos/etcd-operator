@@ -16,13 +16,19 @@ package e2eutil
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd-operator/client/experimentalclient"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 )
@@ -33,6 +39,50 @@ func KillMembers(kubecli kubernetes.Interface, ns string, names ...string) error
 		if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
+	}
+	return nil
+}
+
+func WaitBackupPodUp(t *testing.T, kubecli kubernetes.Interface, ns, clusterName string, timeout time.Duration) error {
+	ls := labels.SelectorFromSet(k8sutil.BackupSidecarLabels(clusterName))
+	return retryutil.Retry(5*time.Second, int(timeout/(5*time.Second)), func() (done bool, err error) {
+		podList, err := kubecli.CoreV1().Pods(ns).List(metav1.ListOptions{
+			LabelSelector: ls.String(),
+		})
+		if err != nil {
+			return false, err
+		}
+		for i := range podList.Items {
+			if podList.Items[i].Status.Phase == v1.PodRunning {
+				LogfWithTimestamp(t, "backup pod (%s) is running", podList.Items[i].Name)
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+}
+
+func MakeBackup(kubecli kubernetes.Interface, ns, clusterName string) error {
+	ls := labels.SelectorFromSet(k8sutil.BackupSidecarLabels(clusterName))
+	podList, err := kubecli.CoreV1().Pods(ns).List(metav1.ListOptions{
+		LabelSelector: ls.String(),
+	})
+	if err != nil {
+		return err
+	}
+	if len(podList.Items) < 1 {
+		return fmt.Errorf("no backup pod found")
+	}
+
+	// TODO: We are assuming Kubernetes pod network is accessible from test machine.
+	addr := fmt.Sprintf("%s:%d", podList.Items[0].Status.PodIP, constants.DefaultBackupPodHTTPPort)
+	bc := experimentalclient.NewBackupWithAddr(&http.Client{}, "http", addr)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	err = bc.Request(ctx)
+	if err != nil {
+		return fmt.Errorf("backup pod (%s): %v", podList.Items[0].Name, err)
 	}
 	return nil
 }
