@@ -73,7 +73,7 @@ func (f *Framework) CreateOperator() error {
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{{
-						Name:            "etcd-operator",
+						Name:            name,
 						Image:           image,
 						ImagePullPolicy: v1.PullAlways,
 						Command:         cmd,
@@ -99,7 +99,8 @@ func (f *Framework) CreateOperator() error {
 func (f *Framework) DeleteOperator() error {
 	foreground := metav1.DeletePropagationForeground
 	return f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Delete("etcd-operator", &metav1.DeleteOptions{
-		PropagationPolicy: &foreground,
+		GracePeriodSeconds: func(t int64) *int64 { return &t }(0),
+		PropagationPolicy:  &foreground,
 	})
 }
 
