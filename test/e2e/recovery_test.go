@@ -66,7 +66,7 @@ func testOneMemberRecovery(t *testing.T) {
 	fmt.Println("reached to 3 members cluster")
 
 	// The last pod could have not come up serving yet. If we are not killing the last pod, we should wait.
-	if err := killMembers(f, names[2]); err != nil {
+	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, names[2]); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd); err != nil {
@@ -148,7 +148,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 	toKill := names[:numToKill]
 	e2eutil.LogfWithTimestamp(t, "killing pods: %v", toKill)
 	// TODO: race: members could be recovered between being deleted one by one.
-	if err := killMembers(f, toKill...); err != nil {
+	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, toKill...); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 120*time.Second, testEtcd); err != nil {
