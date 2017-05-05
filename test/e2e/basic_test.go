@@ -100,7 +100,7 @@ func testStopOperator(t *testing.T, kill bool) {
 		}
 	}
 
-	if err := killMembers(f, names[0]); err != nil {
+	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, names[0]); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 2, 10*time.Second, testEtcd); err != nil {

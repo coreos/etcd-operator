@@ -90,16 +90,6 @@ func makeBackup(f *framework.Framework, clusterName string) error {
 	return nil
 }
 
-func killMembers(f *framework.Framework, names ...string) error {
-	for _, name := range names {
-		err := f.KubeClient.CoreV1().Pods(f.Namespace).Delete(name, metav1.NewDeleteOptions(0))
-		if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-	}
-	return nil
-}
-
 func createEtcdClient(addr string) (*clientv3.Client, error) {
 	cfg := clientv3.Config{
 		Endpoints:   []string{addr},
