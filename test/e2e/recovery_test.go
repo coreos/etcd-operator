@@ -130,13 +130,15 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 3 members cluster")
-	if err := waitBackupPodUp(f, testEtcd.Metadata.Name, 60*time.Second); err != nil {
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 60*time.Second)
+	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
 	// No left pod to make a backup from. We need to back up ahead.
 	// If there is any left pod, ooperator should be able to make a backup from it.
 	if numToKill == testEtcd.Spec.Size {
-		if err := makeBackup(f, testEtcd.Metadata.Name); err != nil {
+		err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Metadata.Name)
+		if err != nil {
 			t.Fatalf("fail to make a latest backup: %v", err)
 		}
 	} else {

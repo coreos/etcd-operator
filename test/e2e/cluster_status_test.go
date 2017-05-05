@@ -105,10 +105,12 @@ func testBackupStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create 1 members etcd cluster: %v", err)
 	}
-	if err := waitBackupPodUp(f, testEtcd.Metadata.Name, 60*time.Second); err != nil {
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 60*time.Second)
+	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
-	if err := makeBackup(f, testEtcd.Metadata.Name); err != nil {
+	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Metadata.Name)
+	if err != nil {
 		t.Fatalf("fail to make backup: %v", err)
 	}
 
