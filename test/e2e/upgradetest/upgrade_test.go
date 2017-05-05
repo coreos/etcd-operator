@@ -24,16 +24,16 @@ import (
 )
 
 func TestResize(t *testing.T) {
+	err := testF.CreateOperator()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
 		err := testF.DeleteOperator()
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
-	err := testF.CreateOperator()
-	if err != nil {
-		t.Fatal(err)
-	}
 	if err = k8sutil.WaitEtcdTPRReady(testF.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, testF.KubeNS); err != nil {
 		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
 	}
