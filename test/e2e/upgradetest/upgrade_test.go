@@ -72,3 +72,45 @@ func TestResize(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestHealOneMemberForOldCluster(t *testing.T) {
+	err := testF.CreateOperator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err := testF.DeleteOperator()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+	if err = k8sutil.WaitEtcdTPRReady(testF.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, testF.KubeNS); err != nil {
+		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
+	}
+
+	testEtcd, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test-", 3))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := e2eutil.DeleteCluster(t, testF.KubeCli, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	names, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testEtcd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = testF.UpgradeOperator()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := e2eutil.KillMembers(testF.KubeCli, testF.KubeNS, names[2]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testEtcd); err != nil {
+		t.Fatalf("failed to heal one member: %v", err)
+	}
+}
