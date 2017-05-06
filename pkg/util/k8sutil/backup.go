@@ -213,6 +213,9 @@ func NewBackupDeploymentManifest(name string, dplSel map[string]string, pl v1.Po
 		Spec: appsv1beta1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: pl.ObjectMeta.Labels},
 			Template: pl,
+			Strategy: appsv1beta1.DeploymentStrategy{
+				Type: appsv1beta1.RecreateDeploymentStrategyType,
+			},
 		},
 	}
 	addOwnerRefToObject(d.GetObjectMeta(), owner)
