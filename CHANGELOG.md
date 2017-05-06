@@ -6,9 +6,13 @@
 
 ### Changed
 
+- Backup sidecar deployment created with `Recreate` strategy.
+
 ### Removed
 
 ### Fixed
+
+- [GH-1068] Backup sidecar deployment stuck at upgrading
 
 ### Deprecated
 
