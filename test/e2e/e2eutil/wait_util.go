@@ -34,6 +34,7 @@ import (
 )
 
 type acceptFunc func(*v1.Pod) bool
+type filterFunc func(*v1.Pod) bool
 
 func WaitUntilSizeReached(t *testing.T, kubeClient kubernetes.Interface, size int, timeout time.Duration, cl *spec.Cluster) ([]string, error) {
 	return waitSizeReachedWithAccept(t, kubeClient, size, timeout, cl)
@@ -87,13 +88,10 @@ func waitSizeReachedWithAccept(t *testing.T, kubeClient kubernetes.Interface, si
 }
 
 func waitResourcesDeleted(t *testing.T, kubeClient kubernetes.Interface, cl *spec.Cluster) error {
-	err := retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
-		list, err := kubeClient.CoreV1().Pods(cl.Metadata.Namespace).List(k8sutil.ClusterListOpt(cl.Metadata.Name))
-		if err != nil {
-			return false, err
-		}
-		if len(list.Items) > 0 {
-			p := list.Items[0]
+	undeletedPods, err := WaitPodsDeleted(kubeClient, cl.Metadata.Namespace, 30*time.Second, k8sutil.ClusterListOpt(cl.Metadata.Name))
+	if err != nil {
+		if retryutil.IsRetryFailure(err) && len(undeletedPods) > 0 {
+			p := undeletedPods[0]
 			LogfWithTimestamp(t, "waiting pod (%s) to be deleted.", p.Name)
 
 			buf := bytes.NewBuffer(nil)
@@ -102,12 +100,8 @@ func waitResourcesDeleted(t *testing.T, kubeClient kubernetes.Interface, cl *spe
 			buf.WriteString("container status:\n")
 			printContainerStatus(buf, p.Status.ContainerStatuses)
 			t.Logf("pod (%s) status.phase is (%s): %v", p.Name, p.Status.Phase, buf.String())
-
-			return false, nil
 		}
-		return true, nil
-	})
-	if err != nil {
+
 		return fmt.Errorf("fail to wait pods deleted: %v", err)
 	}
 
@@ -196,4 +190,44 @@ func waitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, storag
 		return fmt.Errorf("failed to wait storage (%s) to be deleted: %v", cl.Spec.Backup.StorageType, err)
 	}
 	return nil
+}
+
+func WaitPodsWithImageDeleted(kubecli kubernetes.Interface, namespace, image string, timeout time.Duration, lo metav1.ListOptions) ([]*v1.Pod, error) {
+	return waitPodsDeleted(kubecli, namespace, timeout, lo, func(p *v1.Pod) bool {
+		for _, c := range p.Spec.Containers {
+			if c.Image == image {
+				return false
+			}
+		}
+		return true
+	})
+}
+
+func WaitPodsDeleted(kubecli kubernetes.Interface, namespace string, timeout time.Duration, lo metav1.ListOptions) ([]*v1.Pod, error) {
+	return waitPodsDeleted(kubecli, namespace, timeout, lo)
+}
+
+func waitPodsDeleted(kubecli kubernetes.Interface, namespace string, timeout time.Duration, lo metav1.ListOptions, filters ...filterFunc) ([]*v1.Pod, error) {
+	var pods []*v1.Pod
+	err := retryutil.Retry(5*time.Second, int(timeout/(5*time.Second)), func() (bool, error) {
+		podList, err := kubecli.CoreV1().Pods(namespace).List(lo)
+		if err != nil {
+			return false, err
+		}
+		pods = nil
+		for i := range podList.Items {
+			p := &podList.Items[i]
+			filtered := false
+			for _, filter := range filters {
+				if filter(p) {
+					filtered = true
+				}
+			}
+			if !filtered {
+				pods = append(pods, p)
+			}
+		}
+		return len(pods) == 0, nil
+	})
+	return pods, err
 }

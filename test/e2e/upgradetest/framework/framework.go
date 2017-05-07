@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-	"github.com/coreos/etcd-operator/pkg/util/retryutil"
+	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -110,18 +110,13 @@ func (f *Framework) DeleteOperator() error {
 		return err
 	}
 
-	// Wait until the etcd-operator pod is actually gone and not just terminating
-	ls := labels.SelectorFromSet(map[string]string{"name": "etcd-operator"})
-	return retryutil.Retry(5*time.Second, 5, func() (bool, error) {
-		podList, err := f.KubeCli.CoreV1().Pods(f.Config.KubeNS).List(metav1.ListOptions{LabelSelector: ls.String()})
-		if err != nil {
-			return false, err
-		}
-		if len(podList.Items) == 0 {
-			return true, nil
-		}
-		return false, nil
-	})
+	// Wait until the etcd-operator pod is actually gone and not just terminating.
+	// In upgrade tests, the next test shouldn't see any etcd operator pod.
+	lo := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{"name": "etcd-operator"}).String(),
+	}
+	_, err = e2eutil.WaitPodsDeleted(f.KubeCli, f.KubeNS, 30*time.Second, lo)
+	return err
 }
 
 func (f *Framework) UpgradeOperator() error {
@@ -137,5 +132,12 @@ func (f *Framework) UpgradeOperator() error {
 		return err
 	}
 	_, err = f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Patch(d.Name, types.StrategicMergePatchType, patchData)
+	if err != nil {
+		return err
+	}
+	lo := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{"name": "etcd-operator"}).String(),
+	}
+	_, err = e2eutil.WaitPodsWithImageDeleted(f.KubeCli, f.KubeNS, f.OldImage, 30*time.Second, lo)
 	return err
 }

@@ -13,6 +13,11 @@ func (e *RetryError) Error() string {
 	return fmt.Sprintf("still failing after %d retries", e.n)
 }
 
+func IsRetryFailure(err error) bool {
+	_, ok := err.(*RetryError)
+	return ok
+}
+
 type ConditionFunc func() (bool, error)
 
 // Retry retries f every interval until after maxRetries.
