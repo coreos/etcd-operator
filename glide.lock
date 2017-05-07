@@ -1,5 +1,5 @@
-hash: eac8c747435471de58f18991feb03c0d697a9bc51658b28d6bb9a649dbb49640
-updated: 2017-04-24T13:46:26.04449296-07:00
+hash: 9e6e0a16fdd7ea5ec6fcd40a0ce21f0c9ec1b426ada5b2a6e1305a00af91c101
+updated: 2017-05-07T12:09:11.112060036-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -9,7 +9,7 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/aws/aws-sdk-go
-  version: f844700ba2a387dfee7ab3679e7544b5dbd6d394
+  version: fa7f88097f64d1a2bcc65f9b9b547f363082d496
   subpackages:
   - aws
   - aws/awserr
@@ -33,7 +33,6 @@ imports:
   - private/protocol/rest
   - private/protocol/restxml
   - private/protocol/xml/xmlutil
-  - private/waiter
   - service/s3
   - service/sts
 - name: github.com/beorn7/perks
