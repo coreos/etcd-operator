@@ -30,7 +30,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
@@ -203,33 +202,22 @@ func (bm *backupManager) upgradeIfNeeded() error {
 	cl, c := bm.cluster, bm.config
 	sidecarName := k8sutil.BackupSidecarName(cl.Metadata.Name)
 
-	// backward compatibility: backup sidecar replica set existed and we need change that to deployment.
-	// TODO: remove this after v0.2.6 .
-	_, err := c.KubeCli.ExtensionsV1beta1().ReplicaSets(cl.Metadata.Namespace).Get(sidecarName, metav1.GetOptions{})
-	if err == nil {
-		err = c.KubeCli.ExtensionsV1beta1().ReplicaSets(cl.Metadata.Namespace).Delete(sidecarName, &metav1.DeleteOptions{
-			GracePeriodSeconds: func(t int64) *int64 { return &t }(0),
-			PropagationPolicy: func() *metav1.DeletionPropagation {
-				foreground := metav1.DeletePropagationForeground
-				return &foreground
-			}(),
-		})
-		if err != nil {
-			return err
-		}
-		// Note: If RS was deleted but deployment failed to be created, then the cluster's phase would be switched to FAILED.
-		return bm.createSidecarDeployment()
-	}
-	if !apierrors.IsNotFound(err) {
-		return err
-	}
-	// The following path should be run only if no previous backup RS existed.
-
 	d, err := c.KubeCli.AppsV1beta1().Deployments(cl.Metadata.Namespace).Get(sidecarName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
+	if d.Spec.Template.Spec.Containers[0].Image == k8sutil.BackupImage {
+		return nil
+	}
+	bm.logger.Infof("upgrading backup sidecar from (%v) to (%v)",
+		d.Spec.Template.Spec.Containers[0].Image, k8sutil.BackupImage)
 	cd := k8sutil.CloneDeployment(d)
+
+	// TODO: backward compatibility for v0.2.6 . Remove this after v0.2.7 .
+	cd.Spec.Strategy = appsv1beta1.DeploymentStrategy{
+		Type: appsv1beta1.RecreateDeploymentStrategyType,
+	}
+
 	cd.Spec.Template.Spec.Containers[0].Image = k8sutil.BackupImage
 	patchData, err := k8sutil.CreatePatch(d, cd, appsv1beta1.Deployment{})
 	_, err = c.KubeCli.AppsV1beta1().Deployments(cl.Metadata.Namespace).Patch(d.Name, types.StrategicMergePatchType, patchData)
