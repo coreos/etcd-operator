@@ -49,19 +49,22 @@ func UpdateCluster(kubeClient kubernetes.Interface, cl *spec.Cluster, maxRetries
 	return k8sutil.AtomicUpdateClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Metadata.Name, cl.Metadata.Namespace, maxRetries, updateFunc)
 }
 
-func DeleteCluster(t *testing.T, kubeClient kubernetes.Interface, cl *spec.Cluster, storageCheckerOptions *StorageCheckerOptions) error {
+func DeleteCluster(t *testing.T, kubeClient kubernetes.Interface, cl *spec.Cluster) error {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, cl.Metadata.Namespace, cl.Metadata.Name)
 	if _, err := kubeClient.CoreV1().RESTClient().Delete().RequestURI(uri).DoRaw(); err != nil {
 		return err
 	}
-	if err := waitResourcesDeleted(t, kubeClient, cl); err != nil {
+	return waitResourcesDeleted(t, kubeClient, cl)
+}
+
+func DeleteClusterAndBackup(t *testing.T, kubecli kubernetes.Interface, cl *spec.Cluster, checkerOpt StorageCheckerOptions) error {
+	err := DeleteCluster(t, kubecli, cl)
+	if err != nil {
 		return err
 	}
-	if cl.Spec.Backup != nil {
-		err := waitBackupDeleted(kubeClient, cl, storageCheckerOptions)
-		if err != nil {
-			return fmt.Errorf("fail to wait backup deleted: %v", err)
-		}
+	err = waitBackupDeleted(kubecli, cl, checkerOpt)
+	if err != nil {
+		return fmt.Errorf("fail to wait backup deleted: %v", err)
 	}
 	return nil
 }

@@ -54,7 +54,8 @@ func testOneMemberRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd)
+		if err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -120,7 +121,8 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 			}
 		}
 
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
+		err := e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, *storageCheckerOptions)
+		if err != nil {
 			t.Fatal(err)
 		}
 	}()

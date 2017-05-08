@@ -122,7 +122,7 @@ func waitResourcesDeleted(t *testing.T, kubeClient kubernetes.Interface, cl *spe
 	return nil
 }
 
-func waitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, storageCheckerOptions *StorageCheckerOptions) error {
+func waitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, storageCheckerOptions StorageCheckerOptions) error {
 	err := retryutil.Retry(5*time.Second, 5, func() (bool, error) {
 		_, err := kubeClient.AppsV1beta1().Deployments(cl.Metadata.Namespace).Get(k8sutil.BackupSidecarName(cl.Metadata.Name), metav1.GetOptions{})
 		if err == nil {

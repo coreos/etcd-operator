@@ -57,7 +57,7 @@ func testCreateSelfHostedCluster(t *testing.T) {
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -122,7 +122,7 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
