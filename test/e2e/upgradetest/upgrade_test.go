@@ -46,7 +46,7 @@ func TestResize(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, testF.KubeCli, testClus, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, testF.KubeCli, testClus); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -96,11 +96,7 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		checker := &e2eutil.StorageCheckerOptions{
-			S3Cli:    testF.S3Cli,
-			S3Bucket: testF.S3Bucket,
-		}
-		if err := e2eutil.DeleteCluster(t, testF.KubeCli, testEtcd, checker); err != nil {
+		if err := e2eutil.DeleteCluster(t, testF.KubeCli, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -157,11 +153,12 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 		t.Fatal(err)
 	}
 	defer func() {
-		checker := &e2eutil.StorageCheckerOptions{
+		checker := e2eutil.StorageCheckerOptions{
 			S3Cli:    testF.S3Cli,
 			S3Bucket: testF.S3Bucket,
 		}
-		if err := e2eutil.DeleteCluster(t, testF.KubeCli, testClus, checker); err != nil {
+		err := e2eutil.DeleteClusterAndBackup(t, testF.KubeCli, testClus, checker)
+		if err != nil {
 			t.Fatal(err)
 		}
 	}()

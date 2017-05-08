@@ -50,7 +50,7 @@ func TestPeerTLS(t *testing.T) {
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, c, &e2eutil.StorageCheckerOptions{}); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.KubeClient, c); err != nil {
 			t.Fatal(err)
 		}
 	}()

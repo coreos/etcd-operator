@@ -115,7 +115,8 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 			S3Bucket: f.S3Bucket,
 		}
 	}
-	if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
+	err = e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, *storageCheckerOptions)
+	if err != nil {
 		t.Fatal(err)
 	}
 	// waits a bit to make sure resources are finally deleted on APIServer.
@@ -153,7 +154,8 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 				S3Bucket: f.S3Bucket,
 			}
 		}
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
+		err := e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, *storageCheckerOptions)
+		if err != nil {
 			t.Fatal(err)
 		}
 	}()
