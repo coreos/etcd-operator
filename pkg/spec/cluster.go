@@ -84,6 +84,8 @@ type ClusterSpec struct {
 	Paused bool `json:"paused,omitempty"`
 
 	// Pod defines the policy to create pod for the etcd pod.
+	//
+	// Updating Pod does not take effect on any existing etcd pods.
 	Pod *PodPolicy `json:"pod,omitempty"`
 
 	// Backup defines the policy to backup data of etcd cluster if not nil.
@@ -93,10 +95,14 @@ type ClusterSpec struct {
 
 	// Restore defines the policy to restore cluster form existing backup if not nil.
 	// It's not allowed if restore policy is set and backup policy not.
+	//
+	// Restore is a cluster initialization configuration. It cannot be updated.
 	Restore *RestorePolicy `json:"restore,omitempty"`
 
 	// SelfHosted determines if the etcd cluster is used for a self-hosted
 	// Kubernetes cluster.
+	//
+	// SelfHosted is a cluster initialization configuration. It cannot be updated.
 	SelfHosted *SelfHostedPolicy `json:"selfHosted,omitempty"`
 
 	// NOTE: This field is half finished. It will be ignored.
