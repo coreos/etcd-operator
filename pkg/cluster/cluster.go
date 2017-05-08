@@ -152,7 +152,7 @@ func (c *Cluster) setup() error {
 		}
 	}
 
-	if b := c.cluster.Spec.Backup; b != nil && b.MaxBackups > 0 {
+	if c.cluster.Spec.Backup != nil {
 		c.bm, err = newBackupManager(c.config, c.cluster, c.logger)
 		if err != nil {
 			return err

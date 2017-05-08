@@ -130,6 +130,9 @@ func (b *Backup) Run() {
 	}
 
 	go func() {
+		if b.policy.MaxBackups == 0 {
+			return
+		}
 		for {
 			<-time.After(10 * time.Second)
 			err := b.be.purge(b.policy.MaxBackups)
