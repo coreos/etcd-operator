@@ -41,8 +41,13 @@ func (b *Backup) startHTTP() {
 	panic(http.ListenAndServe(b.listenAddr, nil))
 }
 
+type backupNowAck struct {
+	err    error
+	status backupapi.BackupStatus
+}
+
 func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
-	ackchan := make(chan error, 1)
+	ackchan := make(chan backupNowAck, 1)
 	select {
 	case b.backupNow <- ackchan:
 	case <-time.After(time.Minute):
@@ -51,9 +56,15 @@ func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	select {
-	case err := <-ackchan:
+	case ack := <-ackchan:
+		if ack.err != nil {
+			http.Error(w, ack.err.Error(), http.StatusInternalServerError)
+			return
+		}
+		e := json.NewEncoder(w)
+		err := e.Encode(ack.status)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			logrus.Errorf("failed to write backup status: %v", err)
 		}
 	case <-time.After(10 * time.Minute):
 		http.Error(w, "timeout", http.StatusRequestTimeout)
