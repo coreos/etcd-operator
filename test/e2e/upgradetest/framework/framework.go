@@ -15,11 +15,14 @@
 package framework
 
 import (
+	"os"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -40,7 +43,9 @@ type Config struct {
 type Framework struct {
 	Config
 	// global var
-	KubeCli kubernetes.Interface
+	KubeCli  kubernetes.Interface
+	S3Cli    *s3.S3
+	S3Bucket string
 }
 
 func New(fc Config) (*Framework, error) {
@@ -53,14 +58,17 @@ func New(fc Config) (*Framework, error) {
 		return nil, err
 	}
 
-	return &Framework{
+	f := &Framework{
 		Config:  fc,
 		KubeCli: kubecli,
-	}, nil
+	}
+	err = f.setupAWS()
+	return f, err
 }
 
 func (f *Framework) CreateOperator() error {
-	cmd := []string{"/usr/local/bin/etcd-operator", "--analytics=false"}
+	cmd := []string{"/usr/local/bin/etcd-operator", "--analytics=false",
+		"--backup-aws-secret=aws", "--backup-aws-config=aws", "--backup-s3-bucket=jenkins-etcd-operator"}
 	name := "etcd-operator"
 	image := f.OldImage
 	selector := map[string]string{"name": "etcd-operator"}
@@ -140,4 +148,22 @@ func (f *Framework) UpgradeOperator() error {
 	}
 	_, err = e2eutil.WaitPodsWithImageDeleted(f.KubeCli, f.KubeNS, f.OldImage, 30*time.Second, lo)
 	return err
+}
+
+func (f *Framework) setupAWS() error {
+	if err := os.Setenv("AWS_SHARED_CREDENTIALS_FILE", os.Getenv("AWS_CREDENTIAL")); err != nil {
+		return err
+	}
+	if err := os.Setenv("AWS_CONFIG_FILE", os.Getenv("AWS_CONFIG")); err != nil {
+		return err
+	}
+	sess, err := session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
+	if err != nil {
+		return err
+	}
+	f.S3Cli = s3.New(sess)
+	f.S3Bucket = "jenkins-etcd-operator"
+	return nil
 }
