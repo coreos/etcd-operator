@@ -73,7 +73,20 @@ type PVSource struct {
 	VolumeSizeInMB int `json:"volumeSizeInMB"`
 }
 
+// TODO: support per cluster S3 Source configuration.
 type S3Source struct {
+	// The name of the AWS S3 bucket to store backups in.
+	//
+	// S3Bucket overwrites the default etcd operator wide bucket.
+	S3Bucket string `json:"s3Bucket,omitempty"`
+
+	// The name of the secret object that stores the AWS credential and config files.
+	// The file name of the credential MUST be 'credentials'.
+	// The file name of the config MUST be 'config'
+	//
+	// AWSCredentialSecret overwrites the default etcd operator wide AWS credential and
+	// config.
+	AWSSecret string `json:"awsSecret,omitempty"`
 }
 
 type BackupServiceStatus struct {
