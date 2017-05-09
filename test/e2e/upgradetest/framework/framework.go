@@ -25,7 +25,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
@@ -128,21 +127,14 @@ func (f *Framework) DeleteOperator() error {
 }
 
 func (f *Framework) UpgradeOperator() error {
-	image := f.NewImage
-	d, err := f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Get("etcd-operator", metav1.GetOptions{})
+	uf := func(d *appsv1beta1.Deployment) {
+		d.Spec.Template.Spec.Containers[0].Image = f.NewImage
+	}
+	err := k8sutil.PatchDeployment(f.KubeCli, f.KubeNS, "etcd-operator", uf)
 	if err != nil {
 		return err
 	}
-	cd := k8sutil.CloneDeployment(d)
-	cd.Spec.Template.Spec.Containers[0].Image = image
-	patchData, err := k8sutil.CreatePatch(d, cd, appsv1beta1.Deployment{})
-	if err != nil {
-		return err
-	}
-	_, err = f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Patch(d.Name, types.StrategicMergePatchType, patchData)
-	if err != nil {
-		return err
-	}
+
 	lo := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{"name": "etcd-operator"}).String(),
 	}

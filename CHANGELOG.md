@@ -11,11 +11,12 @@
 
 ### Added
 
+- Added support for backup policy to be dynamically added, updated
+
 ### Changed
 
 - Backup sidecar deployment created with `Recreate` strategy.
 - Spec.Backup.MaxBackups meaning change: 0 means unlimited backups; < 0 will be rejected.
-
 
 ### Removed
 

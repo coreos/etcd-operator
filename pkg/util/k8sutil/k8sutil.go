@@ -33,11 +33,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
+	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // for gcp auth
 	"k8s.io/client-go/rest"
 )
@@ -362,6 +364,29 @@ func ClonePod(p *v1.Pod) *v1.Pod {
 		panic("cannot deep copy pod")
 	}
 	return np.(*v1.Pod)
+}
+
+func cloneDeployment(d *appsv1beta1.Deployment) *appsv1beta1.Deployment {
+	cd, err := api.Scheme.DeepCopy(d)
+	if err != nil {
+		panic("cannot deep copy pod")
+	}
+	return cd.(*appsv1beta1.Deployment)
+}
+
+func PatchDeployment(kubecli kubernetes.Interface, namespace, name string, updateFunc func(*appsv1beta1.Deployment)) error {
+	od, err := kubecli.AppsV1beta1().Deployments(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	nd := cloneDeployment(od)
+	updateFunc(nd)
+	patchData, err := CreatePatch(od, nd, appsv1beta1.Deployment{})
+	if err != nil {
+		return err
+	}
+	_, err = kubecli.AppsV1beta1().Deployments(namespace).Patch(name, types.StrategicMergePatchType, patchData)
+	return err
 }
 
 // mergeLables merges l2 into l1. Conflicting label will be skipped.

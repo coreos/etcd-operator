@@ -30,7 +30,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 	v1beta1storage "k8s.io/client-go/pkg/apis/storage/v1beta1"
@@ -356,12 +355,4 @@ func BackupSidecarLabels(clusterName string) map[string]string {
 		"app":          BackupPodSelectorAppField,
 		"etcd_cluster": clusterName,
 	}
-}
-
-func CloneDeployment(d *appsv1beta1.Deployment) *appsv1beta1.Deployment {
-	cd, err := api.Scheme.DeepCopy(d)
-	if err != nil {
-		panic("cannot deep copy pod")
-	}
-	return cd.(*appsv1beta1.Deployment)
 }

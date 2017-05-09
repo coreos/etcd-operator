@@ -169,6 +169,7 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 		return fmt.Errorf("ignore failed cluster (%s). Please delete its TPR", clus.Metadata.Name)
 	}
 
+	// TODO: add validation to spec update.
 	clus.Spec.Cleanup()
 
 	switch event.Type {
