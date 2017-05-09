@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
@@ -33,14 +34,13 @@ func TestFailureRecovery(t *testing.T) {
 	})
 }
 
-func TestS3DisasterRecovery(t *testing.T) {
+func TestS3Backup(t *testing.T) {
 	if os.Getenv("AWS_TEST_ENABLED") != "true" {
 		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
 	}
-	t.Run("disaster recovery on S3", func(t *testing.T) {
-		t.Run("2 members (majority) down", testS3MajorityDown)
-		t.Run("3 members (all) down", testS3AllDown)
-	})
+	t.Run("2 members (majority) down", testS3MajorityDown)
+	t.Run("3 members (all) down", testS3AllDown)
+	t.Run("dynamically add backup policy", testDynamicAddBackupPolicy)
 }
 
 func testOneMemberRecovery(t *testing.T) {
@@ -64,7 +64,7 @@ func testOneMemberRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
-	fmt.Println("reached to 3 members cluster")
+	t.Log("reached to 3 members cluster")
 
 	// The last pod could have not come up serving yet. If we are not killing the last pod, we should wait.
 	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, names[2]); err != nil {
@@ -178,4 +178,41 @@ func testS3AllDown(t *testing.T) {
 	}
 
 	testDisasterRecoveryWithBackupPolicy(t, 3, e2eutil.NewS3BackupPolicy())
+}
+
+func testDynamicAddBackupPolicy(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
+
+	f := framework.Global
+	clus, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err := e2eutil.DeleteCluster(t, f.KubeClient, clus)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 60*time.Second)
+	if !retryutil.IsRetryFailure(err) {
+		t.Fatalf("expecting retry failure, but err = %v", err)
+	}
+
+	uf := func(cl *spec.Cluster) {
+		bp := e2eutil.NewS3BackupPolicy()
+		bp.CleanupBackupsOnClusterDelete = true
+		cl.Spec.Backup = bp
+	}
+	clus, err = e2eutil.UpdateCluster(f.KubeClient, clus, 10, uf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 60*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
 }

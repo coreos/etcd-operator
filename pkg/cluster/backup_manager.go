@@ -31,7 +31,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 )
 
@@ -72,7 +71,6 @@ func newBackupManager(c Config, cl *spec.Cluster, l *logrus.Entry) (*backupManag
 
 // setupStorage will only set up the necessary structs in order for backup manager to
 // use the storage. It doesn't creates the actual storage here.
-// We also need to check some restore logic in setup().
 func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 	cl, c := bm.cluster, bm.config
 
@@ -128,8 +126,29 @@ func (bm *backupManager) runSidecar() error {
 }
 
 func (bm *backupManager) createSidecarDeployment() error {
-	cl, c := bm.cluster, bm.config
+	d := bm.makeSidecarDeployment()
+	_, err := bm.config.KubeCli.AppsV1beta1().Deployments(bm.cluster.Metadata.Namespace).Create(d)
+	return err
+}
 
+func (bm *backupManager) updateSidecar(cl *spec.Cluster) error {
+	// change local structs
+	bm.cluster = cl
+	var err error
+	bm.s, err = bm.setupStorage()
+	if err != nil {
+		return err
+	}
+	ns, n := cl.Metadata.Namespace, k8sutil.BackupSidecarName(cl.Metadata.Name)
+	// change k8s objects
+	uf := func(d *appsv1beta1.Deployment) {
+		d.Spec = bm.makeSidecarDeployment().Spec
+	}
+	return k8sutil.PatchDeployment(bm.config.KubeCli, ns, n, uf)
+}
+
+func (bm *backupManager) makeSidecarDeployment() *appsv1beta1.Deployment {
+	cl, c := bm.cluster, bm.config
 	podTemplate := k8sutil.NewBackupPodTemplate(cl.Metadata.Name, bm.config.ServiceAccount, cl.Spec)
 	switch cl.Spec.Backup.StorageType {
 	case spec.BackupStorageTypeDefault, spec.BackupStorageTypePersistentVolume:
@@ -137,13 +156,9 @@ func (bm *backupManager) createSidecarDeployment() error {
 	case spec.BackupStorageTypeS3:
 		k8sutil.PodSpecWithS3(&podTemplate.Spec, c.S3Context)
 	}
-
 	name := k8sutil.BackupSidecarName(cl.Metadata.Name)
 	dplSel := k8sutil.LabelsForCluster(cl.Metadata.Name)
-
-	d := k8sutil.NewBackupDeploymentManifest(name, dplSel, podTemplate, bm.cluster.AsOwner())
-	_, err := c.KubeCli.AppsV1beta1().Deployments(cl.Metadata.Namespace).Create(d)
-	return err
+	return k8sutil.NewBackupDeploymentManifest(name, dplSel, podTemplate, bm.cluster.AsOwner())
 }
 
 func (bm *backupManager) createBackupService() error {
@@ -199,27 +214,25 @@ func backupServiceStatusToTPRBackupServiceStatu(s *backupapi.ServiceStatus) *spe
 }
 
 func (bm *backupManager) upgradeIfNeeded() error {
-	cl, c := bm.cluster, bm.config
-	sidecarName := k8sutil.BackupSidecarName(cl.Metadata.Name)
+	ns, n := bm.cluster.Metadata.Namespace, k8sutil.BackupSidecarName(bm.cluster.Metadata.Name)
 
-	d, err := c.KubeCli.AppsV1beta1().Deployments(cl.Metadata.Namespace).Get(sidecarName, metav1.GetOptions{})
+	d, err := bm.config.KubeCli.AppsV1beta1().Deployments(ns).Get(n, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	if d.Spec.Template.Spec.Containers[0].Image == k8sutil.BackupImage {
 		return nil
 	}
+
 	bm.logger.Infof("upgrading backup sidecar from (%v) to (%v)",
 		d.Spec.Template.Spec.Containers[0].Image, k8sutil.BackupImage)
-	cd := k8sutil.CloneDeployment(d)
 
-	// TODO: backward compatibility for v0.2.6 . Remove this after v0.2.7 .
-	cd.Spec.Strategy = appsv1beta1.DeploymentStrategy{
-		Type: appsv1beta1.RecreateDeploymentStrategyType,
+	uf := func(d *appsv1beta1.Deployment) {
+		d.Spec.Template.Spec.Containers[0].Image = k8sutil.BackupImage
+		// TODO: backward compatibility for v0.2.6 . Remove this after v0.2.7 .
+		d.Spec.Strategy = appsv1beta1.DeploymentStrategy{
+			Type: appsv1beta1.RecreateDeploymentStrategyType,
+		}
 	}
-
-	cd.Spec.Template.Spec.Containers[0].Image = k8sutil.BackupImage
-	patchData, err := k8sutil.CreatePatch(d, cd, appsv1beta1.Deployment{})
-	_, err = c.KubeCli.AppsV1beta1().Deployments(cl.Metadata.Namespace).Patch(d.Name, types.StrategicMergePatchType, patchData)
-	return err
+	return k8sutil.PatchDeployment(bm.config.KubeCli, ns, n, uf)
 }

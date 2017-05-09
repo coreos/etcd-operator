@@ -270,7 +270,19 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 				}
 				// TODO: we can't handle another upgrade while an upgrade is in progress
 				c.logger.Infof("spec update: from: %v to: %v", c.cluster.Spec, event.cluster.Spec)
+
+				ob, nb := c.cluster.Spec.Backup, event.cluster.Spec.Backup
 				c.cluster = event.cluster
+
+				if !isBackupPolicyEqual(ob, nb) {
+					err := c.updateBackupPolicy(ob, nb)
+					if err != nil {
+						c.logger.Errorf("failed to update backup policy: %v", err)
+						clusterFailed = true
+						c.status.SetReason(err.Error())
+						return
+					}
+				}
 
 			case eventDeleteCluster:
 				c.logger.Infof("cluster is deleted by the user")
@@ -341,11 +353,34 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 	}
 }
 
+func (c *Cluster) updateBackupPolicy(ob, nb *spec.BackupPolicy) error {
+	var err error
+	switch {
+	case ob == nil && nb != nil:
+		c.bm, err = newBackupManager(c.config, c.cluster, c.logger)
+		if err != nil {
+			return err
+		}
+		return c.bm.setup()
+	case ob != nil && nb == nil:
+		// TODO: delete backup sidecar
+	case ob != nil && nb != nil:
+		return c.bm.updateSidecar(c.cluster)
+	default:
+		panic("unexpected backup spec comparison")
+	}
+	return nil
+}
+
 func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
 	if s1.Size != s2.Size || s1.Paused != s2.Paused || s1.Version != s2.Version {
 		return false
 	}
-	return true
+	return isBackupPolicyEqual(s1.Backup, s2.Backup)
+}
+
+func isBackupPolicyEqual(b1, b2 *spec.BackupPolicy) bool {
+	return reflect.DeepEqual(b1, b2)
 }
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
