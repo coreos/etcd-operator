@@ -40,10 +40,9 @@ type BackupPolicy struct {
 	// The default interval is 1800 seconds.
 	BackupIntervalInSecond int `json:"backupIntervalInSecond"`
 
-	// MaxBackups is the maximum number of backup files to retain. 0 is disable backup.
-	// If backup is disabled, the etcd cluster cannot recover from a
-	// disaster failure (lose more than half of its members at the same
-	// time).
+	// If greater than 0, MaxBackups is the maximum number of backup files to retain.
+	// If equal to 0, it means unlimited backups.
+	// Otherwise, it is invalid.
 	MaxBackups int `json:"maxBackups"`
 
 	// CleanupBackupsOnClusterDelete tells whether to cleanup backup data if cluster is deleted.
@@ -52,6 +51,9 @@ type BackupPolicy struct {
 }
 
 func (bp *BackupPolicy) Validate() error {
+	if bp.MaxBackups < 0 {
+		return errors.New("MaxBackups value should be >= 0")
+	}
 	if bp.StorageType == BackupStorageTypePersistentVolume {
 		if pv := bp.StorageSource.PV; pv == nil || pv.VolumeSizeInMB <= 0 {
 			return errPVZeroSize

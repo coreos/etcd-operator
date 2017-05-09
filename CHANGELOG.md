@@ -2,11 +2,20 @@
 
 ### Upgrade Notice
 
+- `Spec.Backup.MaxBackups` update:
+  - If you have `Spec.Backup.MaxBackups < 0`, previously it had no effect.
+    Now it will get rejected.
+  - If you have `Spec.Backup.MaxBackups == 0`, previously it had no effect.
+    Now it will create backup sidecar that allows unlimited backups.
+    If you don't want backup sidecar, just don't set any backup policy.
+
 ### Added
 
 ### Changed
 
 - Backup sidecar deployment created with `Recreate` strategy.
+- Spec.Backup.MaxBackups meaning change: 0 means unlimited backups; < 0 will be rejected.
+
 
 ### Removed
 
