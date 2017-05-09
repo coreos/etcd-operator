@@ -312,6 +312,93 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 	}
 }
 
+// TestDisasterRecovery tests if the new operator could do disaster recovery from backup of the old cluster.
+func TestDisasterRecovery(t *testing.T) {
+	t.Run("Recover from PV backup", func(t *testing.T) {
+		testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewPVBackupPolicy())
+	})
+	t.Run("Recover from S3 backup", func(t *testing.T) {
+		testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
+	})
+}
+
+func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
+	err := testF.CreateOperator()
+	if err != nil {
+		t.Fatalf("failed to create operator: %v", err)
+	}
+	defer func() {
+		err := testF.DeleteOperator()
+		if err != nil {
+			t.Fatalf("failed to delete operator: %v", err)
+		}
+	}()
+	err = k8sutil.WaitEtcdTPRReady(testF.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, testF.KubeNS)
+	if err != nil {
+		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
+	}
+
+	bp.CleanupBackupsOnClusterDelete = true
+	testClus := e2eutil.NewCluster("upgrade-test-recovery-", 3)
+	testClus = e2eutil.ClusterWithBackup(testClus, bp)
+	testClus, err = e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, testClus)
+	if err != nil {
+		t.Fatalf("failed to create cluster: %v", err)
+	}
+	defer func() {
+		checker := e2eutil.StorageCheckerOptions{
+			S3Cli:    testF.S3Cli,
+			S3Bucket: testF.S3Bucket,
+		}
+		err := e2eutil.DeleteClusterAndBackup(t, testF.KubeCli, testClus, checker)
+		if err != nil {
+			t.Fatalf("failed to delete cluster and its backup: %v", err)
+		}
+	}()
+
+	names, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testClus)
+	if err != nil {
+		t.Fatalf("failed to reach desired cluster size: %v", err)
+	}
+	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 60*time.Second)
+	if err != nil {
+		t.Fatalf("failed to create backup pod: %v", err)
+	}
+
+	// write data to etcd and make a backup
+	pod, err := testF.KubeCli.CoreV1().Pods(testF.KubeNS).Get(names[0], metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to get backup pod: %v", err)
+	}
+	err = e2eutil.PutDataToEtcd(fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
+	if err != nil {
+		t.Fatalf("failed to put data to etcd: %v", err)
+	}
+	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Metadata.Namespace, testClus.Metadata.Name)
+	if err != nil {
+		t.Fatalf("failed to make backup: %v", err)
+	}
+
+	err = testF.UpgradeOperator()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := e2eutil.KillMembers(testF.KubeCli, testF.KubeNS, names...); err != nil {
+		t.Fatalf("failed to kill all members: %v", err)
+	}
+	if names, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 180*time.Second, testClus); err != nil {
+		t.Fatalf("failed to recover all members: %v", err)
+	}
+
+	// ensure the data from the previous cluster is present
+	pod, err = testF.KubeCli.CoreV1().Pods(testF.KubeNS).Get(names[0], metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to get backup pod: %v", err)
+	}
+	e2eutil.CheckEtcdData(t, fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
+}
+
 // get the image of the first container of the pod in the deployment.
 func getContainerImageNameFromDeployment(name string) (string, error) {
 	d, err := testF.KubeCli.AppsV1beta1().Deployments(testF.KubeNS).Get(name, metav1.GetOptions{})
