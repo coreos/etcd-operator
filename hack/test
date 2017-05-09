@@ -90,10 +90,11 @@ function e2e_pass {
 }
 
 function upgrade_pass {
-	go test ./test/e2e/upgradetest/ --kubeconfig=$KUBECONFIG --kube-ns=$TEST_NAMESPACE \
+	# Run all the tests by default
+	UPGRADE_TEST_SELECTOR=${UPGRADE_TEST_SELECTOR:-.*}
+	go test ./test/e2e/upgradetest/ -run "$UPGRADE_TEST_SELECTOR" -timeout 30m --kubeconfig=$KUBECONFIG --kube-ns=$TEST_NAMESPACE \
 		--old-image=$UPGRADE_FROM \
 		--new-image=$UPGRADE_TO
-
 }
 
 function unit_pass {

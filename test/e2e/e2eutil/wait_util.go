@@ -36,6 +36,15 @@ import (
 type acceptFunc func(*v1.Pod) bool
 type filterFunc func(*v1.Pod) bool
 
+func CalculateRestoreWaitTime(needDataClone bool) time.Duration {
+	waitTime := 240 * time.Second
+	if needDataClone {
+		// Take additional time to clone the data.
+		waitTime += 60 * time.Second
+	}
+	return waitTime
+}
+
 func WaitUntilSizeReached(t *testing.T, kubeClient kubernetes.Interface, size int, timeout time.Duration, cl *spec.Cluster) ([]string, error) {
 	return waitSizeReachedWithAccept(t, kubeClient, size, timeout, cl)
 }

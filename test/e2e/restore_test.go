@@ -21,11 +21,9 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
-	"golang.org/x/net/context"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -91,7 +89,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = putDataToEtcd(fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
+	err = e2eutil.PutDataToEtcd(fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +129,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		origEtcd.Metadata.GenerateName = ""
 		origEtcd.Metadata.Name = testEtcd.Metadata.Name
 	}
-	waitRestoreTimeout := calculateRestoreWaitTime(needDataClone)
+	waitRestoreTimeout := e2eutil.CalculateRestoreWaitTime(needDataClone)
 
 	origEtcd = e2eutil.ClusterWithRestore(origEtcd, &spec.RestorePolicy{
 		BackupClusterName: testEtcd.Metadata.Name,
@@ -169,50 +167,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkEtcdData(t, fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
-}
-
-func putDataToEtcd(url string) error {
-	etcdcli, err := createEtcdClient(url)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	_, err = etcdcli.Put(ctx, etcdKeyFoo, etcdValBar)
-	cancel()
-	etcdcli.Close()
-	return err
-}
-
-func checkEtcdData(t *testing.T, url string) {
-	etcdcli, err := createEtcdClient(url)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	resp, err := etcdcli.Get(ctx, etcdKeyFoo)
-	cancel()
-	etcdcli.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(resp.Kvs) != 1 {
-		t.Errorf("want only 1 key result, get %d", len(resp.Kvs))
-	} else {
-		val := string(resp.Kvs[0].Value)
-		if val != etcdValBar {
-			t.Errorf("value want = '%s', get = '%s'", etcdValBar, val)
-		}
-	}
-}
-
-func calculateRestoreWaitTime(needDataClone bool) time.Duration {
-	waitTime := 240 * time.Second
-	if needDataClone {
-		// Take additional time to clone the data.
-		waitTime += 60 * time.Second
-	}
-	return waitTime
+	e2eutil.CheckEtcdData(t, fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
 }
 
 func testClusterRestoreS3SameName(t *testing.T) {

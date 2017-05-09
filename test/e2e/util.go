@@ -14,28 +14,7 @@
 
 package e2e
 
-import (
-	"github.com/coreos/etcd-operator/pkg/util/constants"
-
-	"github.com/coreos/etcd/clientv3"
-)
-
 const (
 	envParallelTest     = "PARALLEL_TEST"
 	envParallelTestTrue = "true"
-
-	etcdKeyFoo = "foo"
-	etcdValBar = "bar"
 )
-
-func createEtcdClient(addr string) (*clientv3.Client, error) {
-	cfg := clientv3.Config{
-		Endpoints:   []string{addr},
-		DialTimeout: constants.DefaultDialTimeout,
-	}
-	c, err := clientv3.New(cfg)
-	if err != nil {
-		return nil, err
-	}
-	return c, nil
-}

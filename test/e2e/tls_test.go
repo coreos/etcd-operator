@@ -66,9 +66,9 @@ func TestPeerTLS(t *testing.T) {
 	}
 	// TODO: get rid of pod IP assumption.
 	clientURL := fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
-	err = putDataToEtcd(clientURL)
+	err = e2eutil.PutDataToEtcd(clientURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkEtcdData(t, clientURL)
+	e2eutil.CheckEtcdData(t, clientURL)
 }
