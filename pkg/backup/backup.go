@@ -54,7 +54,7 @@ type Backup struct {
 
 	be backend
 
-	backupNow chan chan error
+	backupNow chan chan backupNowAck
 
 	// recentBackupStatus keeps the statuses of 'maxRecentBackupStatusCount' recent backups.
 	recentBackupsStatus []backupapi.BackupStatus
@@ -116,7 +116,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 		be:            be,
 		etcdTLSConfig: tc,
 
-		backupNow: make(chan chan error),
+		backupNow: make(chan chan backupNowAck),
 	}, nil
 }
 
@@ -140,7 +140,7 @@ func (b *Backup) Run() {
 	}()
 
 	for {
-		var ackchan chan error
+		var ackchan chan backupNowAck
 		select {
 		case <-time.After(interval):
 		case ackchan = <-b.backupNow:
@@ -154,7 +154,11 @@ func (b *Backup) Run() {
 		lastSnapRev = rev
 
 		if ackchan != nil {
-			ackchan <- err
+			ack := backupNowAck{err: err}
+			if err == nil {
+				ack.status = b.getLatestBackupStatus()
+			}
+			ackchan <- ack
 		}
 	}
 }
@@ -297,4 +301,8 @@ func (b *Backup) getLatestBackupRev() int64 {
 		logrus.Fatal(err)
 	}
 	return rev
+}
+
+func (b *Backup) getLatestBackupStatus() backupapi.BackupStatus {
+	return b.recentBackupsStatus[len(b.recentBackupsStatus)-1]
 }
