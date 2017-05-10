@@ -291,6 +291,8 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 			}
 
 		case <-time.After(reconcileInterval):
+			start := time.Now()
+
 			if c.cluster.Spec.Paused {
 				c.status.PauseControl()
 				c.logger.Infof("control is paused, skipping reconcilation")
@@ -302,12 +304,14 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 			running, pending, err := c.pollPods()
 			if err != nil {
 				c.logger.Errorf("fail to poll pods: %v", err)
+				reconcileFailed.WithLabelValues("failed to poll pods").Inc()
 				continue
 			}
 
 			if len(pending) > 0 {
 				// Pod startup might take long, e.g. pulling image. It would deterministically become running or succeeded/failed later.
 				c.logger.Infof("skip reconciliation: running (%v), pending (%v)", k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
+				reconcileFailed.WithLabelValues("not all pods are running").Inc()
 				continue
 			}
 			if len(running) == 0 {
@@ -341,6 +345,12 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 			if err := c.updateTPRStatus(); err != nil {
 				c.logger.Warningf("failed to update TPR status: %v", err)
 			}
+
+			reconcileHistogram.WithLabelValues(c.name()).Observe(time.Since(start).Seconds())
+		}
+
+		if rerr != nil {
+			reconcileFailed.WithLabelValues(rerr.Error()).Inc()
 		}
 
 		if isFatalError(rerr) {
@@ -594,4 +604,8 @@ func (c *Cluster) reportFailedStatus() {
 	}
 
 	retryutil.Retry(retryInterval, math.MaxInt64, f)
+}
+
+func (c *Cluster) name() string {
+	return c.cluster.Metadata.GetName()
 }
