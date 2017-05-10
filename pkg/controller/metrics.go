@@ -30,6 +30,13 @@ var (
 		Name:      "clusters_modified",
 		Help:      "Total number of clusters modified",
 	})
+
+	clustersFailed = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd_operator",
+		Subsystem: "controller",
+		Name:      "clusters_failed",
+		Help:      "Total number of clusters failed",
+	})
 )
 
 func init() {
@@ -37,4 +44,5 @@ func init() {
 	prometheus.MustRegister(clustersCreated)
 	prometheus.MustRegister(clustersDeleted)
 	prometheus.MustRegister(clustersModified)
+	prometheus.MustRegister(clustersFailed)
 }

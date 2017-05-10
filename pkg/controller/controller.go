@@ -161,6 +161,7 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 	clus := event.Object
 
 	if clus.Status.IsFailed() {
+		clustersFailed.Inc()
 		if event.Type == kwatch.Deleted {
 			delete(c.clusters, clus.Metadata.Name)
 			delete(c.clusterRVs, clus.Metadata.Name)
