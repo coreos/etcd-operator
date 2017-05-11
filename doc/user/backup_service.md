@@ -5,7 +5,10 @@ The backup service saves backup for the etcd cluster based on the requirement of
 
 The backup service will skip creating a new snapshot if the etcd cluster revision has not changed since the last snapshot, i.e the etcd-cluster data has not been modified (e.g., `Put`, `Delete`, `Txn`).
 
-It also exposes an HTTP API for requesting a new backup and retrieving existing backups.
+It also exposes an HTTP API for requesting a new backup and retrieving existing backups. The HTTP API can be accessed from inside the kubernetes cluster as:
+```bash
+$ curl "http://<cluster-name>-backup-sidecar:19999/v1/<command>
+```
 
 ## HTTP API v1
 
