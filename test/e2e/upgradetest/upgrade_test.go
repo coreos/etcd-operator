@@ -261,7 +261,6 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
 	}
 
-	bp.BackupIntervalInSecond = 60 * 60 * 24 // long enough that no backup was made automatically
 	bp.CleanupBackupsOnClusterDelete = true
 	cl := e2eutil.NewCluster("upgrade-test-backup-", 3)
 	cl = e2eutil.ClusterWithBackup(cl, bp)
