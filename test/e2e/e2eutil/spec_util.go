@@ -15,6 +15,7 @@
 package e2eutil
 
 import (
+	"os"
 	"strings"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -43,8 +44,19 @@ func NewS3BackupPolicy() *spec.BackupPolicy {
 		MaxBackups:             5,
 		StorageType:            spec.BackupStorageTypeS3,
 		StorageSource: spec.StorageSource{
-			S3: &spec.S3Source{},
+			S3: &spec.S3Source{
+				S3Bucket:  os.Getenv("TEST_S3_BUCKET"),
+				AWSSecret: os.Getenv("TEST_AWS_SECRET"),
+			},
 		},
+	}
+}
+
+func NewOperatorS3BackupPolicy() *spec.BackupPolicy {
+	return &spec.BackupPolicy{
+		BackupIntervalInSecond: 60 * 60,
+		MaxBackups:             5,
+		StorageType:            spec.BackupStorageTypeS3,
 	}
 }
 

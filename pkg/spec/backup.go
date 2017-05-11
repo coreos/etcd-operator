@@ -22,6 +22,9 @@ const (
 	BackupStorageTypeDefault          = ""
 	BackupStorageTypePersistentVolume = "PersistentVolume"
 	BackupStorageTypeS3               = "S3"
+
+	AWSSecretCredentialsFileName = "credentials"
+	AWSSecretConfigFileName      = "config"
 )
 
 var errPVZeroSize = errors.New("PV backup should not have 0 size volume")
@@ -84,10 +87,10 @@ type S3Source struct {
 
 	// The name of the secret object that stores the AWS credential and config files.
 	// The file name of the credential MUST be 'credentials'.
-	// The file name of the config MUST be 'config'
+	// The file name of the config MUST be 'config'.
+	// The profile to use in both files will be 'default'.
 	//
-	// AWSCredentialSecret overwrites the default etcd operator wide AWS credential and
-	// config.
+	// AWSSecret overwrites the default etcd operator wide AWS credential and config.
 	AWSSecret string `json:"awsSecret,omitempty"`
 }
 

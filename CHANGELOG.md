@@ -12,6 +12,7 @@
 ### Added
 
 - Added support for backup policy to be dynamically added, updated
+- Added per cluster policy support for S3.
 
 ### Changed
 

@@ -129,7 +129,26 @@ func PodSpecWithPV(ps *v1.PodSpec, clusterName string) {
 	}}
 }
 
-func PodSpecWithS3(ps *v1.PodSpec, s3Ctx s3config.S3Context) {
+func AttachS3ToPodSpec(ps *v1.PodSpec, ss spec.S3Source) {
+	ps.Containers[0].VolumeMounts = append(ps.Containers[0].VolumeMounts, v1.VolumeMount{
+		Name:      awsSecretVolName,
+		MountPath: awsCredentialDir,
+	})
+	ps.Volumes = append(ps.Volumes, v1.Volume{
+		Name: awsSecretVolName,
+		VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{
+				SecretName: ss.AWSSecret,
+			},
+		},
+	})
+	ps.Containers[0].Env = append(ps.Containers[0].Env, v1.EnvVar{
+		Name:  backupenv.AWSS3Bucket,
+		Value: ss.S3Bucket,
+	})
+}
+
+func AttachOperatorS3ToPodSpec(ps *v1.PodSpec, s3Ctx s3config.S3Context) {
 	ps.Containers[0].VolumeMounts = []v1.VolumeMount{{
 		Name:      awsSecretVolName,
 		MountPath: awsCredentialDir,

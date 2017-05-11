@@ -20,6 +20,7 @@ import (
 	"path"
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
+	"github.com/coreos/etcd-operator/pkg/spec"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -35,8 +36,8 @@ func setupS3Env(kubecli kubernetes.Interface, s3Ctx s3config.S3Context, ns strin
 		return err
 	}
 
-	config := []byte(cm.Data["config"])
-	creds := se.Data["credentials"]
+	config := []byte(cm.Data[spec.AWSSecretConfigFileName])
+	creds := se.Data[spec.AWSSecretCredentialsFileName]
 
 	homedir := os.Getenv("HOME")
 	if err := os.MkdirAll(path.Join(homedir, "/.aws"), 0700); err != nil {

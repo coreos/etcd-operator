@@ -47,9 +47,14 @@ func TestClusterRestoreS3(t *testing.T) {
 		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
 	}
 
-	t.Run("restore cluster from backup on S3", func(t *testing.T) {
-		t.Run("restore from the same name cluster", testClusterRestoreS3SameName)
-		t.Run("restore from a different name cluster", testClusterRestoreS3DifferentName)
+	t.Run("restore from the same name cluster", func(t *testing.T) {
+		t.Run("per cluster s3 policy", func(t *testing.T) { testClusterRestoreS3SameName(t, true) })
+		t.Run("operator wide s3 policy", func(t *testing.T) { testClusterRestoreS3SameName(t, false) })
+	})
+
+	t.Run("restore from a different name cluster", func(t *testing.T) {
+		t.Run("per cluster s3 policy", func(t *testing.T) { testClusterRestoreS3DifferentName(t, true) })
+		t.Run("operator wide s3 policy", func(t *testing.T) { testClusterRestoreS3DifferentName(t, false) })
 	})
 }
 
@@ -170,18 +175,32 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	e2eutil.CheckEtcdData(t, fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
 }
 
-func testClusterRestoreS3SameName(t *testing.T) {
+func testClusterRestoreS3SameName(t *testing.T, perCluster bool) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
 
-	testClusterRestoreWithBackupPolicy(t, false, e2eutil.NewS3BackupPolicy())
+	var bp *spec.BackupPolicy
+	if perCluster {
+		bp = e2eutil.NewS3BackupPolicy()
+	} else {
+		bp = e2eutil.NewOperatorS3BackupPolicy()
+	}
+
+	testClusterRestoreWithBackupPolicy(t, false, bp)
 }
 
-func testClusterRestoreS3DifferentName(t *testing.T) {
+func testClusterRestoreS3DifferentName(t *testing.T, perCluster bool) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
 
-	testClusterRestoreWithBackupPolicy(t, true, e2eutil.NewS3BackupPolicy())
+	var bp *spec.BackupPolicy
+	if perCluster {
+		bp = e2eutil.NewS3BackupPolicy()
+	} else {
+		bp = e2eutil.NewOperatorS3BackupPolicy()
+	}
+
+	testClusterRestoreWithBackupPolicy(t, true, bp)
 }

@@ -125,7 +125,12 @@ func TestRestoreFromBackup(t *testing.T) {
 		testRestoreWithBackupPolicy(t, e2eutil.NewPVBackupPolicy())
 	})
 	t.Run("Restore from S3 backup of old cluster", func(t *testing.T) {
-		testRestoreWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
+		t.Run("per cluster s3 policy", func(t *testing.T) {
+			testRestoreWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
+		})
+		t.Run("operator wide s3 policy", func(t *testing.T) {
+			testRestoreWithBackupPolicy(t, e2eutil.NewOperatorS3BackupPolicy())
+		})
 	})
 }
 
@@ -239,7 +244,12 @@ func TestBackupForOldCluster(t *testing.T) {
 		testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewPVBackupPolicy())
 	})
 	t.Run("S3 backup for old cluster", func(t *testing.T) {
-		testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
+		t.Run("per cluster s3 policy", func(t *testing.T) {
+			testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
+		})
+		t.Run("operator wide s3 policy", func(t *testing.T) {
+			testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewOperatorS3BackupPolicy())
+		})
 	})
 }
 
@@ -317,7 +327,12 @@ func TestDisasterRecovery(t *testing.T) {
 		testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewPVBackupPolicy())
 	})
 	t.Run("Recover from S3 backup", func(t *testing.T) {
-		testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
+		t.Run("per cluster s3 policy", func(t *testing.T) {
+			testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
+		})
+		t.Run("operator wide s3 policy", func(t *testing.T) {
+			testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewOperatorS3BackupPolicy())
+		})
 	})
 }
 
