@@ -146,8 +146,6 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
 	}
 
-	// create cluster
-	bp.BackupIntervalInSecond = 60 * 60 * 24 // long enough that no backup was made automatically
 	bp.CleanupBackupsOnClusterDelete = false
 	origClus := e2eutil.NewCluster("upgrade-test-restore-", 3)
 	origClus = e2eutil.ClusterWithBackup(origClus, bp)
@@ -261,6 +259,8 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
 	}
 
+	// Make interval long so no backup is made by the sidecar since we want to make only one backup during the whole test
+	bp.BackupIntervalInSecond = 60 * 60 * 24
 	bp.CleanupBackupsOnClusterDelete = true
 	cl := e2eutil.NewCluster("upgrade-test-backup-", 3)
 	cl = e2eutil.ClusterWithBackup(cl, bp)
