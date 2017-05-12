@@ -1,5 +1,5 @@
-hash: 9e6e0a16fdd7ea5ec6fcd40a0ce21f0c9ec1b426ada5b2a6e1305a00af91c101
-updated: 2017-05-07T12:09:11.112060036-07:00
+hash: 116d075e35b17c00a6f9dcc61b21a9e2805f1d6b127a7790ae40c72ba16cf439
+updated: 2017-05-12T12:41:07.062923174-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -9,7 +9,7 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/aws/aws-sdk-go
-  version: fa7f88097f64d1a2bcc65f9b9b547f363082d496
+  version: 1c045ec3043dcfccf1e21f24806ef9a3defe6d3c
   subpackages:
   - aws
   - aws/awserr

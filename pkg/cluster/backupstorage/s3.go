@@ -4,12 +4,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"sync"
 
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/spec"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -17,10 +17,6 @@ import (
 const (
 	awsConfigDirPrefix = "/etc/etcd-operator/aws/"
 )
-
-// Work around https://github.com/aws/aws-sdk-go/issues/1258 .
-// We need to set global ENV when creating S3 client. Thus, we need to lock when doing that.
-var awsEnvMutex sync.Mutex
 
 type s3 struct {
 	s3config.S3Context
@@ -36,32 +32,24 @@ func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, cluste
 	prefix := path.Join(ns, clusterName)
 	var dir string
 
-	if p.S3 != nil {
-		dir = path.Join(awsConfigDirPrefix, prefix)
-		if err := os.MkdirAll(dir, 0700); err != nil {
-			return nil, err
+	s3cli, err := func() (*backups3.S3, error) {
+		if p.S3 != nil {
+			dir = path.Join(awsConfigDirPrefix, prefix)
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				return nil, err
+			}
+			credsFile, configFile, err := setupAWSConfig(kubecli, ns, p.S3.AWSSecret, dir)
+			if err != nil {
+				return nil, err
+			}
+			return backups3.NewFromSessionOpt(p.S3.S3Bucket, prefix, session.Options{
+				SharedConfigState: session.SharedConfigEnable,
+				SharedConfigFiles: []string{configFile, credsFile},
+			})
+		} else {
+			return backups3.New(s3Ctx.S3Bucket, prefix)
 		}
-		credsFile, configFile, err := setupAWSConfig(kubecli, ns, p.S3.AWSSecret, dir)
-		if err != nil {
-			return nil, err
-		}
-		awsEnvMutex.Lock()
-		defer awsEnvMutex.Unlock()
-
-		err = os.Setenv("AWS_SHARED_CREDENTIALS_FILE", credsFile)
-		if err != nil {
-			return nil, err
-		}
-		defer os.Unsetenv("AWS_SHARED_CREDENTIALS_FILE")
-
-		err = os.Setenv("AWS_CONFIG_FILE", configFile)
-		if err != nil {
-			return nil, err
-		}
-		defer os.Unsetenv("AWS_CONFIG_FILE")
-	}
-
-	s3cli, err := backups3.New(s3Ctx.S3Bucket, prefix)
+	}()
 	if err != nil {
 		return nil, err
 	}
