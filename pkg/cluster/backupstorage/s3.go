@@ -42,12 +42,6 @@ func (s *s3) Create() error {
 }
 
 func (s *s3) Clone(from string) error {
-	// for backward compatibility.
-	err := s.s3cli.CopyPrefix(from)
-	if err != nil {
-		return err
-	}
-
 	prefix := s.namespace + "/" + from
 	return s.s3cli.CopyPrefix(prefix)
 }

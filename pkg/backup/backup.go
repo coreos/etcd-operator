@@ -81,12 +81,6 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 			return nil, err
 		}
 
-		// for backward compatibility.
-		err = s3cli.CopyPrefix(clusterName)
-		if err != nil {
-			return nil, err
-		}
-
 		be = &s3Backend{
 			dir: tmpDir,
 			S3:  s3cli,
