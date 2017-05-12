@@ -38,8 +38,14 @@ func TestS3Backup(t *testing.T) {
 	if os.Getenv("AWS_TEST_ENABLED") != "true" {
 		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
 	}
-	t.Run("2 members (majority) down", testS3MajorityDown)
-	t.Run("3 members (all) down", testS3AllDown)
+	t.Run("2 members (majority) down", func(t *testing.T) {
+		t.Run("per cluster s3 policy", func(t *testing.T) { testS3MajorityDown(t, true) })
+		t.Run("operator wide s3 policy", func(t *testing.T) { testS3MajorityDown(t, false) })
+	})
+	t.Run("3 members (all) down", func(t *testing.T) {
+		t.Run("per cluster s3 policy", func(t *testing.T) { testS3AllDown(t, true) })
+		t.Run("operator wide s3 policy", func(t *testing.T) { testS3AllDown(t, false) })
+	})
 	t.Run("dynamically add backup policy", testDynamicAddBackupPolicy)
 }
 
@@ -161,15 +167,22 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 	// TODO: add checking of data in etcd
 }
 
-func testS3MajorityDown(t *testing.T) {
+func testS3MajorityDown(t *testing.T, perCluster bool) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
 
-	testDisasterRecoveryWithBackupPolicy(t, 2, e2eutil.NewS3BackupPolicy())
+	var bp *spec.BackupPolicy
+	if perCluster {
+		bp = e2eutil.NewS3BackupPolicy()
+	} else {
+		bp = e2eutil.NewOperatorS3BackupPolicy()
+	}
+
+	testDisasterRecoveryWithBackupPolicy(t, 2, bp)
 }
 
-func testS3AllDown(t *testing.T) {
+func testS3AllDown(t *testing.T, perCluster bool) {
 	if os.Getenv(framework.EnvCloudProvider) == "aws" {
 		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
 	}
@@ -177,7 +190,14 @@ func testS3AllDown(t *testing.T) {
 		t.Parallel()
 	}
 
-	testDisasterRecoveryWithBackupPolicy(t, 3, e2eutil.NewS3BackupPolicy())
+	var bp *spec.BackupPolicy
+	if perCluster {
+		bp = e2eutil.NewS3BackupPolicy()
+	} else {
+		bp = e2eutil.NewOperatorS3BackupPolicy()
+	}
+
+	testDisasterRecoveryWithBackupPolicy(t, 3, bp)
 }
 
 func testDynamicAddBackupPolicy(t *testing.T) {

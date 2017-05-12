@@ -39,6 +39,8 @@ type S3 struct {
 // for setting up credentials and configuration.
 func New(bucket, prefix string) (*S3, error) {
 	return NewFromSessionOpt(bucket, prefix, session.Options{
+		// Setting this is equal to the AWS_SDK_LOAD_CONFIG environment variable was set.
+		// We want to save the work to set AWS_SDK_LOAD_CONFIG=1 outside.
 		SharedConfigState: session.SharedConfigEnable,
 	})
 }

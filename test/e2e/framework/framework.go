@@ -66,6 +66,7 @@ func Setup() error {
 		KubeClient: cli,
 		Namespace:  *ns,
 		opImage:    *opImage,
+		S3Bucket:   os.Getenv("TEST_S3_BUCKET"),
 	}
 	return Global.setup()
 }
@@ -99,7 +100,9 @@ func (f *Framework) SetupEtcdOperator() error {
 	// TODO: unify this and the yaml file in example/
 	cmd := []string{"/usr/local/bin/etcd-operator", "--analytics=false"}
 	if os.Getenv("AWS_TEST_ENABLED") == "true" {
-		cmd = append(cmd, "--backup-aws-secret=aws", "--backup-aws-config=aws", "--backup-s3-bucket=jenkins-etcd-operator")
+		cmd = append(cmd, "--backup-aws-secret=aws",
+			"--backup-aws-config=aws",
+			"--backup-s3-bucket="+f.S3Bucket)
 	}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -180,6 +183,5 @@ func (f *Framework) setupAWS() error {
 		return err
 	}
 	f.S3Cli = s3.New(sess)
-	f.S3Bucket = "jenkins-etcd-operator"
 	return nil
 }
