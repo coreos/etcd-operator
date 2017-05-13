@@ -126,6 +126,8 @@ func TestRestoreFromBackup(t *testing.T) {
 	})
 	t.Run("Restore from S3 backup of old cluster", func(t *testing.T) {
 		t.Run("per cluster s3 policy", func(t *testing.T) {
+			// todo: enable it when test upgrading from 0.3.x on
+			t.Skip("Skip for running for 0.2 to 0.3 upgrade test since 0.2 does not support per cluster s3")
 			testRestoreWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
 		})
 		t.Run("operator wide s3 policy", func(t *testing.T) {
@@ -245,6 +247,8 @@ func TestBackupForOldCluster(t *testing.T) {
 	})
 	t.Run("S3 backup for old cluster", func(t *testing.T) {
 		t.Run("per cluster s3 policy", func(t *testing.T) {
+			// todo: enable it when test upgrading from 0.3.x on
+			t.Skip("Skip for running for 0.2 to 0.3 upgrade test since 0.2 does not support per cluster s3")
 			testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
 		})
 		t.Run("operator wide s3 policy", func(t *testing.T) {
@@ -328,6 +332,8 @@ func TestDisasterRecovery(t *testing.T) {
 	})
 	t.Run("Recover from S3 backup", func(t *testing.T) {
 		t.Run("per cluster s3 policy", func(t *testing.T) {
+			// todo: enable it when test upgrading from 0.3.x on
+			t.Skip("Skip for running for 0.2 to 0.3 upgrade test since 0.2 does not support per cluster s3")
 			testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
 		})
 		t.Run("operator wide s3 policy", func(t *testing.T) {
