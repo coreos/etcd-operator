@@ -20,7 +20,15 @@ This is essentially saving backups on an instance of AWS EBS.
 
 ## S3 on AWS
 
-Saving backups to S3 is also supported. See the [S3 backup deployment](../../example/deployment-s3-backup.yaml.template) template on how to configure the operator to enable S3 backups. The following flags need to be passed to operator:
+Saving backups to S3 is also supported. The S3 backup policy can be set at two levels:
+- **operator level:** The same S3 configurations (bucket and secret names) will be used for all S3 backup enabled clusters created by the operator 
+- **cluster level:** Each cluster can specify its own S3 configuration.
+
+If configurations for both levels are specified then the cluster level configuration will override the operator level configuration.
+
+### Operator level configuration  
+
+See the [S3 backup deployment](../../example/deployment-s3-backup.yaml.template) template on how to configure the operator to enable S3 backups. The following flags need to be passed to operator:
 - `backup-aws-secret`: The name of the kube secret object that stores the AWS credential file. The file name must be 'credentials'.
 Profile must be "default".
 - `backup-aws-config`: The name of the kube configmap object that stores the AWS config file. The file name must be 'config'.
@@ -63,3 +71,35 @@ We will start etcd operator with the following flags:
 $ ./etcd-operator ... --backup-aws-secret=aws --backup-aws-config=aws --backup-s3-bucket=etcd_backups
 ```
 Then we could start using S3 storage for backups. See [spec examples](spec_examples.md#three-members-cluster-with-s3-backup) on how to configure a cluster that uses an S3 bucket as its storage type.
+
+### Cluster level configuration
+
+See the [S3 backup with cluster specific configuration](https://github.com/coreos/etcd-operator/blob/master/doc/user/spec_examples.md#s3-backup-and-cluster-specific-s3-configuration) spec to see what the cluster's `spec.backup` field should be configured as to set a cluster specific S3 backup configuration. The following additional fields need to be set under the cluster spec's `spec.backup.s3` field:
+- `s3Bucket`: The name of the S3 bucket to store backups in.
+- `awsSecret`: The secret object name which should contain two files named `credentials` and `config` .
+
+The profile to use in both the files `credentials` and `config` is `default` :
+```
+$ cat ~/.aws/credentials
+[default]
+aws_access_key_id = XXX
+aws_secret_access_key = XXX
+
+$ cat ~/.aws/config
+[default]
+region = us-west-1
+```
+
+We can then create the secret named "aws" from the two files by:
+```bash
+$ kubectl -n <namespace-name> create secret generic aws --from-file=$AWS_DIR/credentials --from-file=$AWS_DIR/config
+```
+
+Once the secret is created, it can be used to configure a new cluster or update an existing one with the specific S3 configurations:
+```
+spec:
+  backup:
+    s3:
+      s3Bucket: example-s3-bucket
+      awsSecret: aws
+```
