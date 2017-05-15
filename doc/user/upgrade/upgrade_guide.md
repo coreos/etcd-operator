@@ -8,7 +8,7 @@ First create a backup of your current cluster before starting the upgrade proces
 In the case of an upgrade failure you can restore your cluster to the previous state from the previous backup. See the [spec examples](https://github.com/coreos/etcd-operator/blob/master/doc/user/spec_examples.md#three-members-cluster-that-restores-from-previous-pv-backup) on how to do that.
 
 
-### Upgrade process
+### Upgrade operator deployment
 An [in-place update](https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/#in-place-updates-of-resources) can be performed when the upgrade is compatible, i.e we can upgrade the operator without affecting the cluster.
 
 To upgrade an operator deployment the image field `spec.template.spec.containers.image` needs to be changed via an in-place update.
