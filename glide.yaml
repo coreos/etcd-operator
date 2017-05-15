@@ -7,7 +7,7 @@ import:
 - package: github.com/Sirupsen/logrus
   version: v0.11.2
 - package: github.com/aws/aws-sdk-go
-  version: 1c045ec3043dcfccf1e21f24806ef9a3defe6d3c
+  version: v1.8.23
 - package: github.com/coreos/go-semver
   version: v0.2.0
 - package: github.com/pborman/uuid
