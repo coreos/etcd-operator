@@ -58,6 +58,20 @@ spec:
     storageType: "S3"
 ```
 
+### S3 backup and cluster specific S3 configuration
+
+```yaml
+spec:
+  size: 3
+  backup:
+    backupIntervalInSecond: 1800
+    maxBackups: 5
+    storageType: "S3"
+    s3:
+      s3Bucket: <S3-bucket-name>
+      awsSecret: <aws-secret-name>
+```
+
 ### Three members cluster that restores from previous PV backup
 
 If a cluster `cluster-a` was created with backup, but deleted or failed later on,
