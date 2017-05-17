@@ -22,7 +22,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -36,8 +35,9 @@ func PreparePeerTLSSecret(clusterName, ns, secretName string) error {
 	certPath := filepath.Join(dir, "peer-crt.pem")
 	keyPath := filepath.Join(dir, "peer-key.pem")
 	caPath := filepath.Join(dir, "peer-ca-crt.pem")
+	hosts := []string{fmt.Sprintf("*.%s.%s.svc.cluster.local", clusterName, ns)}
 
-	err = preparePeerTLSCerts(certPath, keyPath, caPath, clusterName, ns)
+	err = prepareTLSCerts(certPath, keyPath, caPath, hosts)
 	if err != nil {
 		return err
 	}
@@ -49,8 +49,51 @@ func PreparePeerTLSSecret(clusterName, ns, secretName string) error {
 	return cmd.Run()
 }
 
-func preparePeerTLSCerts(certPath, keyPath, caPath, clusterName, ns string) error {
-	err := prepareTLSCerts(certPath, keyPath, fmt.Sprintf("*.%s.%s.svc.cluster.local", clusterName, ns))
+func PrepareClientTLSSecret(dir, clusterName, ns, mSecret, oSecret string) error {
+	mCertPath := filepath.Join(dir, "client-crt.pem")
+	mKeyPath := filepath.Join(dir, "client-key.pem")
+	oCAPath := filepath.Join(dir, "etcd-ca-crt.pem")
+	mHosts := []string{
+		fmt.Sprintf("*.%s.%s.svc.cluster.local", clusterName, ns),
+		fmt.Sprintf("%s-client.%s.svc.cluster.local", clusterName, ns),
+		"localhost",
+	}
+
+	err := prepareTLSCerts(mCertPath, mKeyPath, oCAPath, mHosts)
+	if err != nil {
+		return err
+	}
+
+	oCertPath := filepath.Join(dir, "etcd-crt.pem")
+	oKeyPath := filepath.Join(dir, "etcd-key.pem")
+	mCAPath := filepath.Join(dir, "client-ca-crt.pem")
+	oHosts := []string{""}
+
+	err = prepareTLSCerts(oCertPath, oKeyPath, mCAPath, oHosts)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command("kubectl", "-n", ns, "create", "secret", "generic", mSecret,
+		fmt.Sprintf("--from-file=%s", mCAPath),
+		fmt.Sprintf("--from-file=%s", mCertPath),
+		fmt.Sprintf("--from-file=%s", mKeyPath),
+	)
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	cmd = exec.Command("kubectl", "-n", ns, "create", "secret", "generic", oSecret,
+		fmt.Sprintf("--from-file=%s", oCAPath),
+		fmt.Sprintf("--from-file=%s", oCertPath),
+		fmt.Sprintf("--from-file=%s", oKeyPath),
+	)
+	return cmd.Run()
+}
+
+func prepareTLSCerts(certPath, keyPath, caPath string, hosts []string) error {
+	err := prepareKeyAndCert(certPath, keyPath, hosts)
 	if err != nil {
 		return err
 	}
@@ -62,10 +105,10 @@ func preparePeerTLSCerts(certPath, keyPath, caPath, clusterName, ns string) erro
 	return ioutil.WriteFile(caPath, b, 0644)
 }
 
-// prepareTLSCerts creates self-signed self-CA x509 cert and key files.
+// prepareKeyAndCert creates self-signed self-CA x509 key and cert file.
 // The files are written as given certPath and keyPath respectively.
 // hosts: Comma-separated hostnames and IPs to generate a certificate for.
-func prepareTLSCerts(certPath, keyPath, hosts string) error {
+func prepareKeyAndCert(certPath, keyPath string, hosts []string) error {
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return fmt.Errorf("failed to generate private key: %v", err)
@@ -94,8 +137,7 @@ func prepareTLSCerts(certPath, keyPath, hosts string) error {
 		BasicConstraintsValid: true,
 	}
 
-	hostList := strings.Split(hosts, ",")
-	for _, h := range hostList {
+	for _, h := range hosts {
 		if ip := net.ParseIP(h); ip != nil {
 			template.IPAddresses = append(template.IPAddresses, ip)
 		} else {

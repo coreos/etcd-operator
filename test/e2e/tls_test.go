@@ -15,22 +15,32 @@
 package e2e
 
 import (
-	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestPeerTLS(t *testing.T) {
+func TestTLS(t *testing.T) {
 	f := framework.Global
 	clusterName := "peer-tls-test"
-	secretName := "etcd-server-peer-tls"
-	err := e2eutil.PreparePeerTLSSecret(clusterName, f.Namespace, secretName)
+	memberPeerTLSSecret := "etcd-server-peer-tls"
+	memberClientTLSSecret := "etcd-server-client-tls"
+	operatorClientTLSSecret := "operator-etcd-client-tls"
+	err := e2eutil.PreparePeerTLSSecret(clusterName, f.Namespace, memberPeerTLSSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certsDir, err := ioutil.TempDir("", "etcd-operator-tls-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(certsDir)
+	err = e2eutil.PrepareClientTLSSecret(certsDir, clusterName, f.Namespace, memberClientTLSSecret, operatorClientTLSSecret)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,8 +50,10 @@ func TestPeerTLS(t *testing.T) {
 	c.Spec.TLS = &spec.TLSPolicy{
 		Static: &spec.StaticTLS{
 			Member: &spec.MemberSecret{
-				PeerSecret: secretName,
+				PeerSecret:   memberPeerTLSSecret,
+				ClientSecret: memberClientTLSSecret,
 			},
+			OperatorSecret: operatorClientTLSSecret,
 		},
 	}
 	c, err = e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
@@ -55,20 +67,9 @@ func TestPeerTLS(t *testing.T) {
 		}
 	}()
 
-	members, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, c)
+	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, c)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
-
-	pod, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get(members[0], metav1.GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// TODO: get rid of pod IP assumption.
-	clientURL := fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
-	err = e2eutil.PutDataToEtcd(clientURL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	e2eutil.CheckEtcdData(t, clientURL)
+	// TODO: use client key/certs to talk to secure etcd cluster.
 }
