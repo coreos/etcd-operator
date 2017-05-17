@@ -1,13 +1,23 @@
-## [Unreleased 0.2.7]
+## [Unreleased 0.3.1]
+
+### Added
+
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
+## [Release 0.3.0]
 
 ### Upgrade Notice
 
-- `Spec.Backup.MaxBackups` update:
-  - If you have `Spec.Backup.MaxBackups < 0`, previously it had no effect.
-    Now it will get rejected.
-  - If you have `Spec.Backup.MaxBackups == 0`, previously it had no effect.
-    Now it will create backup sidecar that allows unlimited backups.
-    If you don't want backup sidecar, just don't set any backup policy.
+Check https://github.com/coreos/etcd-operator/blob/master/doc/user/upgrade/upgrade_guide.md#v02x-to-v03x
 
 ### Added
 
