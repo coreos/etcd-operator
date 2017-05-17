@@ -85,3 +85,27 @@ $ kubectl create secret generic operator-etcd-client-tls --from-file=etcd-ca-crt
 ```
 
 Pass `operator-etcd-client-tls` to `operatorSecret` field.
+
+### Access a secure etcd cluster
+
+Assume a secure etcd cluster `example` is up and running.
+
+To access the cluster, use the FQDN `example-client.default.svc.cluster.local`, which matches the SAN of its certificates.
+To add more DNS name or IP, that should be added when generating etcd server's client certs.
+
+Assume the following certs are being used:
+```
+etcd-crt.pem
+etcd-key.pem
+etcd-ca-crt.pem
+```
+Both `etcd-crt.pem` and `etcd-key.pem` should trusted by etcd server's client CA `client-ca-crt.pem`.
+`etcd-ca-crt.pem` should trust etcd server's client key and cert.
+
+Here is an example `etcdctl` command to list members from the secure etcd cluster:
+```
+$ ETCDCTL_API=3 etcdctl --endpoints=https://example-client.default.svc.cluster.local:2379 \
+    --cert=etcd-crt.pem --key=etcd-key.pem --cacert=etcd-ca-crt.pem \
+    member list -w table
+```
+It should be run within a pod inside k8s in order to access the service name.
