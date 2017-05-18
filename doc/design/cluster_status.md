@@ -6,15 +6,15 @@ A common way to do this in the Kuberentes world is through status field, like po
 
 ```go
 type EtcdCluster struct {
-	unversioned.TypeMeta `json:",inline"`
-	api.ObjectMeta       `json:"metadata,omitempty"`
-	Spec                 ClusterSpec `json:"spec"`
-	Status               ClusterStatus `json:"status"`   
+    unversioned.TypeMeta `json:",inline"`
+    api.ObjectMeta       `json:"metadata,omitempty"`
+    Spec                 ClusterSpec `json:"spec"`
+    Status               ClusterStatus `json:"status"`   
 }
 
 Type ClusterStatus struct {
-	Paused bool `json:"paused"`
-	...
+    Paused bool `json:"paused"`
+    ...
 }
 ```
 
