@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- [GH-1108] selfHosted: fix backup unable to talk to etcd pods
+
 ### Deprecated
 
 ### Security

@@ -36,10 +36,9 @@ import (
 )
 
 func TestSelfHosted(t *testing.T) {
-	t.Run("self hosted", func(t *testing.T) {
-		t.Run("create self hosted cluster from scratch", testCreateSelfHostedCluster)
-		t.Run("migrate boot member to self hosted cluster", testCreateSelfHostedClusterWithBootMember)
-	})
+	t.Run("create self hosted cluster from scratch", testCreateSelfHostedCluster)
+	t.Run("migrate boot member to self hosted cluster", testCreateSelfHostedClusterWithBootMember)
+	t.Run("backup for self hosted cluster", testSelfHostedClusterWithBackup)
 	cleanupSelfHostedHostpath()
 }
 
@@ -129,6 +128,43 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 120*time.Second, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
+	}
+}
+
+func testSelfHostedClusterWithBackup(t *testing.T) {
+	f := framework.Global
+
+	cl := e2eutil.NewCluster("test-cluster-", 3)
+	cl = e2eutil.ClusterWithBackup(cl, e2eutil.NewS3BackupPolicy(true))
+	cl = e2eutil.ClusterWithSelfHosted(cl, &spec.SelfHostedPolicy{})
+
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, cl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		storageCheckerOptions := e2eutil.StorageCheckerOptions{
+			S3Cli:    f.S3Cli,
+			S3Bucket: f.S3Bucket,
+		}
+		err := e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, storageCheckerOptions)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd)
+	if err != nil {
+		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
+	}
+	fmt.Println("reached to 3 members cluster")
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 60*time.Second)
+	if err != nil {
+		t.Fatalf("failed to create backup pod: %v", err)
+	}
+	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Metadata.Name)
+	if err != nil {
+		t.Fatalf("fail to make a latest backup: %v", err)
 	}
 }
 
