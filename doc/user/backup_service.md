@@ -22,17 +22,17 @@ JSON format of the backup status when backup is successful.
 
 ``` go
 type BackupStatus struct {
-	// Creation time of the backup.
-	CreationTime string `json:"creationTime"`
+    // Creation time of the backup.
+    CreationTime string `json:"creationTime"`
 
-	// Size is the size of the backup in MB.
-	Size float64 `json:"size"`
+    // Size is the size of the backup in MB.
+    Size float64 `json:"size"`
 
-	// Version is the version of the backup cluster.
-	Version string `json:"version"`
+    // Version is the version of the backup cluster.
+    Version string `json:"version"`
 
-	// TimeTookInSecond is the total time took to create the backup.
-	TimeTookInSecond int `json:"timeTookInSecond"`
+    // TimeTookInSecond is the total time took to create the backup.
+    TimeTookInSecond int `json:"timeTookInSecond"`
 }
 ```
 

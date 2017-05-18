@@ -17,73 +17,75 @@ Here is the overview for etcd-operator TLS flow, which should set us up well for
 
 ### Trust delegation diagram:
 
+```
     -----------------
     | external PKI  |  (something that can sign the operator's CSRs)
     -----------------
-		  |	 |
-	      |  | /|\ CERT
-		  |  |  |   |
-	      |  |  |   |
-		  |  | CSR \|/
-	      |  |
-		  |	 |
-		  |  |
-		  |  |---> [ operator client-interface CA ]
-		  |         |
-		  |			|                    --------------> [ etcd-cluster-A client-interface CLIENT CERT ]
-		  |			|                    |
-		  |			|             DIRECT | SIGN
-		  |			|		             |
-		  |			|-------->  [ etcd-cluster-A client-interface CERTIFICATE AUTHORITY ]
-	 	  |			|                    |
-		  |		 D	|                    |  etcd-cluster-A-0000
-       	  |		 I	|                    |-------------> [ client-interface SERVER CERT ]
-		  |		 R	|           /|\ CERT |
-	      |		 E	|            |   |   |  etcd-cluster-A-0001
-		  |		 C	|           CSR \|/  |-------------> [ client-interface SERVER CERT ]
-		  |		 T	|                    |
-		  |		 	|                    |  etcd-cluster-A-0002
-		  |		 S	|                    |-------------> [ client-interface SERVER CERT ]
-		  |		 I	|                    |
-		  |		 G	|                    |  cluster-A-backup-sidecar
-		  |		 N	|                    |-------------> [ client-interface CLIENT CERT ]
-		  |			|
-		  |			|
-		  |			|
-		  |			|                    --------------> [ etcd-cluster-B client-interface CLIENT CERT ]
-		  |			|                    |
-		  |			|             DIRECT | SIGN
-		  |			|		             |
-		  |			|-------->  [ etcd-cluster-B client-interface CERTIFICATE AUTHORITY ]
-     /|\  | CERT	|					 |
-	  |   |	 |		|					 |  etcd-cluster-B-0000
-	  |	  |	 |		|					 |------> ...
-	 CSR  | \|/ 	|
-		  |			| ...
+          |     |
+          |  | /|\ CERT
+          |  |  |   |
+          |  |  |   |
+          |  | CSR \|/
+          |  |
+          |  |
+          |  |
+          |  |---> [ operator client-interface CA ]
+          |         |
+          |            |                    --------------> [ etcd-cluster-A client-interface CLIENT CERT ]
+          |            |                    |
+          |            |             DIRECT | SIGN
+          |            |                     |
+          |            |-------->  [ etcd-cluster-A client-interface CERTIFICATE AUTHORITY ]
+          |            |                    |
+          |         D  |                    |  etcd-cluster-A-0000
+          |         I  |                    |-------------> [ client-interface SERVER CERT ]
+          |         R  |           /|\ CERT |
+          |         E  |            |   |   |  etcd-cluster-A-0001
+          |         C  |           CSR \|/  |-------------> [ client-interface SERVER CERT ]
+          |         T  |                    |
+          |            |                    |  etcd-cluster-A-0002
+          |         S  |                    |-------------> [ client-interface SERVER CERT ]
+          |         I  |                    |
+          |         G  |                    |  cluster-A-backup-sidecar
+          |         N  |                    |-------------> [ client-interface CLIENT CERT ]
+          |            |                    |
+          |            |                    |
+          |            |                    |
+          |            |                    --------------> [ etcd-cluster-B client-interface CLIENT CERT ]
+          |            |                    |
+          |            |             DIRECT | SIGN
+          |            |                    |
+          |            |                    |-------->  [ etcd-cluster-B client-interface CERTIFICATE AUTHORITY ]
+     /|\  | CERT       |                    |
+      |   |  |         |                    |  etcd-cluster-B-0000
+      |      |         |                    |------> ...
+     CSR  | \|/        |
+          |            | ...
           |
-		  |
-		  |------> [ operator peer-interface CA ]
-					|
-					|
-					|-------->  [ etcd-cluster-A peer interface CERTIFICATE AUTHORITY ]
-					|                    |
-				 D	|                    |  etcd-cluster-A-0000
-				 I	|                    |-------------> [ peer-interface SERVER CERT ]
-				 R	|           /|\ CERT |
-				 E	|            |   |   |  etcd-cluster-A-0001
-				 C	|           CSR \|/  |-------------> [ peer-interface SERVER CERT ]
-				 T	|                    |
-				 	|                    |  etcd-cluster-A-0002
-				 S	|                    |-------------> [ peer-interface SERVER CERT ]
-				 I	|
-				 G	|
-				 N	|
-					|-------->  [ etcd-cluster-B peer interface CERTIFICATE AUTHORITY ]
-					|					 |
-					|					 |  etcd-cluster-B-0000
-					|					 |------> ...
-					|
-					| ...
+          |
+          |------> [ operator peer-interface CA ]
+                    |
+                    |
+                    |-------->  [ etcd-cluster-A peer interface CERTIFICATE AUTHORITY ]
+                    |                    |
+                 D  |                    |  etcd-cluster-A-0000
+                 I  |                    |-------------> [ peer-interface SERVER CERT ]
+                 R  |           /|\ CERT |
+                 E  |            |   |   |  etcd-cluster-A-0001
+                 C  |           CSR \|/  |-------------> [ peer-interface SERVER CERT ]
+                 T  |                    |
+                    |                    |  etcd-cluster-A-0002
+                 S  |                    |-------------> [ peer-interface SERVER CERT ]
+                 I  |
+                 G  |
+                 N  |
+                    |-------->  [ etcd-cluster-B peer interface CERTIFICATE AUTHORITY ]
+                    |                     |
+                    |                     |  etcd-cluster-B-0000
+                    |                     |------> ...
+                    |
+                    | ...
+```
 
 
 
@@ -116,25 +118,29 @@ Here is the overview for etcd-operator TLS flow, which should set us up well for
 
 #### Direct Sign (intra-component)
 
+```
            [ signer ]
                |
-	           |
-	    DIRECT | SIGN
-	           |
-	           |
+               |
+        DIRECT | SIGN
+               |
+               |
                -----> [ signee ]
+```
 
 In the case that the _signer_ and _signee_ are within the same component, we have the _signer's_ private key material immediately available to produce a signed certificate for the _signee_. No need for CSR exchange.
 
 #### CSR/Cert exchange (inter-component)
 
+```
            [ signer ]
                |
-	 /|\ CERT  |
-	  |   |    |
-	  |   |    |
-	 CSR \|/   |
+     /|\ CERT  |
+      |   |    |
+      |   |    |
+     CSR \|/   |
                -----> [ signee ]
+```
 
 
 This is a symbol for a _signee_ submitting a CSR to a _signer_, and recieving back a signed certificate back.
