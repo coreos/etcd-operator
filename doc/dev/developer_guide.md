@@ -22,6 +22,7 @@ Required tools:
 Build in project root dir:
 
 ```
+( under $GOPATH/src/github.com/coreos/etcd-operator/ )
 $ IMAGE=${your_image} hack/build/operator/build
 ```
 `IMAGE` is the container image, e.g. "gcr.io/coreos/etcd-operator" .
