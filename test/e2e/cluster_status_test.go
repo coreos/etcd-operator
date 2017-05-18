@@ -78,8 +78,7 @@ func testBackupStatus(t *testing.T) {
 	}
 	f := framework.Global
 
-	bp := e2eutil.NewPVBackupPolicy()
-	bp.CleanupBackupsOnClusterDelete = true
+	bp := e2eutil.NewPVBackupPolicy(true)
 	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.ClusterWithBackup(e2eutil.NewCluster("test-etcd-", 1), bp))
 	if err != nil {
 		t.Fatal(err)

@@ -73,7 +73,7 @@ func testClusterRestoreDifferentName(t *testing.T) {
 }
 
 func testClusterRestore(t *testing.T, needDataClone bool) {
-	testClusterRestoreWithBackupPolicy(t, needDataClone, e2eutil.NewPVBackupPolicy())
+	testClusterRestoreWithBackupPolicy(t, needDataClone, e2eutil.NewPVBackupPolicy(false))
 }
 
 func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backupPolicy *spec.BackupPolicy) {
@@ -182,9 +182,9 @@ func testClusterRestoreS3SameName(t *testing.T, perCluster bool) {
 
 	var bp *spec.BackupPolicy
 	if perCluster {
-		bp = e2eutil.NewS3BackupPolicy()
+		bp = e2eutil.NewS3BackupPolicy(false)
 	} else {
-		bp = e2eutil.NewOperatorS3BackupPolicy()
+		bp = e2eutil.NewOperatorS3BackupPolicy(false)
 	}
 
 	testClusterRestoreWithBackupPolicy(t, false, bp)
@@ -197,9 +197,9 @@ func testClusterRestoreS3DifferentName(t *testing.T, perCluster bool) {
 
 	var bp *spec.BackupPolicy
 	if perCluster {
-		bp = e2eutil.NewS3BackupPolicy()
+		bp = e2eutil.NewS3BackupPolicy(false)
 	} else {
-		bp = e2eutil.NewOperatorS3BackupPolicy()
+		bp = e2eutil.NewOperatorS3BackupPolicy(false)
 	}
 
 	testClusterRestoreWithBackupPolicy(t, true, bp)

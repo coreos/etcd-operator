@@ -103,15 +103,19 @@ func testDisasterRecoveryAll(t *testing.T) {
 }
 
 func testDisasterRecovery(t *testing.T, numToKill int) {
-	testDisasterRecoveryWithBackupPolicy(t, numToKill, e2eutil.NewPVBackupPolicy())
+	testDisasterRecoveryWithBackupPolicy(t, numToKill, e2eutil.NewPVBackupPolicy(true))
 }
 
 func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPolicy *spec.BackupPolicy) {
+	cl := e2eutil.NewCluster("test-etcd-", 3)
+	cl = e2eutil.ClusterWithBackup(cl, backupPolicy)
+	testDisasterRecoveryWithCluster(t, numToKill, cl)
+}
+
+func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.Cluster) {
 	f := framework.Global
 
-	backupPolicy.CleanupBackupsOnClusterDelete = true
-	origEtcd := e2eutil.NewCluster("test-etcd-", 3)
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
+	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, cl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,9 +178,9 @@ func testS3MajorityDown(t *testing.T, perCluster bool) {
 
 	var bp *spec.BackupPolicy
 	if perCluster {
-		bp = e2eutil.NewS3BackupPolicy()
+		bp = e2eutil.NewS3BackupPolicy(true)
 	} else {
-		bp = e2eutil.NewOperatorS3BackupPolicy()
+		bp = e2eutil.NewOperatorS3BackupPolicy(true)
 	}
 
 	testDisasterRecoveryWithBackupPolicy(t, 2, bp)
@@ -192,9 +196,9 @@ func testS3AllDown(t *testing.T, perCluster bool) {
 
 	var bp *spec.BackupPolicy
 	if perCluster {
-		bp = e2eutil.NewS3BackupPolicy()
+		bp = e2eutil.NewS3BackupPolicy(true)
 	} else {
-		bp = e2eutil.NewOperatorS3BackupPolicy()
+		bp = e2eutil.NewOperatorS3BackupPolicy(true)
 	}
 
 	testDisasterRecoveryWithBackupPolicy(t, 3, bp)
@@ -223,8 +227,7 @@ func testDynamicAddBackupPolicy(t *testing.T) {
 	}
 
 	uf := func(cl *spec.Cluster) {
-		bp := e2eutil.NewS3BackupPolicy()
-		bp.CleanupBackupsOnClusterDelete = true
+		bp := e2eutil.NewS3BackupPolicy(true)
 		cl.Spec.Backup = bp
 	}
 	clus, err = e2eutil.UpdateCluster(f.KubeClient, clus, 10, uf)

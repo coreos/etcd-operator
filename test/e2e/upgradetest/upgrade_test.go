@@ -122,14 +122,14 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 // TestRestoreFromBackup tests that new operator could recover a new cluster from a backup of the old cluster.
 func TestRestoreFromBackup(t *testing.T) {
 	t.Run("Restore from PV backup of old cluster", func(t *testing.T) {
-		testRestoreWithBackupPolicy(t, e2eutil.NewPVBackupPolicy())
+		testRestoreWithBackupPolicy(t, e2eutil.NewPVBackupPolicy(false))
 	})
 	t.Run("Restore from S3 backup of old cluster", func(t *testing.T) {
 		t.Run("per cluster s3 policy", func(t *testing.T) {
-			testRestoreWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
+			testRestoreWithBackupPolicy(t, e2eutil.NewS3BackupPolicy(false))
 		})
 		t.Run("operator wide s3 policy", func(t *testing.T) {
-			testRestoreWithBackupPolicy(t, e2eutil.NewOperatorS3BackupPolicy())
+			testRestoreWithBackupPolicy(t, e2eutil.NewOperatorS3BackupPolicy(false))
 		})
 	})
 }
@@ -151,7 +151,6 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
 	}
 
-	bp.CleanupBackupsOnClusterDelete = false
 	origClus := e2eutil.NewCluster("upgrade-test-restore-", 3)
 	origClus = e2eutil.ClusterWithBackup(origClus, bp)
 	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, origClus)
@@ -241,14 +240,14 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 // TestBackupForOldCluster tests that new backup sidecar could make backup from old cluster.
 func TestBackupForOldCluster(t *testing.T) {
 	t.Run("PV backup for old cluster", func(t *testing.T) {
-		testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewPVBackupPolicy())
+		testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewPVBackupPolicy(true))
 	})
 	t.Run("S3 backup for old cluster", func(t *testing.T) {
 		t.Run("per cluster s3 policy", func(t *testing.T) {
-			testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
+			testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewS3BackupPolicy(true))
 		})
 		t.Run("operator wide s3 policy", func(t *testing.T) {
-			testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewOperatorS3BackupPolicy())
+			testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewOperatorS3BackupPolicy(true))
 		})
 	})
 }
@@ -271,7 +270,6 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 
 	// Make interval long so no backup is made by the sidecar since we want to make only one backup during the whole test
 	bp.BackupIntervalInSecond = 60 * 60 * 24
-	bp.CleanupBackupsOnClusterDelete = true
 	cl := e2eutil.NewCluster("upgrade-test-backup-", 3)
 	cl = e2eutil.ClusterWithBackup(cl, bp)
 	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, cl)
@@ -324,14 +322,14 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 // TestDisasterRecovery tests if the new operator could do disaster recovery from backup of the old cluster.
 func TestDisasterRecovery(t *testing.T) {
 	t.Run("Recover from PV backup", func(t *testing.T) {
-		testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewPVBackupPolicy())
+		testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewPVBackupPolicy(true))
 	})
 	t.Run("Recover from S3 backup", func(t *testing.T) {
 		t.Run("per cluster s3 policy", func(t *testing.T) {
-			testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewS3BackupPolicy())
+			testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewS3BackupPolicy(true))
 		})
 		t.Run("operator wide s3 policy", func(t *testing.T) {
-			testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewOperatorS3BackupPolicy())
+			testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewOperatorS3BackupPolicy(true))
 		})
 	})
 }
@@ -352,7 +350,6 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
 	}
 
-	bp.CleanupBackupsOnClusterDelete = true
 	testClus := e2eutil.NewCluster("upgrade-test-recovery-", 3)
 	testClus = e2eutil.ClusterWithBackup(testClus, bp)
 	testClus, err = e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, testClus)

@@ -38,7 +38,7 @@ func NewCluster(genName string, size int) *spec.Cluster {
 	}
 }
 
-func NewS3BackupPolicy() *spec.BackupPolicy {
+func NewS3BackupPolicy(cleanup bool) *spec.BackupPolicy {
 	return &spec.BackupPolicy{
 		BackupIntervalInSecond: 60 * 60,
 		MaxBackups:             5,
@@ -49,18 +49,20 @@ func NewS3BackupPolicy() *spec.BackupPolicy {
 				AWSSecret: os.Getenv("TEST_AWS_SECRET"),
 			},
 		},
+		CleanupBackupsOnClusterDelete: cleanup,
 	}
 }
 
-func NewOperatorS3BackupPolicy() *spec.BackupPolicy {
+func NewOperatorS3BackupPolicy(cleanup bool) *spec.BackupPolicy {
 	return &spec.BackupPolicy{
-		BackupIntervalInSecond: 60 * 60,
-		MaxBackups:             5,
-		StorageType:            spec.BackupStorageTypeS3,
+		BackupIntervalInSecond:        60 * 60,
+		MaxBackups:                    5,
+		StorageType:                   spec.BackupStorageTypeS3,
+		CleanupBackupsOnClusterDelete: cleanup,
 	}
 }
 
-func NewPVBackupPolicy() *spec.BackupPolicy {
+func NewPVBackupPolicy(cleanup bool) *spec.BackupPolicy {
 	return &spec.BackupPolicy{
 		BackupIntervalInSecond: 60 * 60,
 		MaxBackups:             5,
@@ -70,6 +72,7 @@ func NewPVBackupPolicy() *spec.BackupPolicy {
 				VolumeSizeInMB: 512,
 			},
 		},
+		CleanupBackupsOnClusterDelete: cleanup,
 	}
 }
 
