@@ -51,6 +51,7 @@ type Backup struct {
 	policy        spec.BackupPolicy
 	listenAddr    string
 	etcdTLSConfig *tls.Config
+	selfHosted    bool
 
 	be backend
 
@@ -109,6 +110,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 		listenAddr:    listenAddr,
 		be:            be,
 		etcdTLSConfig: tc,
+		selfHosted:    sp.SelfHosted != nil,
 
 		backupNow: make(chan chan backupNowAck),
 	}, nil
@@ -179,7 +181,7 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 		logrus.Warning(msg)
 		return lastSnapRev, fmt.Errorf(msg)
 	}
-	member, rev := getMemberWithMaxRev(pods, b.etcdTLSConfig)
+	member, rev := getMemberWithMaxRev(pods, b.etcdTLSConfig, b.selfHosted)
 	if member == nil {
 		logrus.Warning("no reachable member")
 		return lastSnapRev, fmt.Errorf("no reachable member")
@@ -246,7 +248,7 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	return nil
 }
 
-func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config) (*etcdutil.Member, int64) {
+func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config, selfHosted bool) (*etcdutil.Member, int64) {
 	var member *etcdutil.Member
 	maxRev := int64(0)
 	for _, pod := range pods {
@@ -254,6 +256,9 @@ func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config) (*etcdutil.Member, int6
 			Name:         pod.Name,
 			Namespace:    pod.Namespace,
 			SecureClient: tc != nil,
+		}
+		if selfHosted {
+			m.ClientURLs = []string{fmt.Sprintf("http://%s:2379", pod.Status.PodIP)}
 		}
 		cfg := clientv3.Config{
 			Endpoints:   []string{m.ClientAddr()},
