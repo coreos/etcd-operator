@@ -52,7 +52,7 @@ func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, ns, name, peer
 	containerSpec := []v1.Container{
 		{
 			Name:  "add-member",
-			Image: EtcdImageName(cs.Version),
+			Image: EtcdImageName(cs.Image, cs.Version),
 			Command: []string{
 				// NOTE: Init container will be re-executed on restart. We are taking the datadir as a signal of restart.
 				"/bin/sh", "-ec",
@@ -84,7 +84,7 @@ func NewSelfHostedEtcdPod(name string, initialCluster []string, clusterName, ns,
 		"etcd_cluster": clusterName,
 	}
 
-	c := etcdContainer(commands, cs.Version, env)
+	c := etcdContainer(commands, cs.Image, cs.Version, env)
 	// On node reboot, there will be two copies of etcd pod: scheduled and checkpointed one.
 	// Checkpointed one will start first. But then the scheduler will detect host port conflict,
 	// and set the pod (in APIServer) failed. This further affects etcd service by removing the endpoints.

@@ -26,6 +26,7 @@ import (
 )
 
 const (
+	defaultImage   = "quay.io/coreos/etcd"
 	defaultVersion = "3.1.4"
 
 	TPRKind        = "cluster"
@@ -70,6 +71,10 @@ type ClusterSpec struct {
 	// The vaild range of the size is from 1 to 7.
 	Size int `json:"size"`
 
+	// Image is the expected etcd image name
+	// for user Get image from private registry
+	// default is quay.io/coreos/etcd
+	Image string `json:"image"`
 	// Version is the expected version of the etcd cluster.
 	// The etcd-operator will eventually make the etcd cluster version
 	// equal to the expected version.
@@ -188,6 +193,11 @@ func (c *ClusterSpec) Cleanup() {
 	if len(c.Version) == 0 {
 		c.Version = defaultVersion
 	}
+
+	if len(c.Image) == 0 {
+		c.Image = defaultImage
+	}
+
 	c.Version = strings.TrimLeft(c.Version, "v")
 }
 
