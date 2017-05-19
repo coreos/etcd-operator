@@ -6,6 +6,8 @@
 
 ### Removed
 
+- Update default etcd version to 3.1.8
+
 ### Fixed
 
 - [GH-1108] selfHosted: fix backup unable to talk to etcd pods

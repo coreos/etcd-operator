@@ -99,7 +99,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 5
-  version: "3.1.4"
+  version: "3.1.8"
 ```
 
 Apply the size change to the cluster TPR:
@@ -127,7 +127,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 3
-  version: "3.1.4"
+  version: "3.1.8"
 ```
 ```
 $ kubectl apply -f example/example-etcd-cluster.yaml
@@ -310,7 +310,7 @@ $ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
     image: quay.io/coreos/etcd:v3.0.16
 ```
 
-Now modify the file `3.0-etcd-cluster.yaml` and change the `version` from 3.0.16 to 3.1.4:
+Now modify the file `3.0-etcd-cluster.yaml` and change the `version` from 3.0.16 to 3.1.8:
 
 ```
 $ cat 3.0-etcd-cluster.yaml
@@ -320,7 +320,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 3
-  version: "3.1.4"
+  version: "3.1.8"
 ```
 
 Apply the version change to the cluster TPR:
@@ -329,11 +329,11 @@ Apply the version change to the cluster TPR:
 $ kubectl apply -f 3.0-etcd-cluster.yaml
 ```
 
-Wait ~30 seconds. The container image version should be updated to v3.1.4:
+Wait ~30 seconds. The container image version should be updated to v3.1.8:
 
 ```
 $ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
-    image: quay.io/coreos/etcd:v3.1.4
+    image: quay.io/coreos/etcd:v3.1.8
 ```
 
 Check the other two pods and you should see the same result.
