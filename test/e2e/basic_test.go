@@ -152,13 +152,13 @@ func testEtcdUpgrade(t *testing.T) {
 	}
 
 	updateFunc := func(cl *spec.Cluster) {
-		cl = e2eutil.ClusterWithVersion(cl, "3.1.4")
+		cl = e2eutil.ClusterWithVersion(cl, "3.1.8")
 	}
 	if _, err := e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 
-	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, "3.1.4", 3, 60*time.Second, testEtcd)
+	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, "3.1.8", 3, 60*time.Second, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to wait new version etcd cluster: %v", err)
 	}
