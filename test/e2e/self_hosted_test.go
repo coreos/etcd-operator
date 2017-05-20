@@ -132,6 +132,10 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 }
 
 func testSelfHostedClusterWithBackup(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
+
 	f := framework.Global
 
 	cl := e2eutil.NewCluster("test-cluster-", 3)
