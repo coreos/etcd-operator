@@ -4,7 +4,7 @@ For the case when the desired operator version is not compatible with an existin
 This is a more general way to upgrade the operator when an in-place update is not possible.
 
 
-First make a backup of the current cluster. See the [backup service](/doc/user/backup_service.md) doc to see how to do this from inside the kubernetes cluster.
+First make a backup of the current cluster. See the [backup service](../backup_service.md) doc to see how to do this from inside the kubernetes cluster.
 
 Next delete the current cluster and operator. Make sure that the `cleanupBackupsOnClusterDelete` field was not set to `true` for the cluster configuration since that would clean the backup upon deleting the cluster.
 ```bash
