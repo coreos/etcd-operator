@@ -1,9 +1,9 @@
 # Upgrade Guide
 
-This document shows how to safely upgrade the operator to a desired version while preserving the cluster's state and data whenever possible. It is assumed that the preexisting cluster is configured to create and store backups to persistent storage. See the [backup config guide](/doc/user/backup_config.md) for details.
+This document shows how to safely upgrade the operator to a desired version while preserving the cluster's state and data whenever possible. It is assumed that the preexisting cluster is configured to create and store backups to persistent storage. See the [backup config guide](../backup_config.md) for details.
 
 ### Backup safety precaution:
-First create a backup of your current cluster before starting the upgrade process. See the [backup service guide](/doc/user/backup_service.md) on how to create a backup.
+First create a backup of your current cluster before starting the upgrade process. See the [backup service guide](../backup_service.md) on how to create a backup.
 
 In the case of an upgrade failure you can restore your cluster to the previous state from the previous backup. See the [spec examples](https://github.com/coreos/etcd-operator/blob/master/doc/user/spec_examples.md#three-members-cluster-that-restores-from-previous-pv-backup) on how to do that.
 
@@ -20,7 +20,7 @@ $ kubectl edit deployment/etcd-operator
 ```
 
 ### Incompatible upgrade
-In the case of an incompatible upgrade, the process requires restoring a new cluster from backup. See the [incompatible upgrade guide](/doc/user/upgrade/incompatible_upgrade.md) for more information.
+In the case of an incompatible upgrade, the process requires restoring a new cluster from backup. See the [incompatible upgrade guide](incompatible_upgrade.md) for more information.
 
 
 ## v0.2.x to v0.3.x
