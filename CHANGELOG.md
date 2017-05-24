@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Anti-affinity only applies to etcd pods. Backup pod could still colocate with any etcd pod.
+
 ### Removed
 
 - Update default etcd version to 3.1.8

@@ -90,6 +90,7 @@ func PodWithAntiAffinity(pod *v1.Pod, clusterName string) *v1.Pod {
 	// set pod anti-affinity with the pods that belongs to the same etcd cluster
 	ls := &metav1.LabelSelector{MatchLabels: map[string]string{
 		"etcd_cluster": clusterName,
+		"app":          "etcd",
 	}}
 	return podWithAntiAffinity(pod, ls)
 }
