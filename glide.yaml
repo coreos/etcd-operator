@@ -17,3 +17,17 @@ import:
 - package: github.com/jpillora/go-ogle-analytics
 - package: golang.org/x/net
 - package: golang.org/x/time
+- package: cloud.google.com/go
+  version: 0.7.0
+  subpackages:
+  - storage
+- package: golang.org/x/oauth2
+  version: f047394b6d14284165300fd82dad67edb3a4d7f6
+  subpackages:
+  - google
+- package: google.golang.org/api
+  version: d9d64fe74969b80fb4a435ae9280c9ff061a6097
+  subpackages:
+  - googleapi
+  - iterator
+  - option
