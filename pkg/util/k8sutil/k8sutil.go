@@ -389,6 +389,16 @@ func PatchDeployment(kubecli kubernetes.Interface, namespace, name string, updat
 	return err
 }
 
+func CascadeDeleteOptions(gracePeriodSeconds int64) *metav1.DeleteOptions {
+	return &metav1.DeleteOptions{
+		GracePeriodSeconds: func(t int64) *int64 { return &t }(gracePeriodSeconds),
+		PropagationPolicy: func() *metav1.DeletionPropagation {
+			foreground := metav1.DeletePropagationForeground
+			return &foreground
+		}(),
+	}
+}
+
 // mergeLables merges l2 into l1. Conflicting label will be skipped.
 func mergeLabels(l1, l2 map[string]string) {
 	for k, v := range l2 {

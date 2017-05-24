@@ -62,7 +62,7 @@ func DeleteClusterAndBackup(t *testing.T, kubecli kubernetes.Interface, cl *spec
 	if err != nil {
 		return err
 	}
-	err = waitBackupDeleted(kubecli, cl, checkerOpt)
+	err = WaitBackupDeleted(kubecli, cl, checkerOpt)
 	if err != nil {
 		return fmt.Errorf("fail to wait backup deleted: %v", err)
 	}

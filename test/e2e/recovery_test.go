@@ -47,6 +47,8 @@ func TestS3Backup(t *testing.T) {
 		t.Run("operator wide s3 policy", func(t *testing.T) { testS3AllDown(t, false) })
 	})
 	t.Run("dynamically add backup policy", testDynamicAddBackupPolicy)
+	t.Run("dynamically remove backup policy", testDynamicRemoveBackupPolicy)
+
 }
 
 func testOneMemberRecovery(t *testing.T) {
@@ -237,5 +239,51 @@ func testDynamicAddBackupPolicy(t *testing.T) {
 	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 60*time.Second)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func testDynamicRemoveBackupPolicy(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
+
+	f := framework.Global
+	clus := e2eutil.ClusterWithBackup(e2eutil.NewCluster("test-etcd-", 3), e2eutil.NewS3BackupPolicy(true))
+	clus, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, clus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err := e2eutil.DeleteCluster(t, f.KubeClient, clus)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, clus)
+	if err != nil {
+		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
+	}
+
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 60*time.Second)
+	if err != nil {
+		t.Fatalf("failed to create backup pod: %v", err)
+	}
+
+	uf := func(cl *spec.Cluster) {
+		cl.Spec.Backup = nil
+	}
+	_, err = e2eutil.UpdateCluster(f.KubeClient, clus, 10, uf)
+	if err != nil {
+		t.Fatalf("failed to update cluster: %v", err)
+	}
+
+	storageCheckerOptions := e2eutil.StorageCheckerOptions{
+		S3Cli:    f.S3Cli,
+		S3Bucket: f.S3Bucket,
+	}
+	err = e2eutil.WaitBackupDeleted(f.KubeClient, clus, storageCheckerOptions)
+	if err != nil {
+		t.Fatalf("fail to wait backup deleted: %v", err)
 	}
 }

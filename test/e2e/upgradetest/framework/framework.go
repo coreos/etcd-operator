@@ -108,11 +108,7 @@ func (f *Framework) CreateOperator() error {
 }
 
 func (f *Framework) DeleteOperator() error {
-	foreground := metav1.DeletePropagationForeground
-	err := f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Delete("etcd-operator", &metav1.DeleteOptions{
-		GracePeriodSeconds: func(t int64) *int64 { return &t }(0),
-		PropagationPolicy:  &foreground,
-	})
+	err := f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Delete("etcd-operator", k8sutil.CascadeDeleteOptions(0))
 	if err != nil {
 		return err
 	}

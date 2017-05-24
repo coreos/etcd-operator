@@ -240,3 +240,21 @@ func (bm *backupManager) upgradeIfNeeded() error {
 	}
 	return k8sutil.PatchDeployment(bm.config.KubeCli, ns, n, uf)
 }
+
+func (bm *backupManager) deleteBackupSidecar() error {
+	name, ns := k8sutil.BackupSidecarName(bm.cluster.Metadata.Name), bm.cluster.Metadata.Namespace
+	err := bm.config.KubeCli.CoreV1().Services(bm.cluster.Metadata.Namespace).Delete(name, nil)
+	if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
+		return fmt.Errorf("backup manager deletion: failed to delete backup service: %v", err)
+	}
+
+	err = bm.config.KubeCli.AppsV1beta1().Deployments(ns).Delete(name, k8sutil.CascadeDeleteOptions(0))
+	if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
+		return fmt.Errorf("backup manager deletion: failed to delete backup sidecar deployment: %v", err)
+	}
+
+	if err := bm.cleanup(); err != nil {
+		return fmt.Errorf("backup manager deletion: %v", err)
+	}
+	return nil
+}

@@ -146,13 +146,7 @@ func (gc *GC) collectDeployment(option metav1.ListOptions, runningSet map[types.
 			continue
 		}
 		if !runningSet[d.OwnerReferences[0].UID] {
-			err = gc.kubecli.AppsV1beta1().Deployments(gc.ns).Delete(d.GetName(), &metav1.DeleteOptions{
-				GracePeriodSeconds: func(t int64) *int64 { return &t }(0),
-				PropagationPolicy: func() *metav1.DeletionPropagation {
-					foreground := metav1.DeletePropagationForeground
-					return &foreground
-				}(),
-			})
+			err = gc.kubecli.AppsV1beta1().Deployments(gc.ns).Delete(d.GetName(), k8sutil.CascadeDeleteOptions(0))
 			if err != nil {
 				if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 					return err
