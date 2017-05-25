@@ -373,7 +373,8 @@ func (c *Cluster) updateBackupPolicy(ob, nb *spec.BackupPolicy) error {
 		}
 		return c.bm.setup()
 	case ob != nil && nb == nil:
-		// TODO: delete backup sidecar
+		c.bm.deleteBackupSidecar()
+		c.bm = nil
 	case ob != nil && nb != nil:
 		return c.bm.updateSidecar(c.cluster)
 	default:
