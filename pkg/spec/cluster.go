@@ -78,7 +78,7 @@ type ClusterSpec struct {
 	// Only etcd released versions are supported: https://github.com/coreos/etcd/releases
 	//
 	// If version is not set, default is "3.1.8".
-	Version string `json:"version"`
+	Version string `json:"version,omitempty"`
 
 	// Paused is to pause the control of the operator for the etcd cluster.
 	Paused bool `json:"paused,omitempty"`
@@ -135,21 +135,21 @@ type PodPolicy struct {
 
 	// AntiAffinity determines if the etcd-operator tries to avoid putting
 	// the etcd members in the same cluster onto the same node.
-	AntiAffinity bool `json:"antiAffinity"`
+	AntiAffinity bool `json:"antiAffinity,omitempty"`
 
 	// Resources is the resource requirements for the etcd container.
 	// This field cannot be updated once the cluster is created.
-	Resources v1.ResourceRequirements `json:"resources"`
+	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 
 	// Tolerations specifies the pod's tolerations.
-	Tolerations []v1.Toleration `json:"tolerations"`
+	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
 
 	// List of environment variables to set in the etcd container.
 	// This is used to configure etcd process. etcd cluster cannot be created, when
 	// bad environement variables are provided. Do not overwrite any flags used to
 	// bootstrap the cluster (for example `--initial-cluster` flag).
 	// This field cannot be updated.
-	EtcdEnv []v1.EnvVar `json:"etcdEnv"`
+	EtcdEnv []v1.EnvVar `json:"etcdEnv,omitempty"`
 }
 
 func (c *ClusterSpec) Validate() error {
