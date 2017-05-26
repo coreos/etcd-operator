@@ -146,7 +146,7 @@ func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, time
 
 	interval := 3 * time.Second
 	var retPod *v1.Pod
-	retryutil.Retry(interval, int(timeout/(interval)), func() (bool, error) {
+	err = retryutil.Retry(interval, int(timeout/(interval)), func() (bool, error) {
 		retPod, err = kubecli.CoreV1().Pods(ns).Get(pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -161,7 +161,7 @@ func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, time
 		}
 	})
 
-	return retPod, nil
+	return retPod, err
 }
 
 func newEtcdServiceManifest(svcName, clusterName string, clusterIP string, port int32) *v1.Service {
