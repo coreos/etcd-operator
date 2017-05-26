@@ -220,7 +220,7 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		"etcd_cluster": clusterName,
 	}
 
-	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version, nil), etcdLivenessProbe(cs.TLS.IsSecureClient()))
+	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version), etcdLivenessProbe(cs.TLS.IsSecureClient()))
 	if cs.Pod != nil {
 		container = containerWithRequirements(container, cs.Pod.Resources)
 	}
