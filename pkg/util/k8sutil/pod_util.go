@@ -149,6 +149,10 @@ func applyPodPolicyToPodTemplateSpec(clusterName string, pod *v1.PodTemplateSpec
 	if len(policy.Tolerations) != 0 {
 		pod.Spec.Tolerations = policy.Tolerations
 	}
+	if policy.HostNetwork {
+		pod.Spec.HostNetwork = true
+		pod.Spec.DNSPolicy = v1.DNSClusterFirstWithHostNet
+	}
 
 	mergeLabels(pod.Labels, policy.Labels)
 }

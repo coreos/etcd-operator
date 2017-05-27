@@ -150,6 +150,9 @@ type PodPolicy struct {
 	// bootstrap the cluster (for example `--initial-cluster` flag).
 	// This field cannot be updated.
 	EtcdEnv []v1.EnvVar `json:"etcdEnv,omitempty"`
+
+	// HostNetwork determines if the etcd will run in host network mode.
+	HostNetwork bool `json:"hostNetwork,omitempty"`
 }
 
 func (c *ClusterSpec) Validate() error {
