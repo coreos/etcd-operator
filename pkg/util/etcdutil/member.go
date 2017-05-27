@@ -32,11 +32,6 @@ type Member struct {
 	// but not from Kubernetes pod list.
 	ID uint64
 
-	// PeerURLs is only used for self-hosted setup.
-	PeerURLs []string
-	// ClientURLs is only used for self-hosted setup.
-	ClientURLs []string
-
 	SecurePeer   bool
 	SecureClient bool
 }
@@ -46,10 +41,6 @@ func (m *Member) fqdn() string {
 }
 
 func (m *Member) ClientAddr() string {
-	if len(m.ClientURLs) != 0 {
-		return strings.Join(m.ClientURLs, ",")
-	}
-
 	return fmt.Sprintf("%s://%s:2379", m.clientScheme(), m.fqdn())
 }
 
@@ -75,10 +66,6 @@ func (m *Member) ListenPeerURL() string {
 }
 
 func (m *Member) PeerURL() string {
-	if len(m.PeerURLs) != 0 {
-		return strings.Join(m.PeerURLs, ",")
-	}
-
 	return fmt.Sprintf("%s://%s:2380", m.peerScheme(), m.fqdn())
 }
 

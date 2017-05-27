@@ -257,9 +257,6 @@ func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config, selfHosted bool) (*etcd
 			Namespace:    pod.Namespace,
 			SecureClient: tc != nil,
 		}
-		if selfHosted {
-			m.ClientURLs = []string{fmt.Sprintf("http://%s:2379", pod.Status.PodIP)}
-		}
 		cfg := clientv3.Config{
 			Endpoints:   []string{m.ClientAddr()},
 			DialTimeout: constants.DefaultDialTimeout,

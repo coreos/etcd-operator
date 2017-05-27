@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 
 	"k8s.io/client-go/pkg/api/v1"
@@ -69,8 +68,6 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 			Name:         name,
 			Namespace:    c.cluster.Metadata.Namespace,
 			ID:           m.ID,
-			ClientURLs:   m.ClientURLs,
-			PeerURLs:     m.PeerURLs,
 			SecurePeer:   c.isSecurePeer(),
 			SecureClient: c.isSecureClient(),
 		}
@@ -79,14 +76,20 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	return nil
 }
 
-func podsToMemberSet(pods []*v1.Pod, selfHosted *spec.SelfHostedPolicy, sc bool) etcdutil.MemberSet {
+func (c *Cluster) newMember(id int) *etcdutil.Member {
+	name := etcdutil.CreateMemberName(c.cluster.Metadata.Name, id)
+	return &etcdutil.Member{
+		Name:         name,
+		Namespace:    c.cluster.Metadata.Namespace,
+		SecurePeer:   c.isSecurePeer(),
+		SecureClient: c.isSecureClient(),
+	}
+}
+
+func podsToMemberSet(pods []*v1.Pod, sc bool) etcdutil.MemberSet {
 	members := etcdutil.MemberSet{}
 	for _, pod := range pods {
 		m := &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace, SecureClient: sc}
-		if selfHosted != nil {
-			m.ClientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
-			m.PeerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
-		}
 		members.Add(m)
 	}
 	return members

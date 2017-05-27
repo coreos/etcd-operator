@@ -30,7 +30,7 @@ func etcdVolumeMounts() []v1.VolumeMount {
 	}
 }
 
-func etcdContainer(commands, version string, env []v1.EnvVar) v1.Container {
+func etcdContainer(commands, version string) v1.Container {
 	c := v1.Container{
 		// TODO: fix "sleep 5".
 		// Without waiting some time, there is highly probable flakes in network setup.
@@ -49,7 +49,6 @@ func etcdContainer(commands, version string, env []v1.EnvVar) v1.Container {
 				Protocol:      v1.ProtocolTCP,
 			},
 		},
-		Env:          env,
 		VolumeMounts: etcdVolumeMounts(),
 	}
 
@@ -70,7 +69,7 @@ func etcdLivenessProbe(isSecure bool) *v1.Probe {
 	// etcd pod is alive only if a linearizable get succeeds.
 	cmd := "ETCDCTL_API=3 etcdctl get foo"
 	if isSecure {
-		tlsFlags := fmt.Sprintf("--cert %[1]s/%[2]s --key %[1]s/%[3]s --cacert %[1]s/%[4]s", operatorEtcdTLSDir, etcdutil.CliCertFile, etcdutil.CliKeyFile, etcdutil.CliCAFile)
+		tlsFlags := fmt.Sprintf("--cert=%[1]s/%[2]s --key=%[1]s/%[3]s --cacert=%[1]s/%[4]s", operatorEtcdTLSDir, etcdutil.CliCertFile, etcdutil.CliKeyFile, etcdutil.CliCAFile)
 		cmd = fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=https://localhost:2379 %s get foo", tlsFlags)
 	}
 	return &v1.Probe{

@@ -16,9 +16,6 @@ package e2e
 
 import (
 	"fmt"
-	"io/ioutil"
-	"math/rand"
-	"net/url"
 	"os"
 	"sync"
 	"testing"
@@ -29,8 +26,7 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
-	"github.com/coreos/etcd/embed"
-	"github.com/coreos/etcd/pkg/netutil"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
 )
@@ -67,53 +63,21 @@ func testCreateSelfHostedCluster(t *testing.T) {
 }
 
 func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
-	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
-	}
-
-	dir, err := ioutil.TempDir("", "embed-etcd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
-	host, _ := netutil.GetDefaultHost()
-
-	rand.Seed(time.Now().UnixNano())
-	port := rand.Intn(61000-32768-1) + 32768 // linux ephemeral ports
-
-	embedCfg := embed.NewConfig()
-	embedCfg.Dir = dir
-	lpurl, _ := url.Parse(fmt.Sprintf("http://%s:%d", host, port+1))
-	lcurl, _ := url.Parse(fmt.Sprintf("http://%s:%d", host, port))
-	embedCfg.LCUrls = []url.URL{*lcurl}
-	embedCfg.LPUrls = []url.URL{*lpurl}
-
-	apurl, _ := url.Parse(fmt.Sprintf("http://%s:%d", host, port+1))
-	acurl, _ := url.Parse(fmt.Sprintf("http://%s:%d", host, port))
-	embedCfg.ACUrls = []url.URL{*acurl}
-	embedCfg.APUrls = []url.URL{*apurl}
-	embedCfg.InitialCluster = "default=" + apurl.String()
-
-	e, err := embed.StartEtcd(embedCfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer e.Close()
-
-	select {
-	case <-e.Server.ReadyNotify():
-	case <-time.After(30 * time.Second):
-		t.Fatal("timeout: wait etcd server ready")
-	}
-
-	t.Log("etcdserver is ready")
-
 	f := framework.Global
+
+	bootEtcdPod, err := startEtcd(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.KubeClient.CoreV1().Pods(f.Namespace).Delete(bootEtcdPod.Name, metav1.NewDeleteOptions(0))
+
+	bootURL := fmt.Sprintf("http://%s:2379", bootEtcdPod.Status.PodIP)
+
+	t.Logf("boot etcd URL: %s", bootURL)
 
 	c := e2eutil.NewCluster("test-etcd-", 3)
 	c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{
-		BootMemberClientEndpoint: embedCfg.ACUrls[0].String(),
+		BootMemberClientEndpoint: bootURL,
 	})
 	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
 	if err != nil {
@@ -129,6 +93,37 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 120*time.Second, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
+}
+
+var etcdCmd = `
+  etcd --name=$(POD_NAME) --data-dir=/var/etcd/data \
+  --listen-client-urls=http://0.0.0.0:2379 --listen-peer-urls=http://0.0.0.0:2380 \
+  --advertise-client-urls=http://$(POD_IP):2379 --initial-advertise-peer-urls=http://$(POD_IP):2380 \
+  --initial-cluster=$(POD_NAME)=http://$(POD_IP):2380 --initial-cluster-token=$(POD_NAME)  --initial-cluster-state=new
+`
+
+func startEtcd(f *framework.Framework) (*v1.Pod, error) {
+	p := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "boot-etcd",
+		},
+		Spec: v1.PodSpec{
+			RestartPolicy: v1.RestartPolicyNever,
+			Containers: []v1.Container{{
+				Command: []string{"/bin/sh", "-ec", etcdCmd},
+				Name:    "etcd",
+				Image:   "quay.io/coreos/etcd",
+				Env: []v1.EnvVar{{
+					Name:      "POD_NAME",
+					ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
+				}, {
+					Name:      "POD_IP",
+					ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "status.podIP"}},
+				}},
+			}},
+		},
+	}
+	return k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace, p, 30*time.Second)
 }
 
 func testSelfHostedClusterWithBackup(t *testing.T) {

@@ -326,7 +326,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 
 			// On controller restore, we could have "members == nil"
 			if rerr != nil || c.members == nil {
-				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted, c.isSecureClient()))
+				rerr = c.updateMembers(podsToMemberSet(running, c.isSecureClient()))
 				if rerr != nil {
 					c.logger.Errorf("failed to update members: %v", rerr)
 					break
@@ -521,13 +521,8 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 func (c *Cluster) updateMemberStatus(pods []*v1.Pod) {
 	var ready, unready []*v1.Pod
 	for _, pod := range pods {
-		var url string
-		if c.cluster.Spec.SelfHosted != nil {
-			url = fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
-		} else {
-			m := &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace, SecureClient: c.isSecureClient()}
-			url = m.ClientAddr()
-		}
+		m := &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace, SecureClient: c.isSecureClient()}
+		url := m.ClientAddr()
 		healthy, err := etcdutil.CheckHealth(url, c.tlsConfig)
 		if err != nil {
 			c.logger.Warningf("health check of etcd member (%s) failed: %v", url, err)
