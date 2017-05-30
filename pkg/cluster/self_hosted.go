@@ -108,7 +108,7 @@ func (c *Cluster) migrateBootMember() error {
 
 	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, []string{endpoint}, c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
 	ns := c.cluster.Metadata.Namespace
-	pod, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, ns, pod, 30*time.Second)
+	_, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, ns, pod, 30*time.Second)
 	if err != nil {
 		return err
 	}

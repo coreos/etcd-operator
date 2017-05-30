@@ -45,7 +45,7 @@ region=us-west-1
 The backups of each cluster are saved in individual directories under given bucket.
 The format would look like: *bucket_name/cluster_name/* .
 
-For example, given bucket "etcd-backups" and if operator has saved backups of cluster "etcd-A", We should see backup files running commands:
+For example, given bucket "etcd-backups" and if operator has saved backups of cluster "etcd-A", we should see backup files running commands:
 ```bash
 $ aws s3 ls s3://etcd-backups/etcd-A/
 ```
