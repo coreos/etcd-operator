@@ -76,6 +76,16 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 	if cs.Pod != nil {
 		c = containerWithRequirements(c, cs.Pod.Resources)
 	}
+
+	volumes := []v1.Volume{{
+		Name: etcdVolumeName,
+		// TODO: configurable mount host path.
+		VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: etcdVolumeMountDir}},
+	}, {
+		Name:         varLockVolumeName,
+		VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: varLockDir}},
+	}}
+
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   m.Name,
@@ -85,22 +95,15 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 			},
 		},
 		Spec: v1.PodSpec{
-			Containers: []v1.Container{c},
 			// Self-hosted etcd pod need to endure node restart.
 			// If we set it to Never, the pod won't restart. If etcd won't come up, nor does other k8s API components.
 			RestartPolicy: v1.RestartPolicyAlways,
-			Volumes: []v1.Volume{{
-				Name: "etcd-data",
-				// TODO: configurable mount host path.
-				VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: etcdVolumeMountDir}},
-			}, {
-				Name:         varLockVolumeName,
-				VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: varLockDir}},
-			}},
-			HostNetwork: true,
-			DNSPolicy:   v1.DNSClusterFirstWithHostNet,
-			Hostname:    m.Name,
-			Subdomain:   clusterName,
+			Containers:    []v1.Container{c},
+			Volumes:       volumes,
+			HostNetwork:   true,
+			DNSPolicy:     v1.DNSClusterFirstWithHostNet,
+			Hostname:      m.Name,
+			Subdomain:     clusterName,
 		},
 	}
 
@@ -109,9 +112,30 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 	applyPodPolicy(clusterName, pod, cs.Pod)
 	// overwrites the antiAffinity setting for self hosted cluster.
 	pod = selfHostedPodWithAntiAffinity(pod)
-
+	applyAppendHostsInitContainer(pod, hostDataDir)
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
+}
+
+func applyAppendHostsInitContainer(p *v1.Pod, hostDataDir string) {
+	etcdHostsFile := path.Join(hostDataDir, "etcd-hosts.checkpoint")
+	containerSpec := []v1.Container{
+		{
+			Name:  "append-hosts",
+			Image: "busybox",
+			Command: []string{
+				// Init container would be re-executed on restart. We are taking the datadir as a signal of restart.
+				// If restart happens and hosts checkpoint exists, we will append it to /etc/hosts.
+				"/bin/sh", "-c",
+				fmt.Sprintf("[ -f %[1]s ] && (cat %[1]s >> /etc/hosts) || true", etcdHostsFile),
+			},
+			VolumeMounts: []v1.VolumeMount{
+				{Name: etcdVolumeName, MountPath: etcdVolumeMountDir},
+			},
+		},
+	}
+
+	p.Spec.InitContainers = containerSpec
 }
 
 func selfHostedPodWithAntiAffinity(pod *v1.Pod) *v1.Pod {

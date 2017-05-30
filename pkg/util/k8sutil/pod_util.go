@@ -24,9 +24,13 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+const (
+	etcdVolumeName = "etcd-data"
+)
+
 func etcdVolumeMounts() []v1.VolumeMount {
 	return []v1.VolumeMount{
-		{Name: "etcd-data", MountPath: etcdVolumeMountDir},
+		{Name: etcdVolumeName, MountPath: etcdVolumeMountDir},
 	}
 }
 

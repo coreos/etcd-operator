@@ -2,6 +2,9 @@
 
 ### Added
 
+- Self-hosted etcd: if `etcd-hosts.checkpoint` file exists under `${datadir}/`,
+  etcd pod will restore the hosts mapping from it before etcd bootstraps.
+
 ### Changed
 
 ### Removed
