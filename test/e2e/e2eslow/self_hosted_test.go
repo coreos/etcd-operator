@@ -35,6 +35,7 @@ func TestSelfHosted(t *testing.T) {
 	t.Run("create self hosted cluster from scratch", testCreateSelfHostedCluster)
 	t.Run("migrate boot member to self hosted cluster", testCreateSelfHostedClusterWithBootMember)
 	t.Run("backup for self hosted cluster", testSelfHostedClusterWithBackup)
+	t.Run("TLS for self hosted cluster", func(t *testing.T) { testTLS(t, true) })
 	cleanupSelfHostedHostpath()
 }
 

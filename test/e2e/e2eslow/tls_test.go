@@ -17,6 +17,7 @@ package e2eslow
 import (
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -25,25 +26,33 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
+var createTLSSecretsOnce sync.Once
+
 func TestTLS(t *testing.T) {
+	testTLS(t, false)
+}
+
+func testTLS(t *testing.T, selfHosted bool) {
 	f := framework.Global
-	clusterName := "peer-tls-test"
+	clusterName := "tls-test"
 	memberPeerTLSSecret := "etcd-server-peer-tls"
 	memberClientTLSSecret := "etcd-server-client-tls"
 	operatorClientTLSSecret := "operator-etcd-client-tls"
-	err := e2eutil.PreparePeerTLSSecret(clusterName, f.Namespace, memberPeerTLSSecret)
-	if err != nil {
-		t.Fatal(err)
-	}
-	certsDir, err := ioutil.TempDir("", "etcd-operator-tls-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(certsDir)
-	err = e2eutil.PrepareClientTLSSecret(certsDir, clusterName, f.Namespace, memberClientTLSSecret, operatorClientTLSSecret)
-	if err != nil {
-		t.Fatal(err)
-	}
+	createTLSSecretsOnce.Do(func() {
+		err := e2eutil.PreparePeerTLSSecret(clusterName, f.Namespace, memberPeerTLSSecret)
+		if err != nil {
+			t.Fatal(err)
+		}
+		certsDir, err := ioutil.TempDir("", "etcd-operator-tls-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(certsDir)
+		err = e2eutil.PrepareClientTLSSecret(certsDir, clusterName, f.Namespace, memberClientTLSSecret, operatorClientTLSSecret)
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
 
 	c := e2eutil.NewCluster("", 3)
 	c.Metadata.Name = clusterName
@@ -56,7 +65,10 @@ func TestTLS(t *testing.T) {
 			OperatorSecret: operatorClientTLSSecret,
 		},
 	}
-	c, err = e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
+	if selfHosted {
+		c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
+	}
+	c, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
 	}
