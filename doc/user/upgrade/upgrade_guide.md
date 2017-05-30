@@ -23,7 +23,7 @@ $ kubectl edit deployment/etcd-operator
 In the case of an incompatible upgrade, the process requires restoring a new cluster from backup. See the [incompatible upgrade guide](incompatible_upgrade.md) for more information.
 
 
-## v0.2.x to v0.3.x
+## v0.2.x -> v0.3.x
 ### Prerequisite:
 To upgrade to `v0.3.x` the current operator verison **must** first be upgraded to `v0.2.6+`, since versions < `v0.2.6` are not compatible with `v0.3.x` .
 

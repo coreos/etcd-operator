@@ -8,6 +8,8 @@
 
 ### Changed
 
+- Self-hosted etcd: use FQDN for client/peer URL.
+
 ### Removed
 
 - Update default etcd version to 3.1.8
