@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2e
+package e2eslow
 
 import (
 	"fmt"
@@ -39,10 +39,6 @@ func TestSelfHosted(t *testing.T) {
 }
 
 func testCreateSelfHostedCluster(t *testing.T) {
-	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
-	}
-
 	f := framework.Global
 	c := e2eutil.NewCluster("test-etcd-", 3)
 	c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
