@@ -53,6 +53,7 @@ var (
 	awsConfig        string
 	s3Bucket         string
 	gcInterval       time.Duration
+	storageClass     string
 
 	chaosLevel int
 
@@ -69,6 +70,7 @@ func init() {
 	flag.BoolVar(&analyticsEnabled, "analytics", true, "Send analytical event (Cluster Created/Deleted etc.) to Google Analytics")
 
 	flag.StringVar(&pvProvisioner, "pv-provisioner", constants.PVProvisionerGCEPD, "persistent volume provisioner type")
+	flag.StringVar(&storageClass, "storage-class", "", "The name of the storage class to use, will be created using pv-provisioner if storage class does not exist.")
 	flag.StringVar(&awsSecret, "backup-aws-secret", "",
 		"The name of the kube secret object that stores the AWS credential file. The file name must be 'credentials'.")
 	flag.StringVar(&awsConfig, "backup-aws-config", "",
@@ -201,7 +203,8 @@ func newControllerConfig() controller.Config {
 			AWSConfig: awsConfig,
 			S3Bucket:  s3Bucket,
 		},
-		KubeCli: kubecli,
+		KubeCli:      kubecli,
+		StorageClass: storageClass,
 	}
 
 	return cfg

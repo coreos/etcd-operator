@@ -29,7 +29,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 )
@@ -40,8 +39,8 @@ const (
 )
 
 var (
-	errNoPVForBackup       = errors.New("no backup could be created due to PVProvisioner (none) is set")
-	errNoS3ConfigForBackup = errors.New("no backup could be created due to S3 configuration not set")
+	errNoStorageClassForBackup = errors.New("no backup could be created due to StorageClass is not set")
+	errNoS3ConfigForBackup     = errors.New("no backup could be created due to S3 configuration not set")
 )
 
 type backupManager struct {
@@ -77,10 +76,10 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 	b := cl.Spec.Backup
 	switch b.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-		if c.PVProvisioner == constants.PVProvisionerNone {
-			return nil, errNoPVForBackup
+		if len(c.StorageClass) == 0 {
+			return nil, errNoStorageClassForBackup
 		}
-		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, c.PVProvisioner, *b)
+		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, c.StorageClass, *b)
 	case spec.BackupStorageTypeS3:
 		if len(c.S3Context.AWSConfig) == 0 && b.S3 == nil {
 			return nil, errNoS3ConfigForBackup

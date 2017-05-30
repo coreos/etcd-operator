@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"sync"
 	"time"
 
@@ -41,6 +42,7 @@ var (
 	supportedPVProvisioners = map[string]struct{}{
 		constants.PVProvisionerGCEPD:  {},
 		constants.PVProvisionerAWSEBS: {},
+		constants.PVProvisionerCINDER: {},
 		constants.PVProvisionerNone:   {},
 	}
 
@@ -52,6 +54,8 @@ var (
 	// client-go has encoding issue and we want something more predictable.
 	KubeHttpCli *http.Client
 	MasterHost  string
+
+	storageClassPrefix = "etcd-backup"
 )
 
 type Event struct {
@@ -77,7 +81,8 @@ type Config struct {
 	ServiceAccount string
 	PVProvisioner  string
 	s3config.S3Context
-	KubeCli kubernetes.Interface
+	KubeCli      kubernetes.Interface
+	StorageClass string
 }
 
 func (c *Config) Validate() error {
@@ -237,7 +242,7 @@ func (c *Controller) findAllClusters() (string, error) {
 
 func (c *Controller) makeClusterConfig() cluster.Config {
 	return cluster.Config{
-		PVProvisioner:  c.PVProvisioner,
+		StorageClass:   c.StorageClass,
 		ServiceAccount: c.Config.ServiceAccount,
 		S3Context:      c.S3Context,
 
@@ -259,15 +264,61 @@ func (c *Controller) initResource() (string, error) {
 			return "", fmt.Errorf("fail to create TPR: %v", err)
 		}
 	}
-	if c.Config.PVProvisioner != constants.PVProvisionerNone {
-		err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
-		if err != nil {
-			if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-				return "", fmt.Errorf("fail to create storage class: %v", err)
-			}
+
+	// Storage class creation.
+	//
+	//   --storage-Class |  --pv-provisioner |  Result
+	// -----------------------------------------------------------------------------------------------------------------------------
+	//        passed     |      not "none"   |  Attempt to create storage class (if does not exist) with provided storage class name
+	//        passed     |       "none"      |  Assume storage class already exists and do not attempt to create, fail if Storage class does not exist
+	//      not-passed   |       "none"      |  Skip storage class creation
+	//      not-passed   |      not "none"   |  Attempt to create storage class (if does not exist)  with default name
+	//
+	//
+	createStorageClass := false
+	switch {
+	case len(c.StorageClass) != 0 && c.PVProvisioner != "none":
+		{
+			createStorageClass = true
+		}
+	case len(c.StorageClass) == 0 && c.PVProvisioner != "none":
+		{
+			createStorageClass = true
 		}
 	}
+	if createStorageClass {
+		storageClassName := c.getStorageClassName()
+		c.StorageClass = storageClassName
+
+		// check if StorageClass already exists
+		if !k8sutil.IsStorageClassExists(c.KubeCli, storageClassName) {
+			if c.PVProvisioner == "none" {
+				// provisioner not passed, but storage class does not exist. Cannot create storage class
+				return "", fmt.Errorf("storage class %q does not exist and no provisioner set to create it", storageClassName)
+			} else {
+
+				// attempt creating storage class if not exists
+				err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner, storageClassName)
+				if err != nil {
+					if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+						return "", fmt.Errorf("fail to create storage class: %v", err)
+					}
+				}
+			}
+		}
+	} else {
+		c.StorageClass = ""
+	}
+
 	return watchVersion, nil
+}
+
+func (c *Controller) getStorageClassName() string {
+	// If StorageClass is specified use StorageClass, else construct the StorageClassName
+	if len(c.StorageClass) != 0 {
+		return c.StorageClass
+	}
+	return storageClassPrefix + "-" + path.Base(c.PVProvisioner)
 }
 
 func (c *Controller) createTPR() error {
