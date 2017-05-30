@@ -43,6 +43,12 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
 		hostDataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ListenClientURL(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
+	if m.SecurePeer {
+		commands += fmt.Sprintf(" --peer-client-cert-auth=true --peer-trusted-ca-file=%[1]s/peer-ca-crt.pem --peer-cert-file=%[1]s/peer-crt.pem --peer-key-file=%[1]s/peer-key.pem", peerTLSDir)
+	}
+	if m.SecureClient {
+		commands += fmt.Sprintf(" --client-cert-auth=true --trusted-ca-file=%[1]s/client-ca-crt.pem --cert-file=%[1]s/client-crt.pem --key-file=%[1]s/client-key.pem", clientTLSDir)
+	}
 	if state == "new" {
 		commands += fmt.Sprintf(" --initial-cluster-token=%s", token)
 	}
@@ -55,11 +61,14 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 
 	if len(endpoints) > 0 {
 		addMemberCmd := fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), m.Name, m.PeerURL())
-		addMemberCmd = fmt.Sprintf("([ -d %s ] || (sleep 5; %s)); ", hostDataDir, addMemberCmd)
-		commands = addMemberCmd + commands
+		if m.SecureClient {
+			addMemberCmd += fmt.Sprintf(" --cert=%[1]s/%[2]s --key=%[1]s/%[3]s --cacert=%[1]s/%[4]s",
+				operatorEtcdTLSDir, etcdutil.CliCertFile, etcdutil.CliKeyFile, etcdutil.CliCAFile)
+		}
+		commands = fmt.Sprintf("([ -d %s ] || %s); %s", hostDataDir, addMemberCmd, commands)
 	}
 
-	c := etcdContainer(commands, cs.Version)
+	c := etcdContainer(fmt.Sprintf("sleep 5; %s", commands), cs.Version)
 	// On node reboot, there will be two copies of etcd pod: scheduled and checkpointed one.
 	// Checkpointed one will start first. But then the scheduler will detect host port conflict,
 	// and set the pod (in APIServer) failed. This further affects etcd service by removing the endpoints.
@@ -85,6 +94,29 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 		Name:         varLockVolumeName,
 		VolumeSource: v1.VolumeSource{HostPath: &v1.HostPathVolumeSource{Path: varLockDir}},
 	}}
+	if m.SecurePeer {
+		c.VolumeMounts = append(c.VolumeMounts, v1.VolumeMount{
+			MountPath: peerTLSDir,
+			Name:      peerTLSVolume,
+		})
+		volumes = append(volumes, v1.Volume{Name: peerTLSVolume, VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.Member.PeerSecret},
+		}})
+	}
+	if m.SecureClient {
+		c.VolumeMounts = append(c.VolumeMounts, v1.VolumeMount{
+			MountPath: clientTLSDir,
+			Name:      clientTLSVolume,
+		}, v1.VolumeMount{
+			MountPath: operatorEtcdTLSDir,
+			Name:      operatorEtcdTLSVolume,
+		})
+		volumes = append(volumes, v1.Volume{Name: clientTLSVolume, VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.Member.ClientSecret},
+		}}, v1.Volume{Name: operatorEtcdTLSVolume, VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.OperatorSecret},
+		}})
+	}
 
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -112,13 +144,13 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 	applyPodPolicy(clusterName, pod, cs.Pod)
 	// overwrites the antiAffinity setting for self hosted cluster.
 	pod = selfHostedPodWithAntiAffinity(pod)
-	applyAppendHostsInitContainer(pod, hostDataDir)
+	applyAppendHostsInitContainer(pod)
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
 }
 
-func applyAppendHostsInitContainer(p *v1.Pod, hostDataDir string) {
-	etcdHostsFile := path.Join(hostDataDir, "etcd-hosts.checkpoint")
+func applyAppendHostsInitContainer(p *v1.Pod) {
+	etcdHostsFile := path.Join(etcdVolumeMountDir, "etcd-hosts.checkpoint")
 	containerSpec := []v1.Container{
 		{
 			Name:  "append-hosts",
