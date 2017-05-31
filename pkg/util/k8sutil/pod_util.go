@@ -94,16 +94,17 @@ func PodWithAntiAffinity(pod *v1.Pod, clusterName string) *v1.Pod {
 	ls := &metav1.LabelSelector{MatchLabels: map[string]string{
 		"etcd_cluster": clusterName,
 	}}
-	return podWithAntiAffinity(pod, ls)
+	return podWithAntiAffinity(pod, ls, nil)
 }
 
-func podWithAntiAffinity(pod *v1.Pod, ls *metav1.LabelSelector) *v1.Pod {
+func podWithAntiAffinity(pod *v1.Pod, ls *metav1.LabelSelector, nss []string) *v1.Pod {
 	affinity := &v1.Affinity{
 		PodAntiAffinity: &v1.PodAntiAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
 				{
 					LabelSelector: ls,
 					TopologyKey:   "kubernetes.io/hostname",
+					Namespaces:    nss,
 				},
 			},
 		},

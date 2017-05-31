@@ -5,10 +5,12 @@
 - Self-hosted etcd: if `etcd-hosts.checkpoint` file exists under `${datadir}/`,
   etcd pod will restore the hosts mapping from it before etcd bootstraps.
 - Add static TLS support for self-hosted etcd mode.
+- Add additional label `{"selfHosted": ""}` to self-hosted etcd pod.
 
 ### Changed
 
 - Self-hosted etcd: use FQDN for client/peer URL.
+- Self-hosted etcd: anti-affinity applies to all namespace instead of current namespace.
 
 ### Removed
 
