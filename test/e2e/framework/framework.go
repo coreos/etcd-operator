@@ -32,10 +32,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const (
-	EnvCloudProvider = "E2E_CLOUD_PROVIDER"
-)
-
 var Global *Framework
 
 type Framework struct {

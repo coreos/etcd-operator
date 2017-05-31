@@ -95,9 +95,6 @@ func testDisasterRecovery2Members(t *testing.T) {
 // testDisasterRecoveryAll tests disaster recovery that
 // we should make a backup ahead and ooperator will recover cluster from it.
 func testDisasterRecoveryAll(t *testing.T) {
-	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
-	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -189,9 +186,6 @@ func testS3MajorityDown(t *testing.T, perCluster bool) {
 }
 
 func testS3AllDown(t *testing.T, perCluster bool) {
-	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
-	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
