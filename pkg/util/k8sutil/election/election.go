@@ -183,7 +183,7 @@ func (le *LeaderElector) acquire() {
 			return
 		}
 		le.config.Lock.RecordEvent("became leader")
-		glog.Infof("sucessfully acquired lease %v", desc)
+		glog.Infof("successfully acquired lease %v", desc)
 		close(stop)
 	}, le.config.RetryPeriod, JitterFactor, true, stop)
 }
@@ -198,7 +198,7 @@ func (le *LeaderElector) renew() {
 		le.maybeReportTransition()
 		desc := le.config.Lock.Describe()
 		if err == nil {
-			glog.V(4).Infof("succesfully renewed lease %v", desc)
+			glog.V(4).Infof("successfully renewed lease %v", desc)
 			return
 		}
 		le.config.Lock.RecordEvent("stopped leading")

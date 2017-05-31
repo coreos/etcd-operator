@@ -134,7 +134,7 @@ func main() {
 		logrus.Fatalf("failed to get hostname: %v", err)
 	}
 
-	// TODO: replace this to client-go once leader election pacakge is imported
+	// TODO: replace this to client-go once leader election package is imported
 	//       https://github.com/kubernetes/client-go/issues/28
 	rl := &resourcelock.EndpointsLock{
 		EndpointsMeta: api.ObjectMeta{

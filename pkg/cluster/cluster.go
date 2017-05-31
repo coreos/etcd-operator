@@ -295,7 +295,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 
 			if c.cluster.Spec.Paused {
 				c.status.PauseControl()
-				c.logger.Infof("control is paused, skipping reconcilation")
+				c.logger.Infof("control is paused, skipping reconciliation")
 				continue
 			} else {
 				c.status.Control()
