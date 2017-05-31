@@ -32,10 +32,6 @@ func TestBasic(t *testing.T) {
 	})
 }
 
-func TestKillOperator(t *testing.T) {
-	testStopOperator(t, true)
-}
-
 func testCreateCluster(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
@@ -63,10 +59,7 @@ func testPauseControl(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testStopOperator(t, false)
-}
 
-func testStopOperator(t *testing.T, kill bool) {
 	f := framework.Global
 	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
@@ -83,22 +76,16 @@ func testStopOperator(t *testing.T, kill bool) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	if !kill {
-		updateFunc := func(cl *spec.Cluster) {
-			cl.Spec.Paused = true
-		}
-		if testEtcd, err = e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
-			t.Fatalf("failed to pause control: %v", err)
-		}
-
-		// TODO: this is used to wait for the TPR to be updated.
-		// TODO: make this wait for reliable
-		time.Sleep(5 * time.Second)
-	} else {
-		if err := f.DeleteEtcdOperatorCompletely(); err != nil {
-			t.Fatalf("fail to delete etcd operator pod: %v", err)
-		}
+	updateFunc := func(cl *spec.Cluster) {
+		cl.Spec.Paused = true
 	}
+	if testEtcd, err = e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+		t.Fatalf("failed to pause control: %v", err)
+	}
+
+	// TODO: this is used to wait for the TPR to be updated.
+	// TODO: make this wait for reliable
+	time.Sleep(5 * time.Second)
 
 	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, names[0]); err != nil {
 		t.Fatal(err)
@@ -110,17 +97,11 @@ func testStopOperator(t *testing.T, kill bool) {
 		t.Fatalf("cluster should not be recovered: control is paused")
 	}
 
-	if !kill {
-		updateFunc := func(cl *spec.Cluster) {
-			cl.Spec.Paused = false
-		}
-		if testEtcd, err = e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
-			t.Fatalf("failed to resume control: %v", err)
-		}
-	} else {
-		if err := f.SetupEtcdOperator(); err != nil {
-			t.Fatalf("fail to restart etcd operator: %v", err)
-		}
+	updateFunc = func(cl *spec.Cluster) {
+		cl.Spec.Paused = false
+	}
+	if testEtcd, err = e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+		t.Fatalf("failed to resume control: %v", err)
 	}
 
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd); err != nil {
