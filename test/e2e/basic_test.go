@@ -24,15 +24,7 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
-func TestBasic(t *testing.T) {
-	t.Run("basic test", func(t *testing.T) {
-		t.Run("create cluster", testCreateCluster)
-		t.Run("upgrade cluster", testEtcdUpgrade)
-		t.Run("pause control", testPauseControl)
-	})
-}
-
-func testCreateCluster(t *testing.T) {
+func TestCreateCluster(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -53,9 +45,9 @@ func testCreateCluster(t *testing.T) {
 	}
 }
 
-// testPauseControl tests the user can pause the operator from controlling
+// TestPauseControl tests the user can pause the operator from controlling
 // an etcd cluster.
-func testPauseControl(t *testing.T) {
+func TestPauseControl(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -109,7 +101,7 @@ func testPauseControl(t *testing.T) {
 	}
 }
 
-func testEtcdUpgrade(t *testing.T) {
+func TestEtcdUpgrade(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
