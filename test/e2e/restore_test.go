@@ -27,40 +27,39 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestClusterRestore(t *testing.T) {
-	t.Run("restore cluster from backup", func(t *testing.T) {
-		t.Run("restore from the same name cluster", testClusterRestoreSameName)
-		t.Run("restore from a different name cluster", testClusterRestoreDifferentName)
-	})
-}
-
-func TestClusterRestoreS3(t *testing.T) {
+func TestPerClusS3RestoreSameName(t *testing.T) {
 	if os.Getenv("AWS_TEST_ENABLED") != "true" {
 		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
 	}
-
-	t.Run("restore from the same name cluster", func(t *testing.T) {
-		t.Run("per cluster s3 policy", func(t *testing.T) { testClusterRestoreS3SameName(t, true) })
-		t.Run("operator wide s3 policy", func(t *testing.T) { testClusterRestoreS3SameName(t, false) })
-	})
-
-	t.Run("restore from a different name cluster", func(t *testing.T) {
-		t.Run("per cluster s3 policy", func(t *testing.T) { testClusterRestoreS3DifferentName(t, true) })
-		t.Run("operator wide s3 policy", func(t *testing.T) { testClusterRestoreS3DifferentName(t, false) })
-	})
+	testClusterRestoreS3SameName(t, true)
 }
 
-func testClusterRestoreSameName(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
+func TestOperWideS3RestoreSameName(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
 	}
+	testClusterRestoreS3SameName(t, false)
+}
+
+func TestPerClusS3RestoreDiffName(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
+	testClusterRestoreS3DifferentName(t, true)
+}
+
+func TestOperWideS3RestoreDiffName(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
+	testClusterRestoreS3DifferentName(t, false)
+}
+
+func TestClusterRestoreSameName(t *testing.T) {
 	testClusterRestore(t, false)
 }
 
-func testClusterRestoreDifferentName(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
+func TestClusterRestoreDifferentName(t *testing.T) {
 	testClusterRestore(t, true)
 }
 
@@ -69,6 +68,9 @@ func testClusterRestore(t *testing.T, needDataClone bool) {
 }
 
 func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backupPolicy *spec.BackupPolicy) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	f := framework.Global
 
 	origEtcd := e2eutil.NewCluster("test-etcd-", 3)
@@ -168,10 +170,6 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 }
 
 func testClusterRestoreS3SameName(t *testing.T, perCluster bool) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
-
 	var bp *spec.BackupPolicy
 	if perCluster {
 		bp = e2eutil.NewS3BackupPolicy(false)
@@ -183,10 +181,6 @@ func testClusterRestoreS3SameName(t *testing.T, perCluster bool) {
 }
 
 func testClusterRestoreS3DifferentName(t *testing.T, perCluster bool) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
-
 	var bp *spec.BackupPolicy
 	if perCluster {
 		bp = e2eutil.NewS3BackupPolicy(false)

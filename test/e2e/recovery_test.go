@@ -26,32 +26,23 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
-func TestFailureRecovery(t *testing.T) {
-	t.Run("failure recovery", func(t *testing.T) {
-		t.Run("1 member (minority) down", testOneMemberRecovery)
-		t.Run("2 members (majority) down", testDisasterRecovery2Members)
-		t.Run("3 members (all) down", testDisasterRecoveryAll)
-	})
+func TestPerClusterS3MajDown(t *testing.T) {
+	testS3MajorityDown(t, true)
 }
 
-func TestS3Backup(t *testing.T) {
-	if os.Getenv("AWS_TEST_ENABLED") != "true" {
-		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
-	}
-	t.Run("2 members (majority) down", func(t *testing.T) {
-		t.Run("per cluster s3 policy", func(t *testing.T) { testS3MajorityDown(t, true) })
-		t.Run("operator wide s3 policy", func(t *testing.T) { testS3MajorityDown(t, false) })
-	})
-	t.Run("3 members (all) down", func(t *testing.T) {
-		t.Run("per cluster s3 policy", func(t *testing.T) { testS3AllDown(t, true) })
-		t.Run("operator wide s3 policy", func(t *testing.T) { testS3AllDown(t, false) })
-	})
-	t.Run("dynamically add backup policy", testDynamicAddBackupPolicy)
-	t.Run("dynamically remove backup policy", testDynamicRemoveBackupPolicy)
-
+func TestOperWideS3MajDown(t *testing.T) {
+	testS3MajorityDown(t, true)
 }
 
-func testOneMemberRecovery(t *testing.T) {
+func TestPerClusterS3AllDown(t *testing.T) {
+	testS3AllDown(t, true)
+}
+
+func TestOperWideS3AllDown(t *testing.T) {
+	testS3AllDown(t, false)
+}
+
+func TestOneMemberRecovery(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -83,9 +74,9 @@ func testOneMemberRecovery(t *testing.T) {
 	}
 }
 
-// testDisasterRecovery2Members tests disaster recovery that
+// TestDisasterRecoveryMaj tests disaster recovery that
 // ooperator will make a backup from the left one pod.
-func testDisasterRecovery2Members(t *testing.T) {
+func TestDisasterRecoveryMaj(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -94,7 +85,7 @@ func testDisasterRecovery2Members(t *testing.T) {
 
 // testDisasterRecoveryAll tests disaster recovery that
 // we should make a backup ahead and ooperator will recover cluster from it.
-func testDisasterRecoveryAll(t *testing.T) {
+func TestDisasterRecoveryAll(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -171,6 +162,9 @@ func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.Clust
 }
 
 func testS3MajorityDown(t *testing.T, perCluster bool) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -186,6 +180,9 @@ func testS3MajorityDown(t *testing.T, perCluster bool) {
 }
 
 func testS3AllDown(t *testing.T, perCluster bool) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -200,7 +197,10 @@ func testS3AllDown(t *testing.T, perCluster bool) {
 	testDisasterRecoveryWithBackupPolicy(t, 3, bp)
 }
 
-func testDynamicAddBackupPolicy(t *testing.T) {
+func TestDynamicAddBackupPolicy(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -236,7 +236,10 @@ func testDynamicAddBackupPolicy(t *testing.T) {
 	}
 }
 
-func testDynamicRemoveBackupPolicy(t *testing.T) {
+func TestDynamicRemoveBackupPolicy(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
+	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}

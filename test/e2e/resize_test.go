@@ -25,14 +25,7 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
-func TestResize(t *testing.T) {
-	t.Run("resize etcd cluster", func(t *testing.T) {
-		t.Run("resize 3->5", testResizeCluster3to5)
-		t.Run("resize 5->3", testResizeCluster5to3)
-	})
-}
-
-func testResizeCluster3to5(t *testing.T) {
+func TestResizeCluster3to5(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -65,7 +58,7 @@ func testResizeCluster3to5(t *testing.T) {
 	}
 }
 
-func testResizeCluster5to3(t *testing.T) {
+func TestResizeCluster5to3(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}

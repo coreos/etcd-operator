@@ -27,14 +27,7 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
-func TestClusterStatus(t *testing.T) {
-	t.Run("cluster status test", func(t *testing.T) {
-		t.Run("ready member status", testReadyMembersStatus)
-		t.Run("backup status", testBackupStatus)
-	})
-}
-
-func testReadyMembersStatus(t *testing.T) {
+func TestReadyMembersStatus(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -72,7 +65,7 @@ func testReadyMembersStatus(t *testing.T) {
 	}
 }
 
-func testBackupStatus(t *testing.T) {
+func TestBackupStatus(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
