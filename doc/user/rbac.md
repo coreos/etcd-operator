@@ -69,13 +69,13 @@ rules:
   resources:
   - thirdpartyresources
   verbs:
-  - create
+  - "*"
 - apiGroups:
   - storage.k8s.io
   resources:
   - storageclasses
   verbs:
-  - create
+  - "*"
 - apiGroups: 
   - ""
   resources:
@@ -83,6 +83,7 @@ rules:
   - services
   - endpoints
   - persistentvolumeclaims
+  - events
   verbs:
   - "*"
 - apiGroups:
