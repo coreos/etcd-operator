@@ -57,6 +57,7 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 		"app":          "etcd",
 		"etcd_node":    m.Name,
 		"etcd_cluster": clusterName,
+		"selfHosted":   "",
 	}
 
 	if len(endpoints) > 0 {
@@ -173,7 +174,8 @@ func applyAppendHostsInitContainer(p *v1.Pod) {
 func selfHostedPodWithAntiAffinity(pod *v1.Pod) *v1.Pod {
 	// self hosted pods should sit on different nodes even if they are from different cluster.
 	ls := &metav1.LabelSelector{MatchLabels: map[string]string{
-		"app": "etcd",
+		"app":        "etcd",
+		"selfHosted": "",
 	}}
-	return podWithAntiAffinity(pod, ls)
+	return podWithAntiAffinity(pod, ls, []string{})
 }
