@@ -42,7 +42,7 @@ func TestResize(t *testing.T) {
 		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
 	}
 
-	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test-resize-", 3))
+	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
 	}
 
-	testEtcd, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test-heal-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
 	}
 
-	origClus := e2eutil.NewCluster("upgrade-test-restore-", 3)
+	origClus := e2eutil.NewCluster("upgrade-test-", 3)
 	origClus = e2eutil.ClusterWithBackup(origClus, bp)
 	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, origClus)
 	if err != nil {
@@ -270,7 +270,7 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 
 	// Make interval long so no backup is made by the sidecar since we want to make only one backup during the whole test
 	bp.BackupIntervalInSecond = 60 * 60 * 24
-	cl := e2eutil.NewCluster("upgrade-test-backup-", 3)
+	cl := e2eutil.NewCluster("upgrade-test-", 3)
 	cl = e2eutil.ClusterWithBackup(cl, bp)
 	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, cl)
 	if err != nil {
@@ -350,7 +350,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
 	}
 
-	testClus := e2eutil.NewCluster("upgrade-test-recovery-", 3)
+	testClus := e2eutil.NewCluster("upgrade-test-", 3)
 	testClus = e2eutil.ClusterWithBackup(testClus, bp)
 	testClus, err = e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, testClus)
 	if err != nil {
