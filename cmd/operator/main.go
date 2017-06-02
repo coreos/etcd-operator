@@ -40,7 +40,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -134,6 +136,7 @@ func main() {
 		logrus.Fatalf("failed to get hostname: %v", err)
 	}
 
+	kubecli := k8sutil.MustNewKubeClient()
 	// TODO: replace this to client-go once leader election package is imported
 	//       https://github.com/kubernetes/client-go/issues/28
 	rl := &resourcelock.EndpointsLock{
@@ -141,10 +144,10 @@ func main() {
 			Namespace: namespace,
 			Name:      "etcd-operator",
 		},
-		Client: k8sutil.MustNewKubeClient(),
+		Client: kubecli,
 		LockConfig: resourcelock.ResourceLockConfig{
 			Identity:      id,
-			EventRecorder: &record.FakeRecorder{},
+			EventRecorder: createRecorder(kubecli, name, namespace),
 		},
 	}
 
@@ -269,4 +272,11 @@ func startChaos(ctx context.Context, kubecli kubernetes.Interface, ns string, ch
 
 	default:
 	}
+}
+
+func createRecorder(kubecli kubernetes.Interface, name, namespace string) record.EventRecorder {
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(logrus.Infof)
+	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubecli.Core().RESTClient()).Events(namespace)})
+	return eventBroadcaster.NewRecorder(api.Scheme, v1.EventSource{Component: name})
 }
