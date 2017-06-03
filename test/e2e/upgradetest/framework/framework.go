@@ -23,6 +23,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -135,6 +136,45 @@ func (f *Framework) UpgradeOperator() error {
 		LabelSelector: labels.SelectorFromSet(map[string]string{"name": "etcd-operator"}).String(),
 	}
 	_, err = e2eutil.WaitPodsWithImageDeleted(f.KubeCli, f.KubeNS, f.OldImage, 30*time.Second, lo)
+	return err
+}
+
+func (f *Framework) WaitOperatorElected() error {
+	var pod v1.Pod
+	err := retryutil.Retry(5*time.Second, 2, func() (bool, error) {
+		opt := metav1.ListOptions{LabelSelector: "name=etcd-operator"}
+		pods, err := f.KubeCli.CoreV1().Pods(f.KubeNS).List(opt)
+		if err != nil {
+			return false, err
+		}
+		if len(pods.Items) == 0 {
+			return false, nil
+		}
+		pod = pods.Items[0]
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+	err = retryutil.Retry(5*time.Second, 10, func() (bool, error) {
+		name, namespace, kind := "etcd-operator", f.KubeNS, "Endpoints"
+		eventsInterface := f.KubeCli.CoreV1().Events(namespace)
+		selector := eventsInterface.GetFieldSelector(&name, &namespace, &kind, nil)
+		options := metav1.ListOptions{FieldSelector: selector.String()}
+		es, err := eventsInterface.List(options)
+		if err != nil {
+			return false, err
+		}
+		l := len(es.Items)
+		if l == 0 {
+			return false, nil
+		}
+		e := es.Items[l-1]
+		if e.Source.Component == pod.Name && e.Reason == "LeaderElection" && e.Type == v1.EventTypeNormal {
+			return true, nil
+		}
+		return false, nil
+	})
 	return err
 }
 
