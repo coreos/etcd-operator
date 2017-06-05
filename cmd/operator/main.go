@@ -18,6 +18,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
@@ -32,6 +33,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election/resourcelock"
+	"github.com/coreos/etcd-operator/pkg/util/probe"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/version"
 
@@ -54,6 +56,7 @@ var (
 	awsSecret        string
 	awsConfig        string
 	s3Bucket         string
+	listenAddr       string
 	gcInterval       time.Duration
 
 	chaosLevel int
@@ -76,6 +79,7 @@ func init() {
 	flag.StringVar(&awsConfig, "backup-aws-config", "",
 		"The name of the kube configmap object that stores the AWS config file. The file name must be 'config'.")
 	flag.StringVar(&s3Bucket, "backup-s3-bucket", "", "The name of the AWS S3 bucket to store backups in.")
+	flag.StringVar(&listenAddr, "listen-addr", "0.0.0.0:8080", "The address on which the HTTP server will listen to")
 	// chaos level will be removed once we have a formal tool to inject failures.
 	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the operator.")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
@@ -150,6 +154,9 @@ func main() {
 			EventRecorder: createRecorder(kubecli, name, namespace),
 		},
 	}
+
+	http.HandleFunc(probe.HTTPReadyzEndpoint, probe.ReadyzHandler)
+	go http.ListenAndServe(listenAddr, nil)
 
 	election.RunOrDie(election.LeaderElectionConfig{
 		Lock:          rl,
