@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -73,18 +74,48 @@ func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
-	fname, err := b.be.getLatest()
-	if err != nil {
-		logrus.Errorf("fail to serve backup: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	var (
+		fname string
+		err   error
+	)
+
+	revision := r.FormValue(backupapi.HTTPQueryRevisionKey)
+	version := r.FormValue(backupapi.HTTPQueryVersionKey)
+
+	switch {
+	case len(revision) != 0 && len(version) != 0:
+		revisioni, err := strconv.ParseInt(revision, 10, 64)
+		if err != nil {
+			http.Error(w, "revision is not a vaild integer", http.StatusBadRequest)
+			return
+		}
+
+		fname = makeBackupName(version, revisioni)
+
+	case len(revision) == 0:
+		fname, err = b.be.getLatest()
+		if err != nil {
+			logrus.Errorf("fail to serve backup: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(fname) == 0 {
+			http.NotFound(w, r)
+			return
+		}
+
+	default:
+		http.Error(w, "version must be provided when revision is provided.", http.StatusBadRequest)
 		return
 	}
-	if len(fname) == 0 {
-		http.NotFound(w, r)
-		return
-	}
+
 	rc, err := b.be.open(fname)
 	if err != nil {
+		if os.IsNotExist(err) {
+			http.Error(w, "backup not found", http.StatusNotFound)
+			return
+		}
+
 		logrus.Errorf("fail to open backup (%s): %v", fname, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -97,13 +128,12 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	checkVersion := r.FormValue(backupapi.HTTPQueryVersionKey)
 	// If version param is empty, we don't need to check compatibility.
 	// This could happen if user manually requests it.
-	if len(checkVersion) != 0 {
-		reqV, err := getMajorAndMinorVersion(checkVersion)
+	if len(version) != 0 {
+		reqV, err := getMajorAndMinorVersion(version)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("invalid param 'version' (%s): %v", checkVersion, err), http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf("invalid param 'version' (%s): %v", version, err), http.StatusBadRequest)
 			return
 		}
 

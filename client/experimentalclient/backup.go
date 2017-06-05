@@ -77,7 +77,7 @@ func (b backupClient) Request(ctx context.Context) error {
 func (b backupClient) Exist(ctx context.Context, v string) (bool, error) {
 	req := &http.Request{
 		Method: http.MethodHead,
-		URL:    backupapi.NewBackupURL(b.scheme, b.addr, v),
+		URL:    backupapi.NewBackupURL(b.scheme, b.addr, v, -1),
 	}
 
 	resp, err := b.client.Do(req.WithContext(ctx))

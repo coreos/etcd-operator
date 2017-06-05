@@ -35,7 +35,7 @@ func TestResponseHeader(t *testing.T) {
 		be: &fileBackend{dir: d},
 	}
 	req := &http.Request{
-		URL: backupapi.NewBackupURL("http", "ignore", ""),
+		URL: backupapi.NewBackupURL("http", "ignore", "", -1),
 	}
 	rr := httptest.NewRecorder()
 	b.serveSnap(rr, req)
@@ -44,6 +44,44 @@ func TestResponseHeader(t *testing.T) {
 	}
 	if get := rr.Header().Get(HTTPHeaderRevision); get != "10" {
 		t.Errorf("revision want=%s, get=%s", "10", get)
+	}
+}
+
+func TestServeBackup(t *testing.T) {
+	d, err := setupBackupDir("3.0.15_0000000000000002_etcd.backup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(d)
+
+	tests := []struct {
+		reqVersion  string
+		reqRevision int64
+		httpC       int
+	}{
+		{"3.0.15", 2, http.StatusOK},
+		{"3.0.0", 2, http.StatusNotFound},
+		{"3.0.15", 3, http.StatusNotFound},
+		{"", 3, http.StatusBadRequest},
+	}
+
+	for i, tt := range tests {
+		b := &Backup{
+			be: &fileBackend{dir: d},
+		}
+		req := &http.Request{
+			URL: backupapi.NewBackupURL("http", "ignore", tt.reqVersion, tt.reqRevision),
+		}
+		rr := httptest.NewRecorder()
+		b.serveSnap(rr, req)
+
+		if rr.Code != tt.httpC {
+			if rr.Code != http.StatusOK {
+				b, _ := ioutil.ReadAll(rr.Body)
+				t.Log(string(b))
+			}
+			t.Errorf("#%d: http code want = %d, get = %d", i, tt.httpC, rr.Code)
+		}
 	}
 }
 
@@ -72,7 +110,7 @@ func TestBackupVersionCompatiblity(t *testing.T) {
 			be: &fileBackend{dir: d},
 		}
 		req := &http.Request{
-			URL: backupapi.NewBackupURL("http", "ignore", tt.reqVersion),
+			URL: backupapi.NewBackupURL("http", "ignore", tt.reqVersion, -1),
 		}
 		rr := httptest.NewRecorder()
 		b.serveSnap(rr, req)
