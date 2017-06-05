@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	defaultImage   = "quay.io/coreos/etcd"
-	defaultVersion = "3.1.8"
+	defaultBaseImage = "quay.io/coreos/etcd"
+	defaultVersion   = "3.1.8"
 
 	TPRKind        = "cluster"
 	TPRKindPlural  = "clusters"
@@ -71,10 +71,12 @@ type ClusterSpec struct {
 	// The vaild range of the size is from 1 to 7.
 	Size int `json:"size"`
 
-	// Image is the expected etcd image name
-	// for user Get image from private registry
-	// default is quay.io/coreos/etcd
-	Image string `json:"image"`
+	// BaseImage is the base etcd image name that will be used to launch
+	// etcd clusters. This is useful for private registries, etc.
+	//
+	// If image is not set, default is quay.io/coreos/etcd
+	BaseImage string `json:"baseImage"`
+
 	// Version is the expected version of the etcd cluster.
 	// The etcd-operator will eventually make the etcd cluster version
 	// equal to the expected version.
@@ -190,12 +192,12 @@ func (c *ClusterSpec) Validate() error {
 // Cleanup cleans up user passed spec, e.g. defaulting, transforming fields.
 // TODO: move this to admission controller
 func (c *ClusterSpec) Cleanup() {
-	if len(c.Version) == 0 {
-		c.Version = defaultVersion
+	if len(c.BaseImage) == 0 {
+		c.BaseImage = defaultBaseImage
 	}
 
-	if len(c.Image) == 0 {
-		c.Image = defaultImage
+	if len(c.Version) == 0 {
+		c.Version = defaultVersion
 	}
 
 	c.Version = strings.TrimLeft(c.Version, "v")
