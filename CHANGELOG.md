@@ -5,10 +5,12 @@
 - Self-hosted etcd: if `etcd-hosts.checkpoint` file exists under `${datadir}/`,
   etcd pod will restore the hosts mapping from it before etcd bootstraps.
 - Add static TLS support for self-hosted etcd mode.
+- The operator will now post Kubernetes [events](https://kubernetes.io/docs/resources-reference/v1.6/#event-v1-core). To allow this the necessary RBAC rule for the resource `events` must be added to the clusterrole. See the [rbac guide](https://github.com/coreos/etcd-operator/blob/master/doc/user/rbac.md#create-clusterrole) to see how to set up RBAC rules for the operator. If the rbac rule for 'events' is not present then the operator will continue to function normally but will also print out an error message on the failure to post an event.
 
 ### Changed
 
 - Self-hosted etcd: use FQDN for client/peer URL.
+- Updated RBAC rules for resources `thirdpartyresources` and `storageclasses` to all verbs `*` . We loose granularity early so that we have more flexibility to use other methods (e.g. Get) later.
 
 ### Removed
 
