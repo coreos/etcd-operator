@@ -83,7 +83,7 @@ func makeRestoreInitContainerSpec(backupAddr, token, version string, m *etcdutil
 			Image: "tutum/curl",
 			Command: []string{
 				"/bin/sh", "-ec",
-				fmt.Sprintf("curl -o %s %s", backupFile, backupapi.NewBackupURL("http", backupAddr, version)),
+				fmt.Sprintf("curl -o %s %s", backupFile, backupapi.NewBackupURL("http", backupAddr, version, -1)),
 			},
 			VolumeMounts: etcdVolumeMounts(),
 		},

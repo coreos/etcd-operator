@@ -113,6 +113,9 @@ type BackupStatus struct {
 	// Size is the size of the backup in MB.
 	Size float64 `json:"size"`
 
+	// Revision is the revision of the backup.
+	Revision int64 `json:"revision"`
+
 	// Version is the version of the backup cluster.
 	Version string `json:"version"`
 
