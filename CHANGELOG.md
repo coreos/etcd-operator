@@ -1,5 +1,9 @@
 ## [Unreleased 0.3.1]
 
+**Notes for self-hosted etcd**:
+The newly introduced TLS feature for self hosted etcd is a breaking change.
+Existing self hosted etcd cluster MUST be recreated for updating to this release.
+
 ### Added
 
 - Self-hosted etcd: if `etcd-hosts.checkpoint` file exists under `${datadir}/`,
