@@ -68,7 +68,8 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 		commands = fmt.Sprintf("([ -d %s ] || %s); %s", hostDataDir, addMemberCmd, commands)
 	}
 
-	c := etcdContainer(fmt.Sprintf("sleep 5; %s", commands), cs.Version)
+	commands = fmt.Sprintf("sleep 5; flock %s -c \"%s\"", etcdLockPath, commands)
+	c := etcdContainer(commands, cs.Version)
 	// On node reboot, there will be two copies of etcd pod: scheduled and checkpointed one.
 	// Checkpointed one will start first. But then the scheduler will detect host port conflict,
 	// and set the pod (in APIServer) failed. This further affects etcd service by removing the endpoints.
@@ -81,7 +82,6 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 		MountPath: varLockDir,
 		ReadOnly:  false,
 	})
-	c.Command = []string{"sh", "-ec", fmt.Sprintf("flock %s -c \"%s\"", etcdLockPath, commands)}
 	if cs.Pod != nil {
 		c = containerWithRequirements(c, cs.Pod.Resources)
 	}
