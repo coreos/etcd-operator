@@ -1,4 +1,20 @@
-## [Unreleased 0.3.1]
+## [Unreleased 0.3.2]
+
+### Added
+
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
+## [Release 0.3.1]
+
 
 **Notes for self-hosted etcd**:
 The newly introduced TLS feature for self hosted etcd is a breaking change.
