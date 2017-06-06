@@ -25,7 +25,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 )
 
-func TestResponseHeader(t *testing.T) {
+func TestRespHeaderHasVersionRevision(t *testing.T) {
 	d, err := setupBackupDir("3.1.0_000000000000000a_etcd.backup")
 	if err != nil {
 		t.Fatal(err)
