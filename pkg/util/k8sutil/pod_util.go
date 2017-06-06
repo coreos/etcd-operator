@@ -36,9 +36,7 @@ func etcdVolumeMounts() []v1.VolumeMount {
 
 func etcdContainer(commands, version string) v1.Container {
 	c := v1.Container{
-		// TODO: fix "sleep 5".
-		// Without waiting some time, there is highly probable flakes in network setup.
-		Command: []string{"/bin/sh", "-ec", fmt.Sprintf("sleep 5; %s", commands)},
+		Command: []string{"/bin/sh", "-ec", commands},
 		Name:    "etcd",
 		Image:   EtcdImageName(version),
 		Ports: []v1.ContainerPort{
