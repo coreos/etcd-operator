@@ -15,16 +15,19 @@
 package framework
 
 import (
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/util/probe"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
@@ -77,6 +80,13 @@ func (f *Framework) CreateOperator() error {
 			Namespace: f.KubeNS,
 		},
 		Spec: appsv1beta1.DeploymentSpec{
+			Strategy: appsv1beta1.DeploymentStrategy{
+				Type: appsv1beta1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &appsv1beta1.RollingUpdateDeployment{
+					MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+					MaxSurge:       &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+				},
+			},
 			Selector: &metav1.LabelSelector{MatchLabels: selector},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -98,12 +108,30 @@ func (f *Framework) CreateOperator() error {
 								ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
 							},
 						},
+						ReadinessProbe: &v1.Probe{
+							Handler: v1.Handler{
+								HTTPGet: &v1.HTTPGetAction{
+									Path: probe.HTTPReadyzEndpoint,
+									Port: intstr.IntOrString{Type: intstr.Int, IntVal: 8080},
+								},
+							},
+							InitialDelaySeconds: 3,
+							PeriodSeconds:       3,
+						},
 					}},
 				},
 			},
 		},
 	}
 	_, err := f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Create(d)
+	if err != nil {
+		return fmt.Errorf("failed to create deployment: %v", err)
+	}
+
+	lo := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{"name": "etcd-operator"}).String(),
+	}
+	err = e2eutil.WaitUntilPodReady(f.KubeCli, f.KubeNS, lo, 30*time.Second)
 	return err
 }
 
@@ -135,6 +163,10 @@ func (f *Framework) UpgradeOperator() error {
 		LabelSelector: labels.SelectorFromSet(map[string]string{"name": "etcd-operator"}).String(),
 	}
 	_, err = e2eutil.WaitPodsWithImageDeleted(f.KubeCli, f.KubeNS, f.OldImage, 30*time.Second, lo)
+	if err != nil {
+		return fmt.Errorf("failed to wait for pod with old image to get deleted: %v", err)
+	}
+	err = e2eutil.WaitUntilPodReady(f.KubeCli, f.KubeNS, lo, 30*time.Second)
 	return err
 }
 
