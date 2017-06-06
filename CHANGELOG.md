@@ -1,4 +1,4 @@
-## [Unreleased 0.3.2]
+## [Unreleased 0.3.3]
 
 ### Added
 
@@ -12,6 +12,9 @@
 
 ### Security
 
+## [Release 0.3.2]
+
+Bug fix release to fix self-hosted etcd issue [GH-1171] .
 
 ## [Release 0.3.1]
 
