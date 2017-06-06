@@ -4,6 +4,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+
 if [ -z "${PASSES-}" ]; then
 	PASSES="fmt build e2e unit cliente2e"
 fi
