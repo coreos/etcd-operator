@@ -29,6 +29,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/util/probe"
 
 	"github.com/Sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -313,6 +314,8 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 			}
 
 			c.logger.Infof("start watching at %v", watchVersion)
+
+			probe.SetReady()
 
 			decoder := json.NewDecoder(resp.Body)
 			for {
