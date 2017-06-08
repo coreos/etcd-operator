@@ -240,25 +240,3 @@ func waitPodsDeleted(kubecli kubernetes.Interface, namespace string, timeout tim
 	})
 	return pods, err
 }
-
-// WaitUntilPodReady will wait until the first pod selected by the label 'lo' is ready. So this should be called for lablels that only select one pod.
-func WaitUntilPodReady(kubecli kubernetes.Interface, namespace string, lo metav1.ListOptions, timeout time.Duration) error {
-	var podName string
-	err := retryutil.Retry(5*time.Second, int(timeout/(5*time.Second)), func() (bool, error) {
-		podList, err := kubecli.CoreV1().Pods(namespace).List(lo)
-		if err != nil {
-			return false, err
-		}
-		if len(podList.Items) > 0 {
-			podName = podList.Items[0].Name
-			if k8sutil.IsPodReady(&podList.Items[0]) {
-				return true, nil
-			}
-		}
-		return false, nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to wait for pod (%v) to become ready: %v", podName, err)
-	}
-	return nil
-}

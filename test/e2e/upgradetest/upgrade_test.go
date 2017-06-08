@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
+	"github.com/coreos/etcd-operator/test/e2e/upgradetest/framework"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -38,8 +39,8 @@ func TestResize(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	if err = k8sutil.WaitEtcdTPRReady(testF.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, testF.KubeNS); err != nil {
-		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
+	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 30*time.Second); err != nil {
+		t.Fatal(err)
 	}
 
 	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test-", 3))
@@ -88,8 +89,8 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	if err = k8sutil.WaitEtcdTPRReady(testF.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, testF.KubeNS); err != nil {
-		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
+	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 30*time.Second); err != nil {
+		t.Fatal(err)
 	}
 
 	testEtcd, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test-", 3))
@@ -146,9 +147,8 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 			t.Fatalf("failed to delete operator:%v", err)
 		}
 	}()
-	err = k8sutil.WaitEtcdTPRReady(testF.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, testF.KubeNS)
-	if err != nil {
-		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
+	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 30*time.Second); err != nil {
+		t.Fatal(err)
 	}
 
 	origClus := e2eutil.NewCluster("upgrade-test-", 3)
@@ -263,9 +263,8 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 			t.Fatal(err)
 		}
 	}()
-	err = k8sutil.WaitEtcdTPRReady(testF.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, testF.KubeNS)
-	if err != nil {
-		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
+	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 30*time.Second); err != nil {
+		t.Fatal(err)
 	}
 
 	// Make interval long so no backup is made by the sidecar since we want to make only one backup during the whole test
@@ -345,9 +344,8 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 			t.Fatalf("failed to delete operator: %v", err)
 		}
 	}()
-	err = k8sutil.WaitEtcdTPRReady(testF.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, testF.KubeNS)
-	if err != nil {
-		t.Fatalf("failed to see cluster TPR get created in time: %v", err)
+	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 30*time.Second); err != nil {
+		t.Fatal(err)
 	}
 
 	testClus := e2eutil.NewCluster("upgrade-test-", 3)
