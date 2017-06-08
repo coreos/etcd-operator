@@ -73,7 +73,6 @@ func (f *Framework) CreateOperator() error {
 		"--backup-aws-secret=aws", "--backup-aws-config=aws", "--backup-s3-bucket=jenkins-etcd-operator"}
 	name := "etcd-operator"
 	image := f.OldImage
-	selector := map[string]string{"name": "etcd-operator"}
 	d := &appsv1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -87,10 +86,10 @@ func (f *Framework) CreateOperator() error {
 					MaxSurge:       &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
 				},
 			},
-			Selector: &metav1.LabelSelector{MatchLabels: selector},
+			Selector: &metav1.LabelSelector{MatchLabels: operatorLabelSelector()},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: selector,
+					Labels: operatorLabelSelector(),
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{{
@@ -129,7 +128,7 @@ func (f *Framework) CreateOperator() error {
 	}
 
 	lo := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{"name": "etcd-operator"}).String(),
+		LabelSelector: labels.SelectorFromSet(operatorLabelSelector()).String(),
 	}
 	err = e2eutil.WaitUntilPodReady(f.KubeCli, f.KubeNS, lo, 30*time.Second)
 	return err
@@ -144,7 +143,7 @@ func (f *Framework) DeleteOperator() error {
 	// Wait until the etcd-operator pod is actually gone and not just terminating.
 	// In upgrade tests, the next test shouldn't see any etcd operator pod.
 	lo := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{"name": "etcd-operator"}).String(),
+		LabelSelector: labels.SelectorFromSet(operatorLabelSelector()).String(),
 	}
 	_, err = e2eutil.WaitPodsDeleted(f.KubeCli, f.KubeNS, 30*time.Second, lo)
 	return err
@@ -160,7 +159,7 @@ func (f *Framework) UpgradeOperator() error {
 	}
 
 	lo := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{"name": "etcd-operator"}).String(),
+		LabelSelector: labels.SelectorFromSet(operatorLabelSelector()).String(),
 	}
 	_, err = e2eutil.WaitPodsWithImageDeleted(f.KubeCli, f.KubeNS, f.OldImage, 30*time.Second, lo)
 	if err != nil {
@@ -186,4 +185,8 @@ func (f *Framework) setupAWS() error {
 	f.S3Cli = s3.New(sess)
 	f.S3Bucket = "jenkins-etcd-operator"
 	return nil
+}
+
+func operatorLabelSelector() map[string]string {
+	return map[string]string{"name": "etcd-operator"}
 }
