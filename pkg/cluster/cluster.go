@@ -471,17 +471,10 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 	return err
 }
 
-func (c *Cluster) removePodAndService(name string) error {
+func (c *Cluster) removePod(name string) error {
 	ns := c.cluster.Metadata.Namespace
-	err := c.config.KubeCli.Core().Services(ns).Delete(name, nil)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-	}
-
 	opts := metav1.NewDeleteOptions(podTerminationGracePeriod)
-	err = c.config.KubeCli.Core().Pods(ns).Delete(name, opts)
+	err := c.config.KubeCli.Core().Pods(ns).Delete(name, opts)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err

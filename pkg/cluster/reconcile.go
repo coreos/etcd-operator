@@ -75,7 +75,7 @@ func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 	if unknownMembers.Size() > 0 {
 		c.logger.Infof("removing unexpected pods: %v", unknownMembers)
 		for _, m := range unknownMembers {
-			if err := c.removePodAndService(m.Name); err != nil {
+			if err := c.removePod(m.Name); err != nil {
 				return err
 			}
 		}
@@ -170,7 +170,7 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 		}
 	}
 	c.members.Remove(toRemove.Name)
-	if err := c.removePodAndService(toRemove.Name); err != nil {
+	if err := c.removePod(toRemove.Name); err != nil {
 		return err
 	}
 	c.logger.Infof("removed member (%v) with ID (%d)", toRemove.Name, toRemove.ID)
@@ -215,7 +215,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	}
 
 	for _, m := range left {
-		err := c.removePodAndService(m.Name)
+		err := c.removePod(m.Name)
 		if err != nil {
 			return err
 		}
