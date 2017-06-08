@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -126,12 +127,7 @@ func (f *Framework) CreateOperator() error {
 	if err != nil {
 		return fmt.Errorf("failed to create deployment: %v", err)
 	}
-
-	lo := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(operatorLabelSelector()).String(),
-	}
-	err = e2eutil.WaitUntilPodReady(f.KubeCli, f.KubeNS, lo, 30*time.Second)
-	return err
+	return nil
 }
 
 func (f *Framework) DeleteOperator() error {
@@ -165,7 +161,7 @@ func (f *Framework) UpgradeOperator() error {
 	if err != nil {
 		return fmt.Errorf("failed to wait for pod with old image to get deleted: %v", err)
 	}
-	err = e2eutil.WaitUntilPodReady(f.KubeCli, f.KubeNS, lo, 30*time.Second)
+	err = WaitUntilOperatorReady(f.KubeCli, f.KubeNS, 30*time.Second)
 	return err
 }
 
@@ -184,6 +180,31 @@ func (f *Framework) setupAWS() error {
 	}
 	f.S3Cli = s3.New(sess)
 	f.S3Bucket = "jenkins-etcd-operator"
+	return nil
+}
+
+// WaitUntilOperatorReady will wait until the first pod selected for the label name=etcd-operator is ready.
+func WaitUntilOperatorReady(kubecli kubernetes.Interface, namespace string, timeout time.Duration) error {
+	var podName string
+	lo := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(operatorLabelSelector()).String(),
+	}
+	err := retryutil.Retry(5*time.Second, int(timeout/(5*time.Second)), func() (bool, error) {
+		podList, err := kubecli.CoreV1().Pods(namespace).List(lo)
+		if err != nil {
+			return false, err
+		}
+		if len(podList.Items) > 0 {
+			podName = podList.Items[0].Name
+			if k8sutil.IsPodReady(&podList.Items[0]) {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to wait for pod (%v) to become ready: %v", podName, err)
+	}
 	return nil
 }
 
