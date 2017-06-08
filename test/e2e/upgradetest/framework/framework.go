@@ -116,7 +116,7 @@ func (f *Framework) CreateOperator() error {
 								},
 							},
 							InitialDelaySeconds: 3,
-							PeriodSeconds:       3,
+							PeriodSeconds:       10,
 						},
 					}},
 				},
