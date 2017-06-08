@@ -344,7 +344,7 @@ Check the other two pods and you should see the same result.
 
 - Backup works only for data in etcd3 storage, not for data in etcd2 storage.
 
-- PV Backup only works on GCE(kubernetes.io/gce-pd) and AWS(kubernetes.io/aws-ebs) for now.
+- PV Backup only works on GCE(kubernetes.io/gce-pd), AWS(kubernetes.io/aws-ebs) and Openstack cinder(kubernetes.io/cinder) for now.
 
 - Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with its node running in the same Kubernetes cluster.
 

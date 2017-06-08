@@ -1,0 +1,17 @@
+apiVersion: "etcd.coreos.com/v1beta1"
+kind: "Cluster"
+metadata:
+  name: "example-etcd-cluster-with-backup"
+spec:
+  size: 3
+  version: "3.1.8"
+  backup:
+    # short snapshot interval for testing, do not use this in production!
+    backupIntervalInSecond: 30
+    maxBackups: 5
+    storageType: "PersistentVolume"
+    pv:
+      volumeSizeInMB: 512
+  restore:
+    backupClusterName: "example-etcd-cluster-with-backup"
+    storageType: "PersistentVolume"

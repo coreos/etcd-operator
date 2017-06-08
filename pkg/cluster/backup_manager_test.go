@@ -20,11 +20,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 )
 
 func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
-	cfg := Config{PVProvisioner: constants.PVProvisionerNone}
+	cfg := Config{StorageClass: ""}
 	cl := &spec.Cluster{
 		Metadata: metav1.ObjectMeta{Name: "testing"},
 		Spec: spec.ClusterSpec{
@@ -38,8 +37,8 @@ func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
 		},
 	}
 	_, err := newBackupManager(cfg, cl, nil)
-	if err != errNoPVForBackup {
-		t.Errorf("expect err=%v, get=%v", errNoPVForBackup, err)
+	if err != errNoStorageClassForBackup {
+		t.Errorf("expect err=%v, get=%v", errNoStorageClassForBackup, err)
 	}
 }
 
