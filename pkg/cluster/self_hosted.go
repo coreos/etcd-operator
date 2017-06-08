@@ -43,22 +43,31 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	}
 	// wait for the new pod to start and add itself into the etcd cluster.
 	oldN := c.members.Size()
-	err = retryutil.Retry(5*time.Second, math.MaxInt64, func() (bool, error) {
+	err = retryutil.Retry(10*time.Second, 6, func() (bool, error) {
 		err = c.updateMembers(c.members)
 		if err != nil {
-			c.logger.Errorf("add self hosted member: fail to update members: %v", err)
-			if err == errUnexpectedUnreadyMember {
-				return false, nil
-			}
-			return false, err
+			c.logger.Warningf("unable to update members: %v", err)
+			return false, nil
 		}
 		if c.members.Size() > oldN {
 			return true, nil
 		}
+		c.logger.Infof("still waiting for the new self hosted member (%s) to start...", newMember.Name)
 		return false, nil
 	})
 	if err != nil {
-		return err
+		c.logger.Warningf("failed to add member (%s) due to scheduling failure. Removing its pod (%s)", newMember.Name, pod.Name)
+		// our reconcile loop assumes that no new member is added without control.
+		retryutil.Retry(10*time.Second, math.MaxInt64, func() (bool, error) {
+			err := c.removePod(newMember.Name)
+			if err != nil {
+				c.logger.Errorf("failed to delete pod (%s), retry later: %v", newMember.Name, err)
+				return false, nil
+			}
+			return true, nil
+		})
+		c.logger.Infof("pod (%s) has been removed", pod.Name)
+		return nil
 	}
 
 	c.logger.Infof("added a self-hosted member (%s)", newMember.Name)
