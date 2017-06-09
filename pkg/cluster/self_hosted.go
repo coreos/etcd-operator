@@ -24,9 +24,38 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	"github.com/pborman/uuid"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
+func (c *Cluster) selectMasterNodes() ([]string, error) {
+	var selector string
+	if c.cluster.Spec.Pod != nil && len(c.cluster.Spec.Pod.NodeSelector) != 0 {
+		selector = labels.SelectorFromSet(c.cluster.Spec.Pod.NodeSelector).String()
+	}
+	nodes, err := c.config.KubeCli.CoreV1().Nodes().List(metav1.ListOptions{
+		LabelSelector: selector,
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := make([]string, len(nodes.Items))
+	for i := range nodes.Items {
+		res[i] = nodes.Items[i].Name
+	}
+	return res, nil
+}
+
 func (c *Cluster) addOneSelfHostedMember() error {
+	selectedNodes, err := c.selectMasterNodes()
+	if err != nil {
+		return err
+	}
+	if nodeNum := len(selectedNodes); nodeNum < c.cluster.Spec.Size {
+		c.logger.Warningf("cannot scale to size (%d), only have %d nodes (%v)", c.cluster.Spec.Size, nodeNum, selectedNodes)
+		return nil
+	}
+
 	c.status.AppendScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
 
 	newMember := c.newMember(c.memberCounter)
@@ -37,7 +66,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	ns := c.cluster.Metadata.Namespace
 	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, c.members.ClientURLs(), c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
 
-	_, err := c.config.KubeCli.CoreV1().Pods(ns).Create(pod)
+	_, err = c.config.KubeCli.CoreV1().Pods(ns).Create(pod)
 	if err != nil {
 		return err
 	}
