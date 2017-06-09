@@ -162,7 +162,7 @@ func (f *Framework) UpgradeOperator() error {
 	if err != nil {
 		return fmt.Errorf("failed to wait for pod with old image to get deleted: %v", err)
 	}
-	err = WaitUntilOperatorReady(f.KubeCli, f.KubeNS, 30*time.Second)
+	err = WaitUntilOperatorReady(f.KubeCli, f.KubeNS, 40*time.Second)
 	return err
 }
 
