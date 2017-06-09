@@ -142,6 +142,8 @@ func (c *Controller) Run() error {
 		c.waitCluster.Wait()
 	}()
 
+	probe.SetReady()
+
 	eventCh, errCh := c.watch(watchVersion)
 
 	go func() {
@@ -314,8 +316,6 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 			}
 
 			c.logger.Infof("start watching at %v", watchVersion)
-
-			probe.SetReady()
 
 			decoder := json.NewDecoder(resp.Body)
 			for {

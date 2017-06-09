@@ -39,7 +39,7 @@ func TestResize(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 30*time.Second); err != nil {
+	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second); err != nil {
 		t.Fatal(err)
 	}
 
@@ -89,7 +89,7 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 30*time.Second); err != nil {
+	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second); err != nil {
 		t.Fatal(err)
 	}
 
@@ -147,7 +147,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 			t.Fatalf("failed to delete operator:%v", err)
 		}
 	}()
-	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 30*time.Second); err != nil {
+	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second); err != nil {
 		t.Fatal(err)
 	}
 
@@ -263,7 +263,7 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 			t.Fatal(err)
 		}
 	}()
-	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 30*time.Second); err != nil {
+	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second); err != nil {
 		t.Fatal(err)
 	}
 
@@ -344,7 +344,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 			t.Fatalf("failed to delete operator: %v", err)
 		}
 	}()
-	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 30*time.Second); err != nil {
+	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second); err != nil {
 		t.Fatal(err)
 	}
 
