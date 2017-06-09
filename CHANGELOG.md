@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- [GH-1138] Fixed operator stucks in managing selfhosted cluster when there are not enough nodes to start new etcd member.
+
 ### Deprecated
 
 ### Security
