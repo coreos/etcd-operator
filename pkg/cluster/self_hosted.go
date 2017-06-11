@@ -46,6 +46,71 @@ func (c *Cluster) selectMasterNodes() ([]string, error) {
 	return res, nil
 }
 
+func (c *Cluster) waitNewMember(oldN, retries int, name string) error {
+	return retryutil.Retry(10*time.Second, retries, func() (bool, error) {
+		err := c.updateMembers(c.members)
+		if err != nil {
+			c.logger.Warningf("unable to update members: %v", err)
+			return false, nil
+		}
+		if c.members.Size() > oldN {
+			return true, nil
+		}
+		c.logger.Infof("still waiting for the new self hosted member (%s) to start...", name)
+		return false, nil
+	})
+}
+
+func (c *Cluster) changePodToNoopIfNotScheduled(name, ns string) string {
+	var nodeName string
+	retryutil.Retry(10*time.Second, math.MaxInt64, func() (bool, error) {
+		pod, err := c.config.KubeCli.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
+		if err != nil {
+			c.logger.Errorf("failed to check if pod (%s) is scheduled: %v", name, err)
+			return false, nil
+		}
+		nodeName = pod.Spec.NodeName
+		if len(nodeName) != 0 {
+			return true, nil
+		}
+		// If the pod hasn't bound to any node, we should delete the pod with version to make sure no kubelet
+		// would run it. But current API doesn't provide that. We need to CAS the pod's command to make sure it won't
+		// add member.
+		pod.Spec.Containers[0].Command = []string{"sleep"}
+		_, err = c.config.KubeCli.CoreV1().Pods(ns).Update(pod)
+		if err != nil {
+			c.logger.Errorf("failed to updated the unscheduled pod (%s) to noop pod: %v", name, err)
+			return false, nil
+		}
+		return true, nil
+	})
+	return nodeName
+}
+
+func (c *Cluster) inspectSelfHostedMember(memberName, podName, ns string, oldN int) {
+	nodeName := c.changePodToNoopIfNotScheduled(podName, ns)
+	// If a pod has been bound to a node, we could not know whether it had been run by kubelet.
+	if len(nodeName) != 0 {
+		c.logger.Infof("pod (%s) has been scheduled to node (%s), waiting for the pod to come up...", podName, nodeName)
+		c.waitNewMember(oldN, math.MaxInt64, memberName)
+		return
+	}
+
+	c.logger.Warningf("failed to add member (%s) due to scheduling failure. Removing its pod (%s)", memberName, podName)
+	// Our reconcile loop assumes that no new member is added without control.
+	// When we come to this point, we have assumed that the new member won't be added by any case.
+	// Thus, it is safe to remove the pod.
+	retryutil.Retry(10*time.Second, math.MaxInt64, func() (bool, error) {
+		err := c.removePod(memberName)
+		if err != nil {
+			c.logger.Errorf("failed to delete pod (%s), retry later: %v", memberName, err)
+			return false, nil
+		}
+		c.logger.Infof("pod (%s) has been removed", podName)
+		return true, nil
+	})
+}
+
 func (c *Cluster) addOneSelfHostedMember() error {
 	selectedNodes, err := c.selectMasterNodes()
 	if err != nil {
@@ -72,30 +137,10 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	}
 	// wait for the new pod to start and add itself into the etcd cluster.
 	oldN := c.members.Size()
-	err = retryutil.Retry(10*time.Second, 6, func() (bool, error) {
-		err = c.updateMembers(c.members)
-		if err != nil {
-			c.logger.Warningf("unable to update members: %v", err)
-			return false, nil
-		}
-		if c.members.Size() > oldN {
-			return true, nil
-		}
-		c.logger.Infof("still waiting for the new self hosted member (%s) to start...", newMember.Name)
-		return false, nil
-	})
+	err = c.waitNewMember(oldN, 6, newMember.Name)
 	if err != nil {
-		c.logger.Warningf("failed to add member (%s) due to scheduling failure. Removing its pod (%s)", newMember.Name, pod.Name)
-		// our reconcile loop assumes that no new member is added without control.
-		retryutil.Retry(10*time.Second, math.MaxInt64, func() (bool, error) {
-			err := c.removePod(newMember.Name)
-			if err != nil {
-				c.logger.Errorf("failed to delete pod (%s), retry later: %v", newMember.Name, err)
-				return false, nil
-			}
-			return true, nil
-		})
-		c.logger.Infof("pod (%s) has been removed", pod.Name)
+		c.logger.Warningf("new member (%s) is still not added. Doing more inspection...", newMember.Name)
+		c.inspectSelfHostedMember(newMember.Name, pod.Name, ns, oldN)
 		return nil
 	}
 
