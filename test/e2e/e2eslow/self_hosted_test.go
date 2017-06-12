@@ -109,7 +109,7 @@ func startEtcd(f *framework.Framework) (*v1.Pod, error) {
 			Containers: []v1.Container{{
 				Command: []string{"/bin/sh", "-ec", etcdCmd},
 				Name:    "etcd",
-				Image:   "quay.io/coreos/etcd",
+				Image:   "quay.io/coreos/etcd:v3.1.8",
 				Env: []v1.EnvVar{{
 					Name:      "POD_NAME",
 					ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
