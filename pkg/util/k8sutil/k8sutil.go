@@ -76,7 +76,7 @@ func GetPodNames(pods []*v1.Pod) []string {
 	return res
 }
 
-func makeRestoreInitContainerSpec(backupAddr, token, version string, m *etcdutil.Member) string {
+func makeRestoreInitContainerSpec(backupAddr, token, baseImage, version string, m *etcdutil.Member) string {
 	spec := []v1.Container{
 		{
 			Name:  "fetch-backup",
@@ -89,7 +89,7 @@ func makeRestoreInitContainerSpec(backupAddr, token, version string, m *etcdutil
 		},
 		{
 			Name:  "restore-datadir",
-			Image: EtcdImageName(version),
+			Image: ImageName(baseImage, version),
 			Command: []string{
 				"/bin/sh", "-ec",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
@@ -109,9 +109,10 @@ func makeRestoreInitContainerSpec(backupAddr, token, version string, m *etcdutil
 	return string(b)
 }
 
-func EtcdImageName(version string) string {
-	return fmt.Sprintf("quay.io/coreos/etcd:v%v", version)
+func ImageName(baseImage, version string) string {
+	return fmt.Sprintf("%s:v%v", baseImage, version)
 }
+
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 	p.Spec.NodeSelector = ns
 	return p
@@ -192,7 +193,7 @@ func newEtcdServiceManifest(svcName, clusterName string, clusterIP string, port 
 
 func AddRecoveryToPod(pod *v1.Pod, clusterName, token string, m *etcdutil.Member, cs spec.ClusterSpec) {
 	pod.Annotations[v1.PodInitContainersBetaAnnotationKey] =
-		makeRestoreInitContainerSpec(BackupServiceAddr(clusterName), token, cs.Version, m)
+		makeRestoreInitContainerSpec(BackupServiceAddr(clusterName), token, cs.BaseImage, cs.Version, m)
 }
 
 func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
@@ -223,7 +224,8 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 	// TODO: fix "sleep 5".
 	// Without waiting some time, there is high rate of flakes in DNS setup.
 	commands = fmt.Sprintf("sleep 5; %s", commands)
-	container := containerWithLivenessProbe(etcdContainer(commands, cs.Version), etcdLivenessProbe(cs.TLS.IsSecureClient()))
+	container := containerWithLivenessProbe(etcdContainer(commands, cs.BaseImage, cs.Version), etcdLivenessProbe(cs.TLS.IsSecureClient()))
+
 	if cs.Pod != nil {
 		container = containerWithRequirements(container, cs.Pod.Resources)
 	}

@@ -2,6 +2,8 @@
 
 ### Added
 
+Adds ability for users to specify base image for etcd pods in a cluster.
+
 ### Changed
 
 ### Removed
