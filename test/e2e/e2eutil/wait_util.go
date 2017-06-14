@@ -33,7 +33,7 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
-type acceptFunc func(*v1.Pod) bool
+type acceptFunc func(*spec.Cluster) bool
 type filterFunc func(*v1.Pod) bool
 
 func CalculateRestoreWaitTime(needDataClone bool) time.Duration {
@@ -45,18 +45,7 @@ func CalculateRestoreWaitTime(needDataClone bool) time.Duration {
 	return waitTime
 }
 
-func WaitUntilSizeReached(t *testing.T, kubeClient kubernetes.Interface, size int, timeout time.Duration, cl *spec.Cluster) ([]string, error) {
-	return waitSizeReachedWithAccept(t, kubeClient, size, timeout, cl)
-}
-
-func WaitSizeAndVersionReached(t *testing.T, kubeClient kubernetes.Interface, version string, size int, timeout time.Duration, cl *spec.Cluster) error {
-	_, err := waitSizeReachedWithAccept(t, kubeClient, size, timeout, cl, func(pod *v1.Pod) bool {
-		return k8sutil.GetEtcdVersion(pod) == version
-	})
-	return err
-}
-
-func waitSizeReachedWithAccept(t *testing.T, kubeClient kubernetes.Interface, size int, timeout time.Duration, cl *spec.Cluster, accepts ...acceptFunc) ([]string, error) {
+func WaitUntilPodSizeReached(t *testing.T, kubeClient kubernetes.Interface, size int, timeout time.Duration, cl *spec.Cluster) ([]string, error) {
 	var names []string
 	err := retryutil.Retry(10*time.Second, int(timeout/(10*time.Second)), func() (done bool, err error) {
 		podList, err := kubeClient.Core().Pods(cl.Metadata.Namespace).List(k8sutil.ClusterListOpt(cl.Metadata.Name))
@@ -70,21 +59,49 @@ func waitSizeReachedWithAccept(t *testing.T, kubeClient kubernetes.Interface, si
 			if pod.Status.Phase != v1.PodRunning {
 				continue
 			}
-			accepted := true
-			for _, acceptPod := range accepts {
-				if !acceptPod(pod) {
-					accepted = false
-					break
-				}
-			}
-			if !accepted {
-				continue
-			}
 			names = append(names, pod.Name)
 			nodeNames = append(nodeNames, pod.Spec.NodeName)
 		}
 		LogfWithTimestamp(t, "waiting size (%d), etcd pods: names (%v), nodes (%v)", size, names, nodeNames)
 		// TODO: Change this to check for ready members and not just cluster pods
+		if len(names) != size {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return names, nil
+}
+
+func WaitUntilSizeReached(t *testing.T, kubeClient kubernetes.Interface, size int, timeout time.Duration, cl *spec.Cluster) ([]string, error) {
+	return waitSizeReachedWithAccept(t, kubeClient, size, timeout, cl)
+}
+
+func WaitSizeAndVersionReached(t *testing.T, kubeClient kubernetes.Interface, version string, size int, timeout time.Duration, cl *spec.Cluster) error {
+	_, err := waitSizeReachedWithAccept(t, kubeClient, size, timeout, cl, func(currCluster *spec.Cluster) bool {
+		return currCluster.Status.CurrentVersion == version
+	})
+	return err
+}
+
+func waitSizeReachedWithAccept(t *testing.T, kubeClient kubernetes.Interface, size int, timeout time.Duration, cl *spec.Cluster, accepts ...acceptFunc) ([]string, error) {
+	var names []string
+	err := retryutil.Retry(10*time.Second, int(timeout/(10*time.Second)), func() (done bool, err error) {
+		currCluster, err := k8sutil.GetClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Metadata.Namespace, cl.Metadata.Name)
+		if err != nil {
+			return false, err
+		}
+
+		for _, accept := range accepts {
+			if !accept(currCluster) {
+				return false, nil
+			}
+		}
+
+		names = currCluster.Status.Members.Ready
+		LogfWithTimestamp(t, "waiting size (%d), healthy etcd members: names (%v)", size, names)
 		if len(names) != size {
 			return false, nil
 		}
