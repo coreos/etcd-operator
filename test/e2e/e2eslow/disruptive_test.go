@@ -47,10 +47,10 @@ func TestRestartOperator(t *testing.T) {
 	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, names[0]); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 2, 10*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 2, 10*time.Second, testEtcd); err != nil {
 		t.Fatalf("failed to wait for killed member to die: %v", err)
 	}
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 10*time.Second, testEtcd); err == nil {
+	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 10*time.Second, testEtcd); err == nil {
 		t.Fatalf("cluster should not be recovered: operator is deleted")
 	}
 
