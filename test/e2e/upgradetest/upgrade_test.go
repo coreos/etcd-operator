@@ -39,7 +39,8 @@ func TestResize(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second); err != nil {
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -69,7 +70,8 @@ func TestResize(t *testing.T) {
 	updateFunc := func(cl *spec.Cluster) {
 		cl.Spec.Size = 5
 	}
-	if _, err := e2eutil.UpdateCluster(testF.KubeCli, testClus, 10, updateFunc); err != nil {
+	_, err = e2eutil.UpdateCluster(testF.KubeCli, testClus, 10, updateFunc)
+	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 5, 60*time.Second, testClus)
@@ -89,7 +91,8 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second); err != nil {
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -112,10 +115,12 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := e2eutil.KillMembers(testF.KubeCli, testF.KubeNS, names[2]); err != nil {
+	err = e2eutil.KillMembers(testF.KubeCli, testF.KubeNS, names[2])
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testEtcd); err != nil {
+	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testEtcd)
+	if err != nil {
 		t.Fatalf("failed to heal one member: %v", err)
 	}
 }
@@ -147,7 +152,8 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 			t.Fatalf("failed to delete operator:%v", err)
 		}
 	}()
-	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second); err != nil {
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -344,7 +350,8 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 			t.Fatalf("failed to delete operator: %v", err)
 		}
 	}()
-	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second); err != nil {
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -393,10 +400,12 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		t.Fatal(err)
 	}
 
-	if err := e2eutil.KillMembers(testF.KubeCli, testF.KubeNS, names...); err != nil {
+	err = e2eutil.KillMembers(testF.KubeCli, testF.KubeNS, names...)
+	if err != nil {
 		t.Fatalf("failed to kill all members: %v", err)
 	}
-	if names, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 180*time.Second, testClus); err != nil {
+	names, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 180*time.Second, testClus)
+	if err != nil {
 		t.Fatalf("failed to recover all members: %v", err)
 	}
 
