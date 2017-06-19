@@ -18,7 +18,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/pkg/errors"
 
 	"k8s.io/client-go/pkg/api/v1"
 )
@@ -30,35 +33,13 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	}
 	members := etcdutil.MemberSet{}
 	for _, m := range resp.Members {
-		var name string
-		if c.cluster.Spec.SelfHosted != nil {
-			name = m.Name
-			if len(name) == 0 || len(m.ClientURLs) == 0 {
-				c.logger.Errorf("member peerURL (%s): %v", m.PeerURLs[0], errUnexpectedUnreadyMember)
-				return errUnexpectedUnreadyMember
-			}
-
-			curl := m.ClientURLs[0]
-			bcurl := c.cluster.Spec.SelfHosted.BootMemberClientEndpoint
-			if curl == bcurl {
-				return fmt.Errorf("skipping update members for self hosted cluster: waiting for the boot member (%s) to be removed...", m.Name)
-			}
-
-			if !strings.HasPrefix(m.Name, c.cluster.Metadata.GetName()) {
-				c.logger.Errorf("member %s does not belong to this cluster.", m.Name)
-				return errInvalidMemberName
-			}
-		} else {
-			name, err = etcdutil.MemberNameFromPeerURL(m.PeerURLs[0])
-			if err != nil {
-				c.logger.Errorf("invalid member peerURL (%s): %v", m.PeerURLs[0], err)
-				return errInvalidMemberName
-			}
+		name, err := getMemberName(m, c.cluster.Metadata.GetName(), c.cluster.Spec.SelfHosted)
+		if err != nil {
+			return errors.Wrap(err, "get member name failed")
 		}
 		ct, err := etcdutil.GetCounterFromMemberName(name)
 		if err != nil {
-			c.logger.Errorf("invalid member name (%s): %v", name, err)
-			return errInvalidMemberName
+			return newFatalError(fmt.Sprintf("get counter from member name (%s) failed: %v", name, err))
 		}
 		if ct+1 > c.memberCounter {
 			c.memberCounter = ct + 1
@@ -93,4 +74,28 @@ func podsToMemberSet(pods []*v1.Pod, sc bool) etcdutil.MemberSet {
 		members.Add(m)
 	}
 	return members
+}
+
+func getMemberName(m *etcdserverpb.Member, clusterName string, selfHosted *spec.SelfHostedPolicy) (string, error) {
+	if selfHosted != nil {
+		if len(m.Name) == 0 || len(m.ClientURLs) == 0 {
+			return "", newFatalError(fmt.Sprintf("unready self-hosted member (peerURL: %s)", m.PeerURLs[0]))
+		}
+
+		curl := m.ClientURLs[0]
+		if curl == selfHosted.BootMemberClientEndpoint {
+			return "", fmt.Errorf("skipping for self hosted cluster: waiting for the boot member (%s) to be removed...", m.Name)
+		}
+
+		if !strings.HasPrefix(m.Name, clusterName) {
+			return "", newFatalError(fmt.Sprintf("member (%s) does not belong to this cluster", m.Name))
+		}
+		return m.Name, nil
+	}
+
+	name, err := etcdutil.MemberNameFromPeerURL(m.PeerURLs[0])
+	if err != nil {
+		return "", newFatalError(fmt.Sprintf("invalid member peerURL (%s): %v", m.PeerURLs[0], err))
+	}
+	return name, nil
 }
