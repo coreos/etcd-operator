@@ -113,6 +113,43 @@ func waitSizeReachedWithAccept(t *testing.T, kubeClient kubernetes.Interface, si
 	return names, nil
 }
 
+func WaitUntilMembersWithNamesDeleted(t *testing.T, kubeClient kubernetes.Interface, timeout time.Duration, cl *spec.Cluster, targetNames ...string) ([]string, error) {
+	var remaining []string
+	err := retryutil.Retry(10*time.Second, int(timeout/(10*time.Second)), func() (done bool, err error) {
+		currCluster, err := k8sutil.GetClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Metadata.Namespace, cl.Metadata.Name)
+		if err != nil {
+			return false, err
+		}
+
+		readyMembers := currCluster.Status.Members.Ready
+		remaining = nil
+		for _, name := range targetNames {
+			if presentIn(name, readyMembers) {
+				remaining = append(remaining, name)
+			}
+		}
+
+		LogfWithTimestamp(t, "waiting on members (%v) to be deleted", remaining)
+		if len(remaining) != 0 {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return remaining, nil
+}
+
+func presentIn(a string, list []string) bool {
+	for _, l := range list {
+		if a == l {
+			return true
+		}
+	}
+	return false
+}
+
 func waitResourcesDeleted(t *testing.T, kubeClient kubernetes.Interface, cl *spec.Cluster) error {
 	undeletedPods, err := WaitPodsDeleted(kubeClient, cl.Metadata.Namespace, 30*time.Second, k8sutil.ClusterListOpt(cl.Metadata.Name))
 	if err != nil {

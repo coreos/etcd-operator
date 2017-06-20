@@ -119,6 +119,12 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	remaining, err := e2eutil.WaitUntilMembersWithNamesDeleted(t, testF.KubeCli, 30*time.Second, testEtcd, names[2])
+	if err != nil {
+		t.Fatalf("failed to see members(%v) be deleted in time: %v", remaining, err)
+	}
+
 	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to heal one member: %v", err)
