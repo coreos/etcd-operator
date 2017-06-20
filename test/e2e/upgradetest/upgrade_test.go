@@ -410,7 +410,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to kill all members: %v", err)
 	}
-	names, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 180*time.Second, testClus)
+	names, err = e2eutil.WaitUntilPodSizeReached(t, testF.KubeCli, 3, 180*time.Second, testClus)
 	if err != nil {
 		t.Fatalf("failed to recover all members: %v", err)
 	}
