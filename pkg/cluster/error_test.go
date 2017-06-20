@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd-operator Authors
+// Copyright 2017 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,30 +15,34 @@
 package cluster
 
 import (
+	"testing"
+
 	"github.com/pkg/errors"
 )
 
-var (
-	errCreatedCluster = errors.New("cluster failed to be created")
-)
+func TestWrapFatalError(t *testing.T) {
+	tests := []struct {
+		err     error
+		isFatal bool
+	}{{
+		err:     &fatalError{},
+		isFatal: true,
+	}, {
+		err:     newFatalError("some reason"),
+		isFatal: true,
+	}, {
 
-type fatalError struct {
-	reason string
-}
+		err:     errors.Wrap(newFatalError("cause"), "wrap"),
+		isFatal: true,
+	}, {
+		err:     errors.New("not fatal"),
+		isFatal: false,
+	}}
 
-func (fe *fatalError) Error() string {
-	return fe.reason
-}
-
-func newFatalError(reason string) *fatalError {
-	return &fatalError{reason}
-}
-
-func isFatalError(err error) bool {
-	switch errors.Cause(err).(type) {
-	case *fatalError:
-		return true
-	default:
-		return false
+	for i, tt := range tests {
+		f := isFatalError(tt.err)
+		if f != tt.isFatal {
+			t.Errorf("#%d: isFatal want=%v, get=%v", i, tt.isFatal, f)
+		}
 	}
 }

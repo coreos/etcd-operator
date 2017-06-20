@@ -185,8 +185,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	}
 
 	if c.cluster.Spec.Backup == nil {
-		c.logger.Errorf("fail to do disaster recovery: no backup policy has been defined.")
-		return errNoBackupExist
+		return newFatalError("fail to do disaster recovery: no backup policy has been defined")
 	}
 
 	backupNow := false
@@ -210,7 +209,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 			return err
 		}
 		if !exist {
-			return errNoBackupExist
+			return newFatalError("no backup exist for disaster recovery")
 		}
 	}
 
