@@ -16,6 +16,7 @@ package cluster
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"math"
 	"reflect"
@@ -177,7 +178,7 @@ func (c *Cluster) create() error {
 	if err := c.updateTPRStatus(); err != nil {
 		return fmt.Errorf("cluster create: failed to update cluster phase (%v): %v", spec.ClusterPhaseCreating, err)
 	}
-	c.logger.Infof("creating cluster with Spec (%#v), Status (%#v)", c.cluster.Spec, c.cluster.Status)
+	c.logClusterCreation()
 
 	c.gc.CollectCluster(c.cluster.Metadata.Name, c.cluster.Metadata.UID)
 
@@ -269,7 +270,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 					break
 				}
 				// TODO: we can't handle another upgrade while an upgrade is in progress
-				c.logger.Infof("spec update: from: %v to: %v", c.cluster.Spec, event.cluster.Spec)
+				c.logSpecUpdate(event.cluster.Spec)
 
 				ob, nb := c.cluster.Spec.Backup, event.cluster.Spec.Backup
 				c.cluster = event.cluster
@@ -597,4 +598,24 @@ func (c *Cluster) reportFailedStatus() {
 
 func (c *Cluster) name() string {
 	return c.cluster.Metadata.GetName()
+}
+
+func (c *Cluster) logClusterCreation() {
+	specBytes, err := json.MarshalIndent(c.cluster.Spec, "", "    ")
+	if err != nil {
+		c.logger.Errorf("failed to marshal cluster spec: %v", err)
+	}
+	c.logger.Infof("creating cluster with \nSpec:\n%v", string(specBytes))
+}
+
+func (c *Cluster) logSpecUpdate(newSpec spec.ClusterSpec) {
+	oldSpecBytes, err := json.MarshalIndent(c.cluster.Spec, "", "    ")
+	if err != nil {
+		c.logger.Errorf("failed to marshal cluster spec: %v", err)
+	}
+	newSpecBytes, err := json.MarshalIndent(newSpec, "", "    ")
+	if err != nil {
+		c.logger.Errorf("failed to marshal cluster spec: %v", err)
+	}
+	c.logger.Infof("spec update: \nOld:\n%v \nNew:\n%v", string(oldSpecBytes), string(newSpecBytes))
 }
