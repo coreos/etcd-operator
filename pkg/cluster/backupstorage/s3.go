@@ -26,7 +26,7 @@ type s3 struct {
 }
 
 func awsConfigDirPrefix() string {
-	return filepath.Join(os.Getenv("HOME"), "etc")
+	return filepath.Join(os.Getenv("HOME"), "etc/aws")
 }
 
 func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
