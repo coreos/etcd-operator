@@ -23,6 +23,7 @@ const (
 
 	DefaultBackupPodHTTPPort = 19999
 
+	OperatorRoot   = "/var/tmp/etcd-operator"
 	BackupMountDir = "/var/etcd-backup"
 
 	PVProvisionerGCEPD  = "kubernetes.io/gce-pd"

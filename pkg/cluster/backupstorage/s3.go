@@ -9,6 +9,7 @@ import (
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,17 +26,13 @@ type s3 struct {
 	s3cli        *backups3.S3
 }
 
-func awsConfigDirPrefix() string {
-	return filepath.Join(os.Getenv("HOME"), "etc/aws")
-}
-
 func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
 	prefix := path.Join(ns, clusterName)
 	var dir string
 
 	s3cli, err := func() (*backups3.S3, error) {
 		if p.S3 != nil {
-			dir = filepath.Join(awsConfigDirPrefix(), prefix)
+			dir = filepath.Join(constants.OperatorRoot, "aws", prefix)
 			if err := os.MkdirAll(dir, 0700); err != nil {
 				return nil, err
 			}
