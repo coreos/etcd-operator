@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -79,10 +80,39 @@ func WaitUntilSizeReached(t *testing.T, kubeClient kubernetes.Interface, size in
 }
 
 func WaitSizeAndVersionReached(t *testing.T, kubeClient kubernetes.Interface, version string, size int, timeout time.Duration, cl *spec.Cluster) error {
-	_, err := waitSizeReachedWithAccept(t, kubeClient, size, timeout, cl, func(currCluster *spec.Cluster) bool {
-		return currCluster.Status.CurrentVersion == version
+	return retryutil.Retry(10*time.Second, int(timeout/(10*time.Second)), func() (done bool, err error) {
+		var names []string
+		podList, err := kubeClient.Core().Pods(cl.Metadata.Namespace).List(k8sutil.ClusterListOpt(cl.Metadata.Name))
+		if err != nil {
+			return false, err
+		}
+		names = nil
+		var nodeNames []string
+		for i := range podList.Items {
+			pod := &podList.Items[i]
+			if pod.Status.Phase != v1.PodRunning {
+				continue
+			}
+
+			containerVersion := getVersionFromImage(pod.Status.ContainerStatuses[0].Image)
+			if containerVersion != version {
+				LogfWithTimestamp(t, "pod(%v): expected version(%v) current version(%v)", pod.Name, version, containerVersion)
+				continue
+			}
+
+			names = append(names, pod.Name)
+			nodeNames = append(nodeNames, pod.Spec.NodeName)
+		}
+		LogfWithTimestamp(t, "waiting size (%d), etcd pods: names (%v), nodes (%v)", size, names, nodeNames)
+		if len(names) != size {
+			return false, nil
+		}
+		return true, nil
 	})
-	return err
+}
+
+func getVersionFromImage(image string) string {
+	return strings.Split(image, ":v")[1]
 }
 
 func waitSizeReachedWithAccept(t *testing.T, kubeClient kubernetes.Interface, size int, timeout time.Duration, cl *spec.Cluster, accepts ...acceptFunc) ([]string, error) {
