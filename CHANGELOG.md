@@ -1,8 +1,6 @@
-## [Unreleased 0.3.3]
+## [Unreleased 0.3.4]
 
 ### Added
-
-- Adds ability for users to specify base image for etcd pods in a cluster.
 
 ### Changed
 
@@ -10,12 +8,23 @@
 
 ### Fixed
 
-- [GH-1138] Fixed operator stucks in managing selfhosted cluster when there are not enough nodes to start new etcd member.
-- [GH-1196] Fixed etcd operator could not start S3 backup sidecar if given non-root user.
-
 ### Deprecated
 
 ### Security
+
+
+## [Release 0.3.3]
+
+### Added
+
+- Adds ability for users to specify base image for etcd pods in a cluster.
+  Default base image is `quay.io/coreos/etcd-operator`.
+
+### Fixed
+
+- [GH-1138] Fixed operator stucks in managing selfhosted cluster when there are not enough nodes to start new etcd member.
+- [GH-1196] Fixed etcd operator could not start S3 backup sidecar if given non-root user.
+
 
 ## [Release 0.3.2]
 
