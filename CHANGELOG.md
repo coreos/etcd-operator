@@ -2,7 +2,7 @@
 
 ### Added
 
-Adds ability for users to specify base image for etcd pods in a cluster.
+- Adds ability for users to specify base image for etcd pods in a cluster.
 
 ### Changed
 
@@ -11,6 +11,7 @@ Adds ability for users to specify base image for etcd pods in a cluster.
 ### Fixed
 
 - [GH-1138] Fixed operator stucks in managing selfhosted cluster when there are not enough nodes to start new etcd member.
+- [GH-1196] Fixed etcd operator could not start S3 backup sidecar if given non-root user.
 
 ### Deprecated
 
