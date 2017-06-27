@@ -116,7 +116,7 @@ function unit_pass {
 		fi
 	done
 	# Send reports to codecov, CODECOV_TOKEN env must be present in Jenkins
-	curl -s https://codecov.io/bash | bash
+	(curl -s https://codecov.io/bash | bash) || true
 }
 
 function cliente2e_pass {
