@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/backup/abs/absconfig"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
@@ -61,6 +62,7 @@ type Config struct {
 	PVProvisioner  string
 	ServiceAccount string
 	s3config.S3Context
+	absconfig.ABSContext
 
 	KubeCli kubernetes.Interface
 }

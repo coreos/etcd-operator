@@ -4,6 +4,7 @@ In etcd operator, we provide the following options to save cluster backups to:
 - Persistent Volume (PV) on GCE or AWS
 - Persistent Volume (PV) with custom StorageClasses
 - S3 bucket on AWS
+- ABS container on Azure
 
 This docs talks about how to configure etcd operator to use these backup options.
 
@@ -128,3 +129,57 @@ spec:
 
 For AWS k8s users: If `credentials` file is not given,
 operator and backup sidecar pods will make use of AWS IAM roles on the nodes where they are deployed.
+
+## ABS on Azure
+
+As above, the ABS backup policy can be set at two levels:
+- **operator level:** The same ABS configurations (container and secret name) will be used for all ABS backup enabled clusters created by the operator 
+- **cluster level:** Each cluster can specify its own ABS configuration.
+
+If configurations for both levels are specified then the cluster level configuration will override the operator level configuration.
+
+In either case, for the following examples we assume the ABS container `etcd-backups` has already been created in Azure.
+
+### Operator level configuration  
+
+See the [ABS backup deployment](../../example/deployment-abs-backup.yaml.template) template on how to configure the operator to enable ABS backups. The following flags need to be passed to operator:
+- `backup-abs-secret`: The name of the kube secret object that stores the ABS account credentials.  The storage account value must have key 'storage-account' and storage key value 'storage-key'.
+- `backup-abs-container`: The name of the ABS container to store backups in.
+
+See the [ABS secret](../../example/secret-abs-credentials.yaml.template) template for an example of what the secret should look like.
+
+To create the secret from the secret manifest:
+```
+$ kubectl -n <namespace-name> create -f secret-abs-credentials.yaml
+```
+
+What we have:
+- a secret "abs-credentials";
+- ABS container "etcd_backups";
+
+We will start etcd operator with the following flags:
+```
+$ ./etcd-operator ... --backup-abs-secret=abs-credentials --backup-abs-container=etcd_backups
+```
+We can then use ABS storage for backups. See [spec examples](spec_examples.md#three-members-cluster-with-abs-backup) on how to configure a cluster that uses an ABS container as its storage type.
+
+### Cluster level configuration
+
+See the [ABS backup with cluster specific configuration](spec_examples.md#abs-backup-and-cluster-specific-abs-configuration) spec to see what the cluster's `spec.backup` field should be configured as to set a cluster specific ABS backup configuration. The following additional fields need to be set under the cluster spec's `spec.backup.abs` field:
+- `absContainer`: The name of the ABS container to store backups in.
+- `absSecret`: The secret object name which should contain two key value pairs for the ABS account name and key.
+
+The ABS secret can be created as above.
+
+Once the secret is created, it can be used to configure a new cluster or update an existing one with the specific ABS configurations:
+```
+spec:
+  backup:
+    storageType: "ABS"
+    abs:
+      absContainer: myabscontainer
+      absSecret: abs-credentials
+```
+
+See the [ABS etcd cluster](../../example/example-etcd-cluster-with-abs-backup.yaml) template for a full example cluster configuration with ABS backup.
+

@@ -20,6 +20,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/backup/abs/absconfig"
 	backupenv "github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -180,6 +181,52 @@ func AttachOperatorS3ToPodSpec(ps *v1.PodSpec, s3Ctx s3config.S3Context) {
 	}, v1.EnvVar{
 		Name:  backupenv.AWSS3Bucket,
 		Value: s3Ctx.S3Bucket,
+	})
+}
+
+// AttachABSToPodSpec attaches ABS credentials to a Pod
+func AttachABSToPodSpec(ps *v1.PodSpec, ws spec.ABSSource) {
+	storageAccountSelector := v1.SecretKeySelector{
+		LocalObjectReference: v1.LocalObjectReference{Name: ws.ABSSecret},
+		Key:                  spec.ABSStorageAccount,
+	}
+	storageKeySelector := v1.SecretKeySelector{
+		LocalObjectReference: v1.LocalObjectReference{Name: ws.ABSSecret},
+		Key:                  spec.ABSStorageKey,
+	}
+
+	ps.Containers[0].Env = append(ps.Containers[0].Env, v1.EnvVar{
+		Name:      backupenv.ABSStorageAccount,
+		ValueFrom: &v1.EnvVarSource{SecretKeyRef: &storageAccountSelector},
+	}, v1.EnvVar{
+		Name:      backupenv.ABSStorageKey,
+		ValueFrom: &v1.EnvVarSource{SecretKeyRef: &storageKeySelector},
+	}, v1.EnvVar{
+		Name:  backupenv.ABSContainer,
+		Value: ws.ABSContainer,
+	})
+}
+
+// AttachOperatorABSToPodSpec attaches an operator's ABS credentails to a Pod
+func AttachOperatorABSToPodSpec(ps *v1.PodSpec, absCtx absconfig.ABSContext) {
+	storageAccountSelector := v1.SecretKeySelector{
+		LocalObjectReference: v1.LocalObjectReference{Name: absCtx.ABSSecret},
+		Key:                  spec.ABSStorageAccount,
+	}
+	storageKeySelector := v1.SecretKeySelector{
+		LocalObjectReference: v1.LocalObjectReference{Name: absCtx.ABSSecret},
+		Key:                  spec.ABSStorageKey,
+	}
+
+	ps.Containers[0].Env = append(ps.Containers[0].Env, v1.EnvVar{
+		Name:      backupenv.ABSStorageAccount,
+		ValueFrom: &v1.EnvVarSource{SecretKeyRef: &storageAccountSelector},
+	}, v1.EnvVar{
+		Name:      backupenv.ABSStorageKey,
+		ValueFrom: &v1.EnvVarSource{SecretKeyRef: &storageKeySelector},
+	}, v1.EnvVar{
+		Name:  backupenv.ABSContainer,
+		Value: absCtx.ABSContainer,
 	})
 }
 

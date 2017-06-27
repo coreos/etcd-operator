@@ -1,0 +1,19 @@
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdCluster"
+metadata:
+  name: "example-etcd-cluster-with-abs-backup"
+spec:
+  size: 1
+  version: 3.1.8
+  backup:
+    ## short backup interval for testing, do not use this in production!
+    backupIntervalInSecond: 30
+    maxBackups: 5
+    storageType: "ABS"
+    abs:
+      absContainer: "myabscontainer"
+      absSecret: "abs-credentials"
+  ## the section below can be added to restore from a pre-existing cluster backup
+  restore:
+    backupClusterName: "cluster-a"
+    storageType: "ABS"

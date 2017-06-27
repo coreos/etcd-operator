@@ -2,6 +2,8 @@
 
 ### Added
 
+- [GH-1237](https://github.com/coreos/etcd-operator/pull/1237) etcd cluster backups can now be saved to Azure Blob Storage (ABS).
+
 ### Changed
 
 ### Removed
