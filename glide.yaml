@@ -19,3 +19,5 @@ import:
 - package: github.com/jpillora/go-ogle-analytics
 - package: golang.org/x/net
 - package: golang.org/x/time
+- package: github.com/go-ini/ini
+  version: ^1.28.0
