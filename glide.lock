@@ -1,5 +1,5 @@
-hash: abfa1d8c2be45a5826712ed0ec8cde1bde9566525cec1e36d85783e42726f1dc
-updated: 2017-06-19T09:44:03.664783187-07:00
+hash: db22f36a9471df190a07c8920f9a65613807835a0166cfef641d215129da5987
+updated: 2017-06-27T08:26:51.461920388-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -85,7 +85,7 @@ imports:
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-ini/ini
-  version: 2e44421e256d82ebbf3d4d4fcabe8930b905eff3
+  version: d3de07a94d22b4a0972deb4b96d790c2c0ce8333
 - name: github.com/go-openapi/jsonpointer
   version: 46af16f9f7b149af66e5d1bd010e3574dc06de98
 - name: github.com/go-openapi/jsonreference

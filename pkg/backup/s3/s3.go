@@ -19,8 +19,10 @@ import (
 	"path"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/go-ini/ini"
 )
 
 const (
@@ -38,11 +40,7 @@ type S3 struct {
 // Please refer to http://docs.aws.amazon.com/sdk-for-go/api/aws/session/
 // for setting up credentials and configuration.
 func New(bucket, prefix string) (*S3, error) {
-	return NewFromSessionOpt(bucket, prefix, session.Options{
-		// Setting this is equal to the AWS_SDK_LOAD_CONFIG environment variable was set.
-		// We want to save the work to set AWS_SDK_LOAD_CONFIG=1 outside.
-		SharedConfigState: session.SharedConfigEnable,
-	})
+	return NewFromSessionOpt(bucket, prefix, session.Options{})
 }
 
 func NewFromSessionOpt(bucket, prefix string, so session.Options) (*S3, error) {
@@ -147,4 +145,50 @@ func (s *S3) CopyPrefix(from string) error {
 		}
 	}
 	return nil
+}
+
+// LoadCredentials reads the default profile section from a aws credentials file
+func LoadCredentials(data []byte) (creds *credentials.Value, err error) {
+	config, err := ini.Load(data)
+	if err != nil {
+		return
+	}
+	iniProfile, err := config.GetSection("default")
+	if err != nil {
+		return
+	}
+
+	id, err := iniProfile.GetKey("aws_access_key_id")
+	if err != nil {
+		return
+	}
+
+	secret, err := iniProfile.GetKey("aws_secret_access_key")
+	if err != nil {
+		return
+	}
+
+	// Default to empty string if not found
+	token := iniProfile.Key("aws_session_token")
+
+	return &credentials.Value{
+		AccessKeyID:     id.String(),
+		SecretAccessKey: secret.String(),
+		SessionToken:    token.String(),
+	}, nil
+}
+
+// LoadConfig reads in an aws configuration file data
+func LoadConfig(data []byte) (string, error) {
+	config, err := ini.Load(data)
+	if err != nil {
+		return "", err
+	}
+	iniProfile, err := config.GetSection("default")
+	if err != nil {
+		return "", err
+	}
+
+	region, err := iniProfile.GetKey("region")
+	return region.String(), err
 }
