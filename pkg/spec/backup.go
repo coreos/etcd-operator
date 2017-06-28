@@ -48,9 +48,9 @@ type BackupPolicy struct {
 	// Otherwise, it is invalid.
 	MaxBackups int `json:"maxBackups"`
 
-	// CleanupBackupsOnClusterDelete tells whether to cleanup backup data if cluster is deleted.
-	// By default, operator will keep the backup data.
-	CleanupBackupsOnClusterDelete bool `json:"cleanupBackupsOnClusterDelete"`
+	// AutoDelete tells whether to cleanup backup data if cluster is deleted.
+	// By default (false), operator will keep the backup data.
+	AutoDelete bool `json:"autoDelete"`
 }
 
 func (bp *BackupPolicy) Validate() error {

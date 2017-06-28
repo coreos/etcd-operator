@@ -11,7 +11,7 @@ spec:
     storageType: "PersistentVolume"
     pv:
       volumeSizeInMB: 512
-    cleanupBackupsOnClusterDelete: true
+    autoDelete: true
   TLS:
     static:
       member:

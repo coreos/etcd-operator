@@ -75,7 +75,7 @@ func (s *s3) Clone(from string) error {
 }
 
 func (s *s3) Delete() error {
-	if s.backupPolicy.CleanupBackupsOnClusterDelete {
+	if s.backupPolicy.AutoDelete {
 		names, err := s.s3cli.List()
 		if err != nil {
 			return err

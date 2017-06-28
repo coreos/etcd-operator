@@ -135,7 +135,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		StorageType:       backupPolicy.StorageType,
 	})
 
-	backupPolicy.CleanupBackupsOnClusterDelete = true
+	backupPolicy.AutoDelete = true
 	testEtcd, err = e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)

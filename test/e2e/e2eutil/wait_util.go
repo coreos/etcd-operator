@@ -222,8 +222,8 @@ func WaitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, storag
 		return fmt.Errorf("failed to wait backup pod terminated: %v", err)
 	}
 	// The rest is to track backup storage, e.g. PV or S3 "dir" deleted.
-	// If CleanupBackupsOnClusterDelete=false, we don't delete them and thus don't check them.
-	if !cl.Spec.Backup.CleanupBackupsOnClusterDelete {
+	// If AutoDelete=false, we don't delete them and thus don't check them.
+	if !cl.Spec.Backup.AutoDelete {
 		return nil
 	}
 	err = retryutil.Retry(5*time.Second, 5, func() (done bool, err error) {
