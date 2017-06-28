@@ -44,10 +44,10 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 		"--initial-cluster=%s --initial-cluster-state=%s",
 		hostDataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ListenClientURL(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
 	if m.SecurePeer {
-		commands += fmt.Sprintf(" --peer-client-cert-auth=true --peer-trusted-ca-file=%[1]s/peer-ca-crt.pem --peer-cert-file=%[1]s/peer-crt.pem --peer-key-file=%[1]s/peer-key.pem", peerTLSDir)
+		commands += fmt.Sprintf(" --peer-client-cert-auth=true --peer-trusted-ca-file=%[1]s/peer-ca.crt --peer-cert-file=%[1]s/peer.crt --peer-key-file=%[1]s/peer.key", peerTLSDir)
 	}
 	if m.SecureClient {
-		commands += fmt.Sprintf(" --client-cert-auth=true --trusted-ca-file=%[1]s/client-ca-crt.pem --cert-file=%[1]s/client-crt.pem --key-file=%[1]s/client-key.pem", clientTLSDir)
+		commands += fmt.Sprintf(" --client-cert-auth=true --trusted-ca-file=%[1]s/server-ca.crt --cert-file=%[1]s/server.crt --key-file=%[1]s/server.key", serverTLSDir)
 	}
 	if state == "new" {
 		commands += fmt.Sprintf(" --initial-cluster-token=%s", token)
@@ -105,14 +105,14 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 	}
 	if m.SecureClient {
 		c.VolumeMounts = append(c.VolumeMounts, v1.VolumeMount{
-			MountPath: clientTLSDir,
-			Name:      clientTLSVolume,
+			MountPath: serverTLSDir,
+			Name:      serverTLSVolume,
 		}, v1.VolumeMount{
 			MountPath: operatorEtcdTLSDir,
 			Name:      operatorEtcdTLSVolume,
 		})
-		volumes = append(volumes, v1.Volume{Name: clientTLSVolume, VolumeSource: v1.VolumeSource{
-			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.Member.ClientSecret},
+		volumes = append(volumes, v1.Volume{Name: serverTLSVolume, VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.Member.ServerSecret},
 		}}, v1.Volume{Name: operatorEtcdTLSVolume, VolumeSource: v1.VolumeSource{
 			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.OperatorSecret},
 		}})

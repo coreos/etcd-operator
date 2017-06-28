@@ -35,9 +35,9 @@ func TestTLS(t *testing.T) {
 func testTLS(t *testing.T, selfHosted bool) {
 	f := framework.Global
 	clusterName := "tls-test"
-	memberPeerTLSSecret := "etcd-server-peer-tls"
-	memberClientTLSSecret := "etcd-server-client-tls"
-	operatorClientTLSSecret := "operator-etcd-client-tls"
+	memberPeerTLSSecret := "etcd-peer-tls"
+	memberClientTLSSecret := "etcd-server-tls"
+	operatorClientTLSSecret := "etcd-client-tls"
 	createTLSSecretsOnce.Do(func() {
 		err := e2eutil.PreparePeerTLSSecret(clusterName, f.Namespace, memberPeerTLSSecret)
 		if err != nil {
@@ -60,7 +60,7 @@ func testTLS(t *testing.T, selfHosted bool) {
 		Static: &spec.StaticTLS{
 			Member: &spec.MemberSecret{
 				PeerSecret:   memberPeerTLSSecret,
-				ClientSecret: memberClientTLSSecret,
+				ServerSecret: memberClientTLSSecret,
 			},
 			OperatorSecret: operatorClientTLSSecret,
 		},

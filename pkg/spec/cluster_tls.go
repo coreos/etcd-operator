@@ -35,9 +35,9 @@ type MemberSecret struct {
 	// PeerSecret is the secret containing TLS certs used by each etcd member pod
 	// for the communication between etcd peers.
 	PeerSecret string `json:"peerSecret,omitempty"`
-	// ClientSecret is the secret containing TLS certs used by each etcd member pod
-	// for the communication between etcd and its clients.
-	ClientSecret string `json:"clientSecret,omitempty"`
+	// ServerSecret is the secret containing TLS certs used by each etcd member pod
+	// for the communication between etcd server and its clients.
+	ServerSecret string `json:"serverSecret,omitempty"`
 }
 
 func (tp *TLSPolicy) Validate() error {
@@ -47,11 +47,11 @@ func (tp *TLSPolicy) Validate() error {
 	st := tp.Static
 
 	if len(st.OperatorSecret) != 0 {
-		if len(st.Member.ClientSecret) == 0 {
-			return errors.New("operator secret set but member clientSecret not set")
+		if len(st.Member.ServerSecret) == 0 {
+			return errors.New("operator secret set but member serverSecret not set")
 		}
-	} else if st.Member != nil && len(st.Member.ClientSecret) != 0 {
-		return errors.New("member clientSecret set but operator secret not set")
+	} else if st.Member != nil && len(st.Member.ServerSecret) != 0 {
+		return errors.New("member serverSecret set but operator secret not set")
 	}
 	return nil
 }
