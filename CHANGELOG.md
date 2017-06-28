@@ -4,6 +4,26 @@
 
 ### Changed
 
+**BREAKING CHANGE**: Re-naming of TLS spec and TLS secrets' fields.
+
+TLS spec:
+- member's `clientSecret` is changed to `serverSecret`
+
+TLS secrets:
+- member's `peerSecret`'s fields change:
+  - peer-crt.pem -> peer.crt
+  - peer-key.pem -> peer.key
+  - peer-ca-crt.pem -> peer-ca.crt
+- member's `clientSecret` is changed to `serverSecret`, its fields change:
+  - client-crt.pem -> server.crt
+  - client-key.pem -> server.key
+  - client-ca-crt.pem -> server-ca.crt
+- `operatorSecret`'s fields change:
+  - etcd-crt.pem -> etcd-client.crt
+  - etcd-key.pem -> etcd-client.key
+  - etcd-ca-crt.pem -> etcd-client-ca.crt
+
+
 ### Removed
 
 ### Fixed

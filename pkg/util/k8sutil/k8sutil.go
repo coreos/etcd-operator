@@ -51,10 +51,10 @@ const (
 	etcdVersionAnnotationKey = "etcd.version"
 	peerTLSDir               = "/etc/etcdtls/member/peer-tls"
 	peerTLSVolume            = "member-peer-tls"
-	clientTLSDir             = "/etc/etcdtls/member/client-tls"
-	clientTLSVolume          = "member-client-tls"
+	serverTLSDir             = "/etc/etcdtls/member/server-tls"
+	serverTLSVolume          = "member-server-tls"
 	operatorEtcdTLSDir       = "/etc/etcdtls/operator/etcd-tls"
-	operatorEtcdTLSVolume    = "operator-etcd-tls"
+	operatorEtcdTLSVolume    = "etcd-client-tls"
 )
 
 func GetEtcdVersion(pod *v1.Pod) string {
@@ -206,10 +206,10 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		"--initial-cluster=%s --initial-cluster-state=%s",
 		dataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ListenClientURL(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
 	if m.SecurePeer {
-		commands += fmt.Sprintf(" --peer-client-cert-auth=true --peer-trusted-ca-file=%[1]s/peer-ca-crt.pem --peer-cert-file=%[1]s/peer-crt.pem --peer-key-file=%[1]s/peer-key.pem", peerTLSDir)
+		commands += fmt.Sprintf(" --peer-client-cert-auth=true --peer-trusted-ca-file=%[1]s/peer-ca.crt --peer-cert-file=%[1]s/peer.crt --peer-key-file=%[1]s/peer.key", peerTLSDir)
 	}
 	if m.SecureClient {
-		commands += fmt.Sprintf(" --client-cert-auth=true --trusted-ca-file=%[1]s/client-ca-crt.pem --cert-file=%[1]s/client-crt.pem --key-file=%[1]s/client-key.pem", clientTLSDir)
+		commands += fmt.Sprintf(" --client-cert-auth=true --trusted-ca-file=%[1]s/server-ca.crt --cert-file=%[1]s/server.crt --key-file=%[1]s/server.key", serverTLSDir)
 	}
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
@@ -245,14 +245,14 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 	}
 	if m.SecureClient {
 		container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
-			MountPath: clientTLSDir,
-			Name:      clientTLSVolume,
+			MountPath: serverTLSDir,
+			Name:      serverTLSVolume,
 		}, v1.VolumeMount{
 			MountPath: operatorEtcdTLSDir,
 			Name:      operatorEtcdTLSVolume,
 		})
-		volumes = append(volumes, v1.Volume{Name: clientTLSVolume, VolumeSource: v1.VolumeSource{
-			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.Member.ClientSecret},
+		volumes = append(volumes, v1.Volume{Name: serverTLSVolume, VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.Member.ServerSecret},
 		}}, v1.Volume{Name: operatorEtcdTLSVolume, VolumeSource: v1.VolumeSource{
 			Secret: &v1.SecretVolumeSource{SecretName: cs.TLS.Static.OperatorSecret},
 		}})

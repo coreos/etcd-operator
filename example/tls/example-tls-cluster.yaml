@@ -15,7 +15,7 @@ spec:
   TLS:
     static:
       member:
-        peerSecret: etcd-server-peer-tls
-        clientSecret: etcd-server-client-tls
-      operatorSecret: operator-etcd-client-tls
+        peerSecret: etcd-peer-tls
+        serverSecret: etcd-server-tls
+      operatorSecret: etcd-client-tls
 
