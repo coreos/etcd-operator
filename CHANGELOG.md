@@ -24,6 +24,28 @@ TLS secrets:
   - etcd-ca-crt.pem -> etcd-client-ca.crt
 
 
+**BREAKING CHANGE**: Backup spec: `CleanupBackupsOnClusterDelete` field is renamed to `AutoDelete`.
+
+Previous spec like this one
+
+```yaml
+spec:
+  backup:
+    storageType: "PersistentVolume"
+    ...
+    cleanupBackupsOnClusterDelete: true
+```
+
+should be changed to
+
+```yaml
+spec:
+  backup:
+    storageType: "PersistentVolume"
+    ...
+    autoDelete: true
+```
+
 ### Removed
 
 ### Fixed
