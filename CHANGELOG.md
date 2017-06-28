@@ -1,8 +1,19 @@
-## [Unreleased 0.3.4]
+## [Unreleased 0.4.1]
 
 ### Added
 
 ### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
+## [Release 0.4.0]
 
 **BREAKING CHANGE**: Re-naming of TLS spec and TLS secrets' fields.
 
@@ -45,14 +56,6 @@ spec:
     ...
     autoDelete: true
 ```
-
-### Removed
-
-### Fixed
-
-### Deprecated
-
-### Security
 
 
 ## [Release 0.3.3]
