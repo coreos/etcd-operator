@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
+	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -66,6 +67,8 @@ type Config struct {
 
 type Cluster struct {
 	logger *logrus.Entry
+	// debug logger for self hosted cluster
+	debugLogger *debug.DebugLogger
 
 	config Config
 
@@ -93,14 +96,20 @@ type Cluster struct {
 
 func New(config Config, cl *spec.Cluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
 	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", cl.Metadata.Name)
+	var debugLogger *debug.DebugLogger
+	if cl.Spec.SelfHosted != nil {
+		debugLogger = debug.New(cl.Metadata.Name)
+	}
+
 	c := &Cluster{
-		logger:  lg,
-		config:  config,
-		cluster: cl,
-		eventCh: make(chan *clusterEvent, 100),
-		stopCh:  make(chan struct{}),
-		status:  cl.Status.Copy(),
-		gc:      garbagecollection.New(config.KubeCli, cl.Metadata.Namespace),
+		logger:      lg,
+		debugLogger: debugLogger,
+		config:      config,
+		cluster:     cl,
+		eventCh:     make(chan *clusterEvent, 100),
+		stopCh:      make(chan struct{}),
+		status:      cl.Status.Copy(),
+		gc:          garbagecollection.New(config.KubeCli, cl.Metadata.Namespace),
 	}
 
 	wg.Add(1)
@@ -481,6 +490,12 @@ func (c *Cluster) removePod(name string) error {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
+		if c.isDebugLoggerEnabled() {
+			c.debugLogger.LogMessage(fmt.Sprintf("pod (%s) not found while trying to delete it", name))
+		}
+	}
+	if c.isDebugLoggerEnabled() {
+		c.debugLogger.LogPodDeletion(name)
 	}
 	return nil
 }
@@ -631,4 +646,15 @@ func (c *Cluster) logSpecUpdate(newSpec spec.ClusterSpec) {
 	for _, m := range strings.Split(string(newSpecBytes), "\n") {
 		c.logger.Info(m)
 	}
+
+	if c.isDebugLoggerEnabled() {
+		c.debugLogger.LogClusterSpecUpdate(string(oldSpecBytes), string(newSpecBytes))
+	}
+}
+
+func (c *Cluster) isDebugLoggerEnabled() bool {
+	if c.cluster.Spec.SelfHosted != nil && c.debugLogger != nil {
+		return true
+	}
+	return false
 }
