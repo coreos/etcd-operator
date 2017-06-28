@@ -35,7 +35,7 @@ func (s *pv) Clone(from string) error {
 }
 
 func (s *pv) Delete() error {
-	if s.backupPolicy.CleanupBackupsOnClusterDelete {
+	if s.backupPolicy.AutoDelete {
 		return k8sutil.DeletePVC(s.kubecli, s.clusterName, s.namespace)
 	}
 	return nil

@@ -220,7 +220,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		BackupClusterName: origClus.Metadata.Name,
 		StorageType:       bp.StorageType,
 	})
-	origClus.Spec.Backup.CleanupBackupsOnClusterDelete = true
+	origClus.Spec.Backup.AutoDelete = true
 	testClus, err = e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, origClus)
 	if err != nil {
 		t.Fatalf("failed to create cluster:%v", err)
