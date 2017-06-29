@@ -79,8 +79,7 @@ func Teardown() error {
 
 func (f *Framework) setup() error {
 	if err := f.SetupEtcdOperator(); err != nil {
-		logrus.Errorf("fail to setup etcd operator: %v", err)
-		return err
+		return fmt.Errorf("failed to setup etcd operator: %v", err)
 	}
 	logrus.Info("etcd operator created successfully")
 	if os.Getenv("AWS_TEST_ENABLED") == "true" {

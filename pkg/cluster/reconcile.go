@@ -16,6 +16,7 @@ package cluster
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -122,7 +123,7 @@ func (c *Cluster) addOneMember() error {
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create etcd client: %v", err)
 	}
 	defer etcdcli.Close()
 
@@ -130,15 +131,13 @@ func (c *Cluster) addOneMember() error {
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerURL()})
 	if err != nil {
-		c.logger.Errorf("fail to add new member (%s): %v", newMember.Name, err)
-		return err
+		return fmt.Errorf("fail to add new member (%s): %v", newMember.Name, err)
 	}
 	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)
 
 	if err := c.createPod(c.members, newMember, "existing", false); err != nil {
-		c.logger.Errorf("fail to create member (%s): %v", newMember.Name, err)
-		return err
+		return fmt.Errorf("fail to create member's pod (%s): %v", newMember.Name, err)
 	}
 	c.memberCounter++
 	c.logger.Infof("added member (%s)", newMember.Name)
