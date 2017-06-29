@@ -33,6 +33,17 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+func DeleteSecrets(kubecli kubernetes.Interface, namespace string, secretNames ...string) error {
+	var retErr error
+	for _, sname := range secretNames {
+		err := kubecli.CoreV1().Secrets(namespace).Delete(sname, metav1.NewDeleteOptions(0))
+		if err != nil {
+			retErr = fmt.Errorf("failed to delete secret (%s): %v; %v", sname, err, retErr)
+		}
+	}
+	return retErr
+}
+
 func KillMembers(kubecli kubernetes.Interface, namespace string, names ...string) error {
 	for _, name := range names {
 		err := kubecli.CoreV1().Pods(namespace).Delete(name, metav1.NewDeleteOptions(0))
