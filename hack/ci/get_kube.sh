@@ -5,9 +5,9 @@ set -o nounset
 set -o pipefail
 
 : ${DOWNLOAD_DIR:?"Need to set DOWNLOAD_DIR"}
-KUBE_RELEASE_URL=${KUBE_RELEASE_URL:-kubernetes-release-dev/ci}
+: ${KUBE_VERSION:?"Need to set KUBE_VERSION"}
+: ${KUBE_RELEASE_URL:?"Need to set KUBE_RELEASE_URL"}
 
-KUBE_VERSION=$(gsutil cat gs://${KUBE_RELEASE_URL}/latest.txt)
 gsutil cp "gs://${KUBE_RELEASE_URL}/${KUBE_VERSION}/kubernetes.tar.gz" "${DOWNLOAD_DIR}/"
 
 cd $DOWNLOAD_DIR
