@@ -69,7 +69,7 @@ func TestOneMemberRecovery(t *testing.T) {
 	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, names[2]); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }
@@ -155,7 +155,7 @@ func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.Clust
 	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, toKill...); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 120*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 120*time.Second, testEtcd); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 	// TODO: add checking of data in etcd

@@ -63,7 +63,6 @@ func WaitUntilPodSizeReached(t *testing.T, kubeClient kubernetes.Interface, size
 			nodeNames = append(nodeNames, pod.Spec.NodeName)
 		}
 		LogfWithTimestamp(t, "waiting size (%d), etcd pods: names (%v), nodes (%v)", size, names, nodeNames)
-		// TODO: Change this to check for ready members and not just cluster pods
 		if len(names) != size {
 			return false, nil
 		}
