@@ -601,7 +601,7 @@ func (c *Cluster) name() string {
 }
 
 func (c *Cluster) logClusterCreation() {
-	specBytes, err := json.MarshalIndent(c.cluster.Spec, "", "    ")
+	specBytes, err := json.Marshal(c.cluster.Spec)
 	if err != nil {
 		c.logger.Errorf("failed to marshal cluster spec: %v", err)
 	}
@@ -609,11 +609,11 @@ func (c *Cluster) logClusterCreation() {
 }
 
 func (c *Cluster) logSpecUpdate(newSpec spec.ClusterSpec) {
-	oldSpecBytes, err := json.MarshalIndent(c.cluster.Spec, "", "    ")
+	oldSpecBytes, err := json.Marshal(c.cluster.Spec)
 	if err != nil {
 		c.logger.Errorf("failed to marshal cluster spec: %v", err)
 	}
-	newSpecBytes, err := json.MarshalIndent(newSpec, "", "    ")
+	newSpecBytes, err := json.Marshal(newSpec)
 	if err != nil {
 		c.logger.Errorf("failed to marshal cluster spec: %v", err)
 	}
