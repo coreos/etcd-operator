@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -605,7 +606,11 @@ func (c *Cluster) logClusterCreation() {
 	if err != nil {
 		c.logger.Errorf("failed to marshal cluster spec: %v", err)
 	}
-	c.logger.Infof("creating cluster with \nSpec:\n%v", string(specBytes))
+
+	c.logger.Info("creating cluster with Spec:")
+	for _, m := range strings.Split(string(specBytes), "\n") {
+		c.logger.Info(m)
+	}
 }
 
 func (c *Cluster) logSpecUpdate(newSpec spec.ClusterSpec) {
@@ -617,5 +622,14 @@ func (c *Cluster) logSpecUpdate(newSpec spec.ClusterSpec) {
 	if err != nil {
 		c.logger.Errorf("failed to marshal cluster spec: %v", err)
 	}
-	c.logger.Infof("spec update: \nOld:\n%v \nNew:\n%v", string(oldSpecBytes), string(newSpecBytes))
+
+	c.logger.Infof("spec update: Old Spec:")
+	for _, m := range strings.Split(string(oldSpecBytes), "\n") {
+		c.logger.Info(m)
+	}
+
+	c.logger.Infof("New Spec:")
+	for _, m := range strings.Split(string(newSpecBytes), "\n") {
+		c.logger.Info(m)
+	}
 }
