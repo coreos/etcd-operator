@@ -70,6 +70,8 @@ function build_pass {
 }
 
 function e2e_pass {
+	: ${TEST_S3_BUCKET:?"Need to set TEST_S3_BUCKET"}
+
 	# TODO: Move the scripts for rbac into test/e2e/utils.go
 	# Enable rbac if present
 	if kubectl --kubeconfig $KUBECONFIG get clusterrole 1> /dev/null ; then
