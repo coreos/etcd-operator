@@ -123,7 +123,7 @@ func (c *Cluster) addOneMember() error {
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to create etcd client: %v", err)
+		return fmt.Errorf("add one member failed: creating etcd client failed %v", err)
 	}
 	defer etcdcli.Close()
 
