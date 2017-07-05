@@ -186,37 +186,26 @@ func waitResourcesDeleted(t *testing.T, kubeClient kubernetes.Interface, cl *spe
 
 func WaitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, storageCheckerOptions StorageCheckerOptions) error {
 	err := retryutil.Retry(5*time.Second, 5, func() (bool, error) {
-		_, err := kubeClient.AppsV1beta1().Deployments(cl.Metadata.Namespace).Get(k8sutil.BackupSidecarName(cl.Metadata.Name), metav1.GetOptions{})
+		d, err := kubeClient.AppsV1beta1().Deployments(cl.Metadata.Namespace).Get(k8sutil.BackupSidecarName(cl.Metadata.Name), metav1.GetOptions{})
+		if d.DeletionTimestamp != nil || apierrors.IsNotFound(err) {
+			return true, nil
+		}
 		if err == nil {
 			return false, nil
-		}
-		if apierrors.IsNotFound(err) {
-			return true, nil
 		}
 		return false, err
 	})
 	if err != nil {
 		return fmt.Errorf("failed to wait backup Deployment deleted: %v", err)
 	}
-	err = retryutil.Retry(5*time.Second, 2, func() (done bool, err error) {
-		ls := labels.SelectorFromSet(map[string]string{
-			"app":          k8sutil.BackupPodSelectorAppField,
-			"etcd_cluster": cl.Metadata.Name,
-		}).String()
-		pl, err := kubeClient.CoreV1().Pods(cl.Metadata.Namespace).List(metav1.ListOptions{
-			LabelSelector: ls,
+
+	_, err = WaitPodsDeleted(kubeClient, cl.Metadata.Namespace, 10*time.Second,
+		metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(map[string]string{
+				"app":          k8sutil.BackupPodSelectorAppField,
+				"etcd_cluster": cl.Metadata.Name,
+			}).String(),
 		})
-		if err != nil {
-			return false, err
-		}
-		if len(pl.Items) == 0 {
-			return true, nil
-		}
-		if pl.Items[0].DeletionTimestamp != nil {
-			return true, nil
-		}
-		return false, nil
-	})
 	if err != nil {
 		return fmt.Errorf("failed to wait backup pod terminated: %v", err)
 	}
@@ -279,6 +268,9 @@ func waitPodsDeleted(kubecli kubernetes.Interface, namespace string, timeout tim
 		pods = nil
 		for i := range podList.Items {
 			p := &podList.Items[i]
+			if p.DeletionTimestamp != nil {
+				continue
+			}
 			filtered := false
 			for _, filter := range filters {
 				if filter(p) {
