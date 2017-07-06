@@ -184,10 +184,17 @@ func waitResourcesDeleted(t *testing.T, kubeClient kubernetes.Interface, cl *spe
 	return nil
 }
 
-func WaitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, storageCheckerOptions StorageCheckerOptions) error {
-	err := retryutil.Retry(5*time.Second, 5, func() (bool, error) {
+func WaitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, checkerOpt StorageCheckerOptions) error {
+	retries := 5
+	if checkerOpt.DeletedFromAPI {
+		// TODO: revisit this when we use "background propagate" deletion policy.
+		retries = 60
+	}
+	err := retryutil.Retry(5*time.Second, retries, func() (bool, error) {
 		d, err := kubeClient.AppsV1beta1().Deployments(cl.Metadata.Namespace).Get(k8sutil.BackupSidecarName(cl.Metadata.Name), metav1.GetOptions{})
-		if d.DeletionTimestamp != nil || apierrors.IsNotFound(err) {
+		// If we don't need to wait deployment to be completely gone, we can say it is deleted
+		// as long as DeletionTimestamp is not nil. Otherwise, we need to wait it is gone by checking not found error.
+		if (!checkerOpt.DeletedFromAPI && d.DeletionTimestamp != nil) || apierrors.IsNotFound(err) {
 			return true, nil
 		}
 		if err == nil {
@@ -225,8 +232,7 @@ func WaitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, storag
 				return false, nil
 			}
 		case spec.BackupStorageTypeS3:
-			s3cli := backups3.NewFromClient(storageCheckerOptions.S3Bucket,
-				path.Join(cl.Metadata.Namespace, cl.Metadata.Name), storageCheckerOptions.S3Cli)
+			s3cli := backups3.NewFromClient(checkerOpt.S3Bucket, path.Join(cl.Metadata.Namespace, cl.Metadata.Name), checkerOpt.S3Cli)
 			keys, err := s3cli.List()
 			if err != nil {
 				return false, err

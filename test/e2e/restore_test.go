@@ -112,6 +112,9 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 			S3Bucket: f.S3Bucket,
 		}
 	}
+	if !needDataClone {
+		storageCheckerOptions.DeletedFromAPI = true
+	}
 	err = e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, *storageCheckerOptions)
 	if err != nil {
 		t.Fatal(err)
@@ -141,16 +144,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		t.Fatal(err)
 	}
 	defer func() {
-		var storageCheckerOptions *e2eutil.StorageCheckerOptions
-		switch testEtcd.Spec.Backup.StorageType {
-		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-			storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
-		case spec.BackupStorageTypeS3:
-			storageCheckerOptions = &e2eutil.StorageCheckerOptions{
-				S3Cli:    f.S3Cli,
-				S3Bucket: f.S3Bucket,
-			}
-		}
+		storageCheckerOptions.DeletedFromAPI = false
 		err := e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, *storageCheckerOptions)
 		if err != nil {
 			t.Fatal(err)
