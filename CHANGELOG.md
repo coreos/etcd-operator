@@ -7,6 +7,8 @@
 
 ### Changed
 
+- Anti-affinity only applies to etcd pods. Backup pod could still colocate with any etcd pod.
+
 ### Removed
 
 ### Fixed
