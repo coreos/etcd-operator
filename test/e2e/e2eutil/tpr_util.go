@@ -27,8 +27,9 @@ import (
 )
 
 type StorageCheckerOptions struct {
-	S3Cli    *s3.S3
-	S3Bucket string
+	S3Cli          *s3.S3
+	S3Bucket       string
+	DeletedFromAPI bool
 }
 
 func CreateCluster(t *testing.T, kubeClient kubernetes.Interface, namespace string, cl *spec.Cluster) (*spec.Cluster, error) {
