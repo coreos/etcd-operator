@@ -69,10 +69,9 @@ func New(fc Config) (*Framework, error) {
 	return f, err
 }
 
-func (f *Framework) CreateOperator() error {
+func (f *Framework) CreateOperator(name string) error {
 	cmd := []string{"/usr/local/bin/etcd-operator", "--analytics=false",
 		"--backup-aws-secret=aws", "--backup-aws-config=aws", "--backup-s3-bucket=jenkins-etcd-operator"}
-	name := "etcd-operator"
 	image := f.OldImage
 	d := &appsv1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -87,10 +86,10 @@ func (f *Framework) CreateOperator() error {
 					MaxSurge:       &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
 				},
 			},
-			Selector: &metav1.LabelSelector{MatchLabels: operatorLabelSelector()},
+			Selector: &metav1.LabelSelector{MatchLabels: operatorLabelSelector(name)},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: operatorLabelSelector(),
+					Labels: operatorLabelSelector(name),
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{{
@@ -131,8 +130,8 @@ func (f *Framework) CreateOperator() error {
 	return nil
 }
 
-func (f *Framework) DeleteOperator() error {
-	err := f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Delete("etcd-operator", k8sutil.CascadeDeleteOptions(0))
+func (f *Framework) DeleteOperator(name string) error {
+	err := f.KubeCli.AppsV1beta1().Deployments(f.KubeNS).Delete(name, k8sutil.CascadeDeleteOptions(0))
 	if err != nil {
 		return err
 	}
@@ -140,29 +139,29 @@ func (f *Framework) DeleteOperator() error {
 	// Wait until the etcd-operator pod is actually gone and not just terminating.
 	// In upgrade tests, the next test shouldn't see any etcd operator pod.
 	lo := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(operatorLabelSelector()).String(),
+		LabelSelector: labels.SelectorFromSet(operatorLabelSelector(name)).String(),
 	}
 	_, err = e2eutil.WaitPodsDeleted(f.KubeCli, f.KubeNS, 30*time.Second, lo)
 	return err
 }
 
-func (f *Framework) UpgradeOperator() error {
+func (f *Framework) UpgradeOperator(name string) error {
 	uf := func(d *appsv1beta1.Deployment) {
 		d.Spec.Template.Spec.Containers[0].Image = f.NewImage
 	}
-	err := k8sutil.PatchDeployment(f.KubeCli, f.KubeNS, "etcd-operator", uf)
+	err := k8sutil.PatchDeployment(f.KubeCli, f.KubeNS, name, uf)
 	if err != nil {
 		return err
 	}
 
 	lo := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(operatorLabelSelector()).String(),
+		LabelSelector: labels.SelectorFromSet(operatorLabelSelector(name)).String(),
 	}
 	_, err = e2eutil.WaitPodsWithImageDeleted(f.KubeCli, f.KubeNS, f.OldImage, 30*time.Second, lo)
 	if err != nil {
 		return fmt.Errorf("failed to wait for pod with old image to get deleted: %v", err)
 	}
-	err = WaitUntilOperatorReady(f.KubeCli, f.KubeNS, 40*time.Second)
+	err = WaitUntilOperatorReady(f.KubeCli, f.KubeNS, name, 40*time.Second)
 	return err
 }
 
@@ -185,10 +184,10 @@ func (f *Framework) setupAWS() error {
 }
 
 // WaitUntilOperatorReady will wait until the first pod selected for the label name=etcd-operator is ready.
-func WaitUntilOperatorReady(kubecli kubernetes.Interface, namespace string, timeout time.Duration) error {
+func WaitUntilOperatorReady(kubecli kubernetes.Interface, namespace, name string, timeout time.Duration) error {
 	var podName string
 	lo := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(operatorLabelSelector()).String(),
+		LabelSelector: labels.SelectorFromSet(operatorLabelSelector(name)).String(),
 	}
 	err := retryutil.Retry(5*time.Second, int(timeout/(5*time.Second)), func() (bool, error) {
 		podList, err := kubecli.CoreV1().Pods(namespace).List(lo)
@@ -209,6 +208,6 @@ func WaitUntilOperatorReady(kubecli kubernetes.Interface, namespace string, time
 	return nil
 }
 
-func operatorLabelSelector() map[string]string {
-	return map[string]string{"name": "etcd-operator"}
+func operatorLabelSelector(name string) map[string]string {
+	return map[string]string{"name": name}
 }
