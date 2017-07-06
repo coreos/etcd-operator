@@ -124,7 +124,7 @@ func applyPodPolicy(clusterName string, pod *v1.Pod, policy *spec.PodPolicy) {
 		pod = PodWithNodeSelector(pod, policy.NodeSelector)
 	}
 	if len(policy.Tolerations) != 0 {
-		pod.Spec.Tolerations = policy.Tolerations
+		pod.Spec.Tolerations = append(pod.Spec.Tolerations, policy.Tolerations...)
 	}
 
 	mergeLabels(pod.Labels, policy.Labels)

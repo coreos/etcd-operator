@@ -136,6 +136,15 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 			DNSPolicy:     v1.DNSClusterFirstWithHostNet,
 			Hostname:      m.Name,
 			Subdomain:     clusterName,
+			Tolerations: []v1.Toleration{{
+				Key:      "node.alpha.kubernetes.io/notReady",
+				Operator: v1.TolerationOpExists,
+				Effect:   v1.TaintEffectNoExecute,
+			}, {
+				Key:      "node.alpha.kubernetes.io/unreachable",
+				Operator: v1.TolerationOpExists,
+				Effect:   v1.TaintEffectNoExecute,
+			}},
 		},
 	}
 
