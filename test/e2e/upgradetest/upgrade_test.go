@@ -16,6 +16,7 @@ package upgradetest
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -28,18 +29,24 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+func newOperatorName() string {
+	suffix := fmt.Sprintf("-%d", rand.Uint64())
+	return "etcd-operator" + suffix
+}
+
 func TestResize(t *testing.T) {
-	err := testF.CreateOperator()
+	name := newOperatorName()
+	err := testF.CreateOperator(name)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		err := testF.DeleteOperator()
+		err := testF.DeleteOperator(name)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second)
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name, 40*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +64,7 @@ func TestResize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = testF.UpgradeOperator()
+	err = testF.UpgradeOperator(name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,17 +88,18 @@ func TestResize(t *testing.T) {
 }
 
 func TestHealOneMemberForOldCluster(t *testing.T) {
-	err := testF.CreateOperator()
+	name := newOperatorName()
+	err := testF.CreateOperator(name)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		err := testF.DeleteOperator()
+		err := testF.DeleteOperator(name)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second)
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name, 40*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +118,7 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = testF.UpgradeOperator()
+	err = testF.UpgradeOperator(name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,18 +155,19 @@ func TestRestoreFromBackup(t *testing.T) {
 }
 
 func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
+	name := newOperatorName()
 	// create operator
-	err := testF.CreateOperator()
+	err := testF.CreateOperator(name)
 	if err != nil {
 		t.Fatalf("failed to create operator:%v", err)
 	}
 	defer func() {
-		err := testF.DeleteOperator()
+		err := testF.DeleteOperator(name)
 		if err != nil {
 			t.Fatalf("failed to delete operator:%v", err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second)
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name, 40*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +211,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		t.Fatalf("failed to delete cluster and its backup:%v", err)
 	}
 
-	err = testF.UpgradeOperator()
+	err = testF.UpgradeOperator(name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,17 +274,18 @@ func TestBackupForOldCluster(t *testing.T) {
 }
 
 func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
-	err := testF.CreateOperator()
+	name := newOperatorName()
+	err := testF.CreateOperator(name)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		err := testF.DeleteOperator()
+		err := testF.DeleteOperator(name)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
-	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second); err != nil {
+	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name, 40*time.Second); err != nil {
 		t.Fatal(err)
 	}
 
@@ -306,7 +316,7 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = testF.UpgradeOperator()
+	err = testF.UpgradeOperator(name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -346,17 +356,18 @@ func TestDisasterRecovery(t *testing.T) {
 }
 
 func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
-	err := testF.CreateOperator()
+	name := newOperatorName()
+	err := testF.CreateOperator(name)
 	if err != nil {
 		t.Fatalf("failed to create operator: %v", err)
 	}
 	defer func() {
-		err := testF.DeleteOperator()
+		err := testF.DeleteOperator(name)
 		if err != nil {
 			t.Fatalf("failed to delete operator: %v", err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, 40*time.Second)
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name, 40*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,7 +412,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		t.Fatalf("failed to make backup: %v", err)
 	}
 
-	err = testF.UpgradeOperator()
+	err = testF.UpgradeOperator(name)
 	if err != nil {
 		t.Fatal(err)
 	}
