@@ -10,7 +10,7 @@ e2e (Kubernetes master):
 
 Major planned features have been completed and while no breaking API changes are currently planned, we reserve the right to address bugs and API changes in a backwards incompatible way before the project is declared stable. See [upgrade guide](./doc/user/upgrade/upgrade_guide.md) for safe upgrade process.
 
-Currently user face etcd cluster objects are created as [Kubernetes Third Party Resources](https://kubernetes.io/docs/user-guide/thirdpartyresources/), however, taking advantage of [User Aggregated API Servers](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/aggregated-api-servers.md) to improve reliability, validation and versioning is planned. The use of Aggregated API should be minimally disruptive to existing users but may change what Kubernetes objects are created or how users deploy the etcd operator.
+Currently user facing etcd cluster objects are created as [Kubernetes Third Party Resources](https://kubernetes.io/docs/user-guide/thirdpartyresources/), however, taking advantage of [User Aggregated API Servers](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/aggregated-api-servers.md) to improve reliability, validation and versioning is planned. The use of Aggregated API should be minimally disruptive to existing users but may change what Kubernetes objects are created or how users deploy the etcd operator.
 
 We expect to consider the etcd operator stable soon; backwards incompatible changes will not be made once the project reaches stability.
 
