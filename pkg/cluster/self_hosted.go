@@ -196,20 +196,25 @@ func (c *Cluster) migrateBootMember() error {
 		return err
 	}
 
-	go func() {
-		// TODO: a shorter timeout?
-		// Waiting here for cluster to get stable:
-		// - etcd data are replicated;
-		// - cluster TPR state has switched to "Running"
-		delay := 60 * time.Second
-		c.logger.Infof("wait %v before removing the boot member", delay)
-		time.Sleep(delay)
+	if c.cluster.Spec.SelfHosted.SkipBootMemberRemoval {
+		c.logger.Infof("skipping boot member (%s) removal; you will need to remove it yourself", endpoint)
+	} else {
+		c.logger.Infof("beginning the process of removing boot member (%s) from the cluster", endpoint)
+		go func() {
+			// TODO: a shorter timeout?
+			// Waiting here for cluster to get stable:
+			// - etcd data are replicated;
+			// - cluster TPR state has switched to "Running"
+			delay := 60 * time.Second
+			c.logger.Infof("waiting %v before removing the boot member", delay)
+			time.Sleep(delay)
 
-		err = etcdutil.RemoveMember([]string{newMember.ClientAddr()}, c.tlsConfig, bootMember.ID)
-		if err != nil {
-			c.logger.Errorf("boot member migration: failed to remove the boot member (%v)", err)
-		}
-	}()
+			err = etcdutil.RemoveMember([]string{newMember.ClientAddr()}, c.tlsConfig, bootMember.ID)
+			if err != nil {
+				c.logger.Errorf("boot member migration: failed to remove the boot member (%v)", err)
+			}
+		}()
+	}
 
 	c.logger.Infof("self-hosted cluster created with boot member (%s)", endpoint)
 

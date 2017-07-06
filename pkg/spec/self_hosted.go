@@ -20,4 +20,12 @@ type SelfHostedPolicy struct {
 	// The boot member will be removed from the cluster once the self-hosted cluster
 	// setup successfully.
 	BootMemberClientEndpoint string `json:"bootMemberClientEndpoint,omitempty"`
+
+	// SkipBootMemberRemoval specifies whether the removal of the bootstrap member
+	// should be skipped. By default the operator will automatically remove the
+	// bootstrap member from the new cluster - this happens during the pivot
+	// procedure and is the first step of decommissioning the bootstrap member.
+	// If unspecified, the default is `false`. If set to `true`, you are
+	// expected to remove the boot member yourself from the etcd cluster.
+	SkipBootMemberRemoval bool `json:"skipBootMemberRemoval,omitempty"`
 }

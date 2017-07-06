@@ -2,6 +2,9 @@
 
 ### Added
 
+- New self-hosted field `SkipBootMemberRemoval` allows users to skip the
+  auto-deletion of the boot etcd member.
+
 ### Changed
 
 ### Removed
@@ -291,4 +294,3 @@ etcd container with this new field.
 ### Deprecated
 
 ### Security
-
