@@ -261,6 +261,11 @@ func WaitPodsWithImageDeleted(kubecli kubernetes.Interface, namespace, image str
 }
 
 func WaitPodsDeleted(kubecli kubernetes.Interface, namespace string, timeout time.Duration, lo metav1.ListOptions) ([]*v1.Pod, error) {
+	f := func(p *v1.Pod) bool { return p.DeletionTimestamp != nil }
+	return waitPodsDeleted(kubecli, namespace, timeout, lo, f)
+}
+
+func WaitPodsDeletedCompletely(kubecli kubernetes.Interface, namespace string, timeout time.Duration, lo metav1.ListOptions) ([]*v1.Pod, error) {
 	return waitPodsDeleted(kubecli, namespace, timeout, lo)
 }
 
@@ -274,9 +279,6 @@ func waitPodsDeleted(kubecli kubernetes.Interface, namespace string, timeout tim
 		pods = nil
 		for i := range podList.Items {
 			p := &podList.Items[i]
-			if p.DeletionTimestamp != nil {
-				continue
-			}
 			filtered := false
 			for _, filter := range filters {
 				if filter(p) {
