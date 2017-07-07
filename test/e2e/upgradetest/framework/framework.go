@@ -141,7 +141,7 @@ func (f *Framework) DeleteOperator(name string) error {
 	lo := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(operatorLabelSelector(name)).String(),
 	}
-	_, err = e2eutil.WaitPodsDeleted(f.KubeCli, f.KubeNS, 30*time.Second, lo)
+	_, err = e2eutil.WaitPodsDeletedCompletely(f.KubeCli, f.KubeNS, 30*time.Second, lo)
 	return err
 }
 
