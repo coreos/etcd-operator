@@ -76,7 +76,7 @@ func (c *Cluster) changePodToNoopIfNotScheduled(name, ns string) string {
 		// If the pod hasn't bound to any node, we should delete the pod with version to make sure no kubelet
 		// would run it. But current API doesn't provide that. We need to CAS the pod's command to make sure it won't
 		// add member.
-		pod.Spec.Containers[0].Command = []string{"sleep"}
+		pod.Spec.Containers[0].Image = "busybox"
 		_, err = c.config.KubeCli.CoreV1().Pods(ns).Update(pod)
 		if err != nil {
 			c.logger.Errorf("failed to updated the unscheduled pod (%s) to noop pod: %v", name, err)
