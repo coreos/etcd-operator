@@ -142,7 +142,12 @@ func (f *Framework) DeleteOperator(name string) error {
 		LabelSelector: labels.SelectorFromSet(operatorLabelSelector(name)).String(),
 	}
 	_, err = e2eutil.WaitPodsDeletedCompletely(f.KubeCli, f.KubeNS, 30*time.Second, lo)
-	return err
+	if err != nil {
+		return err
+	}
+	// This is assumption coupled with endpoint resource lock.
+	// TODO: change this if we change to use another kind of lock, e.g. configmap.
+	return f.KubeCli.CoreV1().Endpoints(f.KubeNS).Delete("etcd-operator", metav1.NewDeleteOptions(0))
 }
 
 func (f *Framework) UpgradeOperator(name string) error {
