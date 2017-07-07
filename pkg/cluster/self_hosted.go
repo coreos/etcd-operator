@@ -154,7 +154,7 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	initialCluster := []string{newMember.Name + "=" + newMember.PeerURL()}
 
 	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, nil, c.cluster.Metadata.Name, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
-	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 30*time.Second)
+	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 3*60*time.Second)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (c *Cluster) migrateBootMember() error {
 
 	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, []string{endpoint}, c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
 	ns := c.cluster.Metadata.Namespace
-	_, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, ns, pod, 30*time.Second)
+	_, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, ns, pod, 3*60*time.Second)
 	if err != nil {
 		return err
 	}

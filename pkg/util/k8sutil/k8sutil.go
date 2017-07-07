@@ -145,7 +145,7 @@ func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, time
 		return nil, err
 	}
 
-	interval := 3 * time.Second
+	interval := 5 * time.Second
 	var retPod *v1.Pod
 	err = retryutil.Retry(interval, int(timeout/(interval)), func() (bool, error) {
 		retPod, err = kubecli.CoreV1().Pods(ns).Get(pod.Name, metav1.GetOptions{})
@@ -162,7 +162,14 @@ func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, time
 		}
 	})
 
-	return retPod, err
+	if err != nil {
+		if retryutil.IsRetryFailure(err) {
+			return nil, fmt.Errorf("failed to wait pod running, it is still pending: %v", err)
+		}
+		return nil, fmt.Errorf("failed to wait pod running: %v", err)
+	}
+
+	return retPod, nil
 }
 
 func newEtcdServiceManifest(svcName, clusterName string, clusterIP string, port int32) *v1.Service {
