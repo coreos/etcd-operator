@@ -11,6 +11,8 @@
 
 ### Fixed
 
+- Make sure etcd pod's FQDN is resolvable before running etcd commands
+
 ### Deprecated
 
 ### Security

@@ -68,7 +68,18 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 		commands = fmt.Sprintf("([ -d %s ] || %s); %s", hostDataDir, addMemberCmd, commands)
 	}
 
-	commands = fmt.Sprintf("sleep 5; flock %s -c \"%s\"", etcdLockPath, commands)
+	// When scaling from 1 -> 2 members, if DNS entry is not populated yet, the k8s control plane will go down
+	// and the etcd pod will not have any chance to talk to each other again. We need to make sure DNS entry ready.
+	// TODO: nslookup should timeout if blocked for a while (10s).
+	ft := `
+while ( ! nslookup %s )
+do
+	sleep 3
+done
+%s
+`
+	commands = fmt.Sprintf(ft, m.FQDN(), commands)
+	commands = fmt.Sprintf("flock %s -c \"%s\"", etcdLockPath, commands)
 	c := etcdContainer(commands, cs.BaseImage, cs.Version)
 	// On node reboot, there will be two copies of etcd pod: scheduled and checkpointed one.
 	// Checkpointed one will start first. But then the scheduler will detect host port conflict,
