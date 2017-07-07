@@ -203,8 +203,9 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 
 	// remove old cluster
 	checker := e2eutil.StorageCheckerOptions{
-		S3Cli:    testF.S3Cli,
-		S3Bucket: testF.S3Bucket,
+		S3Cli:          testF.S3Cli,
+		S3Bucket:       testF.S3Bucket,
+		DeletedFromAPI: true,
 	}
 	err = e2eutil.DeleteClusterAndBackup(t, testF.KubeCli, testClus, checker)
 	if err != nil {
@@ -235,10 +236,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		t.Fatalf("failed to create cluster:%v", err)
 	}
 	defer func() {
-		checker := e2eutil.StorageCheckerOptions{
-			S3Cli:    testF.S3Cli,
-			S3Bucket: testF.S3Bucket,
-		}
+		checker.DeletedFromAPI = false
 		err := e2eutil.DeleteClusterAndBackup(t, testF.KubeCli, testClus, checker)
 		if err != nil {
 			t.Fatalf("failed to delete cluster and its backup:%v", err)
