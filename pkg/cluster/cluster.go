@@ -343,7 +343,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 			if err := c.updateLocalBackupStatus(); err != nil {
 				c.logger.Warningf("failed to update local backup service status: %v", err)
 			}
-			c.updateMemberStatus(running)
+			c.updateMemberStatus(c.members)
 			if err := c.updateTPRStatus(); err != nil {
 				c.logger.Warningf("failed to update TPR status: %v", err)
 			}
@@ -513,23 +513,22 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 	return running, pending, nil
 }
 
-func (c *Cluster) updateMemberStatus(pods []*v1.Pod) {
-	var ready, unready []*v1.Pod
-	for _, pod := range pods {
-		m := &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace, SecureClient: c.isSecureClient()}
+func (c *Cluster) updateMemberStatus(members etcdutil.MemberSet) {
+	var ready, unready []string
+	for _, m := range members {
 		url := m.ClientAddr()
 		healthy, err := etcdutil.CheckHealth(url, c.tlsConfig)
 		if err != nil {
 			c.logger.Warningf("health check of etcd member (%s) failed: %v", url, err)
 		}
 		if healthy {
-			ready = append(ready, pod)
+			ready = append(ready, m.Name)
 		} else {
-			unready = append(unready, pod)
+			unready = append(unready, m.Name)
 		}
 	}
-	c.status.Members.Ready = k8sutil.GetPodNames(ready)
-	c.status.Members.Unready = k8sutil.GetPodNames(unready)
+	c.status.Members.Ready = ready
+	c.status.Members.Unready = unready
 }
 
 func (c *Cluster) updateTPRStatus() error {
