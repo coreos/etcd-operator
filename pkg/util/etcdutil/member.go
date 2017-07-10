@@ -36,12 +36,12 @@ type Member struct {
 	SecureClient bool
 }
 
-func (m *Member) fqdn() string {
+func (m *Member) FQDN() string {
 	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
 }
 
 func (m *Member) ClientAddr() string {
-	return fmt.Sprintf("%s://%s:2379", m.clientScheme(), m.fqdn())
+	return fmt.Sprintf("%s://%s:2379", m.clientScheme(), m.FQDN())
 }
 
 func (m *Member) clientScheme() string {
@@ -66,7 +66,7 @@ func (m *Member) ListenPeerURL() string {
 }
 
 func (m *Member) PeerURL() string {
-	return fmt.Sprintf("%s://%s:2380", m.peerScheme(), m.fqdn())
+	return fmt.Sprintf("%s://%s:2380", m.peerScheme(), m.FQDN())
 }
 
 type MemberSet map[string]*Member
