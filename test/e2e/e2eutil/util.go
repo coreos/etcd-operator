@@ -25,7 +25,6 @@ import (
 	"github.com/coreos/etcd-operator/client/experimentalclient"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -52,25 +51,6 @@ func KillMembers(kubecli kubernetes.Interface, namespace string, names ...string
 		}
 	}
 	return nil
-}
-
-func WaitBackupPodUp(t *testing.T, kubecli kubernetes.Interface, ns, clusterName string, timeout time.Duration) error {
-	ls := labels.SelectorFromSet(k8sutil.BackupSidecarLabels(clusterName))
-	return retryutil.Retry(5*time.Second, int(timeout/(5*time.Second)), func() (done bool, err error) {
-		podList, err := kubecli.CoreV1().Pods(ns).List(metav1.ListOptions{
-			LabelSelector: ls.String(),
-		})
-		if err != nil {
-			return false, err
-		}
-		for i := range podList.Items {
-			if podList.Items[i].Status.Phase == v1.PodRunning {
-				LogfWithTimestamp(t, "backup pod (%s) is running", podList.Items[i].Name)
-				return true, nil
-			}
-		}
-		return false, nil
-	})
 }
 
 func MakeBackup(kubecli kubernetes.Interface, ns, clusterName string) error {

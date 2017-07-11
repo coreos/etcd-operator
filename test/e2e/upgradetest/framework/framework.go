@@ -141,7 +141,7 @@ func (f *Framework) DeleteOperator(name string) error {
 	lo := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(operatorLabelSelector(name)).String(),
 	}
-	_, err = e2eutil.WaitPodsDeletedCompletely(f.KubeCli, f.KubeNS, 30*time.Second, lo)
+	_, err = e2eutil.WaitPodsDeletedCompletely(f.KubeCli, f.KubeNS, 3, lo)
 	if err != nil {
 		return err
 	}
@@ -162,11 +162,11 @@ func (f *Framework) UpgradeOperator(name string) error {
 	lo := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(operatorLabelSelector(name)).String(),
 	}
-	_, err = e2eutil.WaitPodsWithImageDeleted(f.KubeCli, f.KubeNS, f.OldImage, 30*time.Second, lo)
+	_, err = e2eutil.WaitPodsWithImageDeleted(f.KubeCli, f.KubeNS, f.OldImage, 3, lo)
 	if err != nil {
 		return fmt.Errorf("failed to wait for pod with old image to get deleted: %v", err)
 	}
-	err = WaitUntilOperatorReady(f.KubeCli, f.KubeNS, name, 40*time.Second)
+	err = WaitUntilOperatorReady(f.KubeCli, f.KubeNS, name)
 	return err
 }
 
@@ -189,12 +189,12 @@ func (f *Framework) setupAWS() error {
 }
 
 // WaitUntilOperatorReady will wait until the first pod selected for the label name=etcd-operator is ready.
-func WaitUntilOperatorReady(kubecli kubernetes.Interface, namespace, name string, timeout time.Duration) error {
+func WaitUntilOperatorReady(kubecli kubernetes.Interface, namespace, name string) error {
 	var podName string
 	lo := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(operatorLabelSelector(name)).String(),
 	}
-	err := retryutil.Retry(5*time.Second, int(timeout/(5*time.Second)), func() (bool, error) {
+	err := retryutil.Retry(10*time.Second, 4, func() (bool, error) {
 		podList, err := kubecli.CoreV1().Pods(namespace).List(lo)
 		if err != nil {
 			return false, err

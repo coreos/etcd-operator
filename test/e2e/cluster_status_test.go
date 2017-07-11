@@ -44,7 +44,7 @@ func TestReadyMembersStatus(t *testing.T) {
 		}
 	}()
 
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, size, 30*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, size, 3, testEtcd); err != nil {
 		t.Fatalf("failed to create %d members etcd cluster: %v", size, err)
 	}
 
@@ -94,11 +94,11 @@ func TestBackupStatus(t *testing.T) {
 		}
 	}()
 
-	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 1, 60*time.Second, testEtcd)
+	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 1, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 1 members etcd cluster: %v", err)
 	}
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 60*time.Second)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}

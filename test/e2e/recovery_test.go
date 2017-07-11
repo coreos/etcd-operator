@@ -59,7 +59,7 @@ func TestOneMemberRecovery(t *testing.T) {
 		}
 	}()
 
-	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd)
+	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestOneMemberRecovery(t *testing.T) {
 	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, names[2]); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 6, testEtcd); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }
@@ -127,12 +127,12 @@ func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.Clust
 		}
 	}()
 
-	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd)
+	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 3 members cluster")
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 60*time.Second)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
@@ -155,7 +155,7 @@ func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.Clust
 	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, toKill...); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 120*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 12, testEtcd); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 	// TODO: add checking of data in etcd
@@ -217,7 +217,7 @@ func TestDynamicAddBackupPolicy(t *testing.T) {
 		}
 	}()
 
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 60*time.Second)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 6)
 	if !retryutil.IsRetryFailure(err) {
 		t.Fatalf("expecting retry failure, but err = %v", err)
 	}
@@ -230,7 +230,7 @@ func TestDynamicAddBackupPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 60*time.Second)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 6)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,12 +257,12 @@ func TestDynamicRemoveBackupPolicy(t *testing.T) {
 		}
 	}()
 
-	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, clus)
+	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, clus)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 60*time.Second)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}

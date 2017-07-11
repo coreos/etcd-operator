@@ -20,7 +20,6 @@ import (
 	"math/rand"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
@@ -85,7 +84,7 @@ func testTLS(t *testing.T, selfHosted bool) {
 		}
 	}()
 
-	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, c)
+	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, c)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
