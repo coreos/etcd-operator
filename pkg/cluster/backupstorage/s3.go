@@ -47,7 +47,7 @@ func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, cluste
 		}
 	}()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new S3 storage failed: %v", err)
 	}
 
 	s := &s3{
@@ -94,7 +94,6 @@ func (s *s3) Delete() error {
 func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, dir string) (*session.Options, error) {
 	options := &session.Options{}
 	options.SharedConfigState = session.SharedConfigEnable
-	options.SharedConfigFiles = make([]string, 0)
 
 	se, err := kubecli.CoreV1().Secrets(ns).Get(secret, metav1.GetOptions{})
 	if err != nil {
@@ -108,7 +107,6 @@ func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, dir string) (*sess
 		if err != nil {
 			return nil, fmt.Errorf("setup AWS config failed: write credentials file failed: %v", err)
 		}
-
 		options.SharedConfigFiles = append(options.SharedConfigFiles, credsFile)
 	}
 
@@ -119,7 +117,6 @@ func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, dir string) (*sess
 		if err != nil {
 			return nil, fmt.Errorf("setup AWS config failed: write config file failed: %v", err)
 		}
-
 		options.SharedConfigFiles = append(options.SharedConfigFiles, configFile)
 	}
 
