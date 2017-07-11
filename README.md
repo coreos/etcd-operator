@@ -34,7 +34,7 @@ Read [Developer Guide](./doc/dev/developer_guide.md) for setting up development 
 
 ## Requirements
 
-- Kubernetes 1.6+
+- Kubernetes 1.7+
 - etcd 3.0+
 
 ## Demo
@@ -79,8 +79,6 @@ $ kubectl delete -f example/example-etcd-cluster.yaml
 ```
 
 ## Resize an etcd cluster
-
-**Note**: In order to use `kubectl apply` you will need Kubernetes 1.6 or higher. Otherwise you will have to post the changes to the API server directly using `curl`.
 
 Create an etcd cluster:
 
