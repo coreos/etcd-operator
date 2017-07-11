@@ -15,6 +15,7 @@
 package s3
 
 import (
+	"fmt"
 	"io"
 	"path"
 
@@ -48,7 +49,7 @@ func New(bucket, prefix string) (*S3, error) {
 func NewFromSessionOpt(bucket, prefix string, so session.Options) (*S3, error) {
 	sess, err := session.NewSessionWithOptions(so)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new AWS session failed: %v", err)
 	}
 	cli := s3.New(sess)
 
