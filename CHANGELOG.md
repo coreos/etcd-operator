@@ -1,9 +1,6 @@
-## [Unreleased 0.4.1]
+## [Unreleased 0.4.2]
 
 ### Added
-
-- New self-hosted field `SkipBootMemberRemoval` allows users to skip the
-  auto-deletion of the boot etcd member.
 
 ### Changed
 
@@ -11,11 +8,24 @@
 
 ### Fixed
 
-- Make sure etcd pod's FQDN is resolvable before running etcd commands
-
 ### Deprecated
 
 ### Security
+
+
+## [Release 0.4.1]
+
+This is a bug-fix release. We have done a lot of testing against k8s 1.7
+and making it stable on 1.7 .
+
+### Added
+
+- New self-hosted field `SkipBootMemberRemoval` allows users to skip the
+  auto-deletion of the boot etcd member.
+
+### Fixed
+
+- Make sure etcd pod's FQDN is resolvable before running etcd commands .
 
 
 ## [Release 0.4.0]
