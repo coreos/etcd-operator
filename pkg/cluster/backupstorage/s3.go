@@ -1,6 +1,7 @@
 package backupstorage
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -36,14 +37,11 @@ func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, cluste
 			if err := os.MkdirAll(dir, 0700); err != nil {
 				return nil, err
 			}
-			credsFile, configFile, err := setupAWSConfig(kubecli, ns, p.S3.AWSSecret, dir)
+			options, err := setupAWSConfig(kubecli, ns, p.S3.AWSSecret, dir)
 			if err != nil {
 				return nil, err
 			}
-			return backups3.NewFromSessionOpt(p.S3.S3Bucket, prefix, session.Options{
-				SharedConfigState: session.SharedConfigEnable,
-				SharedConfigFiles: []string{configFile, credsFile},
-			})
+			return backups3.NewFromSessionOpt(p.S3.S3Bucket, prefix, *options)
 		} else {
 			return backups3.New(s3Ctx.S3Bucket, prefix)
 		}
@@ -93,23 +91,37 @@ func (s *s3) Delete() error {
 	return nil
 }
 
-func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, dir string) (string, string, error) {
+func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, dir string) (*session.Options, error) {
+	options := &session.Options{}
+	options.SharedConfigState = session.SharedConfigEnable
+	options.SharedConfigFiles = make([]string, 0)
+
 	se, err := kubecli.CoreV1().Secrets(ns).Get(secret, metav1.GetOptions{})
 	if err != nil {
-		return "", "", err
+		return nil, fmt.Errorf("setup AWS config failed: get k8s secret failed: %v", err)
 	}
-	creds := se.Data[spec.AWSSecretCredentialsFileName]
-	credsFile := path.Join(dir, "credentials")
-	config := se.Data[spec.AWSSecretConfigFileName]
-	configFile := path.Join(dir, "config")
 
-	err = ioutil.WriteFile(credsFile, creds, 0600)
-	if err != nil {
-		return "", "", err
+	creds := se.Data[spec.AWSSecretCredentialsFileName]
+	if len(creds) != 0 {
+		credsFile := path.Join(dir, "credentials")
+		err = ioutil.WriteFile(credsFile, creds, 0600)
+		if err != nil {
+			return nil, fmt.Errorf("setup AWS config failed: write credentials file failed: %v", err)
+		}
+
+		options.SharedConfigFiles = append(options.SharedConfigFiles, credsFile)
 	}
-	err = ioutil.WriteFile(configFile, config, 0600)
-	if err != nil {
-		return "", "", err
+
+	config := se.Data[spec.AWSSecretConfigFileName]
+	if config != nil {
+		configFile := path.Join(dir, "config")
+		err = ioutil.WriteFile(configFile, config, 0600)
+		if err != nil {
+			return nil, fmt.Errorf("setup AWS config failed: write config file failed: %v", err)
+		}
+
+		options.SharedConfigFiles = append(options.SharedConfigFiles, configFile)
 	}
-	return credsFile, configFile, nil
+
+	return options, nil
 }
