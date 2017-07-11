@@ -39,7 +39,7 @@ func Retry(interval time.Duration, maxRetries int, f ConditionFunc) error {
 		if ok {
 			return nil
 		}
-		if i+1 == maxRetries {
+		if i == maxRetries {
 			break
 		}
 		<-tick.C
