@@ -16,7 +16,6 @@ package e2eslow
 
 import (
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
@@ -35,7 +34,7 @@ func TestRestartOperator(t *testing.T) {
 		}
 	}()
 
-	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd)
+	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -47,10 +46,10 @@ func TestRestartOperator(t *testing.T) {
 	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, names[0]); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 2, 10*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 2, 1, testEtcd); err != nil {
 		t.Fatalf("failed to wait for killed member to die: %v", err)
 	}
-	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 10*time.Second, testEtcd); err == nil {
+	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 1, testEtcd); err == nil {
 		t.Fatalf("cluster should not be recovered: operator is deleted")
 	}
 
@@ -58,7 +57,7 @@ func TestRestartOperator(t *testing.T) {
 		t.Fatalf("fail to restart etcd operator: %v", err)
 	}
 
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, testEtcd); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }

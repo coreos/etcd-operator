@@ -54,7 +54,7 @@ func testCreateSelfHostedCluster(t *testing.T) {
 		}
 	}()
 
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 240*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 24, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members self-hosted etcd cluster: %v", err)
 	}
 }
@@ -87,7 +87,7 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 		}
 	}()
 
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 120*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 12, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 }
@@ -149,12 +149,12 @@ func testSelfHostedClusterWithBackup(t *testing.T) {
 		}
 	}()
 
-	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd)
+	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 3 members cluster")
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 60*time.Second)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}

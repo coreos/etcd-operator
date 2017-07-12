@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -46,7 +45,7 @@ func TestResize(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name, 40*time.Second)
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +59,7 @@ func TestResize(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testClus)
+	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testClus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +80,7 @@ func TestResize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 5, 60*time.Second, testClus)
+	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 5, 6, testClus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +98,7 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name, 40*time.Second)
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +112,7 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	names, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testEtcd)
+	names, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testEtcd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,12 +127,12 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	remaining, err := e2eutil.WaitUntilMembersWithNamesDeleted(t, testF.KubeCli, 30*time.Second, testEtcd, names[2])
+	remaining, err := e2eutil.WaitUntilMembersWithNamesDeleted(t, testF.KubeCli, 3, testEtcd, names[2])
 	if err != nil {
-		t.Fatalf("failed to see members(%v) be deleted in time: %v", remaining, err)
+		t.Fatalf("failed to see members (%v) be deleted in time: %v", remaining, err)
 	}
 
-	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testEtcd)
+	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to heal one member: %v", err)
 	}
@@ -167,7 +166,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 			t.Fatalf("failed to delete operator:%v", err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name, 40*time.Second)
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,11 +177,11 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to create cluster:%v", err)
 	}
-	names, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testClus)
+	names, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testClus)
 	if err != nil {
 		t.Fatalf("failed to reach desired cluster size:%v", err)
 	}
-	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 60*time.Second)
+	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
@@ -243,7 +242,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		}
 	}()
 
-	names, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 240*time.Second, testClus)
+	names, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 24, testClus)
 	if err != nil {
 		t.Fatalf("failed to reach desired cluster size: %v", err)
 	}
@@ -283,7 +282,8 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 			t.Fatal(err)
 		}
 	}()
-	if err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name, 40*time.Second); err != nil {
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -305,7 +305,7 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 			t.Fatal(err)
 		}
 	}()
-	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testClus)
+	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testClus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -323,12 +323,12 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 	lo := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(k8sutil.BackupSidecarLabels(testClus.Metadata.Name)).String(),
 	}
-	_, err = e2eutil.WaitPodsWithImageDeleted(testF.KubeCli, testF.KubeNS, oldBSImage, 30*time.Second, lo)
+	_, err = e2eutil.WaitPodsWithImageDeleted(testF.KubeCli, testF.KubeNS, oldBSImage, 6, lo)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Since old one is deleted, we can safely select any backup pod.
-	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 60*time.Second)
+	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 6)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,7 +365,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 			t.Fatalf("failed to delete operator: %v", err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name, 40*time.Second)
+	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -387,11 +387,11 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		}
 	}()
 
-	names, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 60*time.Second, testClus)
+	names, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testClus)
 	if err != nil {
 		t.Fatalf("failed to reach desired cluster size: %v", err)
 	}
-	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 60*time.Second)
+	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
@@ -419,7 +419,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to kill all members: %v", err)
 	}
-	names, err = e2eutil.WaitUntilPodSizeReached(t, testF.KubeCli, 3, 180*time.Second, testClus)
+	names, err = e2eutil.WaitUntilPodSizeReached(t, testF.KubeCli, 3, 18, testClus)
 	if err != nil {
 		t.Fatalf("failed to recover all members: %v", err)
 	}

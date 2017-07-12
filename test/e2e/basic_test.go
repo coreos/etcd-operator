@@ -40,7 +40,7 @@ func TestCreateCluster(t *testing.T) {
 		}
 	}()
 
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 }
@@ -63,7 +63,7 @@ func TestPauseControl(t *testing.T) {
 		}
 	}()
 
-	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd)
+	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -82,10 +82,10 @@ func TestPauseControl(t *testing.T) {
 	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, names[0]); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 2, 10*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 2, 1, testEtcd); err != nil {
 		t.Fatalf("failed to wait for killed member to die: %v", err)
 	}
-	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 10*time.Second, testEtcd); err == nil {
+	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 1, testEtcd); err == nil {
 		t.Fatalf("cluster should not be recovered: control is paused")
 	}
 
@@ -96,7 +96,7 @@ func TestPauseControl(t *testing.T) {
 		t.Fatalf("failed to resume control: %v", err)
 	}
 
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 60*time.Second, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, testEtcd); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }
@@ -119,7 +119,7 @@ func TestEtcdUpgrade(t *testing.T) {
 		}
 	}()
 
-	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, "3.0.16", 3, 60*time.Second, testEtcd)
+	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, "3.0.16", 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestEtcdUpgrade(t *testing.T) {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 
-	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, "3.1.8", 3, 60*time.Second, testEtcd)
+	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, "3.1.8", 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to wait new version etcd cluster: %v", err)
 	}
