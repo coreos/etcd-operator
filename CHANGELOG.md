@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Fix append-hosts init-container not run on some restart cases.
+
 ### Deprecated
 
 ### Security
