@@ -135,6 +135,10 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	if err != nil {
 		return err
 	}
+	if c.isDebugLoggerEnabled() {
+		c.debugLogger.LogPodCreation(pod)
+	}
+
 	// wait for the new pod to start and add itself into the etcd cluster.
 	oldN := c.members.Size()
 	err = c.waitNewMember(oldN, 6, newMember.Name)
@@ -157,6 +161,9 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 3*60*time.Second)
 	if err != nil {
 		return err
+	}
+	if c.isDebugLoggerEnabled() {
+		c.debugLogger.LogPodCreation(pod)
 	}
 
 	c.logger.Infof("self-hosted cluster created with seed member (%s)", newMember.Name)
@@ -194,6 +201,9 @@ func (c *Cluster) migrateBootMember() error {
 	_, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, ns, pod, 3*60*time.Second)
 	if err != nil {
 		return err
+	}
+	if c.isDebugLoggerEnabled() {
+		c.debugLogger.LogPodCreation(pod)
 	}
 
 	if c.cluster.Spec.SelfHosted.SkipBootMemberRemoval {

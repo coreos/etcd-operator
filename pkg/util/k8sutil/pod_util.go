@@ -15,6 +15,7 @@
 package k8sutil
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -167,4 +168,12 @@ func getPodReadyCondition(status *v1.PodStatus) *v1.PodCondition {
 		}
 	}
 	return nil
+}
+
+func PodSpecToPrettyJSON(pod *v1.Pod) (string, error) {
+	bytes, err := json.MarshalIndent(pod.Spec, "", "    ")
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }
