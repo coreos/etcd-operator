@@ -79,6 +79,7 @@ done
 %s
 `
 	commands = fmt.Sprintf(ft, m.FQDN(), commands)
+	commands = fmt.Sprintf("%s; %s", appendHostsCommands(), commands)
 	commands = fmt.Sprintf("flock %s -c \"%s\"", etcdLockPath, commands)
 	c := etcdContainer(commands, cs.BaseImage, cs.Version)
 	// On node reboot, there will be two copies of etcd pod: scheduled and checkpointed one.
@@ -155,30 +156,15 @@ done
 	applyPodPolicy(clusterName, pod, cs.Pod)
 	// overwrites the antiAffinity setting for self hosted cluster.
 	pod = selfHostedPodWithAntiAffinity(pod)
-	applyAppendHostsInitContainer(pod)
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
 }
 
-func applyAppendHostsInitContainer(p *v1.Pod) {
+func appendHostsCommands() string {
 	etcdHostsFile := path.Join(etcdVolumeMountDir, "etcd-hosts.checkpoint")
-	containerSpec := []v1.Container{
-		{
-			Name:  "append-hosts",
-			Image: "busybox",
-			Command: []string{
-				// Init container would be re-executed on restart. We are taking the datadir as a signal of restart.
-				// If restart happens and hosts checkpoint exists, we will append it to /etc/hosts.
-				"/bin/sh", "-c",
-				fmt.Sprintf("[ -f %[1]s ] && (cat %[1]s >> /etc/hosts) || true", etcdHostsFile),
-			},
-			VolumeMounts: []v1.VolumeMount{
-				{Name: etcdVolumeName, MountPath: etcdVolumeMountDir},
-			},
-		},
-	}
-
-	p.Spec.InitContainers = containerSpec
+	// If hosts checkpoint exists, we will append it to /etc/hosts.
+	// TODO: remove this when host alias works for hostNetwork Pod.
+	return fmt.Sprintf("([ -f %[1]s ] && (cat %[1]s >> /etc/hosts) || true)", etcdHostsFile)
 }
 
 func selfHostedPodWithAntiAffinity(pod *v1.Pod) *v1.Pod {
