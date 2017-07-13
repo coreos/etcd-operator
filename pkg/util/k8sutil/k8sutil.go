@@ -57,6 +57,8 @@ const (
 	operatorEtcdTLSVolume    = "etcd-client-tls"
 )
 
+const TolerateUnreadyEndpointsAnnotation = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
+
 func GetEtcdVersion(pod *v1.Pod) string {
 	return pod.Annotations[etcdVersionAnnotationKey]
 }
@@ -119,7 +121,13 @@ func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 }
 
 func CreateClientService(kubecli kubernetes.Interface, clusterName, ns string, owner metav1.OwnerReference) error {
-	return createService(kubecli, ClientServiceName(clusterName), clusterName, ns, "", 2379, owner)
+	ports := []v1.ServicePort{{
+		Name:       "client",
+		Port:       2379,
+		TargetPort: intstr.FromInt(2379),
+		Protocol:   v1.ProtocolTCP,
+	}}
+	return createService(kubecli, ClientServiceName(clusterName), clusterName, ns, "", ports, owner)
 }
 
 func ClientServiceName(clusterName string) string {
@@ -127,11 +135,23 @@ func ClientServiceName(clusterName string) string {
 }
 
 func CreatePeerService(kubecli kubernetes.Interface, clusterName, ns string, owner metav1.OwnerReference) error {
-	return createService(kubecli, clusterName, clusterName, ns, v1.ClusterIPNone, 2380, owner)
+	ports := []v1.ServicePort{{
+		Name:       "client",
+		Port:       2379,
+		TargetPort: intstr.FromInt(2379),
+		Protocol:   v1.ProtocolTCP,
+	}, {
+		Name:       "peer",
+		Port:       2380,
+		TargetPort: intstr.FromInt(2380),
+		Protocol:   v1.ProtocolTCP,
+	}}
+
+	return createService(kubecli, clusterName, clusterName, ns, v1.ClusterIPNone, ports, owner)
 }
 
-func createService(kubecli kubernetes.Interface, svcName, clusterName, ns, clusterIP string, port int32, owner metav1.OwnerReference) error {
-	svc := newEtcdServiceManifest(svcName, clusterName, clusterIP, port)
+func createService(kubecli kubernetes.Interface, svcName, clusterName, ns, clusterIP string, ports []v1.ServicePort, owner metav1.OwnerReference) error {
+	svc := newEtcdServiceManifest(svcName, clusterName, clusterIP, ports)
 	addOwnerRefToObject(svc.GetObjectMeta(), owner)
 	_, err := kubecli.CoreV1().Services(ns).Create(svc)
 	return err
@@ -172,7 +192,7 @@ func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, time
 	return retPod, nil
 }
 
-func newEtcdServiceManifest(svcName, clusterName string, clusterIP string, port int32) *v1.Service {
+func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.ServicePort) *v1.Service {
 	labels := map[string]string{
 		"app":          "etcd",
 		"etcd_cluster": clusterName,
@@ -181,16 +201,12 @@ func newEtcdServiceManifest(svcName, clusterName string, clusterIP string, port 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   svcName,
 			Labels: labels,
+			Annotations: map[string]string{
+				TolerateUnreadyEndpointsAnnotation: "true",
+			},
 		},
 		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{
-					Name:       "client",
-					Port:       port,
-					TargetPort: intstr.FromInt(int(port)),
-					Protocol:   v1.ProtocolTCP,
-				},
-			},
+			Ports:     ports,
 			Selector:  labels,
 			ClusterIP: clusterIP,
 		},
