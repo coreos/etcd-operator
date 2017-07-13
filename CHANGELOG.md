@@ -1,4 +1,19 @@
-## [Unreleased 0.4.2]
+## [Unreleased 0.4.3]
+
+### Added
+
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
+## [Release 0.4.2]
 
 ### Added
 
@@ -8,15 +23,9 @@
 
 - enable alpha feature "tolerate unready endpoints" on etcd client and peer service
 
-### Removed
-
 ### Fixed
 
 - Fix append-hosts init-container not run on some restart cases.
-
-### Deprecated
-
-### Security
 
 
 ## [Release 0.4.1]
