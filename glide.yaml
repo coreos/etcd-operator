@@ -1,15 +1,17 @@
 package: github.com/coreos/etcd-operator
 import:
 - package: k8s.io/client-go
-  version: v3.0.0-beta.0
+  version: v4.0.0-beta.0
+- package: k8s.io/apimachinery
+  version: abe34e4f5b4413c282a83011892cbeea5b32223b
 - package: github.com/coreos/etcd
-  version: v3.1.8
+  version: v3.1.9
 - package: github.com/Sirupsen/logrus
   version: v1.0.0
 - package: github.com/pkg/errors
   version: v0.8.0
 - package: github.com/aws/aws-sdk-go
-  version: v1.8.44
+  version: v1.10.9
 - package: github.com/coreos/go-semver
   version: v0.2.0
 - package: github.com/pborman/uuid
