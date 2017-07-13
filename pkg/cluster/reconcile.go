@@ -151,6 +151,29 @@ func (c *Cluster) removeOneMember() error {
 }
 
 func (c *Cluster) removeDeadMember(toRemove *etcdutil.Member) error {
+	if c.cluster.Spec.SelfHosted != nil {
+		selectedNodes, err := c.selectSchedulableNodes()
+		if err != nil {
+			return err
+		}
+
+		// If we do not have enough master nodes, we should simply wait for the old node
+		// to be online again.
+		//
+		// Removing the etcd member will not help us to recover the cluster to the desired
+		// number of members, since we do not have enough master nodes for self hosted etcd.
+		//
+		// Instead, there is a large chance that the old node is taken offline for maintenance
+		// or experiencing temporary network partition. When it comes back, it will recover itself
+		// since we persist data for self hosted case.
+
+		if nodeNum := len(selectedNodes); nodeNum < c.cluster.Spec.Size {
+			c.logger.Warningf("ignored removing failed member (%s). Not enough master nodes (%v) to recover, want at least %d", toRemove.Name, selectedNodes, c.cluster.Spec.Size)
+			c.logger.Infof("waiting for the failed master node to recover, or more master nodes")
+			return nil
+		}
+	}
+
 	c.logger.Infof("removing dead member %q", toRemove.Name)
 	c.status.AppendRemovingDeadMember(toRemove.Name)
 
