@@ -6,6 +6,8 @@
 
 ### Changed
 
+- enable alpha feature "tolerate unready endpoints" on etcd client and peer service
+
 ### Removed
 
 ### Fixed
