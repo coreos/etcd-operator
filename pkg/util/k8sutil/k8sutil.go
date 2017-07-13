@@ -244,9 +244,10 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		"etcd_cluster": clusterName,
 	}
 
-	// TODO: fix "sleep 5".
-	// Without waiting some time, there is high rate of flakes in DNS setup.
-	commands = fmt.Sprintf("sleep 5; %s", commands)
+	if strings.HasPrefix(cs.Version, "3.0.") {
+		// DNS entries might not warm up initially. 3.0.x etcd will exit without retrying.
+		commands = fmt.Sprintf("sleep 5; %s", commands)
+	}
 	container := containerWithLivenessProbe(etcdContainer(commands, cs.BaseImage, cs.Version), etcdLivenessProbe(cs.TLS.IsSecureClient()))
 
 	if cs.Pod != nil {
