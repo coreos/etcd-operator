@@ -72,6 +72,8 @@ spec:
       awsSecret: <aws-secret-name>
 ```
 
+See [backup config](./backup_config.md) for how to set up S3 related configurations.
+
 ### Three members cluster that restores from previous PV backup
 
 If a cluster `cluster-a` was created with backup, but deleted or failed later on,
