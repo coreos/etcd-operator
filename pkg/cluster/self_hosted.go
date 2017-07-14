@@ -28,7 +28,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func (c *Cluster) selectMasterNodes() ([]string, error) {
+// selectSchedulableNodes finds all nodes that the etcd pod can be placed.
+// The selected nodes must satisfy the node selector and are in ready state.
+func (c *Cluster) selectSchedulableNodes() ([]string, error) {
 	var selector string
 	if c.cluster.Spec.Pod != nil && len(c.cluster.Spec.Pod.NodeSelector) != 0 {
 		selector = labels.SelectorFromSet(c.cluster.Spec.Pod.NodeSelector).String()
@@ -37,13 +39,17 @@ func (c *Cluster) selectMasterNodes() ([]string, error) {
 		LabelSelector: selector,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list master nodes: %v", err)
 	}
-	res := make([]string, len(nodes.Items))
-	for i := range nodes.Items {
-		res[i] = nodes.Items[i].Name
+	// TODO: take taints into consideration? k8s might support schedule dryrun for other
+	// components to test schedulability though...
+	ns := make([]string, 0)
+	for _, n := range nodes.Items {
+		if k8sutil.IsNodeReady(n) {
+			ns = append(ns, n.Name)
+		}
 	}
-	return res, nil
+	return ns, nil
 }
 
 func (c *Cluster) waitNewMember(oldN, retries int, name string) error {
@@ -112,7 +118,7 @@ func (c *Cluster) inspectSelfHostedMember(memberName, podName, ns string, oldN i
 }
 
 func (c *Cluster) addOneSelfHostedMember() error {
-	selectedNodes, err := c.selectMasterNodes()
+	selectedNodes, err := c.selectSchedulableNodes()
 	if err != nil {
 		return err
 	}
