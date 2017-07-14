@@ -68,7 +68,7 @@ func TestResize(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testClus, err = k8sutil.GetClusterTPRObject(testF.KubeCli.CoreV1().RESTClient(), testF.KubeNS, testClus.Metadata.Name)
+	testClus, err = k8sutil.GetClusterTPRObject(testF.KubeCli.CoreV1().RESTClient(), testF.KubeNS, testClus.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +181,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to reach desired cluster size:%v", err)
 	}
-	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
@@ -195,7 +195,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to put data to etcd:%v", err)
 	}
-	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Metadata.Namespace, testClus.Metadata.Name)
+	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Namespace, testClus.Name)
 	if err != nil {
 		t.Fatalf("failed to make backup:%v", err)
 	}
@@ -222,11 +222,11 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	// - set BackupClusterName to the same name in RestorePolicy.
 	// Then operator will use the existing backup in the same storage and
 	// restore cluster with the same data.
-	origClus.Metadata.GenerateName = ""
-	origClus.Metadata.Name = testClus.Metadata.Name
+	origClus.GenerateName = ""
+	origClus.Name = testClus.Name
 
 	origClus = e2eutil.ClusterWithRestore(origClus, &spec.RestorePolicy{
-		BackupClusterName: origClus.Metadata.Name,
+		BackupClusterName: origClus.Name,
 		StorageType:       bp.StorageType,
 	})
 	origClus.Spec.Backup.AutoDelete = true
@@ -310,7 +310,7 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 		t.Fatal(err)
 	}
 	// "latest" image operator will create sidecar with versioned image. So we need to get sidecar image.
-	oldBSImage, err := getContainerImageNameFromDeployment(k8sutil.BackupSidecarName(testClus.Metadata.Name))
+	oldBSImage, err := getContainerImageNameFromDeployment(k8sutil.BackupSidecarName(testClus.Name))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,18 +321,18 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 
 	// We wait for old backup sidecar to be deleted so that we won't make backup from the old version.
 	lo := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(k8sutil.BackupSidecarLabels(testClus.Metadata.Name)).String(),
+		LabelSelector: labels.SelectorFromSet(k8sutil.BackupSidecarLabels(testClus.Name)).String(),
 	}
 	_, err = e2eutil.WaitPodsWithImageDeleted(testF.KubeCli, testF.KubeNS, oldBSImage, 6, lo)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Since old one is deleted, we can safely select any backup pod.
-	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Name, 6)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Metadata.Namespace, testClus.Metadata.Name)
+	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Namespace, testClus.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +391,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to reach desired cluster size: %v", err)
 	}
-	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
@@ -405,7 +405,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to put data to etcd: %v", err)
 	}
-	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Metadata.Namespace, testClus.Metadata.Name)
+	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Namespace, testClus.Name)
 	if err != nil {
 		t.Fatalf("failed to make backup: %v", err)
 	}

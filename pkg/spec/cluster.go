@@ -45,10 +45,10 @@ func TPRName() string {
 }
 
 type Cluster struct {
-	metav1.TypeMeta `json:",inline"`
-	Metadata        metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec            ClusterSpec       `json:"spec"`
-	Status          ClusterStatus     `json:"status"`
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              ClusterSpec   `json:"spec"`
+	Status            ClusterStatus `json:"status"`
 }
 
 func (c *Cluster) AsOwner() metav1.OwnerReference {
@@ -58,8 +58,8 @@ func (c *Cluster) AsOwner() metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion: c.APIVersion,
 		Kind:       c.Kind,
-		Name:       c.Metadata.Name,
-		UID:        c.Metadata.UID,
+		Name:       c.Name,
+		UID:        c.UID,
 		Controller: &trueVar,
 	}
 }

@@ -95,10 +95,10 @@ type Cluster struct {
 }
 
 func New(config Config, cl *spec.Cluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
-	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", cl.Metadata.Name)
+	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", cl.Name)
 	var debugLogger *debug.DebugLogger
 	if cl.Spec.SelfHosted != nil {
-		debugLogger = debug.New(cl.Metadata.Name)
+		debugLogger = debug.New(cl.Name)
 	}
 
 	c := &Cluster{
@@ -109,7 +109,7 @@ func New(config Config, cl *spec.Cluster, stopC <-chan struct{}, wg *sync.WaitGr
 		eventCh:     make(chan *clusterEvent, 100),
 		stopCh:      make(chan struct{}),
 		status:      cl.Status.Copy(),
-		gc:          garbagecollection.New(config.KubeCli, cl.Metadata.Namespace),
+		gc:          garbagecollection.New(config.KubeCli, cl.Namespace),
 	}
 
 	wg.Add(1)
@@ -153,7 +153,7 @@ func (c *Cluster) setup() error {
 	}
 
 	if c.isSecureClient() {
-		d, err := k8sutil.GetTLSDataFromSecret(c.config.KubeCli, c.cluster.Metadata.Namespace, c.cluster.Spec.TLS.Static.OperatorSecret)
+		d, err := k8sutil.GetTLSDataFromSecret(c.config.KubeCli, c.cluster.Namespace, c.cluster.Spec.TLS.Static.OperatorSecret)
 		if err != nil {
 			return err
 		}
@@ -190,7 +190,7 @@ func (c *Cluster) create() error {
 	}
 	c.logClusterCreation()
 
-	c.gc.CollectCluster(c.cluster.Metadata.Name, c.cluster.Metadata.UID)
+	c.gc.CollectCluster(c.cluster.Name, c.cluster.UID)
 
 	if c.bm != nil {
 		if err := c.bm.setup(); err != nil {
@@ -407,8 +407,8 @@ func isBackupPolicyEqual(b1, b2 *spec.BackupPolicy) bool {
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	m := &etcdutil.Member{
-		Name:         etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
-		Namespace:    c.cluster.Metadata.Namespace,
+		Name:         etcdutil.CreateMemberName(c.cluster.Name, c.memberCounter),
+		Namespace:    c.cluster.Namespace,
 		SecurePeer:   c.isSecurePeer(),
 		SecureClient: c.isSecureClient(),
 	}
@@ -448,7 +448,7 @@ func (c *Cluster) Update(cl *spec.Cluster) {
 }
 
 func (c *Cluster) delete() {
-	c.gc.CollectCluster(c.cluster.Metadata.Name, garbagecollection.NullUID)
+	c.gc.CollectCluster(c.cluster.Name, garbagecollection.NullUID)
 
 	if c.bm == nil {
 		return
@@ -460,12 +460,12 @@ func (c *Cluster) delete() {
 }
 
 func (c *Cluster) setupServices() error {
-	err := k8sutil.CreateClientService(c.config.KubeCli, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, c.cluster.AsOwner())
+	err := k8sutil.CreateClientService(c.config.KubeCli, c.cluster.Name, c.cluster.Namespace, c.cluster.AsOwner())
 	if err != nil {
 		return err
 	}
 
-	return k8sutil.CreatePeerService(c.config.KubeCli, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, c.cluster.AsOwner())
+	return k8sutil.CreatePeerService(c.config.KubeCli, c.cluster.Name, c.cluster.Namespace, c.cluster.AsOwner())
 }
 
 func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
@@ -474,16 +474,16 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 		token = uuid.New()
 	}
 
-	pod := k8sutil.NewEtcdPod(m, members.PeerURLPairs(), c.cluster.Metadata.Name, state, token, c.cluster.Spec, c.cluster.AsOwner())
+	pod := k8sutil.NewEtcdPod(m, members.PeerURLPairs(), c.cluster.Name, state, token, c.cluster.Spec, c.cluster.AsOwner())
 	if needRecovery {
-		k8sutil.AddRecoveryToPod(pod, c.cluster.Metadata.Name, token, m, c.cluster.Spec)
+		k8sutil.AddRecoveryToPod(pod, c.cluster.Name, token, m, c.cluster.Spec)
 	}
-	_, err := c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).Create(pod)
+	_, err := c.config.KubeCli.Core().Pods(c.cluster.Namespace).Create(pod)
 	return err
 }
 
 func (c *Cluster) removePod(name string) error {
-	ns := c.cluster.Metadata.Namespace
+	ns := c.cluster.Namespace
 	opts := metav1.NewDeleteOptions(podTerminationGracePeriod)
 	err := c.config.KubeCli.Core().Pods(ns).Delete(name, opts)
 	if err != nil {
@@ -501,7 +501,7 @@ func (c *Cluster) removePod(name string) error {
 }
 
 func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
-	podList, err := c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).List(k8sutil.ClusterListOpt(c.cluster.Metadata.Name))
+	podList, err := c.config.KubeCli.Core().Pods(c.cluster.Namespace).List(k8sutil.ClusterListOpt(c.cluster.Name))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)
 	}
@@ -512,9 +512,9 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 			c.logger.Warningf("pollPods: ignore pod %v: no owner", pod.Name)
 			continue
 		}
-		if pod.OwnerReferences[0].UID != c.cluster.Metadata.UID {
+		if pod.OwnerReferences[0].UID != c.cluster.UID {
 			c.logger.Warningf("pollPods: ignore pod %v: owner (%v) is not %v",
-				pod.Name, pod.OwnerReferences[0].UID, c.cluster.Metadata.UID)
+				pod.Name, pod.OwnerReferences[0].UID, c.cluster.UID)
 			continue
 		}
 		switch pod.Status.Phase {
@@ -553,7 +553,7 @@ func (c *Cluster) updateTPRStatus() error {
 
 	newCluster := c.cluster
 	newCluster.Status = c.status
-	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli.Core().RESTClient(), c.cluster.Metadata.Namespace, newCluster)
+	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli.Core().RESTClient(), c.cluster.Namespace, newCluster)
 	if err != nil {
 		return err
 	}
@@ -592,7 +592,7 @@ func (c *Cluster) reportFailedStatus() {
 			return false, nil
 		}
 
-		cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli.CoreV1().RESTClient(), c.cluster.Metadata.Namespace, c.cluster.Metadata.Name)
+		cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli.CoreV1().RESTClient(), c.cluster.Namespace, c.cluster.Name)
 		if err != nil {
 			// Update (PUT) will return conflict even if object is deleted since we have UID set in object.
 			// Because it will check UID first and return something like:
@@ -612,7 +612,7 @@ func (c *Cluster) reportFailedStatus() {
 }
 
 func (c *Cluster) name() string {
-	return c.cluster.Metadata.GetName()
+	return c.cluster.GetName()
 }
 
 func (c *Cluster) logClusterCreation() {

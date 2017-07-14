@@ -166,11 +166,11 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 	if clus.Status.IsFailed() {
 		clustersFailed.Inc()
 		if event.Type == kwatch.Deleted {
-			delete(c.clusters, clus.Metadata.Name)
-			delete(c.clusterRVs, clus.Metadata.Name)
+			delete(c.clusters, clus.Name)
+			delete(c.clusterRVs, clus.Name)
 			return nil
 		}
-		return fmt.Errorf("ignore failed cluster (%s). Please delete its TPR", clus.Metadata.Name)
+		return fmt.Errorf("ignore failed cluster (%s). Please delete its TPR", clus.Name)
 	}
 
 	// TODO: add validation to spec update.
@@ -181,29 +181,29 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 		stopC := make(chan struct{})
 		nc := cluster.New(c.makeClusterConfig(), clus, stopC, &c.waitCluster)
 
-		c.stopChMap[clus.Metadata.Name] = stopC
-		c.clusters[clus.Metadata.Name] = nc
-		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
+		c.stopChMap[clus.Name] = stopC
+		c.clusters[clus.Name] = nc
+		c.clusterRVs[clus.Name] = clus.ResourceVersion
 
 		analytics.ClusterCreated()
 		clustersCreated.Inc()
 		clustersTotal.Inc()
 
 	case kwatch.Modified:
-		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
+		if _, ok := c.clusters[clus.Name]; !ok {
 			return fmt.Errorf("unsafe state. cluster was never created but we received event (%s)", event.Type)
 		}
-		c.clusters[clus.Metadata.Name].Update(clus)
-		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
+		c.clusters[clus.Name].Update(clus)
+		c.clusterRVs[clus.Name] = clus.ResourceVersion
 		clustersModified.Inc()
 
 	case kwatch.Deleted:
-		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
+		if _, ok := c.clusters[clus.Name]; !ok {
 			return fmt.Errorf("unsafe state. cluster was never created but we received event (%s)", event.Type)
 		}
-		c.clusters[clus.Metadata.Name].Delete()
-		delete(c.clusters, clus.Metadata.Name)
-		delete(c.clusterRVs, clus.Metadata.Name)
+		c.clusters[clus.Name].Delete()
+		delete(c.clusters, clus.Name)
+		delete(c.clusterRVs, clus.Name)
 		analytics.ClusterDeleted()
 		clustersDeleted.Inc()
 		clustersTotal.Dec()
@@ -222,7 +222,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		clus := clusterList.Items[i]
 
 		if clus.Status.IsFailed() {
-			c.logger.Infof("ignore failed cluster (%s). Please delete its TPR", clus.Metadata.Name)
+			c.logger.Infof("ignore failed cluster (%s). Please delete its TPR", clus.Name)
 			continue
 		}
 
@@ -230,12 +230,12 @@ func (c *Controller) findAllClusters() (string, error) {
 
 		stopC := make(chan struct{})
 		nc := cluster.New(c.makeClusterConfig(), &clus, stopC, &c.waitCluster)
-		c.stopChMap[clus.Metadata.Name] = stopC
-		c.clusters[clus.Metadata.Name] = nc
-		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
+		c.stopChMap[clus.Name] = stopC
+		c.clusters[clus.Name] = nc
+		c.clusterRVs[clus.Name] = clus.ResourceVersion
 	}
 
-	return clusterList.Metadata.ResourceVersion, nil
+	return clusterList.ResourceVersion, nil
 }
 
 func (c *Controller) makeClusterConfig() cluster.Config {
@@ -339,7 +339,7 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 						// if nothing has changed, we can go back to watch again.
 						clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli.CoreV1().RESTClient(), c.Config.Namespace)
 						if err == nil && !c.isClustersCacheStale(clusterList.Items) {
-							watchVersion = clusterList.Metadata.ResourceVersion
+							watchVersion = clusterList.ResourceVersion
 							break
 						}
 
@@ -354,7 +354,7 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 
 				c.logger.Debugf("etcd cluster event: %v %v", ev.Type, ev.Object.Spec)
 
-				watchVersion = ev.Object.Metadata.ResourceVersion
+				watchVersion = ev.Object.ResourceVersion
 				eventCh <- ev
 			}
 
@@ -371,8 +371,8 @@ func (c *Controller) isClustersCacheStale(currentClusters []spec.Cluster) bool {
 	}
 
 	for _, cc := range currentClusters {
-		rv, ok := c.clusterRVs[cc.Metadata.Name]
-		if !ok || rv != cc.Metadata.ResourceVersion {
+		rv, ok := c.clusterRVs[cc.Name]
+		if !ok || rv != cc.ResourceVersion {
 			return true
 		}
 	}
