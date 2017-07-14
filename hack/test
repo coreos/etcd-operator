@@ -5,7 +5,7 @@ set -o nounset
 set -o pipefail
 
 if [ -z "${PASSES-}" ]; then
-	PASSES="fmt build e2e unit cliente2e"
+	PASSES="fmt build e2e unit"
 fi
 
 find_files() {
@@ -119,10 +119,6 @@ function unit_pass {
 	done
 	# Send reports to codecov, CODECOV_TOKEN env must be present in Jenkins
 	(curl -s https://codecov.io/bash | bash) || true
-}
-
-function cliente2e_pass {
-	./client/cliente2e/test
 }
 
 for p in $PASSES; do
