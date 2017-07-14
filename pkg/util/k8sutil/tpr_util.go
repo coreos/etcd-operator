@@ -103,7 +103,7 @@ func AtomicUpdateClusterTPRObject(restcli rest.Interface, name, namespace string
 }
 
 func UpdateClusterTPRObject(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, c.Metadata.Name)
+	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, c.Name)
 	b, err := restcli.Put().RequestURI(uri).Body(c).DoRaw()
 	if err != nil {
 		return nil, err

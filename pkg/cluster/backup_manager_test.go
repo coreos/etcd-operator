@@ -26,7 +26,7 @@ import (
 func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
 	cfg := Config{PVProvisioner: constants.PVProvisionerNone}
 	cl := &spec.Cluster{
-		Metadata: metav1.ObjectMeta{Name: "testing"},
+		ObjectMeta: metav1.ObjectMeta{Name: "testing"},
 		Spec: spec.ClusterSpec{
 			Backup: &spec.BackupPolicy{
 				StorageType: spec.BackupStorageTypePersistentVolume,
@@ -46,7 +46,7 @@ func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
 func TestNewBackupManagerWithoutS3Config(t *testing.T) {
 	cfg := Config{}
 	cl := &spec.Cluster{
-		Metadata: metav1.ObjectMeta{Name: "testing"},
+		ObjectMeta: metav1.ObjectMeta{Name: "testing"},
 		Spec: spec.ClusterSpec{
 			Backup: &spec.BackupPolicy{
 				StorageType: spec.BackupStorageTypeS3,

@@ -60,7 +60,7 @@ func testTLS(t *testing.T, selfHosted bool) {
 	}()
 
 	c := e2eutil.NewCluster("", 3)
-	c.Metadata.Name = clusterName
+	c.Name = clusterName
 	c.Spec.TLS = &spec.TLSPolicy{
 		Static: &spec.StaticTLS{
 			Member: &spec.MemberSecret{
