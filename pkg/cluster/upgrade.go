@@ -27,7 +27,7 @@ import (
 func (c *Cluster) upgradeOneMember(memberName string) error {
 	c.status.AppendUpgradingCondition(c.cluster.Spec.Version, memberName)
 
-	ns := c.cluster.Metadata.Namespace
+	ns := c.cluster.Namespace
 
 	pod, err := c.config.KubeCli.CoreV1().Pods(ns).Get(memberName, metav1.GetOptions{})
 	if err != nil {

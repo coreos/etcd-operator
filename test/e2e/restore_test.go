@@ -93,11 +93,11 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		t.Fatal(err)
 	}
 
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
-	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Metadata.Name)
+	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Name)
 	if err != nil {
 		t.Fatalf("fail to make a backup: %v", err)
 	}
@@ -128,13 +128,13 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		// - set BackupClusterName to the same name in RestorePolicy.
 		// Then operator will use the existing backup in the same storage and
 		// restore cluster with the same data.
-		origEtcd.Metadata.GenerateName = ""
-		origEtcd.Metadata.Name = testEtcd.Metadata.Name
+		origEtcd.GenerateName = ""
+		origEtcd.Name = testEtcd.Name
 	}
 	waitRestoreTimeout := e2eutil.CalculateRestoreWaitTime(needDataClone)
 
 	origEtcd = e2eutil.ClusterWithRestore(origEtcd, &spec.RestorePolicy{
-		BackupClusterName: testEtcd.Metadata.Name,
+		BackupClusterName: testEtcd.Name,
 		StorageType:       backupPolicy.StorageType,
 	})
 

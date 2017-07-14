@@ -155,11 +155,11 @@ func testSelfHostedClusterWithBackup(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 3 members cluster")
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
-	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Metadata.Name)
+	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Name)
 	if err != nil {
 		t.Fatalf("fail to make a latest backup: %v", err)
 	}

@@ -42,16 +42,16 @@ func CreateCluster(t *testing.T, kubeClient kubernetes.Interface, namespace stri
 	if err := json.Unmarshal(b, res); err != nil {
 		return nil, err
 	}
-	LogfWithTimestamp(t, "created etcd cluster: %v", res.Metadata.Name)
+	LogfWithTimestamp(t, "created etcd cluster: %v", res.Name)
 	return res, nil
 }
 
 func UpdateCluster(kubeClient kubernetes.Interface, cl *spec.Cluster, maxRetries int, updateFunc k8sutil.ClusterTPRUpdateFunc) (*spec.Cluster, error) {
-	return k8sutil.AtomicUpdateClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Metadata.Name, cl.Metadata.Namespace, maxRetries, updateFunc)
+	return k8sutil.AtomicUpdateClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Name, cl.Namespace, maxRetries, updateFunc)
 }
 
 func DeleteCluster(t *testing.T, kubeClient kubernetes.Interface, cl *spec.Cluster) error {
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, cl.Metadata.Namespace, cl.Metadata.Name)
+	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, cl.Namespace, cl.Name)
 	if _, err := kubeClient.CoreV1().RESTClient().Delete().RequestURI(uri).DoRaw(); err != nil {
 		return err
 	}
