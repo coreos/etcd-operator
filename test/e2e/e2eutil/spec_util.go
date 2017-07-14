@@ -29,7 +29,7 @@ func NewCluster(genName string, size int) *spec.Cluster {
 			Kind:       strings.Title(spec.TPRKind),
 			APIVersion: spec.TPRGroup + "/" + spec.TPRVersion,
 		},
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: genName,
 		},
 		Spec: spec.ClusterSpec{

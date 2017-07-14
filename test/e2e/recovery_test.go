@@ -132,14 +132,14 @@ func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.Clust
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 3 members cluster")
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
 	// No left pod to make a backup from. We need to back up ahead.
 	// If there is any left pod, ooperator should be able to make a backup from it.
 	if numToKill == testEtcd.Spec.Size {
-		err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Metadata.Name)
+		err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Name)
 		if err != nil {
 			t.Fatalf("fail to make a latest backup: %v", err)
 		}
@@ -217,7 +217,7 @@ func TestDynamicAddBackupPolicy(t *testing.T) {
 		}
 	}()
 
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Namespace, clus.Name, 6)
 	if !retryutil.IsRetryFailure(err) {
 		t.Fatalf("expecting retry failure, but err = %v", err)
 	}
@@ -230,7 +230,7 @@ func TestDynamicAddBackupPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Namespace, clus.Name, 6)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestDynamicRemoveBackupPolicy(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Namespace, clus.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
