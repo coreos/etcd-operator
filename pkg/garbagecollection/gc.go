@@ -62,7 +62,7 @@ func (gc *GC) FullyCollect() error {
 
 	clusterUIDSet := make(map[types.UID]bool)
 	for _, c := range clusters.Items {
-		clusterUIDSet[c.Metadata.UID] = true
+		clusterUIDSet[c.UID] = true
 	}
 
 	option := metav1.ListOptions{

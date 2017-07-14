@@ -51,7 +51,7 @@ func CalculateRestoreWaitTime(needDataClone bool) int {
 func WaitUntilPodSizeReached(t *testing.T, kubeClient kubernetes.Interface, size, retries int, cl *spec.Cluster) ([]string, error) {
 	var names []string
 	err := retryutil.Retry(retryInterval, retries, func() (done bool, err error) {
-		podList, err := kubeClient.Core().Pods(cl.Metadata.Namespace).List(k8sutil.ClusterListOpt(cl.Metadata.Name))
+		podList, err := kubeClient.Core().Pods(cl.Namespace).List(k8sutil.ClusterListOpt(cl.Name))
 		if err != nil {
 			return false, err
 		}
@@ -84,7 +84,7 @@ func WaitUntilSizeReached(t *testing.T, kubeClient kubernetes.Interface, size, r
 func WaitSizeAndVersionReached(t *testing.T, kubeClient kubernetes.Interface, version string, size, retries int, cl *spec.Cluster) error {
 	return retryutil.Retry(retryInterval, retries, func() (done bool, err error) {
 		var names []string
-		podList, err := kubeClient.Core().Pods(cl.Metadata.Namespace).List(k8sutil.ClusterListOpt(cl.Metadata.Name))
+		podList, err := kubeClient.Core().Pods(cl.Namespace).List(k8sutil.ClusterListOpt(cl.Name))
 		if err != nil {
 			return false, err
 		}
@@ -120,7 +120,7 @@ func getVersionFromImage(image string) string {
 func waitSizeReachedWithAccept(t *testing.T, kubeClient kubernetes.Interface, size, retries int, cl *spec.Cluster, accepts ...acceptFunc) ([]string, error) {
 	var names []string
 	err := retryutil.Retry(retryInterval, retries, func() (done bool, err error) {
-		currCluster, err := k8sutil.GetClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Metadata.Namespace, cl.Metadata.Name)
+		currCluster, err := k8sutil.GetClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Namespace, cl.Name)
 		if err != nil {
 			return false, err
 		}
@@ -147,7 +147,7 @@ func waitSizeReachedWithAccept(t *testing.T, kubeClient kubernetes.Interface, si
 func WaitUntilMembersWithNamesDeleted(t *testing.T, kubeClient kubernetes.Interface, retries int, cl *spec.Cluster, targetNames ...string) ([]string, error) {
 	var remaining []string
 	err := retryutil.Retry(retryInterval, retries, func() (done bool, err error) {
-		currCluster, err := k8sutil.GetClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Metadata.Namespace, cl.Metadata.Name)
+		currCluster, err := k8sutil.GetClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Namespace, cl.Name)
 		if err != nil {
 			return false, err
 		}
@@ -201,7 +201,7 @@ func WaitBackupPodUp(t *testing.T, kubecli kubernetes.Interface, ns, clusterName
 }
 
 func waitResourcesDeleted(t *testing.T, kubeClient kubernetes.Interface, cl *spec.Cluster) error {
-	undeletedPods, err := WaitPodsDeleted(kubeClient, cl.Metadata.Namespace, 3, k8sutil.ClusterListOpt(cl.Metadata.Name))
+	undeletedPods, err := WaitPodsDeleted(kubeClient, cl.Namespace, 3, k8sutil.ClusterListOpt(cl.Name))
 	if err != nil {
 		if retryutil.IsRetryFailure(err) && len(undeletedPods) > 0 {
 			p := undeletedPods[0]
@@ -219,7 +219,7 @@ func waitResourcesDeleted(t *testing.T, kubeClient kubernetes.Interface, cl *spe
 	}
 
 	err = retryutil.Retry(retryInterval, 3, func() (done bool, err error) {
-		list, err := kubeClient.CoreV1().Services(cl.Metadata.Namespace).List(k8sutil.ClusterListOpt(cl.Metadata.Name))
+		list, err := kubeClient.CoreV1().Services(cl.Namespace).List(k8sutil.ClusterListOpt(cl.Name))
 		if err != nil {
 			return false, err
 		}
@@ -243,7 +243,7 @@ func WaitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, checke
 		retries = 30
 	}
 	err := retryutil.Retry(retryInterval, retries, func() (bool, error) {
-		d, err := kubeClient.AppsV1beta1().Deployments(cl.Metadata.Namespace).Get(k8sutil.BackupSidecarName(cl.Metadata.Name), metav1.GetOptions{})
+		d, err := kubeClient.AppsV1beta1().Deployments(cl.Namespace).Get(k8sutil.BackupSidecarName(cl.Name), metav1.GetOptions{})
 		// If we don't need to wait deployment to be completely gone, we can say it is deleted
 		// as long as DeletionTimestamp is not nil. Otherwise, we need to wait it is gone by checking not found error.
 		if (!checkerOpt.DeletedFromAPI && d.DeletionTimestamp != nil) || apierrors.IsNotFound(err) {
@@ -258,11 +258,11 @@ func WaitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, checke
 		return fmt.Errorf("failed to wait backup Deployment deleted: %v", err)
 	}
 
-	_, err = WaitPodsDeleted(kubeClient, cl.Metadata.Namespace, 2,
+	_, err = WaitPodsDeleted(kubeClient, cl.Namespace, 2,
 		metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(map[string]string{
 				"app":          k8sutil.BackupPodSelectorAppField,
-				"etcd_cluster": cl.Metadata.Name,
+				"etcd_cluster": cl.Name,
 			}).String(),
 		})
 	if err != nil {
@@ -276,7 +276,7 @@ func WaitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, checke
 	err = retryutil.Retry(retryInterval, 3, func() (done bool, err error) {
 		switch cl.Spec.Backup.StorageType {
 		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-			pl, err := kubeClient.CoreV1().PersistentVolumeClaims(cl.Metadata.Namespace).List(k8sutil.ClusterListOpt(cl.Metadata.Name))
+			pl, err := kubeClient.CoreV1().PersistentVolumeClaims(cl.Namespace).List(k8sutil.ClusterListOpt(cl.Name))
 			if err != nil {
 				return false, err
 			}
@@ -284,7 +284,7 @@ func WaitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, checke
 				return false, nil
 			}
 		case spec.BackupStorageTypeS3:
-			s3cli := backups3.NewFromClient(checkerOpt.S3Bucket, path.Join(cl.Metadata.Namespace, cl.Metadata.Name), checkerOpt.S3Cli)
+			s3cli := backups3.NewFromClient(checkerOpt.S3Bucket, path.Join(cl.Namespace, cl.Name), checkerOpt.S3Cli)
 			keys, err := s3cli.List()
 			if err != nil {
 				return false, err
