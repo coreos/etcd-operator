@@ -517,6 +517,14 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 				pod.Name, pod.OwnerReferences[0].UID, c.cluster.Metadata.UID)
 			continue
 		}
+		// Kubernetes will not force delete pods if node unready or lost ,but set deletionTimestamp.
+		// If deletionTimestamp set we think the pods not Running.
+		if !k8sutil.IsPodActive(pod) {
+			c.logger.Warningf("pollPods: ignore pod %v: pod is inactive, phase (%v), deletionTimestamp is (%v).",
+				pod.Name, pod.Status.Phase, pod.DeletionTimestamp)
+			continue
+		}
+
 		switch pod.Status.Phase {
 		case v1.PodRunning:
 			running = append(running, pod)
