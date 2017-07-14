@@ -103,3 +103,6 @@ spec:
       s3Bucket: example-s3-bucket
       awsSecret: aws
 ```
+
+For AWS k8s users: If `credentials` file is not given,
+operator and backup sidecar pods will make use of AWS IAM roles on the nodes where they are deployed.
