@@ -30,9 +30,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
@@ -330,27 +327,6 @@ func InClusterConfig() (*rest.Config, error) {
 		os.Setenv("KUBERNETES_SERVICE_PORT", "443")
 	}
 	return rest.InClusterConfig()
-}
-
-func NewTPRClient() (*rest.RESTClient, error) {
-	config, err := InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	config.GroupVersion = &schema.GroupVersion{
-		Group:   spec.TPRGroup,
-		Version: spec.TPRVersion,
-	}
-	config.APIPath = "/apis"
-	config.ContentType = runtime.ContentTypeJSON
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
-
-	restcli, err := rest.RESTClientFor(config)
-	if err != nil {
-		return nil, err
-	}
-	return restcli, nil
 }
 
 func IsKubernetesResourceAlreadyExistError(err error) bool {

@@ -32,13 +32,13 @@ type StorageCheckerOptions struct {
 	DeletedFromAPI bool
 }
 
-func CreateCluster(t *testing.T, kubeClient kubernetes.Interface, namespace string, cl *spec.Cluster) (*spec.Cluster, error) {
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, namespace)
+func CreateCluster(t *testing.T, kubeClient kubernetes.Interface, namespace string, cl *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+	uri := fmt.Sprintf("/apis/%s/namespaces/%s/%s", spec.SchemeGroupVersion.String(), namespace, spec.CRDResourcePlural)
 	b, err := kubeClient.CoreV1().RESTClient().Post().Body(cl).RequestURI(uri).DoRaw()
 	if err != nil {
 		return nil, err
 	}
-	res := &spec.Cluster{}
+	res := &spec.EtcdCluster{}
 	if err := json.Unmarshal(b, res); err != nil {
 		return nil, err
 	}
@@ -46,19 +46,19 @@ func CreateCluster(t *testing.T, kubeClient kubernetes.Interface, namespace stri
 	return res, nil
 }
 
-func UpdateCluster(kubeClient kubernetes.Interface, cl *spec.Cluster, maxRetries int, updateFunc k8sutil.ClusterTPRUpdateFunc) (*spec.Cluster, error) {
+func UpdateCluster(kubeClient kubernetes.Interface, cl *spec.EtcdCluster, maxRetries int, updateFunc k8sutil.EtcdClusterCRUpdateFunc) (*spec.EtcdCluster, error) {
 	return k8sutil.AtomicUpdateClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Name, cl.Namespace, maxRetries, updateFunc)
 }
 
-func DeleteCluster(t *testing.T, kubeClient kubernetes.Interface, cl *spec.Cluster) error {
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, cl.Namespace, cl.Name)
+func DeleteCluster(t *testing.T, kubeClient kubernetes.Interface, cl *spec.EtcdCluster) error {
+	uri := fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s", spec.SchemeGroupVersion.String(), cl.Namespace, spec.CRDResourcePlural, cl.Name)
 	if _, err := kubeClient.CoreV1().RESTClient().Delete().RequestURI(uri).DoRaw(); err != nil {
 		return err
 	}
 	return waitResourcesDeleted(t, kubeClient, cl)
 }
 
-func DeleteClusterAndBackup(t *testing.T, kubecli kubernetes.Interface, cl *spec.Cluster, checkerOpt StorageCheckerOptions) error {
+func DeleteClusterAndBackup(t *testing.T, kubecli kubernetes.Interface, cl *spec.EtcdCluster, checkerOpt StorageCheckerOptions) error {
 	err := DeleteCluster(t, kubecli, cl)
 	if err != nil {
 		return err

@@ -25,7 +25,7 @@ import (
 
 func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
 	cfg := Config{PVProvisioner: constants.PVProvisionerNone}
-	cl := &spec.Cluster{
+	cl := &spec.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "testing"},
 		Spec: spec.ClusterSpec{
 			Backup: &spec.BackupPolicy{
@@ -45,7 +45,7 @@ func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
 
 func TestNewBackupManagerWithoutS3Config(t *testing.T) {
 	cfg := Config{}
-	cl := &spec.Cluster{
+	cl := &spec.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "testing"},
 		Spec: spec.ClusterSpec{
 			Backup: &spec.BackupPolicy{

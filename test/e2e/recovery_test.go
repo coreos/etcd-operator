@@ -102,7 +102,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 	testDisasterRecoveryWithCluster(t, numToKill, cl)
 }
 
-func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.Cluster) {
+func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.EtcdCluster) {
 	f := framework.Global
 
 	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, cl)
@@ -222,7 +222,7 @@ func TestDynamicAddBackupPolicy(t *testing.T) {
 		t.Fatalf("expecting retry failure, but err = %v", err)
 	}
 
-	uf := func(cl *spec.Cluster) {
+	uf := func(cl *spec.EtcdCluster) {
 		bp := e2eutil.NewS3BackupPolicy(true)
 		cl.Spec.Backup = bp
 	}
@@ -267,7 +267,7 @@ func TestDynamicRemoveBackupPolicy(t *testing.T) {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
 
-	uf := func(cl *spec.Cluster) {
+	uf := func(cl *spec.EtcdCluster) {
 		cl.Spec.Backup = nil
 	}
 	_, err = e2eutil.UpdateCluster(f.KubeClient, clus, 10, uf)

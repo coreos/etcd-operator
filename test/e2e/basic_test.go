@@ -68,14 +68,14 @@ func TestPauseControl(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	updateFunc := func(cl *spec.Cluster) {
+	updateFunc := func(cl *spec.EtcdCluster) {
 		cl.Spec.Paused = true
 	}
 	if testEtcd, err = e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatalf("failed to pause control: %v", err)
 	}
 
-	// TODO: this is used to wait for the TPR to be updated.
+	// TODO: this is used to wait for the CR to be updated.
 	// TODO: make this wait for reliable
 	time.Sleep(5 * time.Second)
 
@@ -89,7 +89,7 @@ func TestPauseControl(t *testing.T) {
 		t.Fatalf("cluster should not be recovered: control is paused")
 	}
 
-	updateFunc = func(cl *spec.Cluster) {
+	updateFunc = func(cl *spec.EtcdCluster) {
 		cl.Spec.Paused = false
 	}
 	if testEtcd, err = e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
@@ -124,7 +124,7 @@ func TestEtcdUpgrade(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	updateFunc := func(cl *spec.Cluster) {
+	updateFunc := func(cl *spec.EtcdCluster) {
 		cl = e2eutil.ClusterWithVersion(cl, "3.1.8")
 	}
 	if _, err := e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
