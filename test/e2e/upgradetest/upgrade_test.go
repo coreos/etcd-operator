@@ -72,7 +72,7 @@ func TestResize(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	updateFunc := func(cl *spec.Cluster) {
+	updateFunc := func(cl *spec.EtcdCluster) {
 		cl.Spec.Size = 5
 	}
 	_, err = e2eutil.UpdateCluster(testF.KubeCli, testClus, 10, updateFunc)

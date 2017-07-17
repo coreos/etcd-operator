@@ -54,7 +54,7 @@ const (
 
 type clusterEvent struct {
 	typ     clusterEventType
-	cluster *spec.Cluster
+	cluster *spec.EtcdCluster
 }
 
 type Config struct {
@@ -72,7 +72,7 @@ type Cluster struct {
 
 	config Config
 
-	cluster *spec.Cluster
+	cluster *spec.EtcdCluster
 
 	// in memory state of the cluster
 	// status is the source of truth after Cluster struct is materialized.
@@ -94,7 +94,7 @@ type Cluster struct {
 	gc *garbagecollection.GC
 }
 
-func New(config Config, cl *spec.Cluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
+func New(config Config, cl *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
 	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", cl.Name)
 	var debugLogger *debug.DebugLogger
 	if cl.Spec.SelfHosted != nil {
@@ -121,7 +121,7 @@ func New(config Config, cl *spec.Cluster, stopC <-chan struct{}, wg *sync.WaitGr
 			if c.status.Phase != spec.ClusterPhaseFailed {
 				c.status.SetReason(err.Error())
 				c.status.SetPhase(spec.ClusterPhaseFailed)
-				if err := c.updateTPRStatus(); err != nil {
+				if err := c.updateCRStatus(); err != nil {
 					c.logger.Errorf("failed to update cluster phase (%v): %v", spec.ClusterPhaseFailed, err)
 				}
 			}
@@ -185,7 +185,7 @@ func (c *Cluster) setup() error {
 func (c *Cluster) create() error {
 	c.status.SetPhase(spec.ClusterPhaseCreating)
 
-	if err := c.updateTPRStatus(); err != nil {
+	if err := c.updateCRStatus(); err != nil {
 		return fmt.Errorf("cluster create: failed to update cluster phase (%v): %v", spec.ClusterPhaseCreating, err)
 	}
 	c.logClusterCreation()
@@ -263,8 +263,8 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 	}()
 
 	c.status.SetPhase(spec.ClusterPhaseRunning)
-	if err := c.updateTPRStatus(); err != nil {
-		c.logger.Warningf("failed to update TPR status: %v", err)
+	if err := c.updateCRStatus(); err != nil {
+		c.logger.Warningf("failed to update CR status: %v", err)
 	}
 	c.logger.Infof("start running...")
 
@@ -353,8 +353,8 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 				c.logger.Warningf("failed to update local backup service status: %v", err)
 			}
 			c.updateMemberStatus(c.members)
-			if err := c.updateTPRStatus(); err != nil {
-				c.logger.Warningf("failed to update TPR status: %v", err)
+			if err := c.updateCRStatus(); err != nil {
+				c.logger.Warningf("failed to update CR status: %v", err)
 			}
 
 			reconcileHistogram.WithLabelValues(c.name()).Observe(time.Since(start).Seconds())
@@ -440,7 +440,7 @@ func (c *Cluster) recover() error {
 	return c.startSeedMember(true)
 }
 
-func (c *Cluster) Update(cl *spec.Cluster) {
+func (c *Cluster) Update(cl *spec.EtcdCluster) {
 	c.send(&clusterEvent{
 		typ:     eventModifyCluster,
 		cluster: cl,
@@ -546,7 +546,7 @@ func (c *Cluster) updateMemberStatus(members etcdutil.MemberSet) {
 	c.status.Members.Unready = unready
 }
 
-func (c *Cluster) updateTPRStatus() error {
+func (c *Cluster) updateCRStatus() error {
 	if reflect.DeepEqual(c.cluster.Status, c.status) {
 		return nil
 	}
@@ -582,7 +582,7 @@ func (c *Cluster) reportFailedStatus() {
 
 	f := func() (bool, error) {
 		c.status.SetPhase(spec.ClusterPhaseFailed)
-		err := c.updateTPRStatus()
+		err := c.updateCRStatus()
 		if err == nil || k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return true, nil
 		}

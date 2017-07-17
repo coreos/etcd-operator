@@ -28,7 +28,7 @@ import (
 func TestHandleClusterEventUpdateFailedCluster(t *testing.T) {
 	c := New(Config{})
 
-	clus := &spec.Cluster{
+	clus := &spec.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},
@@ -50,7 +50,7 @@ func TestHandleClusterEventUpdateFailedCluster(t *testing.T) {
 func TestHandleClusterEventDeleteFailedCluster(t *testing.T) {
 	c := New(Config{})
 	name := "tests"
-	clus := &spec.Cluster{
+	clus := &spec.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},

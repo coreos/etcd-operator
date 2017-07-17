@@ -48,13 +48,13 @@ type backupManager struct {
 	logger *logrus.Entry
 
 	config  Config
-	cluster *spec.Cluster
+	cluster *spec.EtcdCluster
 	s       backupstorage.Storage
 
 	bc experimentalclient.Backup
 }
 
-func newBackupManager(c Config, cl *spec.Cluster, l *logrus.Entry) (*backupManager, error) {
+func newBackupManager(c Config, cl *spec.EtcdCluster, l *logrus.Entry) (*backupManager, error) {
 	bm := &backupManager{
 		config:  c,
 		cluster: cl,
@@ -131,7 +131,7 @@ func (bm *backupManager) createSidecarDeployment() error {
 	return err
 }
 
-func (bm *backupManager) updateSidecar(cl *spec.Cluster) error {
+func (bm *backupManager) updateSidecar(cl *spec.EtcdCluster) error {
 	// change local structs
 	bm.cluster = cl
 	var err error

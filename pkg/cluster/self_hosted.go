@@ -220,7 +220,7 @@ func (c *Cluster) migrateBootMember() error {
 			// TODO: a shorter timeout?
 			// Waiting here for cluster to get stable:
 			// - etcd data are replicated;
-			// - cluster TPR state has switched to "Running"
+			// - cluster CR state has switched to "Running"
 			delay := 60 * time.Second
 			c.logger.Infof("waiting %v before removing the boot member", delay)
 			time.Sleep(delay)

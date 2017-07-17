@@ -16,18 +16,17 @@ package e2eutil
 
 import (
 	"os"
-	"strings"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func NewCluster(genName string, size int) *spec.Cluster {
-	return &spec.Cluster{
+func NewCluster(genName string, size int) *spec.EtcdCluster {
+	return &spec.EtcdCluster{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       strings.Title(spec.TPRKind),
-			APIVersion: spec.TPRGroup + "/" + spec.TPRVersion,
+			Kind:       spec.CRDResourceKind,
+			APIVersion: spec.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: genName,
@@ -76,22 +75,22 @@ func NewPVBackupPolicy(cleanup bool) *spec.BackupPolicy {
 	}
 }
 
-func ClusterWithBackup(cl *spec.Cluster, backupPolicy *spec.BackupPolicy) *spec.Cluster {
+func ClusterWithBackup(cl *spec.EtcdCluster, backupPolicy *spec.BackupPolicy) *spec.EtcdCluster {
 	cl.Spec.Backup = backupPolicy
 	return cl
 }
 
-func ClusterWithRestore(cl *spec.Cluster, restorePolicy *spec.RestorePolicy) *spec.Cluster {
+func ClusterWithRestore(cl *spec.EtcdCluster, restorePolicy *spec.RestorePolicy) *spec.EtcdCluster {
 	cl.Spec.Restore = restorePolicy
 	return cl
 }
 
-func ClusterWithVersion(cl *spec.Cluster, version string) *spec.Cluster {
+func ClusterWithVersion(cl *spec.EtcdCluster, version string) *spec.EtcdCluster {
 	cl.Spec.Version = version
 	return cl
 }
 
-func ClusterWithSelfHosted(cl *spec.Cluster, sh *spec.SelfHostedPolicy) *spec.Cluster {
+func ClusterWithSelfHosted(cl *spec.EtcdCluster, sh *spec.SelfHostedPolicy) *spec.EtcdCluster {
 	cl.Spec.SelfHosted = sh
 	return cl
 }
