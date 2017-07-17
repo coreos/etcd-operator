@@ -45,7 +45,7 @@ func TestResizeCluster3to5(t *testing.T) {
 	}
 	fmt.Println("reached to 3 members cluster")
 
-	updateFunc := func(cl *spec.Cluster) {
+	updateFunc := func(cl *spec.EtcdCluster) {
 		cl.Spec.Size = 5
 	}
 	if _, err := e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
@@ -78,7 +78,7 @@ func TestResizeCluster5to3(t *testing.T) {
 	}
 	fmt.Println("reached to 5 members cluster")
 
-	updateFunc := func(cl *spec.Cluster) {
+	updateFunc := func(cl *spec.EtcdCluster) {
 		cl.Spec.Size = 3
 	}
 	if _, err := e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {

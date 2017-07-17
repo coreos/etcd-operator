@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/analytics"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/chaos"
+	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/controller"
 	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
@@ -88,13 +89,13 @@ func init() {
 	flag.DurationVar(&gcInterval, "gc-interval", 10*time.Minute, "GC interval")
 	flag.Parse()
 
-	// Workaround for watching TPR resource.
+	// TODO: remove this and use CR client
 	restCfg, err := k8sutil.InClusterConfig()
 	if err != nil {
 		panic(err)
 	}
 	controller.MasterHost = restCfg.Host
-	restcli, err := k8sutil.NewTPRClient()
+	restcli, _, err := client.New(restCfg)
 	if err != nil {
 		panic(err)
 	}
@@ -213,7 +214,8 @@ func newControllerConfig() controller.Config {
 			AWSConfig: awsConfig,
 			S3Bucket:  s3Bucket,
 		},
-		KubeCli: kubecli,
+		KubeCli:    kubecli,
+		KubeExtCli: k8sutil.MustNewKubeExtClient(),
 	}
 
 	return cfg

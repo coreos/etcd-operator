@@ -32,10 +32,9 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/probe"
 
 	"github.com/Sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kwatch "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
-	v1beta1extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 var (
@@ -49,15 +48,15 @@ var (
 
 	initRetryWaitTime = 30 * time.Second
 
-	// Workaround for watching TPR resource.
-	// client-go has encoding issue and we want something more predictable.
+	// Workaround for watching CR resource.
+	// TODO: remove this to use CR client.
 	KubeHttpCli *http.Client
 	MasterHost  string
 )
 
 type Event struct {
 	Type   kwatch.EventType
-	Object *spec.Cluster
+	Object *spec.EtcdCluster
 }
 
 type Controller struct {
@@ -78,7 +77,8 @@ type Config struct {
 	ServiceAccount string
 	PVProvisioner  string
 	s3config.S3Context
-	KubeCli kubernetes.Interface
+	KubeCli    kubernetes.Interface
+	KubeExtCli apiextensionsclient.Interface
 }
 
 func (c *Config) Validate() error {
@@ -170,7 +170,7 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 			delete(c.clusterRVs, clus.Name)
 			return nil
 		}
-		return fmt.Errorf("ignore failed cluster (%s). Please delete its TPR", clus.Name)
+		return fmt.Errorf("ignore failed cluster (%s). Please delete its CR", clus.Name)
 	}
 
 	// TODO: add validation to spec update.
@@ -222,7 +222,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		clus := clusterList.Items[i]
 
 		if clus.Status.IsFailed() {
-			c.logger.Infof("ignore failed cluster (%s). Please delete its TPR", clus.Name)
+			c.logger.Infof("ignore failed cluster (%s). Please delete its CR", clus.Name)
 			continue
 		}
 
@@ -250,16 +250,16 @@ func (c *Controller) makeClusterConfig() cluster.Config {
 
 func (c *Controller) initResource() (string, error) {
 	watchVersion := "0"
-	err := c.createTPR()
+	err := c.initCRD()
 	if err != nil {
 		if k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			// TPR has been initialized before. We need to recover existing cluster.
+			// CRD has been initialized before. We need to recover existing cluster.
 			watchVersion, err = c.findAllClusters()
 			if err != nil {
 				return "", err
 			}
 		} else {
-			return "", fmt.Errorf("fail to create TPR: %v", err)
+			return "", fmt.Errorf("fail to create CRD: %v", err)
 		}
 	}
 	if c.Config.PVProvisioner != constants.PVProvisionerNone {
@@ -273,22 +273,12 @@ func (c *Controller) initResource() (string, error) {
 	return watchVersion, nil
 }
 
-func (c *Controller) createTPR() error {
-	tpr := &v1beta1extensions.ThirdPartyResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: spec.TPRName(),
-		},
-		Versions: []v1beta1extensions.APIVersion{
-			{Name: spec.TPRVersion},
-		},
-		Description: spec.TPRDescription,
-	}
-	_, err := c.KubeCli.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
+func (c *Controller) initCRD() error {
+	err := k8sutil.CreateCRD(c.KubeExtCli)
 	if err != nil {
 		return err
 	}
-
-	return k8sutil.WaitEtcdTPRReady(c.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, c.Namespace)
+	return k8sutil.WaitCRDReady(c.KubeExtCli)
 }
 
 // watch creates a go routine, and watches the cluster.etcd kind resources from
@@ -365,7 +355,7 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 	return eventCh, errCh
 }
 
-func (c *Controller) isClustersCacheStale(currentClusters []spec.Cluster) bool {
+func (c *Controller) isClustersCacheStale(currentClusters []spec.EtcdCluster) bool {
 	if len(c.clusterRVs) != len(currentClusters) {
 		return true
 	}
