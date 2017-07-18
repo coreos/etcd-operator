@@ -43,13 +43,13 @@ func testCreateSelfHostedCluster(t *testing.T) {
 	f := framework.Global
 	c := e2eutil.NewCluster("test-etcd-", 3)
 	c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -76,13 +76,13 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{
 		BootMemberClientEndpoint: bootURL,
 	})
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -134,7 +134,7 @@ func testSelfHostedClusterWithBackup(t *testing.T) {
 	cl = e2eutil.ClusterWithBackup(cl, e2eutil.NewS3BackupPolicy(true))
 	cl = e2eutil.ClusterWithSelfHosted(cl, &spec.SelfHostedPolicy{})
 
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, cl)
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, cl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func testSelfHostedClusterWithBackup(t *testing.T) {
 			S3Cli:    f.S3Cli,
 			S3Bucket: f.S3Bucket,
 		}
-		err := e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, storageCheckerOptions)
+		err := e2eutil.DeleteClusterAndBackup(t, f.CRClient, f.KubeClient, testEtcd, storageCheckerOptions)
 		if err != nil {
 			t.Fatal(err)
 		}
