@@ -48,12 +48,12 @@ func TestOneMemberRecovery(t *testing.T) {
 	}
 
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd)
+		err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,7 +105,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.EtcdCluster) {
 	f := framework.Global
 
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, cl)
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, cl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.EtcdC
 			}
 		}
 
-		err := e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, *storageCheckerOptions)
+		err := e2eutil.DeleteClusterAndBackup(t, f.CRClient, f.KubeClient, testEtcd, *storageCheckerOptions)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -206,12 +206,12 @@ func TestDynamicAddBackupPolicy(t *testing.T) {
 	}
 
 	f := framework.Global
-	clus, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
+	clus, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		err := e2eutil.DeleteCluster(t, f.KubeClient, clus)
+		err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, clus)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -226,7 +226,7 @@ func TestDynamicAddBackupPolicy(t *testing.T) {
 		bp := e2eutil.NewS3BackupPolicy(true)
 		cl.Spec.Backup = bp
 	}
-	clus, err = e2eutil.UpdateCluster(f.KubeClient, clus, 10, uf)
+	clus, err = e2eutil.UpdateCluster(f.CRClient, clus, 10, uf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,12 +246,12 @@ func TestDynamicRemoveBackupPolicy(t *testing.T) {
 
 	f := framework.Global
 	clus := e2eutil.ClusterWithBackup(e2eutil.NewCluster("test-etcd-", 3), e2eutil.NewS3BackupPolicy(true))
-	clus, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, clus)
+	clus, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, clus)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		err := e2eutil.DeleteCluster(t, f.KubeClient, clus)
+		err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, clus)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -270,7 +270,7 @@ func TestDynamicRemoveBackupPolicy(t *testing.T) {
 	uf := func(cl *spec.EtcdCluster) {
 		cl.Spec.Backup = nil
 	}
-	_, err = e2eutil.UpdateCluster(f.KubeClient, clus, 10, uf)
+	_, err = e2eutil.UpdateCluster(f.CRClient, clus, 10, uf)
 	if err != nil {
 		t.Fatalf("failed to update cluster: %v", err)
 	}

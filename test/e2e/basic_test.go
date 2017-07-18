@@ -29,13 +29,13 @@ func TestCreateCluster(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -53,12 +53,12 @@ func TestPauseControl(t *testing.T) {
 	}
 
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -71,7 +71,7 @@ func TestPauseControl(t *testing.T) {
 	updateFunc := func(cl *spec.EtcdCluster) {
 		cl.Spec.Paused = true
 	}
-	if testEtcd, err = e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+	if testEtcd, err = e2eutil.UpdateCluster(f.CRClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatalf("failed to pause control: %v", err)
 	}
 
@@ -92,7 +92,7 @@ func TestPauseControl(t *testing.T) {
 	updateFunc = func(cl *spec.EtcdCluster) {
 		cl.Spec.Paused = false
 	}
-	if testEtcd, err = e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+	if testEtcd, err = e2eutil.UpdateCluster(f.CRClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatalf("failed to resume control: %v", err)
 	}
 
@@ -108,13 +108,13 @@ func TestEtcdUpgrade(t *testing.T) {
 	f := framework.Global
 	origEtcd := e2eutil.NewCluster("test-etcd-", 3)
 	origEtcd = e2eutil.ClusterWithVersion(origEtcd, "3.0.16")
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, origEtcd)
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, origEtcd)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -127,7 +127,8 @@ func TestEtcdUpgrade(t *testing.T) {
 	updateFunc := func(cl *spec.EtcdCluster) {
 		cl = e2eutil.ClusterWithVersion(cl, "3.1.8")
 	}
-	if _, err := e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+	_, err = e2eutil.UpdateCluster(f.CRClient, testEtcd, 10, updateFunc)
+	if err != nil {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 
