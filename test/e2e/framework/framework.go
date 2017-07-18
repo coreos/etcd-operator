@@ -21,12 +21,15 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/util/probe"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
+	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -121,6 +124,17 @@ func (f *Framework) SetupEtcdOperator() error {
 							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
 						},
 					},
+					ReadinessProbe: &v1.Probe{
+						Handler: v1.Handler{
+							HTTPGet: &v1.HTTPGetAction{
+								Path: probe.HTTPReadyzEndpoint,
+								Port: intstr.IntOrString{Type: intstr.Int, IntVal: 8080},
+							},
+						},
+						InitialDelaySeconds: 3,
+						PeriodSeconds:       3,
+						FailureThreshold:    3,
+					},
 				},
 			},
 			RestartPolicy: v1.RestartPolicyNever,
@@ -133,7 +147,7 @@ func (f *Framework) SetupEtcdOperator() error {
 	}
 	logrus.Infof("etcd operator pod is running on node (%s)", p.Spec.NodeName)
 
-	err = k8sutil.WaitEtcdTPRReady(f.KubeClient.Core().RESTClient(), 5*time.Second, 60*time.Second, f.Namespace)
+	err = e2eutil.WaitUntilOperatorReady(f.KubeClient, f.Namespace, "etcd-operator")
 	return err
 }
 

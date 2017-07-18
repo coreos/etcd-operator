@@ -345,3 +345,28 @@ func waitPodsDeleted(kubecli kubernetes.Interface, namespace string, retries int
 	})
 	return pods, err
 }
+
+// WaitUntilOperatorReady will wait until the first pod selected for the label name=etcd-operator is ready.
+func WaitUntilOperatorReady(kubecli kubernetes.Interface, namespace, name string) error {
+	var podName string
+	lo := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(NameLabelSelector(name)).String(),
+	}
+	err := retryutil.Retry(10*time.Second, 6, func() (bool, error) {
+		podList, err := kubecli.CoreV1().Pods(namespace).List(lo)
+		if err != nil {
+			return false, err
+		}
+		if len(podList.Items) > 0 {
+			podName = podList.Items[0].Name
+			if k8sutil.IsPodReady(&podList.Items[0]) {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to wait for pod (%v) to become ready: %v", podName, err)
+	}
+	return nil
+}

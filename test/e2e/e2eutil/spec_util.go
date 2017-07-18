@@ -95,3 +95,8 @@ func ClusterWithSelfHosted(cl *spec.Cluster, sh *spec.SelfHostedPolicy) *spec.Cl
 	cl.Spec.SelfHosted = sh
 	return cl
 }
+
+// NameLabelSelector returns a label selector of the form name=<name>
+func NameLabelSelector(name string) map[string]string {
+	return map[string]string{"name": name}
+}

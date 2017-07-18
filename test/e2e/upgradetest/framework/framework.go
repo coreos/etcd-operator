@@ -17,11 +17,9 @@ package framework
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
-	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -166,7 +164,7 @@ func (f *Framework) UpgradeOperator(name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to wait for pod with old image to get deleted: %v", err)
 	}
-	err = WaitUntilOperatorReady(f.KubeCli, f.KubeNS, name)
+	err = e2eutil.WaitUntilOperatorReady(f.KubeCli, f.KubeNS, name)
 	return err
 }
 
@@ -188,31 +186,6 @@ func (f *Framework) setupAWS() error {
 	return nil
 }
 
-// WaitUntilOperatorReady will wait until the first pod selected for the label name=etcd-operator is ready.
-func WaitUntilOperatorReady(kubecli kubernetes.Interface, namespace, name string) error {
-	var podName string
-	lo := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(operatorLabelSelector(name)).String(),
-	}
-	err := retryutil.Retry(10*time.Second, 4, func() (bool, error) {
-		podList, err := kubecli.CoreV1().Pods(namespace).List(lo)
-		if err != nil {
-			return false, err
-		}
-		if len(podList.Items) > 0 {
-			podName = podList.Items[0].Name
-			if k8sutil.IsPodReady(&podList.Items[0]) {
-				return true, nil
-			}
-		}
-		return false, nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to wait for pod (%v) to become ready: %v", podName, err)
-	}
-	return nil
-}
-
 func operatorLabelSelector(name string) map[string]string {
-	return map[string]string{"name": name}
+	return e2eutil.NameLabelSelector(name)
 }

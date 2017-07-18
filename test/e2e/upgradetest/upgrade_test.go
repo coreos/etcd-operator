@@ -22,7 +22,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
-	"github.com/coreos/etcd-operator/test/e2e/upgradetest/framework"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -45,7 +44,7 @@ func TestResize(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
+	err = e2eutil.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +97,7 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
+	err = e2eutil.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +165,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 			t.Fatalf("failed to delete operator:%v", err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
+	err = e2eutil.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +281,7 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 			t.Fatal(err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
+	err = e2eutil.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,7 +364,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 			t.Fatalf("failed to delete operator: %v", err)
 		}
 	}()
-	err = framework.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
+	err = e2eutil.WaitUntilOperatorReady(testF.KubeCli, testF.KubeNS, name)
 	if err != nil {
 		t.Fatal(err)
 	}
