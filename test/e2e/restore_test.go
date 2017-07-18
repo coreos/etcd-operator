@@ -74,7 +74,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	f := framework.Global
 
 	origEtcd := e2eutil.NewCluster("test-etcd-", 3)
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	if !needDataClone {
 		storageCheckerOptions.DeletedFromAPI = true
 	}
-	err = e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, *storageCheckerOptions)
+	err = e2eutil.DeleteClusterAndBackup(t, f.CRClient, f.KubeClient, testEtcd, *storageCheckerOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,13 +139,13 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	})
 
 	backupPolicy.AutoDelete = true
-	testEtcd, err = e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
+	testEtcd, err = e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
 		storageCheckerOptions.DeletedFromAPI = false
-		err := e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, *storageCheckerOptions)
+		err := e2eutil.DeleteClusterAndBackup(t, f.CRClient, f.KubeClient, testEtcd, *storageCheckerOptions)
 		if err != nil {
 			t.Fatal(err)
 		}
