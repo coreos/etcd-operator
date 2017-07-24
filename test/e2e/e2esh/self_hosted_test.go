@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2eslow
+package e2esh
 
 import (
 	"fmt"
@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
+	"github.com/coreos/etcd-operator/test/e2e/e2eslow"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
@@ -35,7 +36,7 @@ func TestSelfHosted(t *testing.T) {
 	t.Run("create self hosted cluster from scratch", testCreateSelfHostedCluster)
 	t.Run("migrate boot member to self hosted cluster", testCreateSelfHostedClusterWithBootMember)
 	t.Run("backup for self hosted cluster", testSelfHostedClusterWithBackup)
-	t.Run("TLS for self hosted cluster", func(t *testing.T) { testTLS(t, true) })
+	t.Run("TLS for self hosted cluster", func(t *testing.T) { e2eslow.TLSTestCommon(t, true) })
 	cleanupSelfHostedHostpath()
 }
 

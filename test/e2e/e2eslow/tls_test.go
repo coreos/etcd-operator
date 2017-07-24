@@ -27,10 +27,10 @@ import (
 )
 
 func TestTLS(t *testing.T) {
-	testTLS(t, false)
+	TLSTestCommon(t, false)
 }
 
-func testTLS(t *testing.T, selfHosted bool) {
+func TLSTestCommon(t *testing.T, selfHosted bool) {
 	f := framework.Global
 	suffix := fmt.Sprintf("-%d", rand.Uint64())
 	clusterName := "tls-test" + suffix
