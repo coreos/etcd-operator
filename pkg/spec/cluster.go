@@ -112,7 +112,6 @@ type ClusterSpec struct {
 	// SelfHosted is a cluster initialization configuration. It cannot be updated.
 	SelfHosted *SelfHostedPolicy `json:"selfHosted,omitempty"`
 
-	// NOTE: This field is half finished. It will be ignored.
 	// etcd cluster TLS configuration
 	TLS *TLSPolicy `json:"TLS,omitempty"`
 }
