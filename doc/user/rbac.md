@@ -47,7 +47,7 @@ For production, we recommend users to limit access to only the resources operato
 
 ### Create ClusterRole
 
-We will use ClusterRole instead of Role because etcd operator accesses non-namespaced resources, e.g. Third Party Resource.
+We will use ClusterRole instead of Role because etcd operator accesses non-namespaced resources, e.g. Custom Resource Definitions.
 
 Create the following ClusterRole
 
@@ -59,15 +59,15 @@ metadata:
   name: etcd-operator
 rules:
 - apiGroups:
-  - etcd.coreos.com
+  - etcd.database.coreos.com
   resources:
-  - clusters
+  - etcdclusters
   verbs:
   - "*"
 - apiGroups:
-  - extensions
+  - apiextensions.k8s.io
   resources:
-  - thirdpartyresources
+  - customresourcedefinitions
   verbs:
   - "*"
 - apiGroups:
