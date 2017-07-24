@@ -16,15 +16,15 @@ metadata:
   name: "etcd-operator-${TEST_NAMESPACE}"
 rules:
 - apiGroups:
-  - etcd.coreos.com
+  - etcd.database.coreos.com
   resources:
-  - clusters
+  - etcdclusters
   verbs:
   - "*"
 - apiGroups:
-  - extensions
+  - apiextensions.k8s.io
   resources:
-  - thirdpartyresources
+  - customresourcedefinitions
   verbs:
   - "*"
 - apiGroups:
