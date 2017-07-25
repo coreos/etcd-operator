@@ -59,6 +59,7 @@ type clusterEvent struct {
 
 type Config struct {
 	PVProvisioner  string
+	StorageClass   string
 	ServiceAccount string
 	s3config.S3Context
 
