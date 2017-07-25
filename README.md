@@ -10,7 +10,7 @@ e2e (Kubernetes master):
 
 Major planned features have been completed and while no breaking API changes are currently planned, we reserve the right to address bugs and API changes in a backwards incompatible way before the project is declared stable. See [upgrade guide](./doc/user/upgrade/upgrade_guide.md) for safe upgrade process.
 
-Currently user facing etcd cluster objects are created as [Kubernetes Third Party Resources](https://kubernetes.io/docs/user-guide/thirdpartyresources/), however, taking advantage of [User Aggregated API Servers](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/aggregated-api-servers.md) to improve reliability, validation and versioning is planned. The use of Aggregated API should be minimally disruptive to existing users but may change what Kubernetes objects are created or how users deploy the etcd operator.
+Currently user facing etcd cluster objects are created as [Kubernetes Custom Resources](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/), however, taking advantage of [User Aggregated API Servers](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/aggregated-api-servers.md) to improve reliability, validation and versioning is planned. The use of Aggregated API should be minimally disruptive to existing users but may change what Kubernetes objects are created or how users deploy the etcd operator.
 
 We expect to consider the etcd operator stable soon; backwards incompatible changes will not be made once the project reaches stability.
 
@@ -91,8 +91,8 @@ Modify the file and change `size` from 3 to 5.
 
 ```
 $ cat example/example-etcd-cluster.yaml
-apiVersion: "etcd.coreos.com/v1beta1"
-kind: "Cluster"
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdCluster"
 metadata:
   name: "example-etcd-cluster"
 spec:
@@ -100,7 +100,7 @@ spec:
   version: "3.1.8"
 ```
 
-Apply the size change to the cluster TPR:
+Apply the size change to the cluster CR:
 ```
 $ kubectl apply -f example/example-etcd-cluster.yaml
 ```
@@ -119,8 +119,8 @@ Similarly we can decrease the size of cluster from 5 back to 3 by changing the s
 
 ```
 $ cat example/example-etcd-cluster.yaml
-apiVersion: "etcd.coreos.com/v1beta1"
-kind: "Cluster"
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdCluster"
 metadata:
   name: "example-etcd-cluster"
 spec:
@@ -281,8 +281,8 @@ Have the following yaml file ready:
 
 ```
 $ cat 3.0-etcd-cluster.yaml
-apiVersion: "etcd.coreos.com/v1beta1"
-kind: "Cluster"
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdCluster"
 metadata:
   name: "example-etcd-cluster"
 spec:
@@ -312,8 +312,8 @@ Now modify the file `3.0-etcd-cluster.yaml` and change the `version` from 3.0.16
 
 ```
 $ cat 3.0-etcd-cluster.yaml
-apiVersion: "etcd.coreos.com/v1beta1"
-kind: "Cluster"
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdCluster"
 metadata:
   name: "example-etcd-cluster"
 spec:
@@ -321,7 +321,7 @@ spec:
   version: "3.1.8"
 ```
 
-Apply the version change to the cluster TPR:
+Apply the version change to the cluster CR:
 
 ```
 $ kubectl apply -f 3.0-etcd-cluster.yaml
