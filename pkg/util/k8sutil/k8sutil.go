@@ -27,6 +27,8 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
+	appsv1beta1 "k8s.io/api/apps/v1beta1"
+	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -34,9 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
-	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
+	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // for gcp auth
 	"k8s.io/client-go/rest"
 )
@@ -364,7 +364,7 @@ func CreatePatch(o, n, datastruct interface{}) ([]byte, error) {
 }
 
 func ClonePod(p *v1.Pod) *v1.Pod {
-	np, err := api.Scheme.DeepCopy(p)
+	np, err := scheme.Scheme.DeepCopy(p)
 	if err != nil {
 		panic("cannot deep copy pod")
 	}
@@ -372,7 +372,7 @@ func ClonePod(p *v1.Pod) *v1.Pod {
 }
 
 func cloneDeployment(d *appsv1beta1.Deployment) *appsv1beta1.Deployment {
-	cd, err := api.Scheme.DeepCopy(d)
+	cd, err := scheme.Scheme.DeepCopy(d)
 	if err != nil {
 		panic("cannot deep copy pod")
 	}

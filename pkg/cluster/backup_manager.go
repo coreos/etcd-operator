@@ -30,8 +30,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
+	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 )
 
 const (

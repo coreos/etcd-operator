@@ -15,7 +15,7 @@
 package k8sutil
 
 import (
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
 )
 
 // IsNodeReady checks if the Node condition is ready.

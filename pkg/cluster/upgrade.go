@@ -19,9 +19,9 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 func (c *Cluster) upgradeOneMember(memberName string) error {
