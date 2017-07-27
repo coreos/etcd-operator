@@ -29,13 +29,13 @@ func TestResizeCluster3to5(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -45,10 +45,10 @@ func TestResizeCluster3to5(t *testing.T) {
 	}
 	fmt.Println("reached to 3 members cluster")
 
-	updateFunc := func(cl *spec.Cluster) {
+	updateFunc := func(cl *spec.EtcdCluster) {
 		cl.Spec.Size = 5
 	}
-	if _, err := e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+	if _, err := e2eutil.UpdateCluster(f.CRClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -62,13 +62,13 @@ func TestResizeCluster5to3(t *testing.T) {
 		t.Parallel()
 	}
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 5))
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 5))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -78,10 +78,10 @@ func TestResizeCluster5to3(t *testing.T) {
 	}
 	fmt.Println("reached to 5 members cluster")
 
-	updateFunc := func(cl *spec.Cluster) {
+	updateFunc := func(cl *spec.EtcdCluster) {
 		cl.Spec.Size = 3
 	}
-	if _, err := e2eutil.UpdateCluster(f.KubeClient, testEtcd, 10, updateFunc); err != nil {
+	if _, err := e2eutil.UpdateCluster(f.CRClient, testEtcd, 10, updateFunc); err != nil {
 		t.Fatal(err)
 	}
 

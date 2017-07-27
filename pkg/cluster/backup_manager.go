@@ -30,8 +30,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
+	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 )
 
 const (
@@ -48,18 +48,18 @@ type backupManager struct {
 	logger *logrus.Entry
 
 	config  Config
-	cluster *spec.Cluster
+	cluster *spec.EtcdCluster
 	s       backupstorage.Storage
 
 	bc experimentalclient.Backup
 }
 
-func newBackupManager(c Config, cl *spec.Cluster, l *logrus.Entry) (*backupManager, error) {
+func newBackupManager(c Config, cl *spec.EtcdCluster, l *logrus.Entry) (*backupManager, error) {
 	bm := &backupManager{
 		config:  c,
 		cluster: cl,
 		logger:  l,
-		bc:      experimentalclient.NewBackup(&http.Client{}, "http", cl.Metadata.GetName()),
+		bc:      experimentalclient.NewBackup(&http.Client{}, "http", cl.GetName()),
 	}
 	var err error
 	bm.s, err = bm.setupStorage()
@@ -80,19 +80,19 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 		if c.PVProvisioner == constants.PVProvisionerNone {
 			return nil, errNoPVForBackup
 		}
-		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, c.PVProvisioner, *b)
+		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Name, cl.Namespace, c.PVProvisioner, *b)
 	case spec.BackupStorageTypeS3:
 		if len(c.S3Context.AWSConfig) == 0 && b.S3 == nil {
 			return nil, errNoS3ConfigForBackup
 		}
-		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, *b)
+		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, cl.Name, cl.Namespace, *b)
 	}
 	return s, err
 }
 
 func (bm *backupManager) setup() error {
 	r := bm.cluster.Spec.Restore
-	restoreSameNameCluster := r != nil && r.BackupClusterName == bm.cluster.Metadata.Name
+	restoreSameNameCluster := r != nil && r.BackupClusterName == bm.cluster.Name
 
 	// There is only one case that we don't need to create underlying storage.
 	// That is, the storage already exists and we are restoring cluster from it.
@@ -104,7 +104,7 @@ func (bm *backupManager) setup() error {
 
 	if r != nil {
 		bm.logger.Infof("restoring cluster from existing backup (%s)", r.BackupClusterName)
-		if bm.cluster.Metadata.Name != r.BackupClusterName {
+		if bm.cluster.Name != r.BackupClusterName {
 			if err := bm.s.Clone(r.BackupClusterName); err != nil {
 				return err
 			}
@@ -127,11 +127,11 @@ func (bm *backupManager) runSidecar() error {
 
 func (bm *backupManager) createSidecarDeployment() error {
 	d := bm.makeSidecarDeployment()
-	_, err := bm.config.KubeCli.AppsV1beta1().Deployments(bm.cluster.Metadata.Namespace).Create(d)
+	_, err := bm.config.KubeCli.AppsV1beta1().Deployments(bm.cluster.Namespace).Create(d)
 	return err
 }
 
-func (bm *backupManager) updateSidecar(cl *spec.Cluster) error {
+func (bm *backupManager) updateSidecar(cl *spec.EtcdCluster) error {
 	// change local structs
 	bm.cluster = cl
 	var err error
@@ -139,7 +139,7 @@ func (bm *backupManager) updateSidecar(cl *spec.Cluster) error {
 	if err != nil {
 		return err
 	}
-	ns, n := cl.Metadata.Namespace, k8sutil.BackupSidecarName(cl.Metadata.Name)
+	ns, n := cl.Namespace, k8sutil.BackupSidecarName(cl.Name)
 	// change k8s objects
 	uf := func(d *appsv1beta1.Deployment) {
 		d.Spec = bm.makeSidecarDeployment().Spec
@@ -149,10 +149,10 @@ func (bm *backupManager) updateSidecar(cl *spec.Cluster) error {
 
 func (bm *backupManager) makeSidecarDeployment() *appsv1beta1.Deployment {
 	cl, c := bm.cluster, bm.config
-	podTemplate := k8sutil.NewBackupPodTemplate(cl.Metadata.Name, bm.config.ServiceAccount, cl.Spec)
+	podTemplate := k8sutil.NewBackupPodTemplate(cl.Name, bm.config.ServiceAccount, cl.Spec)
 	switch cl.Spec.Backup.StorageType {
 	case spec.BackupStorageTypeDefault, spec.BackupStorageTypePersistentVolume:
-		k8sutil.PodSpecWithPV(&podTemplate.Spec, cl.Metadata.Name)
+		k8sutil.PodSpecWithPV(&podTemplate.Spec, cl.Name)
 	case spec.BackupStorageTypeS3:
 		if ss := cl.Spec.Backup.S3; ss != nil {
 			k8sutil.AttachS3ToPodSpec(&podTemplate.Spec, *ss)
@@ -160,14 +160,14 @@ func (bm *backupManager) makeSidecarDeployment() *appsv1beta1.Deployment {
 			k8sutil.AttachOperatorS3ToPodSpec(&podTemplate.Spec, c.S3Context)
 		}
 	}
-	name := k8sutil.BackupSidecarName(cl.Metadata.Name)
-	dplSel := k8sutil.LabelsForCluster(cl.Metadata.Name)
+	name := k8sutil.BackupSidecarName(cl.Name)
+	dplSel := k8sutil.LabelsForCluster(cl.Name)
 	return k8sutil.NewBackupDeploymentManifest(name, dplSel, podTemplate, bm.cluster.AsOwner())
 }
 
 func (bm *backupManager) createBackupService() error {
-	svc := k8sutil.NewBackupServiceManifest(bm.cluster.Metadata.Name, bm.cluster.AsOwner())
-	_, err := bm.config.KubeCli.CoreV1().Services(bm.cluster.Metadata.Namespace).Create(svc)
+	svc := k8sutil.NewBackupServiceManifest(bm.cluster.Name, bm.cluster.AsOwner())
+	_, err := bm.config.KubeCli.CoreV1().Services(bm.cluster.Namespace).Create(svc)
 	if err != nil {
 		if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return err
@@ -218,7 +218,7 @@ func backupServiceStatusToTPRBackupServiceStatu(s *backupapi.ServiceStatus) *spe
 }
 
 func (bm *backupManager) upgradeIfNeeded() error {
-	ns, n := bm.cluster.Metadata.Namespace, k8sutil.BackupSidecarName(bm.cluster.Metadata.Name)
+	ns, n := bm.cluster.Namespace, k8sutil.BackupSidecarName(bm.cluster.Name)
 
 	d, err := bm.config.KubeCli.AppsV1beta1().Deployments(ns).Get(n, metav1.GetOptions{})
 	if err != nil {
@@ -242,8 +242,8 @@ func (bm *backupManager) upgradeIfNeeded() error {
 }
 
 func (bm *backupManager) deleteBackupSidecar() error {
-	name, ns := k8sutil.BackupSidecarName(bm.cluster.Metadata.Name), bm.cluster.Metadata.Namespace
-	err := bm.config.KubeCli.CoreV1().Services(bm.cluster.Metadata.Namespace).Delete(name, nil)
+	name, ns := k8sutil.BackupSidecarName(bm.cluster.Name), bm.cluster.Namespace
+	err := bm.config.KubeCli.CoreV1().Services(bm.cluster.Namespace).Delete(name, nil)
 	if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
 		return fmt.Errorf("backup manager deletion: failed to delete backup service: %v", err)
 	}

@@ -60,7 +60,7 @@ func TLSTestCommon(t *testing.T, selfHosted bool) {
 	}()
 
 	c := e2eutil.NewCluster("", 3)
-	c.Metadata.Name = clusterName
+	c.Name = clusterName
 	c.Spec.TLS = &spec.TLSPolicy{
 		Static: &spec.StaticTLS{
 			Member: &spec.MemberSecret{
@@ -73,13 +73,13 @@ func TLSTestCommon(t *testing.T, selfHosted bool) {
 	if selfHosted {
 		c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
 	}
-	c, err = e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
+	c, err = e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, c); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, c); err != nil {
 			t.Fatal(err)
 		}
 	}()

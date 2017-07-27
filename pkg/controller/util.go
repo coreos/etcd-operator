@@ -52,7 +52,7 @@ func pollEvent(decoder *json.Decoder) (*Event, *metav1.Status, error) {
 
 	ev := &Event{
 		Type:   re.Type,
-		Object: &spec.Cluster{},
+		Object: &spec.EtcdCluster{},
 	}
 	err = json.Unmarshal(re.Object, ev.Object)
 	if err != nil {

@@ -19,15 +19,15 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 func (c *Cluster) upgradeOneMember(memberName string) error {
 	c.status.AppendUpgradingCondition(c.cluster.Spec.Version, memberName)
 
-	ns := c.cluster.Metadata.Namespace
+	ns := c.cluster.Namespace
 
 	pod, err := c.config.KubeCli.CoreV1().Pods(ns).Get(memberName, metav1.GetOptions{})
 	if err != nil {

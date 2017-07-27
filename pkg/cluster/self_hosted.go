@@ -134,8 +134,8 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	peerURL := newMember.PeerURL()
 	initialCluster := append(c.members.PeerURLPairs(), newMember.Name+"="+peerURL)
 
-	ns := c.cluster.Metadata.Namespace
-	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, c.members.ClientURLs(), c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
+	ns := c.cluster.Namespace
+	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, c.members.ClientURLs(), c.cluster.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
 
 	_, err = c.config.KubeCli.CoreV1().Pods(ns).Create(pod)
 	if err != nil {
@@ -163,8 +163,8 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	c.memberCounter++
 	initialCluster := []string{newMember.Name + "=" + newMember.PeerURL()}
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, nil, c.cluster.Metadata.Name, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
-	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 3*60*time.Second)
+	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, nil, c.cluster.Name, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
+	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Namespace, pod, 3*60*time.Second)
 	if err != nil {
 		return err
 	}
@@ -202,8 +202,8 @@ func (c *Cluster) migrateBootMember() error {
 	peerURL := newMember.PeerURL()
 	initialCluster = append(initialCluster, newMember.Name+"="+peerURL)
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, []string{endpoint}, c.cluster.Metadata.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
-	ns := c.cluster.Metadata.Namespace
+	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, []string{endpoint}, c.cluster.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
+	ns := c.cluster.Namespace
 	_, err = k8sutil.CreateAndWaitPod(c.config.KubeCli, ns, pod, 3*60*time.Second)
 	if err != nil {
 		return err
@@ -220,7 +220,7 @@ func (c *Cluster) migrateBootMember() error {
 			// TODO: a shorter timeout?
 			// Waiting here for cluster to get stable:
 			// - etcd data are replicated;
-			// - cluster TPR state has switched to "Running"
+			// - cluster CR state has switched to "Running"
 			delay := 60 * time.Second
 			c.logger.Infof("waiting %v before removing the boot member", delay)
 			time.Sleep(delay)

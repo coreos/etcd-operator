@@ -21,8 +21,8 @@ $ kubectl create -f deployment.yaml
 
 To restore from the backup, the new cluster spec will look similar to the template below depending on your type of storage used for the backup:
 ```YAML
-apiVersion: "etcd.coreos.com/v1beta1"
-kind: "Cluster"
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdCluster"
 metadata:
   name: <new-cluster-name> # can be the same as the old cluster name
 spec:

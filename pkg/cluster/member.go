@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/pkg/errors"
 
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
 )
 
 func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
@@ -33,7 +33,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	}
 	members := etcdutil.MemberSet{}
 	for _, m := range resp.Members {
-		name, err := getMemberName(m, c.cluster.Metadata.GetName(), c.cluster.Spec.SelfHosted)
+		name, err := getMemberName(m, c.cluster.GetName(), c.cluster.Spec.SelfHosted)
 		if err != nil {
 			return errors.Wrap(err, "get member name failed")
 		}
@@ -47,7 +47,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 
 		members[name] = &etcdutil.Member{
 			Name:         name,
-			Namespace:    c.cluster.Metadata.Namespace,
+			Namespace:    c.cluster.Namespace,
 			ID:           m.ID,
 			SecurePeer:   c.isSecurePeer(),
 			SecureClient: c.isSecureClient(),
@@ -58,10 +58,10 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 }
 
 func (c *Cluster) newMember(id int) *etcdutil.Member {
-	name := etcdutil.CreateMemberName(c.cluster.Metadata.Name, id)
+	name := etcdutil.CreateMemberName(c.cluster.Name, id)
 	return &etcdutil.Member{
 		Name:         name,
-		Namespace:    c.cluster.Metadata.Namespace,
+		Namespace:    c.cluster.Namespace,
 		SecurePeer:   c.isSecurePeer(),
 		SecureClient: c.isSecureClient(),
 	}

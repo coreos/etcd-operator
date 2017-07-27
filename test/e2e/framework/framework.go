@@ -20,6 +20,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -28,10 +29,10 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -40,6 +41,7 @@ var Global *Framework
 type Framework struct {
 	opImage    string
 	KubeClient kubernetes.Interface
+	CRClient   client.EtcdClusterCR
 	Namespace  string
 	S3Cli      *s3.S3
 	S3Bucket   string
@@ -60,9 +62,14 @@ func Setup() error {
 	if err != nil {
 		return err
 	}
+	crClient, err := client.NewCRClient(config)
+	if err != nil {
+		return err
+	}
 
 	Global = &Framework{
 		KubeClient: cli,
+		CRClient:   crClient,
 		Namespace:  *ns,
 		opImage:    *opImage,
 		S3Bucket:   os.Getenv("TEST_S3_BUCKET"),
@@ -147,8 +154,7 @@ func (f *Framework) SetupEtcdOperator() error {
 	}
 	logrus.Infof("etcd operator pod is running on node (%s)", p.Spec.NodeName)
 
-	err = e2eutil.WaitUntilOperatorReady(f.KubeClient, f.Namespace, "etcd-operator")
-	return err
+	return e2eutil.WaitUntilOperatorReady(f.KubeClient, f.Namespace, "etcd-operator")
 }
 
 func (f *Framework) DeleteEtcdOperatorCompletely() error {

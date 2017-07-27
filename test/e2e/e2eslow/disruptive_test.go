@@ -24,12 +24,12 @@ import (
 // restart operator should resume cluster
 func TestRestartOperator(t *testing.T) {
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()

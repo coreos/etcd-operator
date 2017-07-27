@@ -28,8 +28,8 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 func TestSelfHosted(t *testing.T) {
@@ -44,13 +44,13 @@ func testCreateSelfHostedCluster(t *testing.T) {
 	f := framework.Global
 	c := e2eutil.NewCluster("test-etcd-", 3)
 	c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -77,13 +77,13 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{
 		BootMemberClientEndpoint: bootURL,
 	})
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, c)
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd); err != nil {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -135,7 +135,7 @@ func testSelfHostedClusterWithBackup(t *testing.T) {
 	cl = e2eutil.ClusterWithBackup(cl, e2eutil.NewS3BackupPolicy(true))
 	cl = e2eutil.ClusterWithSelfHosted(cl, &spec.SelfHostedPolicy{})
 
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, cl)
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, cl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func testSelfHostedClusterWithBackup(t *testing.T) {
 			S3Cli:    f.S3Cli,
 			S3Bucket: f.S3Bucket,
 		}
-		err := e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, storageCheckerOptions)
+		err := e2eutil.DeleteClusterAndBackup(t, f.CRClient, f.KubeClient, testEtcd, storageCheckerOptions)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -155,11 +155,11 @@ func testSelfHostedClusterWithBackup(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 3 members cluster")
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
-	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Metadata.Name)
+	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Name)
 	if err != nil {
 		t.Fatalf("fail to make a latest backup: %v", err)
 	}

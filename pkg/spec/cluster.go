@@ -21,45 +21,43 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (
 	defaultBaseImage = "quay.io/coreos/etcd"
 	defaultVersion   = "3.1.8"
-
-	TPRKind        = "cluster"
-	TPRKindPlural  = "clusters"
-	TPRGroup       = "etcd.coreos.com"
-	TPRVersion     = "v1beta1"
-	TPRDescription = "Managed etcd clusters"
 )
 
 var (
+	// TODO: move validation code into separate package.
 	ErrBackupUnsetRestoreSet = errors.New("spec: backup policy must be set if restore policy is set")
 )
 
-func TPRName() string {
-	return fmt.Sprintf("%s.%s", TPRKind, TPRGroup)
-}
-
-type Cluster struct {
+// EtcdClusterList is a list of etcd clusters.
+type EtcdClusterList struct {
 	metav1.TypeMeta `json:",inline"`
-	Metadata        metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec            ClusterSpec       `json:"spec"`
-	Status          ClusterStatus     `json:"status"`
+	// Standard list metadata
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []EtcdCluster `json:"items"`
 }
 
-func (c *Cluster) AsOwner() metav1.OwnerReference {
+type EtcdCluster struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              ClusterSpec   `json:"spec"`
+	Status            ClusterStatus `json:"status"`
+}
+
+func (c *EtcdCluster) AsOwner() metav1.OwnerReference {
 	trueVar := true
-	// TODO: In 1.6 this is gonna be "k8s.io/kubernetes/pkg/apis/meta/v1"
-	// Both api.OwnerReference and metatypes.OwnerReference are combined into that.
 	return metav1.OwnerReference{
 		APIVersion: c.APIVersion,
 		Kind:       c.Kind,
-		Name:       c.Metadata.Name,
-		UID:        c.Metadata.UID,
+		Name:       c.Name,
+		UID:        c.UID,
 		Controller: &trueVar,
 	}
 }

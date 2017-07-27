@@ -74,7 +74,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	f := framework.Global
 
 	origEtcd := e2eutil.NewCluster("test-etcd-", 3)
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,11 +93,11 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		t.Fatal(err)
 	}
 
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
-	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Metadata.Name)
+	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Name)
 	if err != nil {
 		t.Fatalf("fail to make a backup: %v", err)
 	}
@@ -115,7 +115,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	if !needDataClone {
 		storageCheckerOptions.DeletedFromAPI = true
 	}
-	err = e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, *storageCheckerOptions)
+	err = e2eutil.DeleteClusterAndBackup(t, f.CRClient, f.KubeClient, testEtcd, *storageCheckerOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,24 +128,24 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		// - set BackupClusterName to the same name in RestorePolicy.
 		// Then operator will use the existing backup in the same storage and
 		// restore cluster with the same data.
-		origEtcd.Metadata.GenerateName = ""
-		origEtcd.Metadata.Name = testEtcd.Metadata.Name
+		origEtcd.GenerateName = ""
+		origEtcd.Name = testEtcd.Name
 	}
 	waitRestoreTimeout := e2eutil.CalculateRestoreWaitTime(needDataClone)
 
 	origEtcd = e2eutil.ClusterWithRestore(origEtcd, &spec.RestorePolicy{
-		BackupClusterName: testEtcd.Metadata.Name,
+		BackupClusterName: testEtcd.Name,
 		StorageType:       backupPolicy.StorageType,
 	})
 
 	backupPolicy.AutoDelete = true
-	testEtcd, err = e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
+	testEtcd, err = e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.ClusterWithBackup(origEtcd, backupPolicy))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
 		storageCheckerOptions.DeletedFromAPI = false
-		err := e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, *storageCheckerOptions)
+		err := e2eutil.DeleteClusterAndBackup(t, f.CRClient, f.KubeClient, testEtcd, *storageCheckerOptions)
 		if err != nil {
 			t.Fatal(err)
 		}

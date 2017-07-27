@@ -31,7 +31,7 @@ func TestPerClusterS3MajDown(t *testing.T) {
 }
 
 func TestOperWideS3MajDown(t *testing.T) {
-	testS3MajorityDown(t, true)
+	testS3MajorityDown(t, false)
 }
 
 func TestPerClusterS3AllDown(t *testing.T) {
@@ -48,12 +48,12 @@ func TestOneMemberRecovery(t *testing.T) {
 	}
 
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd)
+		err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -102,10 +102,10 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 	testDisasterRecoveryWithCluster(t, numToKill, cl)
 }
 
-func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.Cluster) {
+func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.EtcdCluster) {
 	f := framework.Global
 
-	testEtcd, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, cl)
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, cl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.Clust
 			}
 		}
 
-		err := e2eutil.DeleteClusterAndBackup(t, f.KubeClient, testEtcd, *storageCheckerOptions)
+		err := e2eutil.DeleteClusterAndBackup(t, f.CRClient, f.KubeClient, testEtcd, *storageCheckerOptions)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,14 +132,14 @@ func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.Clust
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 	fmt.Println("reached to 3 members cluster")
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
 	// No left pod to make a backup from. We need to back up ahead.
 	// If there is any left pod, ooperator should be able to make a backup from it.
 	if numToKill == testEtcd.Spec.Size {
-		err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Metadata.Name)
+		err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Name)
 		if err != nil {
 			t.Fatalf("fail to make a latest backup: %v", err)
 		}
@@ -206,31 +206,31 @@ func TestDynamicAddBackupPolicy(t *testing.T) {
 	}
 
 	f := framework.Global
-	clus, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
+	clus, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		err := e2eutil.DeleteCluster(t, f.KubeClient, clus)
+		err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, clus)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
 
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Namespace, clus.Name, 6)
 	if !retryutil.IsRetryFailure(err) {
 		t.Fatalf("expecting retry failure, but err = %v", err)
 	}
 
-	uf := func(cl *spec.Cluster) {
+	uf := func(cl *spec.EtcdCluster) {
 		bp := e2eutil.NewS3BackupPolicy(true)
 		cl.Spec.Backup = bp
 	}
-	clus, err = e2eutil.UpdateCluster(f.KubeClient, clus, 10, uf)
+	clus, err = e2eutil.UpdateCluster(f.CRClient, clus, 10, uf)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Namespace, clus.Name, 6)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,12 +246,12 @@ func TestDynamicRemoveBackupPolicy(t *testing.T) {
 
 	f := framework.Global
 	clus := e2eutil.ClusterWithBackup(e2eutil.NewCluster("test-etcd-", 3), e2eutil.NewS3BackupPolicy(true))
-	clus, err := e2eutil.CreateCluster(t, f.KubeClient, f.Namespace, clus)
+	clus, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, clus)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		err := e2eutil.DeleteCluster(t, f.KubeClient, clus)
+		err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, clus)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -262,15 +262,15 @@ func TestDynamicRemoveBackupPolicy(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Metadata.Namespace, clus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, clus.Namespace, clus.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
 
-	uf := func(cl *spec.Cluster) {
+	uf := func(cl *spec.EtcdCluster) {
 		cl.Spec.Backup = nil
 	}
-	_, err = e2eutil.UpdateCluster(f.KubeClient, clus, 10, uf)
+	_, err = e2eutil.UpdateCluster(f.CRClient, clus, 10, uf)
 	if err != nil {
 		t.Fatalf("failed to update cluster: %v", err)
 	}

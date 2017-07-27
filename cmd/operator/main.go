@@ -27,25 +27,26 @@ import (
 	"github.com/coreos/etcd-operator/pkg/analytics"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/chaos"
+	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/controller"
 	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election/resourcelock"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/version"
 
 	"github.com/Sirupsen/logrus"
 	"golang.org/x/time/rate"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -88,13 +89,13 @@ func init() {
 	flag.DurationVar(&gcInterval, "gc-interval", 10*time.Minute, "GC interval")
 	flag.Parse()
 
-	// Workaround for watching TPR resource.
+	// TODO: remove this and use CR client
 	restCfg, err := k8sutil.InClusterConfig()
 	if err != nil {
 		panic(err)
 	}
 	controller.MasterHost = restCfg.Host
-	restcli, err := k8sutil.NewTPRClient()
+	restcli, _, err := client.New(restCfg)
 	if err != nil {
 		panic(err)
 	}
@@ -143,35 +144,35 @@ func main() {
 	}
 
 	kubecli := k8sutil.MustNewKubeClient()
-	// TODO: replace this to client-go once leader election package is imported
-	//       https://github.com/kubernetes/client-go/issues/28
-	rl := &resourcelock.EndpointsLock{
-		EndpointsMeta: api.ObjectMeta{
-			Namespace: namespace,
-			Name:      "etcd-operator",
-		},
-		Client: kubecli,
-		LockConfig: resourcelock.ResourceLockConfig{
-			Identity:      id,
-			EventRecorder: createRecorder(kubecli, name, namespace),
-		},
-	}
 
 	http.HandleFunc(probe.HTTPReadyzEndpoint, probe.ReadyzHandler)
 	go http.ListenAndServe(listenAddr, nil)
 
-	election.RunOrDie(election.LeaderElectionConfig{
+	rl, err := resourcelock.New(resourcelock.EndpointsResourceLock,
+		namespace,
+		"etcd-operator",
+		kubecli.(*kubernetes.Clientset),
+		resourcelock.ResourceLockConfig{
+			Identity:      id,
+			EventRecorder: createRecorder(kubecli, name, namespace),
+		})
+	if err != nil {
+		logrus.Fatalf("error creating lock: %v", err)
+	}
+
+	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
 		Lock:          rl,
-		LeaseDuration: leaseDuration,
-		RenewDeadline: renewDuration,
-		RetryPeriod:   retryPeriod,
-		Callbacks: election.LeaderCallbacks{
+		LeaseDuration: 15 * time.Second,
+		RenewDeadline: 10 * time.Second,
+		RetryPeriod:   2 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: run,
 			OnStoppedLeading: func() {
 				logrus.Fatalf("leader election lost")
 			},
 		},
 	})
+
 	panic("unreachable")
 }
 
@@ -213,7 +214,8 @@ func newControllerConfig() controller.Config {
 			AWSConfig: awsConfig,
 			S3Bucket:  s3Bucket,
 		},
-		KubeCli: kubecli,
+		KubeCli:    kubecli,
+		KubeExtCli: k8sutil.MustNewKubeExtClient(),
 	}
 
 	return cfg
@@ -287,5 +289,5 @@ func createRecorder(kubecli kubernetes.Interface, name, namespace string) record
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(logrus.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubecli.Core().RESTClient()).Events(namespace)})
-	return eventBroadcaster.NewRecorder(api.Scheme, v1.EventSource{Component: name})
+	return eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: name})
 }

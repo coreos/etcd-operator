@@ -32,10 +32,9 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/probe"
 
 	"github.com/Sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kwatch "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
-	v1beta1extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 var (
@@ -49,15 +48,15 @@ var (
 
 	initRetryWaitTime = 30 * time.Second
 
-	// Workaround for watching TPR resource.
-	// client-go has encoding issue and we want something more predictable.
+	// Workaround for watching CR resource.
+	// TODO: remove this to use CR client.
 	KubeHttpCli *http.Client
 	MasterHost  string
 )
 
 type Event struct {
 	Type   kwatch.EventType
-	Object *spec.Cluster
+	Object *spec.EtcdCluster
 }
 
 type Controller struct {
@@ -78,7 +77,8 @@ type Config struct {
 	ServiceAccount string
 	PVProvisioner  string
 	s3config.S3Context
-	KubeCli kubernetes.Interface
+	KubeCli    kubernetes.Interface
+	KubeExtCli apiextensionsclient.Interface
 }
 
 func (c *Config) Validate() error {
@@ -166,11 +166,11 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 	if clus.Status.IsFailed() {
 		clustersFailed.Inc()
 		if event.Type == kwatch.Deleted {
-			delete(c.clusters, clus.Metadata.Name)
-			delete(c.clusterRVs, clus.Metadata.Name)
+			delete(c.clusters, clus.Name)
+			delete(c.clusterRVs, clus.Name)
 			return nil
 		}
-		return fmt.Errorf("ignore failed cluster (%s). Please delete its TPR", clus.Metadata.Name)
+		return fmt.Errorf("ignore failed cluster (%s). Please delete its CR", clus.Name)
 	}
 
 	// TODO: add validation to spec update.
@@ -178,32 +178,36 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 
 	switch event.Type {
 	case kwatch.Added:
+		if _, ok := c.clusters[clus.Name]; ok {
+			return fmt.Errorf("unsafe state. cluster (%s) was created before but we received event (%s)", clus.Name, event.Type)
+		}
+
 		stopC := make(chan struct{})
 		nc := cluster.New(c.makeClusterConfig(), clus, stopC, &c.waitCluster)
 
-		c.stopChMap[clus.Metadata.Name] = stopC
-		c.clusters[clus.Metadata.Name] = nc
-		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
+		c.stopChMap[clus.Name] = stopC
+		c.clusters[clus.Name] = nc
+		c.clusterRVs[clus.Name] = clus.ResourceVersion
 
 		analytics.ClusterCreated()
 		clustersCreated.Inc()
 		clustersTotal.Inc()
 
 	case kwatch.Modified:
-		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
-			return fmt.Errorf("unsafe state. cluster was never created but we received event (%s)", event.Type)
+		if _, ok := c.clusters[clus.Name]; !ok {
+			return fmt.Errorf("unsafe state. cluster (%s) was never created but we received event (%s)", clus.Name, event.Type)
 		}
-		c.clusters[clus.Metadata.Name].Update(clus)
-		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
+		c.clusters[clus.Name].Update(clus)
+		c.clusterRVs[clus.Name] = clus.ResourceVersion
 		clustersModified.Inc()
 
 	case kwatch.Deleted:
-		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
-			return fmt.Errorf("unsafe state. cluster was never created but we received event (%s)", event.Type)
+		if _, ok := c.clusters[clus.Name]; !ok {
+			return fmt.Errorf("unsafe state. cluster (%s) was never created but we received event (%s)", clus.Name, event.Type)
 		}
-		c.clusters[clus.Metadata.Name].Delete()
-		delete(c.clusters, clus.Metadata.Name)
-		delete(c.clusterRVs, clus.Metadata.Name)
+		c.clusters[clus.Name].Delete()
+		delete(c.clusters, clus.Name)
+		delete(c.clusterRVs, clus.Name)
 		analytics.ClusterDeleted()
 		clustersDeleted.Inc()
 		clustersTotal.Dec()
@@ -222,7 +226,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		clus := clusterList.Items[i]
 
 		if clus.Status.IsFailed() {
-			c.logger.Infof("ignore failed cluster (%s). Please delete its TPR", clus.Metadata.Name)
+			c.logger.Infof("ignore failed cluster (%s). Please delete its CR", clus.Name)
 			continue
 		}
 
@@ -230,12 +234,12 @@ func (c *Controller) findAllClusters() (string, error) {
 
 		stopC := make(chan struct{})
 		nc := cluster.New(c.makeClusterConfig(), &clus, stopC, &c.waitCluster)
-		c.stopChMap[clus.Metadata.Name] = stopC
-		c.clusters[clus.Metadata.Name] = nc
-		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
+		c.stopChMap[clus.Name] = stopC
+		c.clusters[clus.Name] = nc
+		c.clusterRVs[clus.Name] = clus.ResourceVersion
 	}
 
-	return clusterList.Metadata.ResourceVersion, nil
+	return clusterList.ResourceVersion, nil
 }
 
 func (c *Controller) makeClusterConfig() cluster.Config {
@@ -250,16 +254,16 @@ func (c *Controller) makeClusterConfig() cluster.Config {
 
 func (c *Controller) initResource() (string, error) {
 	watchVersion := "0"
-	err := c.createTPR()
+	err := c.initCRD()
 	if err != nil {
 		if k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			// TPR has been initialized before. We need to recover existing cluster.
+			// CRD has been initialized before. We need to recover existing cluster.
 			watchVersion, err = c.findAllClusters()
 			if err != nil {
 				return "", err
 			}
 		} else {
-			return "", fmt.Errorf("fail to create TPR: %v", err)
+			return "", fmt.Errorf("fail to create CRD: %v", err)
 		}
 	}
 	if c.Config.PVProvisioner != constants.PVProvisionerNone {
@@ -273,22 +277,12 @@ func (c *Controller) initResource() (string, error) {
 	return watchVersion, nil
 }
 
-func (c *Controller) createTPR() error {
-	tpr := &v1beta1extensions.ThirdPartyResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: spec.TPRName(),
-		},
-		Versions: []v1beta1extensions.APIVersion{
-			{Name: spec.TPRVersion},
-		},
-		Description: spec.TPRDescription,
-	}
-	_, err := c.KubeCli.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
+func (c *Controller) initCRD() error {
+	err := k8sutil.CreateCRD(c.KubeExtCli)
 	if err != nil {
 		return err
 	}
-
-	return k8sutil.WaitEtcdTPRReady(c.KubeCli.CoreV1().RESTClient(), 3*time.Second, 30*time.Second, c.Namespace)
+	return k8sutil.WaitCRDReady(c.KubeExtCli)
 }
 
 // watch creates a go routine, and watches the cluster.etcd kind resources from
@@ -322,7 +316,8 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 				ev, st, err := pollEvent(decoder)
 				if err != nil {
 					if err == io.EOF { // apiserver will close stream periodically
-						c.logger.Debug("apiserver closed stream")
+						c.logger.Info("apiserver closed watch stream, retrying after 5s...")
+						time.Sleep(5 * time.Second)
 						break
 					}
 
@@ -339,7 +334,7 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 						// if nothing has changed, we can go back to watch again.
 						clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli.CoreV1().RESTClient(), c.Config.Namespace)
 						if err == nil && !c.isClustersCacheStale(clusterList.Items) {
-							watchVersion = clusterList.Metadata.ResourceVersion
+							watchVersion = clusterList.ResourceVersion
 							break
 						}
 
@@ -354,7 +349,7 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 
 				c.logger.Debugf("etcd cluster event: %v %v", ev.Type, ev.Object.Spec)
 
-				watchVersion = ev.Object.Metadata.ResourceVersion
+				watchVersion = ev.Object.ResourceVersion
 				eventCh <- ev
 			}
 
@@ -365,14 +360,14 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 	return eventCh, errCh
 }
 
-func (c *Controller) isClustersCacheStale(currentClusters []spec.Cluster) bool {
+func (c *Controller) isClustersCacheStale(currentClusters []spec.EtcdCluster) bool {
 	if len(c.clusterRVs) != len(currentClusters) {
 		return true
 	}
 
 	for _, cc := range currentClusters {
-		rv, ok := c.clusterRVs[cc.Metadata.Name]
-		if !ok || rv != cc.Metadata.ResourceVersion {
+		rv, ok := c.clusterRVs[cc.Name]
+		if !ok || rv != cc.ResourceVersion {
 			return true
 		}
 	}

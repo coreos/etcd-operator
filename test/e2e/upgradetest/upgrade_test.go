@@ -49,12 +49,12 @@ func TestResize(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test-", 3))
+	testClus, err := e2eutil.CreateCluster(t, testF.CRClient, testF.KubeNS, e2eutil.NewCluster("upgrade-test-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, testF.KubeCli, testClus); err != nil {
+		if err := e2eutil.DeleteCluster(t, testF.CRClient, testF.KubeCli, testClus); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -67,15 +67,15 @@ func TestResize(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testClus, err = k8sutil.GetClusterTPRObject(testF.KubeCli.CoreV1().RESTClient(), testF.KubeNS, testClus.Metadata.Name)
+	testClus, err = k8sutil.GetClusterTPRObject(testF.KubeCli.CoreV1().RESTClient(), testF.KubeNS, testClus.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	updateFunc := func(cl *spec.Cluster) {
+	updateFunc := func(cl *spec.EtcdCluster) {
 		cl.Spec.Size = 5
 	}
-	_, err = e2eutil.UpdateCluster(testF.KubeCli, testClus, 10, updateFunc)
+	_, err = e2eutil.UpdateCluster(testF.CRClient, testClus, 10, updateFunc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,12 +102,12 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testEtcd, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, e2eutil.NewCluster("upgrade-test-", 3))
+	testEtcd, err := e2eutil.CreateCluster(t, testF.CRClient, testF.KubeNS, e2eutil.NewCluster("upgrade-test-", 3))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := e2eutil.DeleteCluster(t, testF.KubeCli, testEtcd); err != nil {
+		if err := e2eutil.DeleteCluster(t, testF.CRClient, testF.KubeCli, testEtcd); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -172,7 +172,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 
 	origClus := e2eutil.NewCluster("upgrade-test-", 3)
 	origClus = e2eutil.ClusterWithBackup(origClus, bp)
-	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, origClus)
+	testClus, err := e2eutil.CreateCluster(t, testF.CRClient, testF.KubeNS, origClus)
 	if err != nil {
 		t.Fatalf("failed to create cluster:%v", err)
 	}
@@ -180,7 +180,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to reach desired cluster size:%v", err)
 	}
-	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
@@ -194,7 +194,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to put data to etcd:%v", err)
 	}
-	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Metadata.Namespace, testClus.Metadata.Name)
+	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Namespace, testClus.Name)
 	if err != nil {
 		t.Fatalf("failed to make backup:%v", err)
 	}
@@ -205,7 +205,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		S3Bucket:       testF.S3Bucket,
 		DeletedFromAPI: true,
 	}
-	err = e2eutil.DeleteClusterAndBackup(t, testF.KubeCli, testClus, checker)
+	err = e2eutil.DeleteClusterAndBackup(t, testF.CRClient, testF.KubeCli, testClus, checker)
 	if err != nil {
 		t.Fatalf("failed to delete cluster and its backup:%v", err)
 	}
@@ -221,21 +221,21 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	// - set BackupClusterName to the same name in RestorePolicy.
 	// Then operator will use the existing backup in the same storage and
 	// restore cluster with the same data.
-	origClus.Metadata.GenerateName = ""
-	origClus.Metadata.Name = testClus.Metadata.Name
+	origClus.GenerateName = ""
+	origClus.Name = testClus.Name
 
 	origClus = e2eutil.ClusterWithRestore(origClus, &spec.RestorePolicy{
-		BackupClusterName: origClus.Metadata.Name,
+		BackupClusterName: origClus.Name,
 		StorageType:       bp.StorageType,
 	})
 	origClus.Spec.Backup.AutoDelete = true
-	testClus, err = e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, origClus)
+	testClus, err = e2eutil.CreateCluster(t, testF.CRClient, testF.KubeNS, origClus)
 	if err != nil {
 		t.Fatalf("failed to create cluster:%v", err)
 	}
 	defer func() {
 		checker.DeletedFromAPI = false
-		err := e2eutil.DeleteClusterAndBackup(t, testF.KubeCli, testClus, checker)
+		err := e2eutil.DeleteClusterAndBackup(t, testF.CRClient, testF.KubeCli, testClus, checker)
 		if err != nil {
 			t.Fatalf("failed to delete cluster and its backup:%v", err)
 		}
@@ -290,7 +290,7 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 	bp.BackupIntervalInSecond = 60 * 60 * 24
 	cl := e2eutil.NewCluster("upgrade-test-", 3)
 	cl = e2eutil.ClusterWithBackup(cl, bp)
-	testClus, err := e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, cl)
+	testClus, err := e2eutil.CreateCluster(t, testF.CRClient, testF.KubeNS, cl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +299,7 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 			S3Cli:    testF.S3Cli,
 			S3Bucket: testF.S3Bucket,
 		}
-		err := e2eutil.DeleteClusterAndBackup(t, testF.KubeCli, testClus, checker)
+		err := e2eutil.DeleteClusterAndBackup(t, testF.CRClient, testF.KubeCli, testClus, checker)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -309,7 +309,7 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 		t.Fatal(err)
 	}
 	// "latest" image operator will create sidecar with versioned image. So we need to get sidecar image.
-	oldBSImage, err := getContainerImageNameFromDeployment(k8sutil.BackupSidecarName(testClus.Metadata.Name))
+	oldBSImage, err := getContainerImageNameFromDeployment(k8sutil.BackupSidecarName(testClus.Name))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -320,18 +320,18 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 
 	// We wait for old backup sidecar to be deleted so that we won't make backup from the old version.
 	lo := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(k8sutil.BackupSidecarLabels(testClus.Metadata.Name)).String(),
+		LabelSelector: labels.SelectorFromSet(k8sutil.BackupSidecarLabels(testClus.Name)).String(),
 	}
 	_, err = e2eutil.WaitPodsWithImageDeleted(testF.KubeCli, testF.KubeNS, oldBSImage, 6, lo)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Since old one is deleted, we can safely select any backup pod.
-	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Name, 6)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Metadata.Namespace, testClus.Metadata.Name)
+	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Namespace, testClus.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,7 +371,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 
 	testClus := e2eutil.NewCluster("upgrade-test-", 3)
 	testClus = e2eutil.ClusterWithBackup(testClus, bp)
-	testClus, err = e2eutil.CreateCluster(t, testF.KubeCli, testF.KubeNS, testClus)
+	testClus, err = e2eutil.CreateCluster(t, testF.CRClient, testF.KubeNS, testClus)
 	if err != nil {
 		t.Fatalf("failed to create cluster: %v", err)
 	}
@@ -380,7 +380,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 			S3Cli:    testF.S3Cli,
 			S3Bucket: testF.S3Bucket,
 		}
-		err := e2eutil.DeleteClusterAndBackup(t, testF.KubeCli, testClus, checker)
+		err := e2eutil.DeleteClusterAndBackup(t, testF.CRClient, testF.KubeCli, testClus, checker)
 		if err != nil {
 			t.Fatalf("failed to delete cluster and its backup: %v", err)
 		}
@@ -390,7 +390,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to reach desired cluster size: %v", err)
 	}
-	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Metadata.Name, 6)
+	err = e2eutil.WaitBackupPodUp(t, testF.KubeCli, testF.KubeNS, testClus.Name, 6)
 	if err != nil {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
@@ -404,7 +404,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to put data to etcd: %v", err)
 	}
-	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Metadata.Namespace, testClus.Metadata.Name)
+	err = e2eutil.MakeBackup(testF.KubeCli, testClus.Namespace, testClus.Name)
 	if err != nil {
 		t.Fatalf("failed to make backup: %v", err)
 	}

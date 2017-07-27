@@ -18,11 +18,11 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (
@@ -62,7 +62,7 @@ func (gc *GC) FullyCollect() error {
 
 	clusterUIDSet := make(map[types.UID]bool)
 	for _, c := range clusters.Items {
-		clusterUIDSet[c.Metadata.UID] = true
+		clusterUIDSet[c.UID] = true
 	}
 
 	option := metav1.ListOptions{
