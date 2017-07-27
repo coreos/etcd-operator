@@ -264,7 +264,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 
 	c.status.SetPhase(spec.ClusterPhaseRunning)
 	if err := c.updateCRStatus(); err != nil {
-		c.logger.Warningf("failed to update CR status: %v", err)
+		c.logger.Warningf("update initial CR status failed: %v", err)
 	}
 	c.logger.Infof("start running...")
 
@@ -299,6 +299,8 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 				c.logger.Infof("cluster is deleted by the user")
 				clusterFailed = true
 				return
+			default:
+				panic("unknown event type" + event.typ)
 			}
 
 		case <-time.After(reconcileInterval):
@@ -354,7 +356,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 			}
 			c.updateMemberStatus(c.members)
 			if err := c.updateCRStatus(); err != nil {
-				c.logger.Warningf("failed to update CR status: %v", err)
+				c.logger.Warningf("periodic update CR status failed: %v", err)
 			}
 
 			reconcileHistogram.WithLabelValues(c.name()).Observe(time.Since(start).Seconds())
@@ -555,7 +557,7 @@ func (c *Cluster) updateCRStatus() error {
 	newCluster.Status = c.status
 	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli.Core().RESTClient(), c.cluster.Namespace, newCluster)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update CR status: %v", err)
 	}
 
 	c.cluster = newCluster

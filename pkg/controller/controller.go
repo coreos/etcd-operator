@@ -191,7 +191,7 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 
 	case kwatch.Modified:
 		if _, ok := c.clusters[clus.Name]; !ok {
-			return fmt.Errorf("unsafe state. cluster was never created but we received event (%s)", event.Type)
+			return fmt.Errorf("unsafe state. cluster (%s) was never created but we received event (%s)", clus.Name, event.Type)
 		}
 		c.clusters[clus.Name].Update(clus)
 		c.clusterRVs[clus.Name] = clus.ResourceVersion
@@ -199,7 +199,7 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 
 	case kwatch.Deleted:
 		if _, ok := c.clusters[clus.Name]; !ok {
-			return fmt.Errorf("unsafe state. cluster was never created but we received event (%s)", event.Type)
+			return fmt.Errorf("unsafe state. cluster (%s) was never created but we received event (%s)", clus.Name, event.Type)
 		}
 		c.clusters[clus.Name].Delete()
 		delete(c.clusters, clus.Name)
@@ -312,7 +312,8 @@ func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
 				ev, st, err := pollEvent(decoder)
 				if err != nil {
 					if err == io.EOF { // apiserver will close stream periodically
-						c.logger.Debug("apiserver closed stream")
+						c.logger.Info("apiserver closed watch stream, retrying after 5s...")
+						time.Sleep(5 * time.Second)
 						break
 					}
 
