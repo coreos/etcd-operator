@@ -178,6 +178,10 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 
 	switch event.Type {
 	case kwatch.Added:
+		if _, ok := c.clusters[clus.Name]; ok {
+			return fmt.Errorf("unsafe state. cluster (%s) was created before but we received event (%s)", clus.Name, event.Type)
+		}
+
 		stopC := make(chan struct{})
 		nc := cluster.New(c.makeClusterConfig(), clus, stopC, &c.waitCluster)
 
