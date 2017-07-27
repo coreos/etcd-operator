@@ -31,7 +31,7 @@ func TestPerClusterS3MajDown(t *testing.T) {
 }
 
 func TestOperWideS3MajDown(t *testing.T) {
-	testS3MajorityDown(t, true)
+	testS3MajorityDown(t, false)
 }
 
 func TestPerClusterS3AllDown(t *testing.T) {

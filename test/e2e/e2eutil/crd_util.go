@@ -41,6 +41,7 @@ func CreateCluster(t *testing.T, crClient client.EtcdClusterCR, namespace string
 	if err != nil {
 		return nil, err
 	}
+	t.Logf("creating etcd cluster: %s", res.Name)
 
 	return res, nil
 }
@@ -72,6 +73,7 @@ func AtomicUpdateClusterCR(crClient client.EtcdClusterCR, name, namespace string
 }
 
 func DeleteCluster(t *testing.T, crClient client.EtcdClusterCR, kubeClient kubernetes.Interface, cl *spec.EtcdCluster) error {
+	t.Logf("deleting etcd cluster: %v", cl.Name)
 	if err := crClient.Delete(context.TODO(), cl.Name, cl.Namespace); err != nil {
 		return err
 	}
@@ -83,6 +85,7 @@ func DeleteClusterAndBackup(t *testing.T, crClient client.EtcdClusterCR, kubecli
 	if err != nil {
 		return err
 	}
+	t.Logf("waiting backup deleted of cluster (%v)", cl.Name)
 	err = WaitBackupDeleted(kubecli, cl, checkerOpt)
 	if err != nil {
 		return fmt.Errorf("fail to wait backup deleted: %v", err)

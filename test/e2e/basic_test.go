@@ -132,7 +132,8 @@ func TestEtcdUpgrade(t *testing.T) {
 		t.Fatalf("fail to update cluster version: %v", err)
 	}
 
-	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, "3.1.8", 3, 6, testEtcd)
+	// We have seen in k8s 1.7.1 env it took 35s for the pod to restart with the new image.
+	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, "3.1.8", 3, 10, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to wait new version etcd cluster: %v", err)
 	}
