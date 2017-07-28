@@ -37,7 +37,8 @@ type StorageCheckerOptions struct {
 }
 
 func CreateCluster(t *testing.T, crClient client.EtcdClusterCR, namespace string, cl *spec.EtcdCluster) (*spec.EtcdCluster, error) {
-	res, err := crClient.Create(context.TODO(), namespace, cl)
+	cl.Namespace = namespace
+	res, err := crClient.Create(context.TODO(), cl)
 	if err != nil {
 		return nil, err
 	}
@@ -53,14 +54,14 @@ func UpdateCluster(crClient client.EtcdClusterCR, cl *spec.EtcdCluster, maxRetri
 func AtomicUpdateClusterCR(crClient client.EtcdClusterCR, name, namespace string, maxRetries int, updateFunc k8sutil.EtcdClusterCRUpdateFunc) (*spec.EtcdCluster, error) {
 	result := &spec.EtcdCluster{}
 	err := retryutil.Retry(1*time.Second, maxRetries, func() (done bool, err error) {
-		etcdCluster, err := crClient.Get(context.TODO(), name, namespace)
+		etcdCluster, err := crClient.Get(context.TODO(), namespace, name)
 		if err != nil {
 			return false, err
 		}
 
 		updateFunc(etcdCluster)
 
-		result, err = crClient.Update(context.TODO(), name, namespace, etcdCluster)
+		result, err = crClient.Update(context.TODO(), etcdCluster)
 		if err != nil {
 			if apierrors.IsConflict(err) {
 				return false, nil
@@ -74,7 +75,8 @@ func AtomicUpdateClusterCR(crClient client.EtcdClusterCR, name, namespace string
 
 func DeleteCluster(t *testing.T, crClient client.EtcdClusterCR, kubeClient kubernetes.Interface, cl *spec.EtcdCluster) error {
 	t.Logf("deleting etcd cluster: %v", cl.Name)
-	if err := crClient.Delete(context.TODO(), cl.Name, cl.Namespace); err != nil {
+	err := crClient.Delete(context.TODO(), cl.Namespace, cl.Name)
+	if err != nil {
 		return err
 	}
 	return waitResourcesDeleted(t, kubeClient, cl)

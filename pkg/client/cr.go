@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"errors"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -27,16 +28,16 @@ import (
 
 type EtcdClusterCR interface {
 	// Create creates an etcd cluster CR with the desired CR
-	Create(ctx context.Context, namespace string, cl *spec.EtcdCluster) (*spec.EtcdCluster, error)
+	Create(ctx context.Context, cl *spec.EtcdCluster) (*spec.EtcdCluster, error)
 
 	// Get returns the specified etcd cluster CR
-	Get(ctx context.Context, name, namespace string) (*spec.EtcdCluster, error)
+	Get(ctx context.Context, namespace, name string) (*spec.EtcdCluster, error)
 
 	// Delete deletes the specified etcd cluster CR
-	Delete(ctx context.Context, name, namespace string) error
+	Delete(ctx context.Context, namespace, name string) error
 
 	// Update updates the etcd cluster CR.
-	Update(ctx context.Context, name, namespace string, etcdCluster *spec.EtcdCluster) (*spec.EtcdCluster, error)
+	Update(ctx context.Context, etcdCluster *spec.EtcdCluster) (*spec.EtcdCluster, error)
 }
 
 type etcdClusterCR struct {
@@ -90,10 +91,13 @@ func New(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
 	return client, crScheme, nil
 }
 
-func (c *etcdClusterCR) Create(ctx context.Context, namespace string, etcdCluster *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+func (c *etcdClusterCR) Create(ctx context.Context, etcdCluster *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+	if len(etcdCluster.Namespace) == 0 {
+		return nil, errors.New("need to set metadata.Namespace in etcd cluster CR")
+	}
 	result := &spec.EtcdCluster{}
 	err := c.client.Post().Context(ctx).
-		Namespace(namespace).
+		Namespace(etcdCluster.Namespace).
 		Resource(spec.CRDResourcePlural).
 		Body(etcdCluster).
 		Do().
@@ -101,7 +105,7 @@ func (c *etcdClusterCR) Create(ctx context.Context, namespace string, etcdCluste
 	return result, err
 }
 
-func (c *etcdClusterCR) Get(ctx context.Context, name, namespace string) (*spec.EtcdCluster, error) {
+func (c *etcdClusterCR) Get(ctx context.Context, namespace, name string) (*spec.EtcdCluster, error) {
 	result := &spec.EtcdCluster{}
 	err := c.client.Get().Context(ctx).
 		Namespace(namespace).
@@ -112,7 +116,7 @@ func (c *etcdClusterCR) Get(ctx context.Context, name, namespace string) (*spec.
 	return result, err
 }
 
-func (c *etcdClusterCR) Delete(ctx context.Context, name, namespace string) error {
+func (c *etcdClusterCR) Delete(ctx context.Context, namespace, name string) error {
 	return c.client.Delete().Context(ctx).
 		Namespace(namespace).
 		Resource(spec.CRDResourcePlural).
@@ -121,12 +125,18 @@ func (c *etcdClusterCR) Delete(ctx context.Context, name, namespace string) erro
 		Error()
 }
 
-func (c *etcdClusterCR) Update(ctx context.Context, name, namespace string, etcdCluster *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+func (c *etcdClusterCR) Update(ctx context.Context, etcdCluster *spec.EtcdCluster) (*spec.EtcdCluster, error) {
+	if len(etcdCluster.Namespace) == 0 {
+		return nil, errors.New("need to set metadata.Namespace in etcd cluster CR")
+	}
+	if len(etcdCluster.Name) == 0 {
+		return nil, errors.New("need to set metadata.Name in etcd cluster CR")
+	}
 	result := &spec.EtcdCluster{}
 	err := c.client.Put().Context(ctx).
-		Namespace(namespace).
+		Namespace(etcdCluster.Namespace).
 		Resource(spec.CRDResourcePlural).
-		Name(name).
+		Name(etcdCluster.Name).
 		Body(etcdCluster).
 		Do().
 		Into(result)
