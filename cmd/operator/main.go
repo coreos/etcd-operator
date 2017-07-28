@@ -66,12 +66,6 @@ var (
 	printVersion bool
 )
 
-var (
-	leaseDuration = 15 * time.Second
-	renewDuration = 5 * time.Second
-	retryPeriod   = 3 * time.Second
-)
-
 func init() {
 	flag.BoolVar(&analyticsEnabled, "analytics", true, "Send analytical event (Cluster Created/Deleted etc.) to Google Analytics")
 	flag.StringVar(&debug.DebugFilePath, "debug-logfile-path", "", "only for a self hosted cluster, the path where the debug logfile will be written, recommended to be under: /var/tmp/etcd-operator/debug/ to avoid any issue with lack of write permissions")
