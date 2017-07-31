@@ -15,8 +15,12 @@
 package backup
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -229,7 +233,33 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	defer cancel()
 	defer rc.Close()
 
-	n, err := b.be.save(resp.Version, rev, rc)
+	pipeReader, pipeWriter := io.Pipe()
+	defer pipeReader.Close()
+	defer pipeWriter.Close()
+	if b.policy.EncryptionKey != "" {
+		block, err := aes.NewCipher([]byte(b.policy.EncryptionKey))
+		if err != nil {
+			return fmt.Errorf("failed to create cipher.Block (%v)", err)
+		}
+
+		var iv [aes.BlockSize]byte
+		if _, err := io.ReadFull(rand.Reader, iv[:]); err != nil {
+			return fmt.Errorf("failed to initialize iv (%v)", err)
+		}
+
+		stream := cipher.NewOFB(block, iv[:])
+		writer := &cipher.StreamWriter{S: stream, W: pipeWriter}
+		go func() {
+			defer writer.Close()
+			io.Copy(writer, rc)
+		}()
+	} else {
+		go func() {
+			io.Copy(pipeWriter, rc)
+		}()
+	}
+
+	n, err := b.be.save(resp.Version, rev, pipeReader)
 	if err != nil {
 		return err
 	}
