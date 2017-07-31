@@ -25,6 +25,8 @@ import (
 const (
 	defaultBaseImage = "quay.io/coreos/etcd"
 	defaultVersion   = "3.1.8"
+
+	minPodPVSizeInMB = 512 // 512MiB
 )
 
 var (
@@ -170,7 +172,6 @@ type PodPolicy struct {
 
 	// PV represents a Persistent Volume resource.
 	// If defined new pods will use a persistent volume to store etcd data.
-	// TODO(sgotti) unimplemented
 	PV *PVSource `json:"pv,omitempty"`
 
 	// By default, kubernetes will mount a service account token into the etcd pods.
@@ -202,6 +203,11 @@ func (c *ClusterSpec) Validate() error {
 		for k := range c.Pod.Labels {
 			if k == "app" || strings.HasPrefix(k, "etcd_") {
 				return errors.New("spec: pod labels contains reserved label")
+			}
+		}
+		if c.Pod.PV != nil {
+			if c.Pod.PV.VolumeSizeInMB < minPodPVSizeInMB {
+				c.Pod.PV.VolumeSizeInMB = minPodPVSizeInMB
 			}
 		}
 	}

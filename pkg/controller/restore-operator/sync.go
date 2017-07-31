@@ -174,7 +174,9 @@ func (r *Restore) createSeedMember(cs api.ClusterSpec, svcAddr, clusterName stri
 	etcdVersion := cs.Version
 	backupURL := backupapi.BackupURLForCluster("http", svcAddr, clusterName, etcdVersion, -1)
 	cs.Cleanup()
+	isPodPVEnabled := cs.Pod != nil && cs.Pod.PV != nil
 	pod := k8sutil.NewSeedMemberPod(clusterName, ms, m, cs, owner, backupURL)
+	k8sutil.AddEtcdVolumeToPod(pod, m, isPodPVEnabled)
 	_, err := r.kubecli.Core().Pods(r.namespace).Create(pod)
 	return err
 }
