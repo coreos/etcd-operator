@@ -28,6 +28,8 @@ import (
 const (
 	defaultBaseImage = "quay.io/coreos/etcd"
 	defaultVersion   = "3.1.8"
+
+	minPVSize = 512 // 512MiB
 )
 
 var (
@@ -154,6 +156,14 @@ type PodPolicy struct {
 	// bootstrap the cluster (for example `--initial-cluster` flag).
 	// This field cannot be updated.
 	EtcdEnv []v1.EnvVar `json:"etcdEnv,omitempty"`
+
+	UsePV    bool      `json:"usePV,omitempty"`
+	PVPolicy *PVPolicy `json:"pvPolicy,omitempty"`
+}
+
+type PVPolicy struct {
+	// VolumeSizeInMB specifies the required volume size for storing etcd data.
+	VolumeSizeInMB int `json:"volumeSizeInMB"`
 }
 
 func (c *ClusterSpec) Validate() error {
@@ -182,6 +192,11 @@ func (c *ClusterSpec) Validate() error {
 				return errors.New("spec: pod labels contains reserved label")
 			}
 		}
+		if c.Pod.UsePV && c.Pod.PVPolicy != nil {
+			if c.Pod.PVPolicy.VolumeSizeInMB < minPVSize {
+				return fmt.Errorf("spec: pod pv volume size lesser than min size (%dMiB)", minPVSize)
+			}
+		}
 	}
 	return nil
 }
@@ -198,6 +213,10 @@ func (c *ClusterSpec) Cleanup() {
 	}
 
 	c.Version = strings.TrimLeft(c.Version, "v")
+
+	if c.Pod.UsePV && c.Pod.PVPolicy == nil {
+		c.Pod.PVPolicy = &PVPolicy{VolumeSizeInMB: minPVSize}
+	}
 }
 
 type ClusterPhase string

@@ -75,6 +75,10 @@ func (dl *DebugLogger) LogPodDeletion(podName string) {
 	dl.fileLogger.Infof("deleted pod (%s)", podName)
 }
 
+func (dl *DebugLogger) LogPVCDeletion(pvcName string) {
+	dl.fileLogger.Infof("deleted pvc (%s)", pvcName)
+}
+
 func (dl *DebugLogger) LogClusterSpecUpdate(oldSpec, newSpec string) {
 	dl.fileLogger.Infof("spec update: \nOld:\n%v \nNew:\n%v\n", oldSpec, newSpec)
 }

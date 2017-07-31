@@ -88,7 +88,10 @@ function e2e_pass {
 
 	# Run all the tests by default
 	E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-.*}
-	go test "./test/e2e/" -run "$E2E_TEST_SELECTOR" -timeout 30m --race --kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
+	# Run tests with PV support disabled
+	go test -v "./test/e2e/" -run "$E2E_TEST_SELECTOR" -timeout 30m --race --kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
+	# Run tests with PV support enabled
+	PV_TEST=true go test -v "./test/e2e/" -run "$E2E_TEST_SELECTOR" -timeout 30m --race --kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
 }
 
 function e2eslow_pass {

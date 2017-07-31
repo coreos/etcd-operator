@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -220,7 +222,38 @@ func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
 	o.SetOwnerReferences(append(o.GetOwnerReferences(), r))
 }
 
-func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metav1.OwnerReference) *v1.Pod {
+func NewPVC(m *etcdutil.Member, cs spec.ClusterSpec, clusterName, namespace string, pvProvisioner string, owner metav1.OwnerReference) *v1.PersistentVolumeClaim {
+	name := m.PVCName()
+	storageClassName := storageClassPrefix + "-" + path.Base(pvProvisioner)
+	pvc := &v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"etcd_node":    m.Name,
+				"etcd_cluster": clusterName,
+				"app":          "etcd",
+			},
+		},
+		Spec: v1.PersistentVolumeClaimSpec{
+			StorageClassName: &storageClassName,
+			AccessModes: []v1.PersistentVolumeAccessMode{
+				v1.ReadWriteOnce,
+			},
+			Resources: v1.ResourceRequirements{
+				Requests: v1.ResourceList{
+					v1.ResourceStorage: resource.MustParse(fmt.Sprintf("%dMi", cs.Pod.PVPolicy.VolumeSizeInMB)),
+				},
+			},
+		},
+	}
+
+	addOwnerRefToObject(pvc.GetObjectMeta(), owner)
+
+	return pvc
+}
+
+func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, usePVC bool, owner metav1.OwnerReference) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
@@ -251,8 +284,15 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		container = containerWithRequirements(container, cs.Pod.Resources)
 	}
 
-	volumes := []v1.Volume{
-		{Name: "etcd-data", VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}},
+	volumes := []v1.Volume{}
+	var restartPolicy v1.RestartPolicy
+
+	if usePVC {
+		volumes = append(volumes, v1.Volume{Name: etcdVolumeName, VolumeSource: v1.VolumeSource{PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{ClaimName: m.PVCName()}}})
+		restartPolicy = v1.RestartPolicyAlways
+	} else {
+		volumes = append(volumes, v1.Volume{Name: etcdVolumeName, VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}})
+		restartPolicy = v1.RestartPolicyNever
 	}
 
 	if m.SecurePeer {
@@ -287,7 +327,7 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		},
 		Spec: v1.PodSpec{
 			Containers:    []v1.Container{container},
-			RestartPolicy: v1.RestartPolicyNever,
+			RestartPolicy: restartPolicy,
 			Volumes:       volumes,
 			// DNS A record: [m.Name].[clusterName].Namespace.svc.cluster.local.
 			// For example, etcd-0000 in default namesapce will have DNS name

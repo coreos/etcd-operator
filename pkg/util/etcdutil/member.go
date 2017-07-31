@@ -70,6 +70,10 @@ func (m *Member) PeerURL() string {
 	return fmt.Sprintf("%s://%s:2380", m.peerScheme(), m.FQDN())
 }
 
+func (m *Member) PVCName() string {
+	return fmt.Sprintf("%s-pvc", m.Name)
+}
+
 type MemberSet map[string]*Member
 
 func NewMemberSet(ms ...*Member) MemberSet {
@@ -187,4 +191,12 @@ func clusterNameFromMemberName(mn string) string {
 		panic(fmt.Sprintf("unexpected member name: %s", mn))
 	}
 	return mn[:i]
+}
+
+func MemberNameFromPVCName(pn string) string {
+	i := strings.LastIndex(pn, "-")
+	if i == -1 {
+		panic(fmt.Sprintf("unexpected pvc name: %s", pn))
+	}
+	return pn[:i]
 }
