@@ -255,6 +255,13 @@ func (c *Cluster) run() {
 				continue
 			}
 
+			pvcs, err := c.pollPVCs()
+			if err != nil {
+				c.logger.Errorf("failed to poll pvcs: %v", err)
+				reconcileFailed.WithLabelValues("failed to poll vcs").Inc()
+				continue
+			}
+
 			if len(pending) > 0 {
 				// Pod startup might take long, e.g. pulling image. It would deterministically become running or succeeded/failed later.
 				c.logger.Infof("skip reconciliation: running (%v), pending (%v)", k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
@@ -275,7 +282,7 @@ func (c *Cluster) run() {
 					break
 				}
 			}
-			rerr = c.reconcile(running)
+			rerr = c.reconcile(running, pvcs)
 			if rerr != nil {
 				c.logger.Errorf("failed to reconcile: %v", rerr)
 				break
@@ -355,6 +362,10 @@ func (c *Cluster) isSecureClient() bool {
 	return c.cluster.Spec.TLS.IsSecureClient()
 }
 
+func (c *Cluster) IsPodPVEnabled() bool {
+	return c.cluster.Spec.Pod != nil && c.cluster.Spec.Pod.PV != nil
+}
+
 // bootstrap creates the seed etcd member for a new cluster.
 func (c *Cluster) bootstrap() error {
 	return c.startSeedMember()
@@ -396,6 +407,21 @@ func (c *Cluster) removePod(name string) error {
 	}
 	if c.isDebugLoggerEnabled() {
 		c.debugLogger.LogPodDeletion(name)
+	}
+
+	return nil
+}
+
+func (c *Cluster) removePVC(name string) error {
+	ns := c.cluster.Namespace
+	err := c.config.KubeCli.Core().PersistentVolumeClaims(ns).Delete(name, nil)
+	if err != nil {
+		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return err
+		}
+		if c.isDebugLoggerEnabled() {
+			c.debugLogger.LogMessage(fmt.Sprintf("pvc (%s) not found while trying to delete it", name))
+		}
 	}
 	return nil
 }

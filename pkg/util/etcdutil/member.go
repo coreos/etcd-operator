@@ -188,3 +188,11 @@ func clusterNameFromMemberName(mn string) string {
 	}
 	return mn[:i]
 }
+
+func MemberNameFromPVCName(pn string) string {
+	i := strings.LastIndex(pn, "-")
+	if i == -1 {
+		panic(fmt.Sprintf("unexpected pvc name: %s", pn))
+	}
+	return pn[:i]
+}
