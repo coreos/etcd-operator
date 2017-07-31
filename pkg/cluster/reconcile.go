@@ -35,7 +35,7 @@ var ErrLostQuorum = errors.New("lost quorum")
 // reconcile reconciles cluster current state to desired state specified by spec.
 // - it tries to reconcile the cluster to desired size.
 // - if the cluster needs for upgrade, it tries to upgrade old member one by one.
-func (c *Cluster) reconcile(pods []*v1.Pod) error {
+func (c *Cluster) reconcile(pods []*v1.Pod, pvcs []*v1.PersistentVolumeClaim) error {
 	c.logger.Infoln("Start reconciling")
 	defer c.logger.Infoln("Finish reconciling")
 
@@ -49,6 +49,10 @@ func (c *Cluster) reconcile(pods []*v1.Pod) error {
 		return c.reconcileMembers(running)
 	}
 	c.status.ClearCondition(api.ClusterConditionScaling)
+
+	if err := c.reconcilePVCs(pvcs); err != nil {
+		return err
+	}
 
 	if needUpgrade(pods, sp) {
 		c.status.UpgradeVersionTo(sp.Version)
@@ -100,6 +104,26 @@ func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 	c.logger.Infof("removing one dead member")
 	// remove dead members that doesn't have any running pods before doing resizing.
 	return c.removeDeadMember(c.members.Diff(L).PickOne())
+}
+
+// reconcilePVCs reconciles PVCs with current cluster members removing old PVCs
+func (c *Cluster) reconcilePVCs(pvcs []*v1.PersistentVolumeClaim) error {
+	oldPVCs := []string{}
+	for _, pvc := range pvcs {
+		memberName := etcdutil.MemberNameFromPVCName(pvc.Name)
+		if _, ok := c.members[memberName]; !ok {
+			oldPVCs = append(oldPVCs, pvc.Name)
+		}
+	}
+
+	for _, oldPVC := range oldPVCs {
+		c.logger.Infof("removing old pvc: %s", oldPVC)
+		if err := c.removePVC(oldPVC); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (c *Cluster) resize() error {
