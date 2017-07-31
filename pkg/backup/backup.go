@@ -77,7 +77,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		be = &fileBackend{dir: bdir}
 	case spec.BackupStorageTypeS3:
-		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), path.Join(ns, clusterName))
+		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), sp.Backup.S3.S3Path, path.Join(ns, clusterName))
 		if err != nil {
 			return nil, err
 		}
