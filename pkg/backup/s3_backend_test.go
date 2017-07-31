@@ -59,7 +59,7 @@ func TestS3BackendPurge(t *testing.T) {
 		},
 	}
 	buc := "test-bucket" // This is pre-set bucket
-	s3cli, err := s3.NewFromSessionOpt(buc, rs, sessOpt)
+	s3cli, err := s3.NewFromSessionOpt(buc, "", rs, sessOpt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,6 +71,56 @@ func TestS3BackendPurge(t *testing.T) {
 		S3:  s3cli,
 		dir: dir,
 	}
+	if _, err := s.save("3.1.0", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.save("3.1.0", 2, bytes.NewBuffer([]byte("ignore"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.purge(1); err != nil {
+		t.Fatal(err)
+	}
+	names, err := s3cli.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	leftFiles := []string{makeBackupName("3.1.0", 2)}
+	if !reflect.DeepEqual(leftFiles, names) {
+		t.Errorf("left files after purge, want=%v, get=%v", leftFiles, names)
+	}
+	if err := s3cli.Delete(makeBackupName("3.1.0", 2)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestS3BackendWithPrefix(t *testing.T) {
+	if os.Getenv("RUN_INTEGRATION_TEST") != "true" {
+		t.Skip("skipping integration test due to RUN_INTEGRATION_TEST not set")
+	}
+	rs := randString(10)
+	sessOpt := session.Options{
+		Config: aws.Config{
+			Credentials:      credentials.NewStaticCredentials(os.Getenv("MINIO_ACCESS_KEY_ID"), os.Getenv("MINIO_SECRET_ACCESS_KEY"), ""),
+			Endpoint:         aws.String("http://localhost:9000"),
+			Region:           aws.String("us-east-1"),
+			DisableSSL:       aws.Bool(true),
+			S3ForcePathStyle: aws.Bool(true),
+		},
+	}
+	buc := "test-bucket" // This is pre-set bucket
+	s3cli, err := s3.NewFromSessionOpt(buc, "prefix", rs, sessOpt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, err := ioutil.TempDir("", "etcd-operator-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := &s3Backend{
+		S3:  s3cli,
+		dir: dir,
+	}
+
 	if _, err := s.save("3.1.0", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
 		t.Fatal(err)
 	}

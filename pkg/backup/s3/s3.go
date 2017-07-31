@@ -38,32 +38,28 @@ type S3 struct {
 // New returns a S3 translator from default shared config.
 // Please refer to http://docs.aws.amazon.com/sdk-for-go/api/aws/session/
 // for setting up credentials and configuration.
-func New(bucket, prefix string) (*S3, error) {
-	return NewFromSessionOpt(bucket, prefix, session.Options{
+func New(bucket, pathPrefix, prefix string) (*S3, error) {
+	return NewFromSessionOpt(bucket, pathPrefix, prefix, session.Options{
 		// Setting this is equal to the AWS_SDK_LOAD_CONFIG environment variable was set.
 		// We want to save the work to set AWS_SDK_LOAD_CONFIG=1 outside.
 		SharedConfigState: session.SharedConfigEnable,
 	})
 }
 
-func NewFromSessionOpt(bucket, prefix string, so session.Options) (*S3, error) {
+func NewFromSessionOpt(bucket, pathPrefix, prefix string, so session.Options) (*S3, error) {
 	sess, err := session.NewSessionWithOptions(so)
 	if err != nil {
 		return nil, fmt.Errorf("new AWS session failed: %v", err)
 	}
 	cli := s3.New(sess)
 
-	return &S3{
-		bucket: bucket,
-		prefix: prefix,
-		client: cli,
-	}, nil
+	return NewFromClient(bucket, pathPrefix, prefix, cli), nil
 }
 
-func NewFromClient(bucket, prefix string, cli *s3.S3) *S3 {
+func NewFromClient(bucket, pathPrefix, prefix string, cli *s3.S3) *S3 {
 	return &S3{
 		bucket: bucket,
-		prefix: prefix,
+		prefix: path.Join(pathPrefix, v1, prefix),
 		client: cli,
 	}
 }
@@ -71,7 +67,7 @@ func NewFromClient(bucket, prefix string, cli *s3.S3) *S3 {
 func (s *S3) Put(key string, rs io.ReadSeeker) error {
 	_, err := s.client.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(path.Join(v1, s.prefix, key)),
+		Key:    aws.String(path.Join(s.prefix, key)),
 		Body:   rs,
 	})
 
@@ -81,7 +77,7 @@ func (s *S3) Put(key string, rs io.ReadSeeker) error {
 func (s *S3) Get(key string) (io.ReadCloser, error) {
 	resp, err := s.client.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(path.Join(v1, s.prefix, key)),
+		Key:    aws.String(path.Join(s.prefix, key)),
 	})
 	if err != nil {
 		return nil, err
@@ -93,7 +89,7 @@ func (s *S3) Get(key string) (io.ReadCloser, error) {
 func (s *S3) Delete(key string) error {
 	_, err := s.client.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(path.Join(v1, s.prefix, key)),
+		Key:    aws.String(path.Join(s.prefix, key)),
 	})
 
 	return err
@@ -109,7 +105,7 @@ func (s *S3) list(prefix string) (int64, []string, error) {
 		Bucket: aws.String(s.bucket),
 		// s3 doesn't have dir. It only recognizes prefix.
 		// Thus "a/b" has prefix "a/"
-		Prefix: aws.String(path.Join(v1, prefix) + "/"),
+		Prefix: aws.String(prefix + "/"),
 	})
 	if err != nil {
 		return -1, nil, err
@@ -139,7 +135,7 @@ func (s *S3) CopyPrefix(from string) error {
 	for _, key := range keys {
 		req := &s3.CopyObjectInput{
 			Bucket:     aws.String(s.bucket),
-			Key:        aws.String(path.Join(v1, s.prefix, key)),
+			Key:        aws.String(path.Join(s.prefix, key)),
 			CopySource: aws.String(path.Join(s.bucket, v1, from, key)),
 		}
 		_, err := s.client.CopyObject(req)

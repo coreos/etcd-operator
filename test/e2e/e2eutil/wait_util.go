@@ -284,7 +284,7 @@ func WaitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.EtcdCluster, ch
 				return false, nil
 			}
 		case spec.BackupStorageTypeS3:
-			s3cli := backups3.NewFromClient(checkerOpt.S3Bucket, path.Join(cl.Namespace, cl.Name), checkerOpt.S3Cli)
+			s3cli := backups3.NewFromClient(checkerOpt.S3Bucket, "", path.Join(cl.Namespace, cl.Name), checkerOpt.S3Cli)
 			keys, err := s3cli.List()
 			if err != nil {
 				return false, err

@@ -29,6 +29,7 @@ type s3 struct {
 
 func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
 	prefix := path.Join(ns, clusterName)
+
 	var dir string
 
 	s3cli, err := func() (*backups3.S3, error) {
@@ -41,9 +42,9 @@ func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, cluste
 			if err != nil {
 				return nil, err
 			}
-			return backups3.NewFromSessionOpt(p.S3.S3Bucket, prefix, *options)
+			return backups3.NewFromSessionOpt(p.S3.S3Bucket, p.S3.S3Path, prefix, *options)
 		} else {
-			return backups3.New(s3Ctx.S3Bucket, prefix)
+			return backups3.New(s3Ctx.S3Bucket, p.S3.S3Path, prefix)
 		}
 	}()
 	if err != nil {
