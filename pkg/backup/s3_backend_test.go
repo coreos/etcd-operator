@@ -44,7 +44,7 @@ func randString(strlen int) string {
 	return string(result)
 }
 
-func TestS3BackendPurge(t *testing.T) {
+func TestS3Backend(t *testing.T) {
 	if os.Getenv("RUN_INTEGRATION_TEST") != "true" {
 		t.Skip("skipping integration test due to RUN_INTEGRATION_TEST not set")
 	}
@@ -63,6 +63,16 @@ func TestS3BackendPurge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	t.Run("test S3 backend purge", func(t *testing.T) {
+		testS3BackendPurge(t, s3cli)
+	})
+	t.Run("test S3 backend delete", func(t *testing.T) {
+		testS3BackendDelete(t, s3cli)
+	})
+}
+
+func testS3BackendPurge(t *testing.T, s3cli *s3.S3) {
 	dir, err := ioutil.TempDir("", "etcd-operator-test")
 	if err != nil {
 		t.Fatal(err)
@@ -90,5 +100,37 @@ func TestS3BackendPurge(t *testing.T) {
 	}
 	if err := s3cli.Delete(makeBackupName("3.1.0", 2)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func testS3BackendDelete(t *testing.T, s3cli *s3.S3) {
+	dir, err := ioutil.TempDir("", "etcd-operator-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := &s3Backend{
+		S3:  s3cli,
+		dir: dir,
+	}
+	if _, err := s.save("3.1.0", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
+		t.Fatal(err)
+	}
+	names, err := s3cli.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	leftFiles := []string{makeBackupName("3.1.0", 1)}
+	if !reflect.DeepEqual(leftFiles, names) {
+		t.Errorf("left files after purge, want=%v, get=%v", leftFiles, names)
+	}
+	if err := s3cli.Delete(makeBackupName("3.1.0", 1)); err != nil {
+		t.Fatal(err)
+	}
+	names, err = s3cli.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(names) != 0 {
+		t.Errorf("backup files should have been deleted, but get=%v", names)
 	}
 }
