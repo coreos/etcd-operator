@@ -51,6 +51,8 @@ type BackupPolicy struct {
 	// AutoDelete tells whether to cleanup backup data if cluster is deleted.
 	// By default (false), operator will keep the backup data.
 	AutoDelete bool `json:"autoDelete"`
+
+	EncryptionKey string `json:"encryptionKey"`
 }
 
 func (bp *BackupPolicy) Validate() error {
