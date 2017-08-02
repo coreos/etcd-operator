@@ -221,7 +221,7 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 		return err
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
 	rc, err := etcdcli.Maintenance.Snapshot(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to receive snapshot (%v)", err)
