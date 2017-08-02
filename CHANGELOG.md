@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Default timeout for snapshots done by backup sidecar increased from 5 seconds to 1 minute
+
 ### Removed
 
 ### Fixed
