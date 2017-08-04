@@ -78,7 +78,7 @@ do
 done
 %s
 `
-	commands = fmt.Sprintf(ft, m.FQDN(), commands)
+	commands = fmt.Sprintf(ft, m.Addr(), commands)
 	commands = fmt.Sprintf("%s; %s", appendHostsCommands(), commands)
 	commands = fmt.Sprintf("flock %s -c \"%s\"", etcdLockPath, commands)
 	c := etcdContainer(commands, cs.BaseImage, cs.Version)
