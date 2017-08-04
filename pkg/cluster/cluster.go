@@ -533,7 +533,7 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 func (c *Cluster) updateMemberStatus(members etcdutil.MemberSet) {
 	var ready, unready []string
 	for _, m := range members {
-		url := m.ClientAddr()
+		url := m.ClientURL()
 		healthy, err := etcdutil.CheckHealth(url, c.tlsConfig)
 		if err != nil {
 			c.logger.Warningf("health check of etcd member (%s) failed: %v", url, err)
