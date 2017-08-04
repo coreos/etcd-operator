@@ -21,7 +21,7 @@ $ curl "http://etcd-cluster-backup-sidecar:19999/v1/backup?etcdVersion=3.1.0" -o
 On success, the backup's etcd version should be compatible with given version.
 Otherwise, it would return non-OK response.
 
-If sending the request from a pod in a different namespace, use FQDN `${CLUSTER_NAME}-backup-sidecar.${NAMESPACE}.svc.cluster.local` .
+If sending the request from a pod in a different namespace, use DNS name `${CLUSTER_NAME}-backup-sidecar.${NAMESPACE}.svc` .
 
 Outside kubernetes cluster, we need additional step to access the backup service,
 e.g. using [ingress](https://kubernetes.io/docs/user-guide/ingress/) .

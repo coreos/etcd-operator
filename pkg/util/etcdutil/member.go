@@ -37,7 +37,7 @@ type Member struct {
 }
 
 func (m *Member) FQDN() string {
-	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
+	return fmt.Sprintf("%s.%s.%s.svc", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
 }
 
 // ClientURL is the client URL for this member

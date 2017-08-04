@@ -289,9 +289,9 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			Containers:    []v1.Container{container},
 			RestartPolicy: v1.RestartPolicyNever,
 			Volumes:       volumes,
-			// DNS A record: [m.Name].[clusterName].Namespace.svc.cluster.local.
+			// DNS A record: `[m.Name].[clusterName].Namespace.svc`
 			// For example, etcd-0000 in default namesapce will have DNS name
-			// `etcd-0000.etcd.default.svc.cluster.local`.
+			// `etcd-0000.etcd.default.svc`.
 			Hostname:  m.Name,
 			Subdomain: clusterName,
 		},

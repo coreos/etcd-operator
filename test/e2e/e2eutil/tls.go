@@ -35,7 +35,7 @@ func PreparePeerTLSSecret(clusterName, ns, secretName string) error {
 	certPath := filepath.Join(dir, "peer.crt")
 	keyPath := filepath.Join(dir, "peer.key")
 	caPath := filepath.Join(dir, "peer-ca.crt")
-	hosts := []string{fmt.Sprintf("*.%s.%s.svc.cluster.local", clusterName, ns)}
+	hosts := []string{fmt.Sprintf("*.%s.%s.svc", clusterName, ns)}
 
 	err = prepareTLSCerts(certPath, keyPath, caPath, hosts)
 	if err != nil {
@@ -54,8 +54,8 @@ func PrepareClientTLSSecret(dir, clusterName, ns, mSecret, oSecret string) error
 	mKeyPath := filepath.Join(dir, "server.key")
 	oCAPath := filepath.Join(dir, "etcd-client-ca.crt")
 	mHosts := []string{
-		fmt.Sprintf("*.%s.%s.svc.cluster.local", clusterName, ns),
-		fmt.Sprintf("%s-client.%s.svc.cluster.local", clusterName, ns),
+		fmt.Sprintf("*.%s.%s.svc", clusterName, ns),
+		fmt.Sprintf("%s-client.%s.svc", clusterName, ns),
 		"localhost",
 	}
 
