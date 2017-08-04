@@ -10,7 +10,7 @@ Create deployment:
 $ kubectl create -f example/deployment.yaml
 ```
 
-etcd operator will automatically creates a Kubernetes Custom Resource Definition (CRD):
+etcd operator will automatically create a Kubernetes Custom Resource Definition (CRD):
 
 ```bash
 $ kubectl get customresourcedefinitions
