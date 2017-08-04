@@ -204,7 +204,7 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	start := time.Now()
 
 	cfg := clientv3.Config{
-		Endpoints:   []string{m.ClientAddr()},
+		Endpoints:   []string{m.ClientURL()},
 		DialTimeout: constants.DefaultDialTimeout,
 		TLS:         b.etcdTLSConfig,
 	}
@@ -215,7 +215,7 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	defer etcdcli.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	resp, err := etcdcli.Maintenance.Status(ctx, m.ClientAddr())
+	resp, err := etcdcli.Maintenance.Status(ctx, m.ClientURL())
 	cancel()
 	if err != nil {
 		return err
@@ -259,7 +259,7 @@ func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config, selfHosted bool) (*etcd
 			SecureClient: tc != nil,
 		}
 		cfg := clientv3.Config{
-			Endpoints:   []string{m.ClientAddr()},
+			Endpoints:   []string{m.ClientURL()},
 			DialTimeout: constants.DefaultDialTimeout,
 			TLS:         tc,
 		}
@@ -274,7 +274,7 @@ func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config, selfHosted bool) (*etcd
 		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
 		cancel()
 		if err != nil {
-			logrus.Warningf("getMaxRev: failed to get revision from member %s (%s)", m.Name, m.ClientAddr())
+			logrus.Warningf("getMaxRev: failed to get revision from member %s (%s)", m.Name, m.ClientURL())
 			continue
 		}
 

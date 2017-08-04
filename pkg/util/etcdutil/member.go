@@ -40,7 +40,8 @@ func (m *Member) FQDN() string {
 	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
 }
 
-func (m *Member) ClientAddr() string {
+// ClientURL is the client URL for this member
+func (m *Member) ClientURL() string {
 	return fmt.Sprintf("%s://%s:2379", m.clientScheme(), m.FQDN())
 }
 
@@ -143,7 +144,7 @@ func (ms MemberSet) Remove(name string) {
 func (ms MemberSet) ClientURLs() []string {
 	endpoints := make([]string, 0, len(ms))
 	for _, m := range ms {
-		endpoints = append(endpoints, m.ClientAddr())
+		endpoints = append(endpoints, m.ClientURL())
 	}
 	return endpoints
 }
