@@ -35,8 +35,8 @@ The example cluster YAML manifest and example certs can be found in [example/tls
 
 The peer TLS assets should have the following:
 - **peer.crt**: peer communication cert.
-  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc.cluster.local`.
-  In this case, it is `*.example.default.svc.cluster.local`.
+  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc`.
+  In this case, it is `*.example.default.svc`.
 - **peer.key**: peer communication key.
 - **peer-ca.crt**: CA cert for this peer key-cert pair.
 
@@ -54,9 +54,10 @@ Once passed, etcd-operator will mount this secret at `/etc/etcdtls/member/peer-t
 
 The client TLS assets should have the following:
 - **server.crt**: etcd server's client communication cert.
-  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc.cluster.local`,
-  `${clusterName}-client.${namespace}.svc.cluster.local`, `localhost`.
-  In this case, it is `*.example.default.svc.cluster.local`, `example-client.default.svc.cluster.local`, and `localhost`.
+  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc`,
+  `${clusterName}-client.${namespace}.svc`, and `localhost`.
+  In this case, it is `*.example.default.svc`, `example-client.default.svc`, and `localhost`.
+  To use more DNS name or IP to access etcd server, please add it here.
 - **server.key**: etcd server's client communication key.
 - **server-ca.crt**: CA cert for validating the certs of etcd clients.
 
@@ -90,8 +91,7 @@ Pass `etcd-client-tls` to `operatorSecret` field.
 
 Assume a secure etcd cluster `example` is up and running.
 
-To access the cluster, use the FQDN `example-client.default.svc.cluster.local`, which matches the SAN of its certificates.
-To add more DNS name or IP, that should be added when generating etcd server's client certs.
+To access the cluster, use the service `example-client.default.svc`, which matches the SAN of its certificates.
 
 Assume the following certs are being used:
 ```
@@ -104,7 +104,7 @@ Both `etcd-client.crt` and `etcd-client.key` should trusted by etcd server's cli
 
 Here is an example `etcdctl` command to list members from the secure etcd cluster:
 ```
-$ ETCDCTL_API=3 etcdctl --endpoints=https://example-client.default.svc.cluster.local:2379 \
+$ ETCDCTL_API=3 etcdctl --endpoints=https://example-client.default.svc:2379 \
     --cert=etcd-client.crt --key=etcd-client.key --cacert=etcd-client-ca.crt \
     member list -w table
 ```
