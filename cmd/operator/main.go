@@ -231,7 +231,7 @@ func getMyPodServiceAccount(kubecli kubernetes.Interface) (string, error) {
 
 func periodicFullGC(kubecli kubernetes.Interface, ns string, d time.Duration) {
 	gc := garbagecollection.New(kubecli, ns)
-	timer := time.NewTimer(d)
+	timer := time.NewTicker(d)
 	defer timer.Stop()
 	for {
 		<-timer.C

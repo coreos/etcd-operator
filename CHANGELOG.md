@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- Fix periodFullGC only executed once problem.
+
 ### Deprecated
 
 ### Security
