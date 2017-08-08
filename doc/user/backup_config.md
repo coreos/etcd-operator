@@ -1,7 +1,7 @@
 # Backup Options Config Guide
 
 In etcd operator, we provide the following options to save cluster backups to:
-- Persistent Volume (PV) on GCE or AWS
+- Persistent Volume (PV) on GCE, AWS or OpenStack Cinder
 - S3 bucket on AWS
 
 This docs talks about how to configure etcd operator to use these backup options.
@@ -18,10 +18,15 @@ If running on AWS Kubernetes, pass the flag `--pv-provisioner=kubernetes.io/aws-
 See [AWS deployment](../../example/deployment-aws.yaml).
 This is essentially saving backups on an instance of AWS EBS.
 
+## PV on OpenStack Cinder
+
+Snapshotting to Cinder is done by passing flag `--pv-provisioner=kubernetes.io/cinder` as a runtime flag to the operator.
+This will save snapshots to a dynamically created Cinder volume.
+
 ## S3 on AWS
 
 Saving backups to S3 is also supported. The S3 backup policy can be set at two levels:
-- **operator level:** The same S3 configurations (bucket and secret names) will be used for all S3 backup enabled clusters created by the operator 
+- **operator level:** The same S3 configurations (bucket and secret names) will be used for all S3 backup enabled clusters created by the operator
 - **cluster level:** Each cluster can specify its own S3 configuration.
 
 If configurations for both levels are specified then the cluster level configuration will override the operator level configuration.
