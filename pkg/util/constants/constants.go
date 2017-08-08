@@ -29,5 +29,6 @@ const (
 
 	PVProvisionerGCEPD  = "kubernetes.io/gce-pd"
 	PVProvisionerAWSEBS = "kubernetes.io/aws-ebs"
+	PVProvisionerCinder = "kubernetes.io/cinder"
 	PVProvisionerNone   = "none"
 )

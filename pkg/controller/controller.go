@@ -41,6 +41,7 @@ var (
 	supportedPVProvisioners = map[string]struct{}{
 		constants.PVProvisionerGCEPD:  {},
 		constants.PVProvisionerAWSEBS: {},
+		constants.PVProvisionerCinder: {},
 		constants.PVProvisionerNone:   {},
 	}
 
