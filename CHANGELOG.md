@@ -1,5 +1,11 @@
 ## [Unreleased 0.5.1]
 
+Upgrade notice for TLS cluster users:
+If you are using TLS-enabled etcd cluster, the SAN domain has been changed. See [TLS docs](./doc/user/cluster_tls.md).
+Before upgrading operator, you need to rotate certs on each secrets to allow both the old and new domains.
+Then restart each etcd pod -- the simplest way is to "upgrade" cluster version.
+Finally, it is safe to upgrade operator. It's highly recommended to save a backup before upgrade.
+
 ### Added
 
 ### Changed
