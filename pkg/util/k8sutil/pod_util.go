@@ -153,6 +153,14 @@ func applyPodPolicyToPodTemplateSpec(clusterName string, pod *v1.PodTemplateSpec
 	}
 
 	mergeLabels(pod.Labels, policy.Labels)
+
+	if len(policy.EtcdEnv) != 0 {
+		for i := range pod.Spec.Containers {
+			if pod.Spec.Containers[i].Name == "backup" {
+				pod.Spec.Containers[i].Env = append(pod.Spec.Containers[i].Env, policy.EtcdEnv...)
+			}
+		}
+	}
 }
 
 // IsPodReady returns false if the Pod Status is nil
