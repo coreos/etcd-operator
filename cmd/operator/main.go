@@ -53,6 +53,7 @@ import (
 var (
 	analyticsEnabled bool
 	pvProvisioner    string
+	storageClass     string
 	namespace        string
 	name             string
 	awsSecret        string
@@ -70,7 +71,8 @@ func init() {
 	flag.BoolVar(&analyticsEnabled, "analytics", true, "Send analytical event (Cluster Created/Deleted etc.) to Google Analytics")
 	flag.StringVar(&debug.DebugFilePath, "debug-logfile-path", "", "only for a self hosted cluster, the path where the debug logfile will be written, recommended to be under: /var/tmp/etcd-operator/debug/ to avoid any issue with lack of write permissions")
 
-	flag.StringVar(&pvProvisioner, "pv-provisioner", constants.PVProvisionerGCEPD, "persistent volume provisioner type")
+	flag.StringVar(&pvProvisioner, "pv-provisioner", constants.PVProvisionerGCEPD, "The persistent volume provisioner type used when backing up etcd. This cannot be used with --storageclass")
+	flag.StringVar(&storageClass, "storageclass", "", "The Kubernetes StorageClass used when backing up etcd to persistent volumes. This cannot be used with --pv-provisioner")
 	flag.StringVar(&awsSecret, "backup-aws-secret", "",
 		"The name of the kube secret object that stores the AWS credential file. The file name must be 'credentials'.")
 	flag.StringVar(&awsConfig, "backup-aws-config", "",
@@ -203,6 +205,7 @@ func newControllerConfig() controller.Config {
 		Namespace:      namespace,
 		ServiceAccount: serviceAccount,
 		PVProvisioner:  pvProvisioner,
+		StorageClass:   storageClass,
 		S3Context: s3config.S3Context{
 			AWSSecret: awsSecret,
 			AWSConfig: awsConfig,

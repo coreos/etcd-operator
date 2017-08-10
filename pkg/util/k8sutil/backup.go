@@ -61,9 +61,14 @@ func CreateStorageClass(kubecli kubernetes.Interface, pvProvisioner string) erro
 	return err
 }
 
-func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvisioner string, volumeSizeInMB int) error {
+func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvisioner string, storageClass string, volumeSizeInMB int) error {
 	name := makePVCName(clusterName)
-	storageClassName := storageClassPrefix + "-" + path.Base(pvProvisioner)
+	var storageClassName string
+	if storageClass != "" {
+		storageClassName = storageClass
+	} else {
+		storageClassName = storageClassPrefix + "-" + path.Base(pvProvisioner)
+	}
 	claim := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,

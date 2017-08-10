@@ -2,17 +2,31 @@
 
 In etcd operator, we provide the following options to save cluster backups to:
 - Persistent Volume (PV) on GCE or AWS
+- Persistent Volume (PV) with StorageClasses
 - S3 bucket on AWS
 
 This docs talks about how to configure etcd operator to use these backup options.
 
+
+## PV with --storageclass
+
+If your Kubernetes supports the [StorageClass](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#storageclasses) resource, you can pass the flag `--storageclass` to the operator. This flag provides more granular control over how to persist etcd data to PersistentVolumes. This is essentially saving backups to a PersistentVolume with a predefined StorageClass.
+
+For an example of how this is used, see this [Deployment manifest](../../example/deployment-storageclass.yaml).
+
+You must set `--pv-provisioner=none` to use this feature.
+
 ## PV on GCE
+
+**Note: It is recommended to use --storageclass because --pv-provisioner will be deprecated in a future release**
 
 By default, operator supports saving backup to PV on GCE.
 This is done by passing flag `--pv-provisioner=kubernetes.io/gce-pd` to operator, which is also the default value.
 This is essentially saving backups to an instance of GCE PD.
 
 ## PV on AWS
+
+**Note: It is recommended to use --storageclass because --pv-provisioner will be deprecated in a future release**
 
 If running on AWS Kubernetes, pass the flag `--pv-provisioner=kubernetes.io/aws-ebs` to operator.
 See [AWS deployment](../../example/deployment-aws.yaml).
@@ -21,7 +35,7 @@ This is essentially saving backups on an instance of AWS EBS.
 ## S3 on AWS
 
 Saving backups to S3 is also supported. The S3 backup policy can be set at two levels:
-- **operator level:** The same S3 configurations (bucket and secret names) will be used for all S3 backup enabled clusters created by the operator 
+- **operator level:** The same S3 configurations (bucket and secret names) will be used for all S3 backup enabled clusters created by the operator
 - **cluster level:** Each cluster can specify its own S3 configuration.
 
 If configurations for both levels are specified then the cluster level configuration will override the operator level configuration.
