@@ -49,8 +49,7 @@ const (
 )
 
 func CreateStorageClass(kubecli kubernetes.Interface, pvProvisioner string) error {
-	// We need
-	// get rid of prefix because naming doesn't support "/".
+	// We need to get rid of prefix because naming doesn't support "/".
 	name := storageClassPrefix + "-" + path.Base(pvProvisioner)
 	class := &v1beta1storage.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{

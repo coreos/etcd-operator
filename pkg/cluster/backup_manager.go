@@ -77,7 +77,7 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 	b := cl.Spec.Backup
 	switch b.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-		if c.PVProvisioner == constants.PVProvisionerNone {
+		if c.PVProvisioner == constants.PVProvisionerNone && c.StorageClass == "" {
 			return nil, errNoPVForBackup
 		}
 		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Name, cl.Namespace, c.PVProvisioner, c.StorageClass, *b)

@@ -83,12 +83,17 @@ type Config struct {
 }
 
 func (c *Config) Validate() error {
+	if c.PVProvisioner != constants.PVProvisionerNone && c.StorageClass != "" {
+		return errors.New("you cannot specify --pv-provisioner when specifying --storageclass. Either set --pv-provisioner=none or do not use --storageclass")
+	}
+
 	if _, ok := supportedPVProvisioners[c.PVProvisioner]; !ok {
 		return fmt.Errorf(
 			"persistent volume provisioner %s is not supported: options = %v",
 			c.PVProvisioner, supportedPVProvisioners,
 		)
 	}
+
 	allEmpty := len(c.S3Context.AWSConfig) == 0 && len(c.S3Context.AWSSecret) == 0 && len(c.S3Context.S3Bucket) == 0
 	allSet := len(c.S3Context.AWSConfig) != 0 && len(c.S3Context.AWSSecret) != 0 && len(c.S3Context.S3Bucket) != 0
 	if !(allEmpty || allSet) {
@@ -268,7 +273,7 @@ func (c *Controller) initResource() (string, error) {
 			return "", fmt.Errorf("fail to create CRD: %v", err)
 		}
 	}
-	if c.Config.PVProvisioner != constants.PVProvisionerNone && c.Config.StorageClass != "" {
+	if c.Config.PVProvisioner != constants.PVProvisionerNone && c.Config.StorageClass == "" {
 		err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
 		if err != nil {
 			if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
