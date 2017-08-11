@@ -37,7 +37,7 @@ Kubernetes cluster version must be 1.7+.
     - `kubectl -n <namespace> delete cluster <cluster-name>`
 - Delete the etcd-operator deployment
 - Delete the TPR
-    - `kubectl delete thirdpartyresource clusters.etcd.coreos.com `
+    - `kubectl delete thirdpartyresource cluster.etcd.coreos.com`
 - Replace the existing RBAC rules for the etcd-operator by editing or recreating the `ClusterRole` with the [new rules for CRD](https://github.com/coreos/etcd-operator/blob/master/doc/user/rbac.md#create-clusterrole).
 - Recreate the etcd-operator deployment with the `0.5.0` image.
 - Create a new cluster that restores from the backup of the previous cluster. The new cluster CR spec should look as follows:
