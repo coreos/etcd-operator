@@ -8,26 +8,26 @@ import (
 )
 
 type pv struct {
-	clusterName   string
-	namespace     string
-	pvProvisioner string
-	backupPolicy  spec.BackupPolicy
-	kubecli       kubernetes.Interface
+	clusterName  string
+	namespace    string
+	storageClass string
+	backupPolicy spec.BackupPolicy
+	kubecli      kubernetes.Interface
 }
 
-func NewPVStorage(kubecli kubernetes.Interface, cn, ns, pvp string, backupPolicy spec.BackupPolicy) (Storage, error) {
+func NewPVStorage(kubecli kubernetes.Interface, cn, ns, sc string, backupPolicy spec.BackupPolicy) (Storage, error) {
 	s := &pv{
-		clusterName:   cn,
-		namespace:     ns,
-		pvProvisioner: pvp,
-		backupPolicy:  backupPolicy,
-		kubecli:       kubecli,
+		clusterName:  cn,
+		namespace:    ns,
+		storageClass: sc,
+		backupPolicy: backupPolicy,
+		kubecli:      kubecli,
 	}
 	return s, nil
 }
 
 func (s *pv) Create() error {
-	return k8sutil.CreateAndWaitPVC(s.kubecli, s.clusterName, s.namespace, s.pvProvisioner, s.backupPolicy.PV.VolumeSizeInMB)
+	return k8sutil.CreateAndWaitPVC(s.kubecli, s.clusterName, s.namespace, s.storageClass, s.backupPolicy.PV.VolumeSizeInMB)
 }
 
 func (s *pv) Clone(from string) error {

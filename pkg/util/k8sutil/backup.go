@@ -36,7 +36,9 @@ import (
 )
 
 const (
-	storageClassPrefix        = "etcd-backup"
+	// StorageClassPrefix is the prefix used when creating custom storage classes
+	// used in backup operations
+	StorageClassPrefix        = "etcd-backup"
 	BackupPodSelectorAppField = "etcd_backup_tool"
 	backupPVVolName           = "etcd-backup-storage"
 	awsCredentialDir          = "/root/.aws/"
@@ -50,7 +52,7 @@ const (
 
 func CreateStorageClass(kubecli kubernetes.Interface, pvProvisioner string) error {
 	// We need to get rid of prefix because naming doesn't support "/".
-	name := storageClassPrefix + "-" + path.Base(pvProvisioner)
+	name := StorageClassPrefix + "-" + path.Base(pvProvisioner)
 	class := &v1beta1storage.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -61,9 +63,8 @@ func CreateStorageClass(kubecli kubernetes.Interface, pvProvisioner string) erro
 	return err
 }
 
-func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvisioner string, volumeSizeInMB int) error {
+func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, storageClass string, volumeSizeInMB int) error {
 	name := makePVCName(clusterName)
-	storageClassName := storageClassPrefix + "-" + path.Base(pvProvisioner)
 	claim := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -72,7 +73,7 @@ func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvision
 				"app":          "etcd",
 			},
 			Annotations: map[string]string{
-				"volume.beta.kubernetes.io/storage-class": storageClassName,
+				"volume.beta.kubernetes.io/storage-class": storageClass,
 			},
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
