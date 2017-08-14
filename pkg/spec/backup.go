@@ -76,6 +76,12 @@ type PVSource struct {
 	// purpose.
 	// If the snapshot size is larger than the size specified, backup fails.
 	VolumeSizeInMB int `json:"volumeSizeInMB"`
+
+	// StorageClass indicates what Kubernetes storage class will be used to
+	// snapshot etcd cluster state to a persistent volume. This enables the user
+	// to have fine-grained control over how backups work, since it uses the
+	// existing StorageClass mechanism in Kubernetes.
+	StorageClass string `json:"storageClass"`
 }
 
 // TODO: support per cluster S3 Source configuration.
