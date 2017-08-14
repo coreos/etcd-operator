@@ -24,6 +24,7 @@ import (
 var compatibilityMap = map[string]map[string]struct{}{
 	"3.0": {"2.3": struct{}{}, "3.0": struct{}{}},
 	"3.1": {"3.0": struct{}{}, "3.1": struct{}{}},
+	"3.2": {"3.1": struct{}{}, "3.2": struct{}{}},
 }
 
 func getMajorMinorVersionFromBackup(name string) (string, error) {
