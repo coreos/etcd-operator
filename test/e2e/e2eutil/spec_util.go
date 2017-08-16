@@ -61,7 +61,7 @@ func NewOperatorS3BackupPolicy(cleanup bool) *spec.BackupPolicy {
 	}
 }
 
-func NewPVBackupPolicy(cleanup bool) *spec.BackupPolicy {
+func NewPVBackupPolicy(cleanup bool, storageClass string) *spec.BackupPolicy {
 	return &spec.BackupPolicy{
 		BackupIntervalInSecond: 60 * 60,
 		MaxBackups:             5,
@@ -69,6 +69,7 @@ func NewPVBackupPolicy(cleanup bool) *spec.BackupPolicy {
 		StorageSource: spec.StorageSource{
 			PV: &spec.PVSource{
 				VolumeSizeInMB: 512,
+				StorageClass:   storageClass,
 			},
 		},
 		AutoDelete: cleanup,

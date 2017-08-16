@@ -140,7 +140,7 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 // TestRestoreFromBackup tests that new operator could recover a new cluster from a backup of the old cluster.
 func TestRestoreFromBackup(t *testing.T) {
 	t.Run("Restore from PV backup of old cluster", func(t *testing.T) {
-		testRestoreWithBackupPolicy(t, e2eutil.NewPVBackupPolicy(false))
+		testRestoreWithBackupPolicy(t, e2eutil.NewPVBackupPolicy(false, ""))
 	})
 	t.Run("Restore from S3 backup of old cluster", func(t *testing.T) {
 		t.Run("per cluster s3 policy", func(t *testing.T) {
@@ -257,7 +257,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 // TestBackupForOldCluster tests that new backup sidecar could make backup from old cluster.
 func TestBackupForOldCluster(t *testing.T) {
 	t.Run("PV backup for old cluster", func(t *testing.T) {
-		testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewPVBackupPolicy(true))
+		testBackupForOldClusterWithBackupPolicy(t, e2eutil.NewPVBackupPolicy(true, ""))
 	})
 	t.Run("S3 backup for old cluster", func(t *testing.T) {
 		t.Run("per cluster s3 policy", func(t *testing.T) {
@@ -340,7 +340,7 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 // TestDisasterRecovery tests if the new operator could do disaster recovery from backup of the old cluster.
 func TestDisasterRecovery(t *testing.T) {
 	t.Run("Recover from PV backup", func(t *testing.T) {
-		testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewPVBackupPolicy(true))
+		testDisasterRecoveryWithBackupPolicy(t, e2eutil.NewPVBackupPolicy(true, ""))
 	})
 	t.Run("Recover from S3 backup", func(t *testing.T) {
 		t.Run("per cluster s3 policy", func(t *testing.T) {

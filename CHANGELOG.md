@@ -8,6 +8,8 @@ Finally, it is safe to upgrade operator. It's highly recommended to save a backu
 
 ### Added
 
+- A new `StorageClass` spec field, allowing more granular control over how etcd clusters are backed up to PVs.
+
 ### Changed
 
 - Default timeout for snapshots done by backup sidecar increased from 5 seconds to 1 minute

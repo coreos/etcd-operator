@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"time"
 
 	"github.com/coreos/etcd-operator/client/experimentalclient"
@@ -77,10 +78,14 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 	b := cl.Spec.Backup
 	switch b.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
-		if c.PVProvisioner == constants.PVProvisionerNone {
-			return nil, errNoPVForBackup
+		storageClass := b.PV.StorageClass
+		if len(storageClass) == 0 {
+			if c.PVProvisioner == constants.PVProvisionerNone {
+				return nil, errNoPVForBackup
+			}
+			storageClass = k8sutil.StorageClassPrefix + "-" + path.Base(c.PVProvisioner)
 		}
-		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Name, cl.Namespace, c.PVProvisioner, *b)
+		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Name, cl.Namespace, storageClass, *b)
 	case spec.BackupStorageTypeS3:
 		if len(c.S3Context.AWSConfig) == 0 && b.S3 == nil {
 			return nil, errNoS3ConfigForBackup
