@@ -74,13 +74,23 @@ func TestOneMemberRecovery(t *testing.T) {
 	}
 }
 
-// TestDisasterRecoveryMaj tests disaster recovery that
-// ooperator will make a backup from the left one pod.
+// TestDisasterRecoveryMaj ensures the operator will make a backup from the
+// one remaining pod.
 func TestDisasterRecoveryMaj(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testDisasterRecovery(t, 2)
+	testDisasterRecovery(t, 2, "")
+}
+
+// TestDisasterRecoveryMajWithCustomStorageClass ensures that the operator
+// will make a backup using a custom storage class with the state from the
+// one remaining pod.
+func TestDisasterRecoveryMajWithCustomStorageClass(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
+	testDisasterRecovery(t, 2, "standard")
 }
 
 // testDisasterRecoveryAll tests disaster recovery that
@@ -89,11 +99,11 @@ func TestDisasterRecoveryAll(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testDisasterRecovery(t, 3)
+	testDisasterRecovery(t, 3, "")
 }
 
-func testDisasterRecovery(t *testing.T, numToKill int) {
-	testDisasterRecoveryWithBackupPolicy(t, numToKill, e2eutil.NewPVBackupPolicy(true))
+func testDisasterRecovery(t *testing.T, numToKill int, storageClass string) {
+	testDisasterRecoveryWithBackupPolicy(t, numToKill, e2eutil.NewPVBackupPolicy(true, storageClass))
 }
 
 func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPolicy *spec.BackupPolicy) {
