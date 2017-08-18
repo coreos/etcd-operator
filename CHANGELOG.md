@@ -1,4 +1,19 @@
-## [Unreleased 0.5.1]
+## [Unreleased 0.5.2]
+
+### Added
+
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
+## [Release 0.5.1]
 
 Upgrade notice for TLS cluster users:
 If you are using TLS-enabled etcd cluster, the SAN domain has been changed. See [TLS docs](./doc/user/cluster_tls.md).
@@ -14,16 +29,11 @@ Finally, it is safe to upgrade operator. It's highly recommended to save a backu
 
 - Default timeout for snapshots done by backup sidecar increased from 5 seconds to 1 minute
 
-### Removed
-
 ### Fixed
 
 - Fix periodFullGC only executed once problem.
 - [GH-1021] Use the cluster domain provided by kubelet instead of hardcoded `.cluster.local` .
 
-### Deprecated
-
-### Security
 
 ## [Release 0.5.0]
 
