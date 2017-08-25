@@ -59,3 +59,20 @@ func TestNewBackupManagerWithoutS3Config(t *testing.T) {
 		t.Errorf("expect err=%v, get=%v", errNoS3ConfigForBackup, err)
 	}
 }
+
+func TestNewBackupManagerWithoutABSCreds(t *testing.T) {
+	cfg := Config{}
+	cl := &spec.EtcdCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "testing"},
+		Spec: spec.ClusterSpec{
+			Backup: &spec.BackupPolicy{
+				StorageType: spec.BackupStorageTypeABS,
+				MaxBackups:  1,
+			},
+		},
+	}
+	_, err := newBackupManager(cfg, cl, nil)
+	if err != errNoABSCredsForBackup {
+		t.Errorf("expect err=%v, get=%v", errNoABSCredsForBackup, err)
+	}
+}

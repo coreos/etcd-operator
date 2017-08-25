@@ -22,9 +22,13 @@ const (
 	BackupStorageTypeDefault          = ""
 	BackupStorageTypePersistentVolume = "PersistentVolume"
 	BackupStorageTypeS3               = "S3"
+	BackupStorageTypeABS              = "ABS"
 
 	AWSSecretCredentialsFileName = "credentials"
 	AWSSecretConfigFileName      = "config"
+
+	ABSStorageAccount = "storage-account"
+	ABSStorageKey     = "storage-key"
 )
 
 var errPVZeroSize = errors.New("PV backup should not have 0 size volume")
@@ -66,8 +70,9 @@ func (bp *BackupPolicy) Validate() error {
 }
 
 type StorageSource struct {
-	PV *PVSource `json:"pv,omitempty"`
-	S3 *S3Source `json:"s3,omitempty"`
+	PV  *PVSource  `json:"pv,omitempty"`
+	S3  *S3Source  `json:"s3,omitempty"`
+	ABS *ABSSource `json:"abs,omitempty"`
 }
 
 type PVSource struct {
@@ -98,6 +103,21 @@ type S3Source struct {
 	//
 	// AWSSecret overwrites the default etcd operator wide AWS credential and config.
 	AWSSecret string `json:"awsSecret,omitempty"`
+}
+
+// ABSSource represents a ABS backup storage source
+type ABSSource struct {
+	// The name of the ABS container to store backups in.
+	//
+	// ABSContainer overwrites the default etcd operator wide container name.
+	ABSContainer string `json:"absContainer,omitempty"`
+
+	// The name of the secret object that stores the ABS credential files.
+	// The file name of the credential MUST be 'abs-credentials'.
+	// The profile to use in both files will be 'default'.
+	//
+	// ABSSecret overwrites the default etcd operator wide ABS credential.
+	ABSSecret string `json:"absSecret,omitempty"`
 }
 
 type BackupServiceStatus struct {

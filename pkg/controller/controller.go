@@ -93,6 +93,7 @@ func (c *Config) Validate() error {
 	if !(allEmpty || allSet) {
 		return errors.New("AWS/S3 related configs should be all set or all empty")
 	}
+
 	return nil
 }
 
@@ -233,6 +234,7 @@ func (c *Controller) findAllClusters() (string, error) {
 		clus.Spec.Cleanup()
 
 		stopC := make(chan struct{})
+
 		nc := cluster.New(c.makeClusterConfig(), &clus, stopC, &c.waitCluster)
 		c.stopChMap[clus.Name] = stopC
 		c.clusters[clus.Name] = nc
@@ -247,8 +249,7 @@ func (c *Controller) makeClusterConfig() cluster.Config {
 		PVProvisioner:  c.PVProvisioner,
 		ServiceAccount: c.Config.ServiceAccount,
 		S3Context:      c.S3Context,
-
-		KubeCli: c.KubeCli,
+		KubeCli:        c.KubeCli,
 	}
 }
 

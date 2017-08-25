@@ -22,6 +22,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/backup/abs"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
@@ -85,6 +86,15 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 		be = &s3Backend{
 			dir: tmpDir,
 			S3:  s3cli,
+		}
+	case spec.BackupStorageTypeABS:
+		absCli, err := abs.New(os.Getenv(env.ABSContainer), path.Join(ns, clusterName))
+		if err != nil {
+			return nil, err
+		}
+
+		be = &absBackend{
+			ABS: absCli,
 		}
 	default:
 		return nil, fmt.Errorf("unsupported storage type: %v", sp.Backup.StorageType)
