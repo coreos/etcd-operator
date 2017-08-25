@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd-operator Authors
+// Copyright 2017 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package env
+package absconfig
 
-const (
-	ClusterSpec       = "CLUSTER_SPEC"
-	AWSS3Bucket       = "AWS_S3_BUCKET"
-	AWSConfig         = "AWS_CONFIG_FILE"
-	ABSContainer      = "AZURE_STORAGE_CONTAINER"
-	ABSStorageAccount = "AZURE_STORAGE_ACCOUNT"
-	ABSStorageKey     = "AZURE_STORAGE_KEY"
-)
+import "errors"
+
+// ABSContext represents the controller context around a ABS backend configuration
+type ABSContext struct {
+	ABSSecret    string
+	ABSContainer string
+}
+
+// Validate validates a given ABSContext
+func (a *ABSContext) Validate() error {
+	allEmpty := len(a.ABSSecret) == 0 && len(a.ABSContainer) == 0
+	allSet := len(a.ABSSecret) != 0 && len(a.ABSContainer) != 0
+
+	if !(allEmpty || allSet) {
+		return errors.New("ABS related values should be all set or all empty")
+	}
+
+	return nil
+}

@@ -183,6 +183,29 @@ func AttachOperatorS3ToPodSpec(ps *v1.PodSpec, s3Ctx s3config.S3Context) {
 	})
 }
 
+// AttachABSToPodSpec attaches ABS credentials to a Pod
+func AttachABSToPodSpec(ps *v1.PodSpec, ws spec.ABSSource) {
+	storageAccountSelector := v1.SecretKeySelector{
+		LocalObjectReference: v1.LocalObjectReference{Name: ws.ABSSecret},
+		Key:                  spec.ABSStorageAccount,
+	}
+	storageKeySelector := v1.SecretKeySelector{
+		LocalObjectReference: v1.LocalObjectReference{Name: ws.ABSSecret},
+		Key:                  spec.ABSStorageKey,
+	}
+
+	ps.Containers[0].Env = append(ps.Containers[0].Env, v1.EnvVar{
+		Name:      backupenv.ABSStorageAccount,
+		ValueFrom: &v1.EnvVarSource{SecretKeyRef: &storageAccountSelector},
+	}, v1.EnvVar{
+		Name:      backupenv.ABSStorageKey,
+		ValueFrom: &v1.EnvVarSource{SecretKeyRef: &storageKeySelector},
+	}, v1.EnvVar{
+		Name:  backupenv.ABSContainer,
+		Value: ws.ABSContainer,
+	})
+}
+
 func NewBackupPodTemplate(clusterName, account string, sp spec.ClusterSpec) v1.PodTemplateSpec {
 	b, err := json.Marshal(sp)
 	if err != nil {
