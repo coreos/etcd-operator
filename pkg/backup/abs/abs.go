@@ -17,17 +17,12 @@ package abs
 import (
 	"fmt"
 	"io"
-	"os"
 	"path"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
 )
 
-const (
-	v1                        = "v1/"
-	azureStorageAccountEnvVar = "AZURE_STORAGE_ACCOUNT"
-	azureStorageKeyEnvVar     = "AZURE_STORAGE_KEY"
-)
+const v1 = "v1/"
 
 // ABS is a helper to wrap complex ABS logic
 type ABS struct {
@@ -37,15 +32,7 @@ type ABS struct {
 }
 
 // New returns a new ABS object for a given container using credentials set in the environment
-func New(container, prefix string) (*ABS, error) {
-	accountName := os.Getenv(azureStorageAccountEnvVar)
-	if accountName == "" {
-		return nil, fmt.Errorf("missing required environment variable of %s", azureStorageAccountEnvVar)
-	}
-	accountKey := os.Getenv(azureStorageKeyEnvVar)
-	if accountKey == "" {
-		return nil, fmt.Errorf("missing required environment variable of %s", azureStorageKeyEnvVar)
-	}
+func New(container, accountName, accountKey, prefix string) (*ABS, error) {
 	basicClient, err := storage.NewBasicClient(accountName, accountKey)
 	if err != nil {
 		return nil, fmt.Errorf("create ABS client failed: %v", err)
