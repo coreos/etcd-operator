@@ -25,5 +25,5 @@ import:
 - package: github.com/jpillora/go-ogle-analytics
 - package: golang.org/x/net
 - package: golang.org/x/time
-- package: github.com/Azure/azure-sdk-for-go/storage
-  version: v10.0.4-beta
+- package: github.com/Azure/azure-sdk-for-go
+  version: v10.3.0-beta

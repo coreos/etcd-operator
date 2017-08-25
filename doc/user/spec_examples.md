@@ -146,23 +146,16 @@ spec:
 spec:
   size: 3
   backup:
-    backupIntervalInSecond: 300
-    maxBackups: 5
-    storageType: "ABS"
-```
-
-### ABS backup and cluster specific ABS configuration
-
-```yaml
-spec:
-  size: 3
-  backup:
     backupIntervalInSecond: 1800
     maxBackups: 5
     storageType: "ABS"
     abs:
       absContainer: <abs-container-name>
       absSecret: <abs-secret-name>
+  ## the section below can be added to restore from a pre-existing cluster backup
+  restore:
+    backupClusterName: "cluster-a"
+    storageType: "ABS"
 ```
 
 ### TLS
