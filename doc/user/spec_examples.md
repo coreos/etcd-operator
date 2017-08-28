@@ -138,6 +138,22 @@ spec:
     storageType: "PersistentVolume"
 ```
 
+## ABS spec examples
+
+### Three member cluster with ABS backup
+
+```yaml
+spec:
+  size: 3
+  backup:
+    backupIntervalInSecond: 1800
+    maxBackups: 5
+    storageType: "ABS"
+    abs:
+      absContainer: <abs-container-name>
+      absSecret: <abs-secret-name>
+```
+
 ### TLS
 
 See [cluster TLS docs](./cluster_tls.md).

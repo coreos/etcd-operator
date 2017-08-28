@@ -68,6 +68,8 @@ func (bp *BackupPolicy) Validate() error {
 type StorageSource struct {
 	PV *PVSource `json:"pv,omitempty"`
 	S3 *S3Source `json:"s3,omitempty"`
+	// ABS represents an Azure Blob Storage resource for storing etcd backups
+	ABS *ABSSource `json:"abs,omitempty"`
 }
 
 type PVSource struct {
@@ -98,6 +100,19 @@ type S3Source struct {
 	//
 	// AWSSecret overwrites the default etcd operator wide AWS credential and config.
 	AWSSecret string `json:"awsSecret,omitempty"`
+}
+
+// ABSSource represents an Azure Blob Storage (ABS) backup storage source
+type ABSSource struct {
+	// ABSContainer is the name of the ABS container to store backups in.
+	ABSContainer string `json:"absContainer,omitempty"`
+
+	// ABSSecret is the name of the secret object that stores the ABS credentials.
+	//
+	// Within the secret object, the following fields MUST be provided:
+	// 'storage-account' holding the Azure Storage account name
+	// 'storage-key' holding the Azure Storage account key
+	ABSSecret string `json:"absSecret,omitempty"`
 }
 
 type BackupServiceStatus struct {
