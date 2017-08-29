@@ -67,24 +67,14 @@ func (bp *BackupPolicy) Validate() error {
 }
 
 type StorageSource struct {
+	// PV represents a Persistent Volume resource, operator will claim the
+	// required size before creating the etcd cluster for backup purpose.
+	// If the snapshot size is larger than the size specified operator would
+	// kill the cluster and report failure condition in status.
 	PV *PVSource `json:"pv,omitempty"`
 	S3 *S3Source `json:"s3,omitempty"`
 	// ABS represents an Azure Blob Storage resource for storing etcd backups
 	ABS *ABSSource `json:"abs,omitempty"`
-}
-
-type PVSource struct {
-	// VolumeSizeInMB specifies the required volume size to perform backups.
-	// Operator will claim the required size before creating the etcd cluster for backup
-	// purpose.
-	// If the snapshot size is larger than the size specified, backup fails.
-	VolumeSizeInMB int `json:"volumeSizeInMB"`
-
-	// StorageClass indicates what Kubernetes storage class will be used to
-	// snapshot etcd cluster state to a persistent volume. This enables the user
-	// to have fine-grained control over how backups work, since it uses the
-	// existing StorageClass mechanism in Kubernetes.
-	StorageClass string `json:"storageClass"`
 }
 
 // TODO: support per cluster S3 Source configuration.
