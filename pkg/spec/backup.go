@@ -22,6 +22,7 @@ const (
 	BackupStorageTypeDefault          = ""
 	BackupStorageTypePersistentVolume = "PersistentVolume"
 	BackupStorageTypeS3               = "S3"
+	BackupStorageTypeABS              = "ABS"
 
 	AWSSecretCredentialsFileName = "credentials"
 	AWSSecretConfigFileName      = "config"
