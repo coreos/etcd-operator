@@ -134,3 +134,78 @@ func testS3BackendDelete(t *testing.T, s3cli *s3.S3) {
 		t.Errorf("backup files should have been deleted, but get=%v", names)
 	}
 }
+
+// TestS3BackendWithPrefix ensures prefixed s3 clients do save files under the prefixed path.
+func TestS3BackendWithPrefix(t *testing.T) {
+	if os.Getenv("RUN_INTEGRATION_TEST") != "true" {
+		t.Skip("skipping integration test due to RUN_INTEGRATION_TEST not set")
+	}
+	sessOpt := session.Options{
+		Config: aws.Config{
+			Credentials:      credentials.NewStaticCredentials(os.Getenv("MINIO_ACCESS_KEY"), os.Getenv("MINIO_SECRET_KEY"), ""),
+			Endpoint:         aws.String("http://localhost:9000"),
+			Region:           aws.String("us-east-1"),
+			DisableSSL:       aws.Bool(true),
+			S3ForcePathStyle: aws.Bool(true),
+		},
+	}
+	buc := "test-bucket" // This is pre-set bucket
+	prefix := randString(10)
+	s3Cli, err := s3.NewFromSessionOpt(buc, prefix, sessOpt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix2 := randString(10)
+	s3Cli2, err := s3.NewFromSessionOpt(buc, prefix2, sessOpt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, err := ioutil.TempDir("", "etcd-operator-test")
+	defer os.RemoveAll(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := &s3Backend{
+		S3:  s3Cli,
+		dir: dir,
+	}
+	s2 := &s3Backend{
+		S3:  s3Cli2,
+		dir: dir,
+	}
+
+	if _, err := s.save("file1", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s2.save("file2", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
+		t.Fatal(err)
+	}
+
+	// verify s1 only have one file under prefix "prefix"
+	total, err := s.total()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 1 {
+		t.Fatalf("expect 1 file, but got %v", total)
+	}
+
+	// verify s2 only have one file under prefix "prefix2"
+	total, err = s2.total()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 1 {
+		t.Fatalf("expect 1 file, but got %v", total)
+	}
+
+	// clean up
+	if err = s.purge(1); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = s2.purge(1); err != nil {
+		t.Fatal(err)
+	}
+}

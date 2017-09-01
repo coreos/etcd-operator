@@ -24,10 +24,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-const (
-	v1 = "v1/"
-)
-
 // S3 is a helper layer to wrap complex S3 logic.
 type S3 struct {
 	bucket string
@@ -53,11 +49,7 @@ func NewFromSessionOpt(bucket, prefix string, so session.Options) (*S3, error) {
 	}
 	cli := s3.New(sess)
 
-	return &S3{
-		bucket: bucket,
-		prefix: prefix,
-		client: cli,
-	}, nil
+	return NewFromClient(bucket, prefix, cli), nil
 }
 
 func NewFromClient(bucket, prefix string, cli *s3.S3) *S3 {
@@ -71,7 +63,7 @@ func NewFromClient(bucket, prefix string, cli *s3.S3) *S3 {
 func (s *S3) Put(key string, rs io.ReadSeeker) error {
 	_, err := s.client.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(path.Join(v1, s.prefix, key)),
+		Key:    aws.String(path.Join(s.prefix, key)),
 		Body:   rs,
 	})
 
@@ -81,7 +73,7 @@ func (s *S3) Put(key string, rs io.ReadSeeker) error {
 func (s *S3) Get(key string) (io.ReadCloser, error) {
 	resp, err := s.client.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(path.Join(v1, s.prefix, key)),
+		Key:    aws.String(path.Join(s.prefix, key)),
 	})
 	if err != nil {
 		return nil, err
@@ -93,7 +85,7 @@ func (s *S3) Get(key string) (io.ReadCloser, error) {
 func (s *S3) Delete(key string) error {
 	_, err := s.client.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(path.Join(v1, s.prefix, key)),
+		Key:    aws.String(path.Join(s.prefix, key)),
 	})
 
 	return err
@@ -109,7 +101,7 @@ func (s *S3) list(prefix string) (int64, []string, error) {
 		Bucket: aws.String(s.bucket),
 		// s3 doesn't have dir. It only recognizes prefix.
 		// Thus "a/b" has prefix "a/"
-		Prefix: aws.String(path.Join(v1, prefix) + "/"),
+		Prefix: aws.String(prefix + "/"),
 	})
 	if err != nil {
 		return -1, nil, err
@@ -139,8 +131,8 @@ func (s *S3) CopyPrefix(from string) error {
 	for _, key := range keys {
 		req := &s3.CopyObjectInput{
 			Bucket:     aws.String(s.bucket),
-			Key:        aws.String(path.Join(v1, s.prefix, key)),
-			CopySource: aws.String(path.Join(s.bucket, v1, from, key)),
+			Key:        aws.String(path.Join(s.prefix, key)),
+			CopySource: aws.String(path.Join(s.bucket, from, key)),
 		}
 		_, err := s.client.CopyObject(req)
 		if err != nil {

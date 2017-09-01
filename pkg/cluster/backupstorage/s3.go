@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -21,6 +22,7 @@ type s3 struct {
 	s3config.S3Context
 	clusterName  string
 	namespace    string
+	s3Prefix     string
 	credsDir     string
 	backupPolicy spec.BackupPolicy
 	kubecli      kubernetes.Interface
@@ -28,7 +30,12 @@ type s3 struct {
 }
 
 func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
-	prefix := path.Join(ns, clusterName)
+	s3Prefix := ""
+	if p.S3 != nil { // TODO: remove this check once we deprecate operator S3 flag
+		s3Prefix = p.S3.Prefix
+	}
+	prefix := backupapi.ToS3Prefix(s3Prefix, ns, clusterName)
+
 	var dir string
 
 	s3cli, err := func() (*backups3.S3, error) {
@@ -56,6 +63,7 @@ func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, cluste
 		clusterName:  clusterName,
 		backupPolicy: p,
 		namespace:    ns,
+		s3Prefix:     s3Prefix,
 		s3cli:        s3cli,
 		credsDir:     dir,
 	}
@@ -67,9 +75,8 @@ func (s *s3) Create() error {
 	return nil
 }
 
-func (s *s3) Clone(from string) error {
-	prefix := s.namespace + "/" + from
-	return s.s3cli.CopyPrefix(prefix)
+func (s *s3) Clone(fromCluster string) error {
+	return s.s3cli.CopyPrefix(backupapi.ToS3Prefix(s.s3Prefix, s.namespace, fromCluster))
 }
 
 func (s *s3) Delete() error {

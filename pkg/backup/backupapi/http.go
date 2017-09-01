@@ -7,8 +7,6 @@ import (
 )
 
 const (
-	APIV1 = "/v1"
-
 	HTTPQueryVersionKey  = "etcdVersion"
 	HTTPQueryRevisionKey = "etcdRevision"
 )
