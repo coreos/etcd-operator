@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/Sirupsen/logrus"
 )
@@ -37,6 +38,7 @@ func (b *Backup) startHTTP() {
 	http.HandleFunc(backupapi.APIV1+"/backup", b.serveSnap)
 	http.HandleFunc(backupapi.APIV1+"/backupnow", b.serveBackupNow)
 	http.HandleFunc(backupapi.APIV1+"/status", b.serveStatus)
+	http.Handle("/metrics", prometheus.Handler())
 
 	logrus.Infof("listening on %v", b.listenAddr)
 	panic(http.ListenAndServe(b.listenAddr, nil))
