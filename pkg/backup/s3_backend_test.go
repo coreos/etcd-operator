@@ -51,7 +51,7 @@ func TestS3Backend(t *testing.T) {
 	rs := randString(10)
 	sessOpt := session.Options{
 		Config: aws.Config{
-			Credentials:      credentials.NewStaticCredentials(os.Getenv("MINIO_ACCESS_KEY_ID"), os.Getenv("MINIO_SECRET_ACCESS_KEY"), ""),
+			Credentials:      credentials.NewStaticCredentials(os.Getenv("MINIO_ACCESS_KEY"), os.Getenv("MINIO_SECRET_KEY"), ""),
 			Endpoint:         aws.String("http://localhost:9000"),
 			Region:           aws.String("us-east-1"),
 			DisableSSL:       aws.Bool(true),
