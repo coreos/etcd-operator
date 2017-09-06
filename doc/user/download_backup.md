@@ -38,23 +38,32 @@ If backup storage type is "S3", users have to get the backup directly from S3.
 First of all, setup aws cli: https://aws.amazon.com/cli/ .
 
 Given the S3 bucket name that you passed to when starting etcd operator and the cluster name,
-backups are saved under prefix `${BUCKET_NAME}/v1/${NAMESPACE}/${CLUSTER_NAME}/` .
+backups are saved under prefix in form of `<s3_bucket>/<s3_prefix>/"v1"/<namespace>/<cluster_name>/` .
 
-List all backup files:
+If [`s3_prefix`](./backup_config.md#cluster-level-configuration) is specified, List all backup files:
+
 ```
-$ aws s3 ls ${BUCKET_NAME}/v1/${NAMESPACE}/${CLUSTER_NAME}/
+$ aws s3 ls <s3_bucket>/<s3_prefix>/v1/<namespace>/<cluster_name>/
 2017-01-24 02:13:30    24608    3.1.0_0000000000000002_etcd.backup
 ...                             3.1.0_000000000000000f_etcd.backup
 ```
 
-Backup file name format is `${ETCD_VERSION}_${CLUSTER_REVISION}_etcd.backup` . Revision is hexadecimal.
+Otherwise:
+
+```
+$ aws s3 ls <s3_bucket>/v1/<namespace>/<cluster_name>/
+2017-01-24 02:13:30    24608    3.1.0_0000000000000002_etcd.backup
+...                             3.1.0_000000000000000f_etcd.backup
+```
+
+Backup file name format is `<etcd_version>_<cluster_version>_etcd.backup` . Revision is hexadecimal.
 
 Unless intentional, just pick the backup with max revision. 
 E.g. in above examples, we would pick file "3.1.0_000000000000000f_etcd.backup" .
 
 Download backup:
 ```
-$ aws s3 cp "s3://${BUCKET_NAME}/v1/${CLUSTER_NAME}/${MAX_REVISION_BACKUP}" $target_local_file
+$ aws s3 cp "s3:// <s3_bucket>/<s3_prefix>/v1/<namespace>/<cluster_name>/ $target_local_file
 ```
 
 ## Get backup from PV

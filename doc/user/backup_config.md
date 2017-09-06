@@ -100,6 +100,7 @@ Then we could start using S3 storage for backups. See [spec examples](spec_examp
 See the [S3 backup with cluster specific configuration](https://github.com/coreos/etcd-operator/blob/master/doc/user/spec_examples.md#s3-backup-and-cluster-specific-s3-configuration) spec to see what the cluster's `spec.backup` field should be configured as to set a cluster specific S3 backup configuration. The following additional fields need to be set under the cluster spec's `spec.backup.s3` field:
 - `s3Bucket`: The name of the S3 bucket to store backups in.
 - `awsSecret`: The secret object name which should contain two files named `credentials` and `config` .
+- `prefix`: (Optional) The S3 [prefix](http://docs.aws.amazon.com/AmazonS3/latest/dev/ListingKeysHierarchy.html).
 
 The profile to use in both the files `credentials` and `config` is `default` :
 ```
@@ -125,6 +126,7 @@ spec:
     s3:
       s3Bucket: example-s3-bucket
       awsSecret: aws
+      prefix: example-prefix
 ```
 
 For AWS k8s users: If `credentials` file is not given,
