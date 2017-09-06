@@ -98,7 +98,7 @@ func (sb *s3Backend) total() (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	return len(filterAndSortBackups(names)), err
+	return len(filterAndSortBackups(names)), nil
 }
 
 func (sb *s3Backend) totalSize() (int64, error) {

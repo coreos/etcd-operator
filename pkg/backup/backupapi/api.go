@@ -14,6 +14,15 @@
 
 package backupapi
 
+import "path"
+
+const (
+	APIV1 = "/v1"
+	// S3V1 indicates the version 1 of
+	// S3 backup format: <s3Bucket>/<s3Prefix>/"v1"/<namespace>/<clusterName>
+	S3V1 = "v1"
+)
+
 type ServiceStatus struct {
 	// RecentBackup is status of the most recent backup created by
 	// the backup service
@@ -41,4 +50,10 @@ type BackupStatus struct {
 
 	// TimeTookInSecond is the total time took to create the backup.
 	TimeTookInSecond int `json:"timeTookInSecond"`
+}
+
+// ToS3Prefix concatenates s3Prefix, S3V1, namespace, clusterName to a single s3 prefix.
+// the concatenated prefix determines the location of S3 backup files.
+func ToS3Prefix(s3Prefix, namespace, clusterName string) string {
+	return path.Join(s3Prefix, S3V1, namespace, clusterName)
 }

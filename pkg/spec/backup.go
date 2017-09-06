@@ -94,6 +94,11 @@ type S3Source struct {
 	// S3Bucket overwrites the default etcd operator wide bucket.
 	S3Bucket string `json:"s3Bucket,omitempty"`
 
+	// Prefix is the S3 prefix used to prefix the bucket path.
+	// It's the prefix at the beginning.
+	// After that, it will have version and cluster specific paths.
+	Prefix string `json:"prefix,omitempty"`
+
 	// The name of the secret object that stores the AWS credential and config files.
 	// The file name of the credential MUST be 'credentials'.
 	// The file name of the config MUST be 'config'.
