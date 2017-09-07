@@ -2,6 +2,9 @@
 
 ### Added
 
+- Expose `/metrics` endpoint at port 8080
+- Add cluster S3 spec `prefix` feature. Let user choose a prefix under the bucket.
+
 ### Changed
 
 ### Removed
