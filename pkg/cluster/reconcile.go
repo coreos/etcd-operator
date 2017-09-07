@@ -32,7 +32,7 @@ import (
 // reconcile reconciles cluster current state to desired state specified by spec.
 // - it tries to reconcile the cluster to desired size.
 // - if the cluster needs for upgrade, it tries to upgrade old member one by one.
-func (c *Cluster) reconcile(pods []*v1.Pod) error {
+func (c *Cluster) reconcile(pods []*v1.Pod, pvcs []*v1.PersistentVolumeClaim) error {
 	c.logger.Infoln("Start reconciling")
 	defer c.logger.Infoln("Finish reconciling")
 
@@ -44,6 +44,10 @@ func (c *Cluster) reconcile(pods []*v1.Pod) error {
 	running := podsToMemberSet(pods, c.isSecureClient())
 	if !running.IsEqual(c.members) || c.members.Size() != sp.Size {
 		return c.reconcileMembers(running)
+	}
+
+	if err := c.reconcilePVCs(pvcs); err != nil {
+		return err
 	}
 
 	if needUpgrade(pods, sp) {
@@ -97,6 +101,26 @@ func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 	return c.removeDeadMember(c.members.Diff(L).PickOne())
 }
 
+// reconcilePVCs reconciles PVCs with current cluster members removing old PVCs
+func (c *Cluster) reconcilePVCs(pvcs []*v1.PersistentVolumeClaim) error {
+	oldPVCs := []string{}
+	for _, pvc := range pvcs {
+		memberName := etcdutil.MemberNameFromPVCName(pvc.Name)
+		if _, ok := c.members[memberName]; !ok {
+			oldPVCs = append(oldPVCs, pvc.Name)
+		}
+	}
+
+	for _, oldPVC := range oldPVCs {
+		c.logger.Infof("removing old pvc: %s", oldPVC)
+		if err := c.removePVC(oldPVC); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (c *Cluster) resize() error {
 	if c.members.Size() == c.cluster.Spec.Size {
 		return nil
@@ -136,7 +160,12 @@ func (c *Cluster) addOneMember() error {
 	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)
 
-	if err := c.createPod(c.members, newMember, "existing", false); err != nil {
+	if c.UsePodPV() {
+		if err := c.createPVC(newMember); err != nil {
+			return fmt.Errorf("failed to create persistent volume claim for member's pod (%s): %v", newMember.Name, err)
+		}
+	}
+	if err := c.createPod(c.members, newMember, "existing", false, c.UsePodPV()); err != nil {
 		return fmt.Errorf("fail to create member's pod (%s): %v", newMember.Name, err)
 	}
 	c.memberCounter++

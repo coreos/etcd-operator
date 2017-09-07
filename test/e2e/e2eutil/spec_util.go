@@ -22,7 +22,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	envPVTest     = "PV_TEST"
+	envPVTestTrue = "true"
+)
+
 func NewCluster(genName string, size int) *spec.EtcdCluster {
+	usePV := false
+	if os.Getenv(envPVTest) == envPVTestTrue {
+		usePV = true
+	}
+
 	return &spec.EtcdCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       spec.CRDResourceKind,
@@ -33,6 +43,9 @@ func NewCluster(genName string, size int) *spec.EtcdCluster {
 		},
 		Spec: spec.ClusterSpec{
 			Size: size,
+			Pod: &spec.PodPolicy{
+				UsePV: usePV,
+			},
 		},
 	}
 }
