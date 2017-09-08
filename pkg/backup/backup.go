@@ -92,7 +92,10 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 			S3:  s3cli,
 		}
 	case spec.BackupStorageTypeABS:
-		absCli, err := abs.New(os.Getenv(env.ABSContainer), path.Join(ns, clusterName))
+		absCli, err := abs.New(os.Getenv(env.ABSContainer),
+			os.Getenv(env.ABSStorageAccount),
+			os.Getenv(env.ABSStorageKey),
+			path.Join(ns, clusterName))
 		if err != nil {
 			return nil, err
 		}
