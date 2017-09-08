@@ -49,7 +49,9 @@ Saving backups to S3 is also supported. The S3 backup policy can be set at two l
 
 If configurations for both levels are specified then the cluster level configuration will override the operator level configuration.
 
-### Operator level configuration  
+### DEPRECATED - Operator level configuration 
+
+**Note: Operator level configuration will be completely removed in the future release v0.6.0; use [Cluster level configuration](#cluster-level-configuration) instead.**
 
 See the [S3 backup deployment](../../example/deployment-s3-backup.yaml.template) template on how to configure the operator to enable S3 backups. The following flags need to be passed to operator:
 - `backup-aws-secret`: The name of the kube secret object that stores the AWS credential file. The file name must be 'credentials'.
