@@ -170,6 +170,10 @@ type PodPolicy struct {
 	// If defined new pods will use a persistent volume to store etcd data.
 	// TODO(sgotti) unimplemented
 	PV *PVSource `json:"pv,omitempty"`
+
+	// By default, kubernetes will mount a service account token into the etcd pods.
+	// AutomountServiceAccountToken indicates whether pods running with the service account should have an API token automatically mounted.
+	AutomountServiceAccountToken *bool `json:"automountServiceAccountToken,omitempty"`
 }
 
 func (c *ClusterSpec) Validate() error {
