@@ -6,6 +6,7 @@
 - Add cluster S3 spec `prefix` feature. Let user choose a prefix under the bucket.
 - Add `automountServiceAccountToken` to pod policy. Let users disable automounting of the Kubernetes access token into etcd-operator controlled pods.
 - Cluster backups can now be saved using Azure Blob Storage (ABS).
+- Add warning/note on deprecating s3 operator flag.
 
 ### Changed
 
