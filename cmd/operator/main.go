@@ -73,10 +73,10 @@ func init() {
 
 	flag.StringVar(&pvProvisioner, "pv-provisioner", constants.PVProvisionerGCEPD, "persistent volume provisioner type")
 	flag.StringVar(&awsSecret, "backup-aws-secret", "",
-		"The name of the kube secret object that stores the AWS credential file. The file name must be 'credentials'.")
+		"DEPRECATED - The name of the kube secret object that stores the AWS credential file. The file name must be 'credentials'.")
 	flag.StringVar(&awsConfig, "backup-aws-config", "",
-		"The name of the kube configmap object that stores the AWS config file. The file name must be 'config'.")
-	flag.StringVar(&s3Bucket, "backup-s3-bucket", "", "The name of the AWS S3 bucket to store backups in.")
+		"DEPRECATED - The name of the kube configmap object that stores the AWS config file. The file name must be 'config'.")
+	flag.StringVar(&s3Bucket, "backup-s3-bucket", "", "DEPRECATED - The name of the AWS S3 bucket to store backups in.")
 	flag.StringVar(&listenAddr, "listen-addr", "0.0.0.0:8080", "The address on which the HTTP server will listen to")
 	// chaos level will be removed once we have a formal tool to inject failures.
 	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the operator.")
@@ -199,6 +199,12 @@ func newControllerConfig() controller.Config {
 	serviceAccount, err := getMyPodServiceAccount(kubecli)
 	if err != nil {
 		logrus.Fatalf("fail to get my pod's service account: %v", err)
+	}
+
+	// TODO: remove this when deleting aws config flags.
+	anySet := len(awsConfig) != 0 || len(s3Bucket) != 0 || len(awsSecret) != 0
+	if anySet {
+		logrus.Warn("Saving backups to S3 via operator flags is deprecated; use Cluster level configuration instead.")
 	}
 
 	cfg := controller.Config{
