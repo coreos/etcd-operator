@@ -62,6 +62,17 @@ func (c *EtcdCluster) AsOwner() metav1.OwnerReference {
 	}
 }
 
+type PVSource struct {
+	// VolumeSizeInMB specifies the required volume size.
+	VolumeSizeInMB int `json:"volumeSizeInMB"`
+
+	// StorageClass indicates what Kubernetes storage class will be used.
+	// This enables the user to have fine-grained control over how persistent
+	// volumes are created since it uses the existing StorageClass mechanism in
+	// Kubernetes.
+	StorageClass string `json:"storageClass"`
+}
+
 type ClusterSpec struct {
 	// Size is the expected size of the etcd cluster.
 	// The etcd-operator will eventually make the size of the running
@@ -154,6 +165,11 @@ type PodPolicy struct {
 	// bootstrap the cluster (for example `--initial-cluster` flag).
 	// This field cannot be updated.
 	EtcdEnv []v1.EnvVar `json:"etcdEnv,omitempty"`
+
+	// PV represents a Persistent Volume resource.
+	// If defined new pods will use a persistent volume to store etcd data.
+	// TODO(sgotti) unimplemented
+	PV *PVSource `json:"pv,omitempty"`
 }
 
 func (c *ClusterSpec) Validate() error {
