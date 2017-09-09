@@ -15,16 +15,17 @@
 package cluster
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"math"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
+	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -62,7 +63,8 @@ type Config struct {
 	ServiceAccount string
 	s3config.S3Context
 
-	KubeCli kubernetes.Interface
+	KubeCli   kubernetes.Interface
+	EtcdCRCli client.EtcdClusterCR
 }
 
 type Cluster struct {
@@ -94,7 +96,7 @@ type Cluster struct {
 	gc *garbagecollection.GC
 }
 
-func New(config Config, cl *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
+func New(config Config, cl *spec.EtcdCluster) *Cluster {
 	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", cl.Name)
 	var debugLogger *debug.DebugLogger
 	if cl.Spec.SelfHosted != nil {
@@ -112,10 +114,7 @@ func New(config Config, cl *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wa
 		gc:          garbagecollection.New(config.KubeCli, cl.Namespace),
 	}
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
-
 		if err := c.setup(); err != nil {
 			c.logger.Errorf("cluster failed to setup: %v", err)
 			if c.status.Phase != spec.ClusterPhaseFailed {
@@ -127,7 +126,7 @@ func New(config Config, cl *spec.EtcdCluster, stopC <-chan struct{}, wg *sync.Wa
 			}
 			return
 		}
-		c.run(stopC)
+		c.run()
 	}()
 
 	return c
@@ -248,18 +247,12 @@ func (c *Cluster) send(ev *clusterEvent) {
 	}
 }
 
-func (c *Cluster) run(stopC <-chan struct{}) {
-	clusterFailed := false
+func (c *Cluster) run() {
 
 	defer func() {
-		if clusterFailed {
-			c.reportFailedStatus()
-
-			c.logger.Infof("deleting the failed cluster")
-			c.delete()
-		}
-
-		close(c.stopCh)
+		c.logger.Infof("deleting the failed cluster")
+		c.reportFailedStatus()
+		c.delete()
 	}()
 
 	c.status.SetPhase(spec.ClusterPhaseRunning)
@@ -271,8 +264,6 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 	var rerr error
 	for {
 		select {
-		case <-stopC:
-			return
 		case event := <-c.eventCh:
 			switch event.typ {
 			case eventModifyCluster:
@@ -289,7 +280,6 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 					err := c.updateBackupPolicy(ob, nb)
 					if err != nil {
 						c.logger.Errorf("failed to update backup policy: %v", err)
-						clusterFailed = true
 						c.status.SetReason(err.Error())
 						return
 					}
@@ -297,7 +287,6 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 
 			case eventDeleteCluster:
 				c.logger.Infof("cluster is deleted by the user")
-				clusterFailed = true
 				return
 			default:
 				panic("unknown event type" + event.typ)
@@ -367,9 +356,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 		}
 
 		if isFatalError(rerr) {
-			clusterFailed = true
 			c.status.SetReason(rerr.Error())
-
 			c.logger.Errorf("cluster failed: %v", rerr)
 			return
 		}
@@ -555,7 +542,7 @@ func (c *Cluster) updateCRStatus() error {
 
 	newCluster := c.cluster
 	newCluster.Status = c.status
-	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli.Core().RESTClient(), c.cluster.Namespace, newCluster)
+	newCluster, err := c.config.EtcdCRCli.Update(context.TODO(), c.cluster)
 	if err != nil {
 		return fmt.Errorf("failed to update CR status: %v", err)
 	}
@@ -594,7 +581,7 @@ func (c *Cluster) reportFailedStatus() {
 			return false, nil
 		}
 
-		cl, err := k8sutil.GetClusterTPRObject(c.config.KubeCli.CoreV1().RESTClient(), c.cluster.Namespace, c.cluster.Name)
+		cl, err := c.config.EtcdCRCli.Get(context.TODO(), c.cluster.Namespace, c.cluster.Name)
 		if err != nil {
 			// Update (PUT) will return conflict even if object is deleted since we have UID set in object.
 			// Because it will check UID first and return something like:

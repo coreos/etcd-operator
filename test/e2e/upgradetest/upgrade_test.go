@@ -15,6 +15,7 @@
 package upgradetest
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -58,7 +59,7 @@ func TestResize(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testClus)
+	_, err = e2eutil.WaitUntilSizeReached(t, testF.CRClient, 3, 6, testClus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,8 +67,7 @@ func TestResize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	testClus, err = k8sutil.GetClusterTPRObject(testF.KubeCli.CoreV1().RESTClient(), testF.KubeNS, testClus.Name)
+	testClus, err = f.CRClient.Get(context.TODO(), testF.KubeNS, testClus.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestResize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 5, 6, testClus)
+	_, err = e2eutil.WaitUntilSizeReached(t, testF.CRClient, 5, 6, testClus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	names, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testEtcd)
+	names, err := e2eutil.WaitUntilSizeReached(t, testF.CRClient, 3, 6, testEtcd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,12 +126,12 @@ func TestHealOneMemberForOldCluster(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	remaining, err := e2eutil.WaitUntilMembersWithNamesDeleted(t, testF.KubeCli, 3, testEtcd, names[2])
+	remaining, err := e2eutil.WaitUntilMembersWithNamesDeleted(t, testF.CRClient, 3, testEtcd, names[2])
 	if err != nil {
 		t.Fatalf("failed to see members (%v) be deleted in time: %v", remaining, err)
 	}
 
-	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testEtcd)
+	_, err = e2eutil.WaitUntilSizeReached(t, testF.CRClient, 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to heal one member: %v", err)
 	}
@@ -176,7 +176,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	if err != nil {
 		t.Fatalf("failed to create cluster:%v", err)
 	}
-	names, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testClus)
+	names, err := e2eutil.WaitUntilSizeReached(t, testF.CRClient, 3, 6, testClus)
 	if err != nil {
 		t.Fatalf("failed to reach desired cluster size:%v", err)
 	}
@@ -241,7 +241,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		}
 	}()
 
-	names, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 24, testClus)
+	names, err = e2eutil.WaitUntilSizeReached(t, testF.CRClient, 3, 24, testClus)
 	if err != nil {
 		t.Fatalf("failed to reach desired cluster size: %v", err)
 	}
@@ -304,7 +304,7 @@ func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy
 			t.Fatal(err)
 		}
 	}()
-	_, err = e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testClus)
+	_, err = e2eutil.WaitUntilSizeReached(t, testF.CRClient, 3, 6, testClus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,7 +386,7 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 		}
 	}()
 
-	names, err := e2eutil.WaitUntilSizeReached(t, testF.KubeCli, 3, 6, testClus)
+	names, err := e2eutil.WaitUntilSizeReached(t, testF.CRClient, 3, 6, testClus)
 	if err != nil {
 		t.Fatalf("failed to reach desired cluster size: %v", err)
 	}

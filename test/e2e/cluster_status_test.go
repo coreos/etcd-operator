@@ -15,13 +15,13 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
@@ -44,12 +44,12 @@ func TestReadyMembersStatus(t *testing.T) {
 		}
 	}()
 
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, size, 3, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, size, 3, testEtcd); err != nil {
 		t.Fatalf("failed to create %d members etcd cluster: %v", size, err)
 	}
 
 	err = retryutil.Retry(5*time.Second, 3, func() (done bool, err error) {
-		currEtcd, err := k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Name)
+		currEtcd, err := f.CRClient.Get(context.TODO(), f.Namespace, testEtcd.Name)
 		if err != nil {
 			e2eutil.LogfWithTimestamp(t, "failed to get updated cluster object: %v", err)
 			return false, nil
@@ -94,7 +94,7 @@ func TestBackupStatus(t *testing.T) {
 		}
 	}()
 
-	_, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 1, 6, testEtcd)
+	_, err = e2eutil.WaitUntilSizeReached(t, f.CRClient, 1, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 1 members etcd cluster: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestBackupStatus(t *testing.T) {
 	}
 
 	err = retryutil.Retry(5*time.Second, 6, func() (done bool, err error) {
-		c, err := k8sutil.GetClusterTPRObject(f.KubeClient.CoreV1().RESTClient(), f.Namespace, testEtcd.Name)
+		c, err := f.CRClient.Get(context.TODO(), f.Namespace, testEtcd.Name)
 		if err != nil {
 			t.Fatalf("faied to get cluster spec: %v", err)
 		}

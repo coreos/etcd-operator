@@ -34,7 +34,7 @@ func TestRestartOperator(t *testing.T) {
 		}
 	}()
 
-	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, testEtcd)
+	names, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestRestartOperator(t *testing.T) {
 		t.Fatalf("fail to restart etcd operator: %v", err)
 	}
 
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, testEtcd); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }

@@ -22,8 +22,10 @@ import:
   version: v1.0
 - package: github.com/prometheus/client_golang
   version: v0.8.0
+- package: github.com/Azure/azure-sdk-for-go
+  version: v10.3.0-beta
+- package: github.com/Azure/go-autorest
+  version: v8.3.1
 - package: github.com/jpillora/go-ogle-analytics
 - package: golang.org/x/net
 - package: golang.org/x/time
-- package: github.com/Azure/azure-sdk-for-go
-  version: v10.3.0-beta

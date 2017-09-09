@@ -15,21 +15,18 @@
 package controller
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/analytics"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
+	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-	"github.com/coreos/etcd-operator/pkg/util/probe"
 
 	"github.com/Sirupsen/logrus"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -43,8 +40,6 @@ var (
 		constants.PVProvisionerAWSEBS: {},
 		constants.PVProvisionerNone:   {},
 	}
-
-	ErrVersionOutdated = errors.New("requested version is outdated in apiserver")
 
 	initRetryWaitTime = 30 * time.Second
 
@@ -63,13 +58,7 @@ type Controller struct {
 	logger *logrus.Entry
 	Config
 
-	// TODO: combine the three cluster map.
 	clusters map[string]*cluster.Cluster
-	// Kubernetes resource version of the clusters
-	clusterRVs map[string]string
-	stopChMap  map[string]chan struct{}
-
-	waitCluster sync.WaitGroup
 }
 
 type Config struct {
@@ -79,6 +68,7 @@ type Config struct {
 	s3config.S3Context
 	KubeCli    kubernetes.Interface
 	KubeExtCli apiextensionsclient.Interface
+	EtcdCRCli  client.EtcdClusterCR
 }
 
 func (c *Config) Validate() error {
@@ -100,64 +90,9 @@ func New(cfg Config) *Controller {
 	return &Controller{
 		logger: logrus.WithField("pkg", "controller"),
 
-		Config:     cfg,
-		clusters:   make(map[string]*cluster.Cluster),
-		clusterRVs: make(map[string]string),
-		stopChMap:  map[string]chan struct{}{},
+		Config:   cfg,
+		clusters: make(map[string]*cluster.Cluster),
 	}
-}
-
-func (c *Controller) Run() error {
-	var (
-		watchVersion string
-		err          error
-	)
-
-	if len(c.Config.AWSConfig) != 0 {
-		// AWS config/creds should be initialized only once here.
-		// It will be shared and used by potential cluster's S3 backup manager to manage storage on operator side.
-		err := setupS3Env(c.Config.KubeCli, c.Config.S3Context, c.Config.Namespace)
-		if err != nil {
-			return err
-		}
-	}
-
-	for {
-		watchVersion, err = c.initResource()
-		if err == nil {
-			break
-		}
-		c.logger.Errorf("initialization failed: %v", err)
-		c.logger.Infof("retry in %v...", initRetryWaitTime)
-		time.Sleep(initRetryWaitTime)
-		// todo: add max retry?
-	}
-
-	c.logger.Infof("starts running from watch version: %s", watchVersion)
-
-	defer func() {
-		for _, stopC := range c.stopChMap {
-			close(stopC)
-		}
-		c.waitCluster.Wait()
-	}()
-
-	probe.SetReady()
-
-	eventCh, errCh := c.watch(watchVersion)
-
-	go func() {
-		pt := newPanicTimer(time.Minute, "unexpected long blocking (> 1 Minute) when handling cluster event")
-
-		for ev := range eventCh {
-			pt.start()
-			if err := c.handleClusterEvent(ev); err != nil {
-				c.logger.Warningf("fail to handle event: %v", err)
-			}
-			pt.stop()
-		}
-	}()
-	return <-errCh
 }
 
 func (c *Controller) handleClusterEvent(event *Event) error {
@@ -167,7 +102,6 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 		clustersFailed.Inc()
 		if event.Type == kwatch.Deleted {
 			delete(c.clusters, clus.Name)
-			delete(c.clusterRVs, clus.Name)
 			return nil
 		}
 		return fmt.Errorf("ignore failed cluster (%s). Please delete its CR", clus.Name)
@@ -182,12 +116,9 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 			return fmt.Errorf("unsafe state. cluster (%s) was created before but we received event (%s)", clus.Name, event.Type)
 		}
 
-		stopC := make(chan struct{})
-		nc := cluster.New(c.makeClusterConfig(), clus, stopC, &c.waitCluster)
+		nc := cluster.New(c.makeClusterConfig(), clus)
 
-		c.stopChMap[clus.Name] = stopC
 		c.clusters[clus.Name] = nc
-		c.clusterRVs[clus.Name] = clus.ResourceVersion
 
 		analytics.ClusterCreated()
 		clustersCreated.Inc()
@@ -198,7 +129,6 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 			return fmt.Errorf("unsafe state. cluster (%s) was never created but we received event (%s)", clus.Name, event.Type)
 		}
 		c.clusters[clus.Name].Update(clus)
-		c.clusterRVs[clus.Name] = clus.ResourceVersion
 		clustersModified.Inc()
 
 	case kwatch.Deleted:
@@ -207,39 +137,11 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 		}
 		c.clusters[clus.Name].Delete()
 		delete(c.clusters, clus.Name)
-		delete(c.clusterRVs, clus.Name)
 		analytics.ClusterDeleted()
 		clustersDeleted.Inc()
 		clustersTotal.Dec()
 	}
 	return nil
-}
-
-func (c *Controller) findAllClusters() (string, error) {
-	c.logger.Info("finding existing clusters...")
-	clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli.CoreV1().RESTClient(), c.Config.Namespace)
-	if err != nil {
-		return "", err
-	}
-
-	for i := range clusterList.Items {
-		clus := clusterList.Items[i]
-
-		if clus.Status.IsFailed() {
-			c.logger.Infof("ignore failed cluster (%s). Please delete its CR", clus.Name)
-			continue
-		}
-
-		clus.Spec.Cleanup()
-
-		stopC := make(chan struct{})
-		nc := cluster.New(c.makeClusterConfig(), &clus, stopC, &c.waitCluster)
-		c.stopChMap[clus.Name] = stopC
-		c.clusters[clus.Name] = nc
-		c.clusterRVs[clus.Name] = clus.ResourceVersion
-	}
-
-	return clusterList.ResourceVersion, nil
 }
 
 func (c *Controller) makeClusterConfig() cluster.Config {
@@ -248,33 +150,9 @@ func (c *Controller) makeClusterConfig() cluster.Config {
 		ServiceAccount: c.Config.ServiceAccount,
 		S3Context:      c.S3Context,
 
-		KubeCli: c.KubeCli,
+		KubeCli:   c.Config.KubeCli,
+		EtcdCRCli: c.Config.EtcdCRCli,
 	}
-}
-
-func (c *Controller) initResource() (string, error) {
-	watchVersion := "0"
-	err := c.initCRD()
-	if err != nil {
-		if k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			// CRD has been initialized before. We need to recover existing cluster.
-			watchVersion, err = c.findAllClusters()
-			if err != nil {
-				return "", err
-			}
-		} else {
-			return "", fmt.Errorf("fail to create CRD: %v", err)
-		}
-	}
-	if c.Config.PVProvisioner != constants.PVProvisionerNone {
-		err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
-		if err != nil {
-			if !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-				return "", fmt.Errorf("fail to create storage class: %v", err)
-			}
-		}
-	}
-	return watchVersion, nil
 }
 
 func (c *Controller) initCRD() error {
@@ -283,94 +161,4 @@ func (c *Controller) initCRD() error {
 		return err
 	}
 	return k8sutil.WaitCRDReady(c.KubeExtCli)
-}
-
-// watch creates a go routine, and watches the cluster.etcd kind resources from
-// the given watch version. It emits events on the resources through the returned
-// event chan. Errors will be reported through the returned error chan. The go routine
-// exits on any error.
-func (c *Controller) watch(watchVersion string) (<-chan *Event, <-chan error) {
-	eventCh := make(chan *Event)
-	// On unexpected error case, controller should exit
-	errCh := make(chan error, 1)
-
-	go func() {
-		defer close(eventCh)
-
-		for {
-			resp, err := k8sutil.WatchClusters(MasterHost, c.Config.Namespace, KubeHttpCli, watchVersion)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			if resp.StatusCode != http.StatusOK {
-				resp.Body.Close()
-				errCh <- errors.New("invalid status code: " + resp.Status)
-				return
-			}
-
-			c.logger.Infof("start watching at %v", watchVersion)
-
-			decoder := json.NewDecoder(resp.Body)
-			for {
-				ev, st, err := pollEvent(decoder)
-				if err != nil {
-					if err == io.EOF { // apiserver will close stream periodically
-						c.logger.Info("apiserver closed watch stream, retrying after 5s...")
-						time.Sleep(5 * time.Second)
-						break
-					}
-
-					c.logger.Errorf("received invalid event from API server: %v", err)
-					errCh <- err
-					return
-				}
-
-				if st != nil {
-					resp.Body.Close()
-
-					if st.Code == http.StatusGone {
-						// event history is outdated.
-						// if nothing has changed, we can go back to watch again.
-						clusterList, err := k8sutil.GetClusterList(c.Config.KubeCli.CoreV1().RESTClient(), c.Config.Namespace)
-						if err == nil && !c.isClustersCacheStale(clusterList.Items) {
-							watchVersion = clusterList.ResourceVersion
-							break
-						}
-
-						// if anything has changed (or error on relist), we have to rebuild the state.
-						// go to recovery path
-						errCh <- ErrVersionOutdated
-						return
-					}
-
-					c.logger.Fatalf("unexpected status response from API server: %v", st.Message)
-				}
-
-				c.logger.Debugf("etcd cluster event: %v %v", ev.Type, ev.Object.Spec)
-
-				watchVersion = ev.Object.ResourceVersion
-				eventCh <- ev
-			}
-
-			resp.Body.Close()
-		}
-	}()
-
-	return eventCh, errCh
-}
-
-func (c *Controller) isClustersCacheStale(currentClusters []spec.EtcdCluster) bool {
-	if len(c.clusterRVs) != len(currentClusters) {
-		return true
-	}
-
-	for _, cc := range currentClusters {
-		rv, ok := c.clusterRVs[cc.Name]
-		if !ok || rv != cc.ResourceVersion {
-			return true
-		}
-	}
-
-	return false
 }

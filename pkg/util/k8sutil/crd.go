@@ -17,7 +17,6 @@ package k8sutil
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -25,7 +24,6 @@ import (
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
@@ -35,11 +33,6 @@ import (
 // EtcdClusterCRUpdateFunc is a function to be used when atomically
 // updating a Cluster CR.
 type EtcdClusterCRUpdateFunc func(*spec.EtcdCluster)
-
-func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
-	return httpClient.Get(fmt.Sprintf("%s/apis/%s/namespaces/%s/%s?watch=true&resourceVersion=%s",
-		host, spec.SchemeGroupVersion.String(), ns, spec.CRDResourcePlural, resourceVersion))
-}
 
 func GetClusterList(restcli rest.Interface, ns string) (*spec.EtcdClusterList, error) {
 	b, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
@@ -56,57 +49,6 @@ func GetClusterList(restcli rest.Interface, ns string) (*spec.EtcdClusterList, e
 
 func listClustersURI(ns string) string {
 	return fmt.Sprintf("/apis/%s/namespaces/%s/%s", spec.SchemeGroupVersion.String(), ns, spec.CRDResourcePlural)
-}
-
-func GetClusterTPRObject(restcli rest.Interface, ns, name string) (*spec.EtcdCluster, error) {
-	uri := fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s", spec.SchemeGroupVersion.String(), ns, spec.CRDResourcePlural, name)
-	b, err := restcli.Get().RequestURI(uri).DoRaw()
-	if err != nil {
-		return nil, err
-	}
-	return readClusterCR(b)
-}
-
-// AtomicUpdateClusterTPRObject will get the latest result of a cluster,
-// let user modify it, and update the cluster with modified result
-// The entire process would be retried if there is a conflict of resource version
-func AtomicUpdateClusterTPRObject(restcli rest.Interface, name, namespace string, maxRetries int, updateFunc EtcdClusterCRUpdateFunc) (*spec.EtcdCluster, error) {
-	var updatedCluster *spec.EtcdCluster
-	err := retryutil.Retry(1*time.Second, maxRetries, func() (done bool, err error) {
-		currCluster, err := GetClusterTPRObject(restcli, namespace, name)
-		if err != nil {
-			return false, err
-		}
-
-		updateFunc(currCluster)
-
-		updatedCluster, err = UpdateClusterTPRObject(restcli, namespace, currCluster)
-		if err != nil {
-			if apierrors.IsConflict(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		return true, nil
-	})
-	return updatedCluster, err
-}
-
-func UpdateClusterTPRObject(restcli rest.Interface, ns string, c *spec.EtcdCluster) (*spec.EtcdCluster, error) {
-	uri := fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s", spec.SchemeGroupVersion.String(), ns, spec.CRDResourcePlural, c.Name)
-	b, err := restcli.Put().RequestURI(uri).Body(c).DoRaw()
-	if err != nil {
-		return nil, err
-	}
-	return readClusterCR(b)
-}
-
-func readClusterCR(b []byte) (*spec.EtcdCluster, error) {
-	cluster := &spec.EtcdCluster{}
-	if err := json.Unmarshal(b, cluster); err != nil {
-		return nil, fmt.Errorf("read cluster CR from json data failed: %v", err)
-	}
-	return cluster, nil
 }
 
 func CreateCRD(clientset apiextensionsclient.Interface) error {
