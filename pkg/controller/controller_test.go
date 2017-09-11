@@ -64,13 +64,12 @@ func TestHandleClusterEventDeleteFailedCluster(t *testing.T) {
 	}
 
 	c.clusters[name] = &cluster.Cluster{}
-	c.clusterRVs[name] = "123"
 
 	if err := c.handleClusterEvent(e); err != nil {
 		t.Fatal(err)
 	}
 
-	if c.clusters[name] != nil || c.clusterRVs[name] != "" {
-		t.Errorf("failed cluster not cleaned up after delete event, cluster struct: %v, RV: %s", c.clusters[name], c.clusterRVs[name])
+	if c.clusters[name] != nil {
+		t.Errorf("failed cluster not cleaned up after delete event, cluster struct: %v", c.clusters[name])
 	}
 }

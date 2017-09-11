@@ -79,7 +79,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		t.Fatal(err)
 	}
 
-	names, err := e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, 6, testEtcd)
+	names, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -151,7 +151,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		}
 	}()
 
-	names, err = e2eutil.WaitUntilSizeReached(t, f.KubeClient, 3, waitRestoreTimeout, testEtcd)
+	names, err = e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, waitRestoreTimeout, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}

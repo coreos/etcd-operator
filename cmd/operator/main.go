@@ -182,15 +182,9 @@ func run(stop <-chan struct{}) {
 
 	startChaos(context.Background(), cfg.KubeCli, cfg.Namespace, chaosLevel)
 
-	for {
-		c := controller.New(cfg)
-		err := c.Run()
-		switch err {
-		case controller.ErrVersionOutdated:
-		default:
-			logrus.Fatalf("controller Run() ended with failure: %v", err)
-		}
-	}
+	c := controller.New(cfg)
+	err := c.Start()
+	logrus.Fatalf("controller Start() failed: %v", err)
 }
 
 func newControllerConfig() controller.Config {
@@ -218,6 +212,7 @@ func newControllerConfig() controller.Config {
 		},
 		KubeCli:    kubecli,
 		KubeExtCli: k8sutil.MustNewKubeExtClient(),
+		EtcdCRCli:  client.MustNewCRInCluster(),
 	}
 
 	return cfg

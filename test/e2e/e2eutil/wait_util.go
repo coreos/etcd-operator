@@ -16,6 +16,7 @@ package e2eutil
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"path"
 	"strings"
@@ -23,6 +24,7 @@ import (
 	"time"
 
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
+	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -77,8 +79,8 @@ func WaitUntilPodSizeReached(t *testing.T, kubeClient kubernetes.Interface, size
 	return names, nil
 }
 
-func WaitUntilSizeReached(t *testing.T, kubeClient kubernetes.Interface, size, retries int, cl *spec.EtcdCluster) ([]string, error) {
-	return waitSizeReachedWithAccept(t, kubeClient, size, retries, cl)
+func WaitUntilSizeReached(t *testing.T, crClient client.EtcdClusterCR, size, retries int, cl *spec.EtcdCluster) ([]string, error) {
+	return waitSizeReachedWithAccept(t, crClient, size, retries, cl)
 }
 
 func WaitSizeAndVersionReached(t *testing.T, kubeClient kubernetes.Interface, version string, size, retries int, cl *spec.EtcdCluster) error {
@@ -117,10 +119,10 @@ func getVersionFromImage(image string) string {
 	return strings.Split(image, ":v")[1]
 }
 
-func waitSizeReachedWithAccept(t *testing.T, kubeClient kubernetes.Interface, size, retries int, cl *spec.EtcdCluster, accepts ...acceptFunc) ([]string, error) {
+func waitSizeReachedWithAccept(t *testing.T, crClient client.EtcdClusterCR, size, retries int, cl *spec.EtcdCluster, accepts ...acceptFunc) ([]string, error) {
 	var names []string
 	err := retryutil.Retry(retryInterval, retries, func() (done bool, err error) {
-		currCluster, err := k8sutil.GetClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Namespace, cl.Name)
+		currCluster, err := crClient.Get(context.TODO(), cl.Namespace, cl.Name)
 		if err != nil {
 			return false, err
 		}
@@ -144,10 +146,10 @@ func waitSizeReachedWithAccept(t *testing.T, kubeClient kubernetes.Interface, si
 	return names, nil
 }
 
-func WaitUntilMembersWithNamesDeleted(t *testing.T, kubeClient kubernetes.Interface, retries int, cl *spec.EtcdCluster, targetNames ...string) ([]string, error) {
+func WaitUntilMembersWithNamesDeleted(t *testing.T, crClient client.EtcdClusterCR, retries int, cl *spec.EtcdCluster, targetNames ...string) ([]string, error) {
 	var remaining []string
 	err := retryutil.Retry(retryInterval, retries, func() (done bool, err error) {
-		currCluster, err := k8sutil.GetClusterTPRObject(kubeClient.CoreV1().RESTClient(), cl.Namespace, cl.Name)
+		currCluster, err := crClient.Get(context.TODO(), cl.Namespace, cl.Name)
 		if err != nil {
 			return false, err
 		}

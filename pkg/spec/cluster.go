@@ -54,8 +54,8 @@ type EtcdCluster struct {
 func (c *EtcdCluster) AsOwner() metav1.OwnerReference {
 	trueVar := true
 	return metav1.OwnerReference{
-		APIVersion: c.APIVersion,
-		Kind:       c.Kind,
+		APIVersion: SchemeGroupVersion.String(),
+		Kind:       CRDResourceKind,
 		Name:       c.Name,
 		UID:        c.UID,
 		Controller: &trueVar,

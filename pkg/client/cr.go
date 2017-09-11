@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-	"errors"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -27,6 +26,8 @@ import (
 )
 
 type EtcdClusterCR interface {
+	RESTClient() *rest.RESTClient
+
 	// Create creates an etcd cluster CR with the desired CR
 	Create(ctx context.Context, cl *spec.EtcdCluster) (*spec.EtcdCluster, error)
 
@@ -91,10 +92,11 @@ func New(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
 	return client, crScheme, nil
 }
 
+func (c *etcdClusterCR) RESTClient() *rest.RESTClient {
+	return c.client
+}
+
 func (c *etcdClusterCR) Create(ctx context.Context, etcdCluster *spec.EtcdCluster) (*spec.EtcdCluster, error) {
-	if len(etcdCluster.Namespace) == 0 {
-		return nil, errors.New("need to set metadata.Namespace in etcd cluster CR")
-	}
 	result := &spec.EtcdCluster{}
 	err := c.client.Post().Context(ctx).
 		Namespace(etcdCluster.Namespace).
@@ -126,12 +128,6 @@ func (c *etcdClusterCR) Delete(ctx context.Context, namespace, name string) erro
 }
 
 func (c *etcdClusterCR) Update(ctx context.Context, etcdCluster *spec.EtcdCluster) (*spec.EtcdCluster, error) {
-	if len(etcdCluster.Namespace) == 0 {
-		return nil, errors.New("need to set metadata.Namespace in etcd cluster CR")
-	}
-	if len(etcdCluster.Name) == 0 {
-		return nil, errors.New("need to set metadata.Name in etcd cluster CR")
-	}
 	result := &spec.EtcdCluster{}
 	err := c.client.Put().Context(ctx).
 		Namespace(etcdCluster.Namespace).
