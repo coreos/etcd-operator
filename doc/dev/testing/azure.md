@@ -14,8 +14,8 @@ $ docker run -d -t -p 10000:10000 quay.io/vdice/azurite
 
 #### Run tests
 
-Simply set `RUN_ABS_INTEGRATION_TEST` to true and run the same unit tests as above.
+Simply set `RUN_INTEGRATION_TEST` to true and run the same unit tests as above.
 
 ```
-$ RUN_ABS_INTEGRATION_TEST=true go test -v ./pkg/backup
+$ RUN_INTEGRATION_TEST=true go test -v ./pkg/backup
 ```
