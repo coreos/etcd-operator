@@ -95,7 +95,19 @@ rules:
 EOF
 ```
 
-If you need use s3 backup, add these to above input:
+If you plan on setting up TLS in any of your clusters, add this to the above
+input:
+
+```
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+```
+
+If you need to use S3 backup, add this to the above input:
 
 ```
 - apiGroups: 
