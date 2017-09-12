@@ -67,11 +67,8 @@ func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, storageClas
 	name := makePVCName(clusterName)
 	claim := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-			Labels: map[string]string{
-				"etcd_cluster": clusterName,
-				"app":          "etcd",
-			},
+			Name:   name,
+			Labels: LabelsForCluster(clusterName),
 			Annotations: map[string]string{
 				"volume.beta.kubernetes.io/storage-class": storageClass,
 			},
