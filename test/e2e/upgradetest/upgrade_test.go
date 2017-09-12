@@ -67,7 +67,7 @@ func TestResize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testClus, err = f.CRClient.Get(context.TODO(), testF.KubeNS, testClus.Name)
+	testClus, err = testF.CRClient.Get(context.TODO(), testF.KubeNS, testClus.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
