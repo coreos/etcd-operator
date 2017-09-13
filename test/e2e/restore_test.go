@@ -27,34 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestPerClusS3RestoreSameName(t *testing.T) {
-	if os.Getenv("AWS_TEST_ENABLED") != "true" {
-		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
-	}
-	testClusterRestoreS3SameName(t, true)
-}
-
-func TestOperWideS3RestoreSameName(t *testing.T) {
-	if os.Getenv("AWS_TEST_ENABLED") != "true" {
-		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
-	}
-	testClusterRestoreS3SameName(t, false)
-}
-
-func TestPerClusS3RestoreDiffName(t *testing.T) {
-	if os.Getenv("AWS_TEST_ENABLED") != "true" {
-		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
-	}
-	testClusterRestoreS3DifferentName(t, true)
-}
-
-func TestOperWideS3RestoreDiffName(t *testing.T) {
-	if os.Getenv("AWS_TEST_ENABLED") != "true" {
-		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
-	}
-	testClusterRestoreS3DifferentName(t, false)
-}
-
 func TestClusterRestoreSameName(t *testing.T) {
 	testClusterRestore(t, false)
 }
@@ -163,24 +135,16 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	e2eutil.CheckEtcdData(t, fmt.Sprintf("http://%s:2379", pod.Status.PodIP))
 }
 
-func testClusterRestoreS3SameName(t *testing.T, perCluster bool) {
-	var bp *spec.BackupPolicy
-	if perCluster {
-		bp = e2eutil.NewS3BackupPolicy(false)
-	} else {
-		bp = e2eutil.NewOperatorS3BackupPolicy(false)
+func TestClusterRestoreS3SameName(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
 	}
-
-	testClusterRestoreWithBackupPolicy(t, false, bp)
+	testClusterRestoreWithBackupPolicy(t, false, e2eutil.NewS3BackupPolicy(false))
 }
 
-func testClusterRestoreS3DifferentName(t *testing.T, perCluster bool) {
-	var bp *spec.BackupPolicy
-	if perCluster {
-		bp = e2eutil.NewS3BackupPolicy(false)
-	} else {
-		bp = e2eutil.NewOperatorS3BackupPolicy(false)
+func TestClusterRestoreS3DifferentName(t *testing.T) {
+	if os.Getenv("AWS_TEST_ENABLED") != "true" {
+		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
 	}
-
-	testClusterRestoreWithBackupPolicy(t, true, bp)
+	testClusterRestoreWithBackupPolicy(t, true, e2eutil.NewS3BackupPolicy(false))
 }
