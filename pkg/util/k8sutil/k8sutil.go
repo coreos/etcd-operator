@@ -190,10 +190,7 @@ func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, time
 }
 
 func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.ServicePort) *v1.Service {
-	labels := map[string]string{
-		"app":          "etcd",
-		"etcd_cluster": clusterName,
-	}
+	labels := LabelsForCluster(clusterName)
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   svcName,

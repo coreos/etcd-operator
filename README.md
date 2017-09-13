@@ -32,6 +32,8 @@ Read [RBAC docs](./doc/user/rbac.md) for how to setup RBAC rules for etcd operat
 
 Read [Developer Guide](./doc/dev/developer_guide.md) for setting up development environment if you want to contribute.
 
+See the [Resources and Labels](./doc/user/resource_labels.md) doc for an overview of the resources created by the etcd-operator.
+
 ## Requirements
 
 - Kubernetes 1.7+
