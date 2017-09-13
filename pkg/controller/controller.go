@@ -15,13 +15,11 @@
 package controller
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/analytics"
-	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -65,10 +63,9 @@ type Config struct {
 	Namespace      string
 	ServiceAccount string
 	PVProvisioner  string
-	s3config.S3Context
-	KubeCli    kubernetes.Interface
-	KubeExtCli apiextensionsclient.Interface
-	EtcdCRCli  client.EtcdClusterCR
+	KubeCli        kubernetes.Interface
+	KubeExtCli     apiextensionsclient.Interface
+	EtcdCRCli      client.EtcdClusterCR
 }
 
 func (c *Config) Validate() error {
@@ -77,11 +74,6 @@ func (c *Config) Validate() error {
 			"persistent volume provisioner %s is not supported: options = %v",
 			c.PVProvisioner, supportedPVProvisioners,
 		)
-	}
-	allEmpty := len(c.S3Context.AWSConfig) == 0 && len(c.S3Context.AWSSecret) == 0 && len(c.S3Context.S3Bucket) == 0
-	allSet := len(c.S3Context.AWSConfig) != 0 && len(c.S3Context.AWSSecret) != 0 && len(c.S3Context.S3Bucket) != 0
-	if !(allEmpty || allSet) {
-		return errors.New("AWS/S3 related configs should be all set or all empty")
 	}
 	return nil
 }
@@ -148,10 +140,8 @@ func (c *Controller) makeClusterConfig() cluster.Config {
 	return cluster.Config{
 		PVProvisioner:  c.PVProvisioner,
 		ServiceAccount: c.Config.ServiceAccount,
-		S3Context:      c.S3Context,
-
-		KubeCli:   c.Config.KubeCli,
-		EtcdCRCli: c.Config.EtcdCRCli,
+		KubeCli:        c.Config.KubeCli,
+		EtcdCRCli:      c.Config.EtcdCRCli,
 	}
 }
 

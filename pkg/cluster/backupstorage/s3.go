@@ -9,7 +9,6 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
-	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 
@@ -19,7 +18,6 @@ import (
 )
 
 type s3 struct {
-	s3config.S3Context
 	clusterName  string
 	namespace    string
 	s3Prefix     string
@@ -29,41 +27,32 @@ type s3 struct {
 	s3cli        *backups3.S3
 }
 
-func NewS3Storage(s3Ctx s3config.S3Context, kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
-	s3Prefix := ""
-	if p.S3 != nil { // TODO: remove this check once we deprecate operator S3 flag
-		s3Prefix = p.S3.Prefix
-	}
-	prefix := backupapi.ToS3Prefix(s3Prefix, ns, clusterName)
-
-	var dir string
-
+func NewS3Storage(kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
+	var (
+		prefix = backupapi.ToS3Prefix(p.S3.Prefix, ns, clusterName)
+		dir    string
+	)
 	s3cli, err := func() (*backups3.S3, error) {
-		if p.S3 != nil {
-			dir = filepath.Join(constants.OperatorRoot, "aws", prefix)
-			if err := os.MkdirAll(dir, 0700); err != nil {
-				return nil, err
-			}
-			options, err := setupAWSConfig(kubecli, ns, p.S3.AWSSecret, dir)
-			if err != nil {
-				return nil, err
-			}
-			return backups3.NewFromSessionOpt(p.S3.S3Bucket, prefix, *options)
-		} else {
-			return backups3.New(s3Ctx.S3Bucket, prefix)
+		dir = filepath.Join(constants.OperatorRoot, "aws", prefix)
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			return nil, err
 		}
+		options, err := setupAWSConfig(kubecli, ns, p.S3.AWSSecret, dir)
+		if err != nil {
+			return nil, err
+		}
+		return backups3.NewFromSessionOpt(p.S3.S3Bucket, prefix, *options)
 	}()
 	if err != nil {
 		return nil, fmt.Errorf("new S3 storage failed: %v", err)
 	}
 
 	s := &s3{
-		S3Context:    s3Ctx,
 		kubecli:      kubecli,
 		clusterName:  clusterName,
 		backupPolicy: p,
 		namespace:    ns,
-		s3Prefix:     s3Prefix,
+		s3Prefix:     p.S3.Prefix,
 		s3cli:        s3cli,
 		credsDir:     dir,
 	}

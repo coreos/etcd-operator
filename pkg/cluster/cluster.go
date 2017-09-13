@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
@@ -61,7 +60,6 @@ type clusterEvent struct {
 type Config struct {
 	PVProvisioner  string
 	ServiceAccount string
-	s3config.S3Context
 
 	KubeCli   kubernetes.Interface
 	EtcdCRCli client.EtcdClusterCR

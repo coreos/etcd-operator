@@ -23,16 +23,6 @@ func init() {
 }
 
 func (c *Controller) Start() error {
-	// TODO: get rid of this init code. We would deprecate operator S3 flag.
-	if len(c.Config.AWSConfig) != 0 {
-		// AWS config/creds should be initialized only once here.
-		// It will be shared and used by potential cluster's S3 backup manager to manage storage on operator side.
-		err := setupS3Env(c.Config.KubeCli, c.Config.S3Context, c.Config.Namespace)
-		if err != nil {
-			return err
-		}
-	}
-
 	// TODO: get rid of this init code. CRD and storage class will be managed outside of operator.
 	for {
 		err := c.initResource()
