@@ -21,7 +21,6 @@ import (
 	"time"
 
 	backupenv "github.com/coreos/etcd-operator/pkg/backup/env"
-	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -42,9 +41,7 @@ const (
 	BackupPodSelectorAppField = "etcd_backup_tool"
 	backupPVVolName           = "etcd-backup-storage"
 	awsCredentialDir          = "/root/.aws/"
-	awsConfigDir              = "/root/.aws/config/"
 	awsSecretVolName          = "secret-aws"
-	awsConfigVolName          = "config-aws"
 	fromDirMountDir           = "/mnt/backup/from"
 
 	PVBackupV1 = "v1" // TODO: refactor and combine this with pkg/backup.PVBackupV1
@@ -143,40 +140,6 @@ func AttachS3ToPodSpec(ps *v1.PodSpec, ss spec.S3Source) {
 	ps.Containers[0].Env = append(ps.Containers[0].Env, v1.EnvVar{
 		Name:  backupenv.AWSS3Bucket,
 		Value: ss.S3Bucket,
-	})
-}
-
-func AttachOperatorS3ToPodSpec(ps *v1.PodSpec, s3Ctx s3config.S3Context) {
-	ps.Containers[0].VolumeMounts = []v1.VolumeMount{{
-		Name:      awsSecretVolName,
-		MountPath: awsCredentialDir,
-	}, {
-		Name:      awsConfigVolName,
-		MountPath: awsConfigDir,
-	}}
-	ps.Volumes = []v1.Volume{{
-		Name: awsSecretVolName,
-		VolumeSource: v1.VolumeSource{
-			Secret: &v1.SecretVolumeSource{
-				SecretName: s3Ctx.AWSSecret,
-			},
-		},
-	}, {
-		Name: awsConfigVolName,
-		VolumeSource: v1.VolumeSource{
-			ConfigMap: &v1.ConfigMapVolumeSource{
-				LocalObjectReference: v1.LocalObjectReference{
-					Name: s3Ctx.AWSConfig,
-				},
-			},
-		},
-	}}
-	ps.Containers[0].Env = append(ps.Containers[0].Env, v1.EnvVar{
-		Name:  backupenv.AWSConfig,
-		Value: path.Join(awsConfigDir, "config"),
-	}, v1.EnvVar{
-		Name:  backupenv.AWSS3Bucket,
-		Value: s3Ctx.S3Bucket,
 	})
 }
 

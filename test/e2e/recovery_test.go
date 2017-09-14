@@ -26,22 +26,6 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
-func TestPerClusterS3MajDown(t *testing.T) {
-	testS3MajorityDown(t, true)
-}
-
-func TestOperWideS3MajDown(t *testing.T) {
-	testS3MajorityDown(t, false)
-}
-
-func TestPerClusterS3AllDown(t *testing.T) {
-	testS3AllDown(t, true)
-}
-
-func TestOperWideS3AllDown(t *testing.T) {
-	testS3AllDown(t, false)
-}
-
 func TestOneMemberRecovery(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
@@ -171,40 +155,24 @@ func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.EtcdC
 	// TODO: add checking of data in etcd
 }
 
-func testS3MajorityDown(t *testing.T, perCluster bool) {
+func TestS3MajorityDown(t *testing.T) {
 	if os.Getenv("AWS_TEST_ENABLED") != "true" {
 		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
 	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-
-	var bp *spec.BackupPolicy
-	if perCluster {
-		bp = e2eutil.NewS3BackupPolicy(true)
-	} else {
-		bp = e2eutil.NewOperatorS3BackupPolicy(true)
-	}
-
-	testDisasterRecoveryWithBackupPolicy(t, 2, bp)
+	testDisasterRecoveryWithBackupPolicy(t, 2, e2eutil.NewS3BackupPolicy(true))
 }
 
-func testS3AllDown(t *testing.T, perCluster bool) {
+func TestS3AllDown(t *testing.T) {
 	if os.Getenv("AWS_TEST_ENABLED") != "true" {
 		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
 	}
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-
-	var bp *spec.BackupPolicy
-	if perCluster {
-		bp = e2eutil.NewS3BackupPolicy(true)
-	} else {
-		bp = e2eutil.NewOperatorS3BackupPolicy(true)
-	}
-
-	testDisasterRecoveryWithBackupPolicy(t, 3, bp)
+	testDisasterRecoveryWithBackupPolicy(t, 3, e2eutil.NewS3BackupPolicy(true))
 }
 
 func TestDynamicAddBackupPolicy(t *testing.T) {

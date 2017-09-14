@@ -88,10 +88,10 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 		}
 		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Name, cl.Namespace, storageClass, *b)
 	case spec.BackupStorageTypeS3:
-		if len(c.S3Context.AWSConfig) == 0 && b.S3 == nil {
+		if b.S3 == nil {
 			return nil, errNoS3ConfigForBackup
 		}
-		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, cl.Name, cl.Namespace, *b)
+		s, err = backupstorage.NewS3Storage(c.KubeCli, cl.Name, cl.Namespace, *b)
 	case spec.BackupStorageTypeABS:
 		if b.ABS == nil {
 			return nil, errNoABSCredsForBackup
@@ -159,7 +159,7 @@ func (bm *backupManager) updateSidecar(cl *spec.EtcdCluster) error {
 }
 
 func (bm *backupManager) makeSidecarDeployment() *appsv1beta1.Deployment {
-	cl, c := bm.cluster, bm.config
+	cl := bm.cluster
 	podTemplate := k8sutil.NewBackupPodTemplate(cl.Name, bm.config.ServiceAccount, cl.Spec)
 	switch cl.Spec.Backup.StorageType {
 	case spec.BackupStorageTypeDefault, spec.BackupStorageTypePersistentVolume:
@@ -167,8 +167,6 @@ func (bm *backupManager) makeSidecarDeployment() *appsv1beta1.Deployment {
 	case spec.BackupStorageTypeS3:
 		if ss := cl.Spec.Backup.S3; ss != nil {
 			k8sutil.AttachS3ToPodSpec(&podTemplate.Spec, *ss)
-		} else {
-			k8sutil.AttachOperatorS3ToPodSpec(&podTemplate.Spec, c.S3Context)
 		}
 	case spec.BackupStorageTypeABS:
 		if ws := cl.Spec.Backup.ABS; ws != nil {

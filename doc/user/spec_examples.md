@@ -47,17 +47,6 @@ spec:
 
 See [example](../../example/example-etcd-cluster-with-backup.yaml) .
 
-### Three members cluster with S3 backup
-
-```yaml
-spec:
-  size: 3
-  backup:
-    backupIntervalInSecond: 300
-    maxBackups: 5
-    storageType: "S3"
-```
-
 ### S3 backup and cluster specific S3 configuration
 
 ```yaml
@@ -70,6 +59,7 @@ spec:
     s3:
       s3Bucket: <S3-bucket-name>
       awsSecret: <aws-secret-name>
+      prefix: <S3-prefix>
 ```
 
 See [backup config](./backup_config.md) for how to set up S3 related configurations.

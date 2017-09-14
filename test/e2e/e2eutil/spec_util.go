@@ -52,15 +52,6 @@ func NewS3BackupPolicy(cleanup bool) *spec.BackupPolicy {
 	}
 }
 
-func NewOperatorS3BackupPolicy(cleanup bool) *spec.BackupPolicy {
-	return &spec.BackupPolicy{
-		BackupIntervalInSecond: 60 * 60,
-		MaxBackups:             5,
-		StorageType:            spec.BackupStorageTypeS3,
-		AutoDelete:             cleanup,
-	}
-}
-
 func NewPVBackupPolicy(cleanup bool, storageClass string) *spec.BackupPolicy {
 	return &spec.BackupPolicy{
 		BackupIntervalInSecond: 60 * 60,

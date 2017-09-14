@@ -1,10 +1,14 @@
 ## [Unreleased]
 
+**BREAKING CHANGE**: operator level S3 backup is removed. See [upgrade](./doc/user/upgrade/upgrade_guide.md) on how to upgrade from 0.5.x to 0.6.0. 
+
 ### Added
 
 ### Changed
 
 ### Removed
+
+- Remove operator level S3 flag.
 
 ### Fixed
 
@@ -21,7 +25,10 @@
 - Add cluster S3 spec `prefix` feature. Let user choose a prefix under the bucket.
 - Add `automountServiceAccountToken` to pod policy. Let users disable automounting of the Kubernetes access token into etcd-operator controlled pods.
 - Cluster backups can now be saved using Azure Blob Storage (ABS).
-- Add warning/note on deprecating s3 operator flag.
+
+### Deprecated
+
+- Deprecate operator S3 flag. Add warning note for using it in this release. The flag will be removed in 0.6.0 release.
 
 
 ## [Release 0.5.1]
