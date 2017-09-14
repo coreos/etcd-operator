@@ -35,8 +35,8 @@ The example cluster YAML manifest and example certs can be found in [example/tls
 
 The peer TLS assets should have the following:
 - **peer.crt**: peer communication cert.
-  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc`.
-  In this case, it is `*.example.default.svc`.
+  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc` and `*.{clusterName}.{namespace}.svc.cluster.local`.
+  In this case, it is `*.example.default.svc` and `*.example.default.svc.cluster.local`.
 - **peer.key**: peer communication key.
 - **peer-ca.crt**: CA cert for this peer key-cert pair.
 
@@ -55,8 +55,8 @@ Once passed, etcd-operator will mount this secret at `/etc/etcdtls/member/peer-t
 The client TLS assets should have the following:
 - **server.crt**: etcd server's client communication cert.
   The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc`,
-  `${clusterName}-client.${namespace}.svc`, and `localhost`.
-  In this case, it is `*.example.default.svc`, `example-client.default.svc`, and `localhost`.
+  `${clusterName}-client.${namespace}.svc`, `*.{clusterName}.{namespace}.svc.cluster.local` and `localhost`.
+  In this case, it is `*.example.default.svc`, `example-client.default.svc`, `*.example.default.svc.cluster.local` and `localhost`.
   To use more DNS name or IP to access etcd server, please add it here.
 - **server.key**: etcd server's client communication key.
 - **server-ca.crt**: CA cert for validating the certs of etcd clients.
