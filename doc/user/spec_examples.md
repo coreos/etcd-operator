@@ -90,7 +90,8 @@ spec:
 
 ### Three members cluster that restores from previous S3 backup
 
-Same as above but using "S3" as backup storage.
+Same as above but using "S3" as backup storage. The previous s3 backup must exist 
+in order for the restore to work; otherwise, the new cluster doesn't boot.
 
 ```yaml
 metadata:
@@ -101,6 +102,47 @@ spec:
     backupIntervalInSecond: 300
     maxBackups: 5
     storageType: "S3"
+    s3:
+      s3Bucket: <S3-bucket-name>
+      awsSecret: <aws-secret-name>
+      prefix: <S3-prefix>
+  restore:
+    backupClusterName: "cluster-a"
+    storageType: "S3"
+```
+
+### Three members cluster that restores from different cluster's S3 backup
+
+etcd-operator can create a new cluster `cluster-b` from the backup of another cluster `cluster-a`. If backup exists, make sure the backup policy of `cluster-b` has the same S3 configuration as those of `cluster-a`; etcd operator would also use that config to access snapshots of `cluster-a`.
+
+```yaml
+metadata:
+  name: "cluster-a"
+spec:
+  size: 3
+  backup:
+    backupIntervalInSecond: 300
+    maxBackups: 5
+    storageType: "S3"
+    s3:
+      s3Bucket: <S3-bucket-name>
+      awsSecret: <aws-secret-name>
+      prefix: <S3-prefix>
+```
+
+```yaml
+metadata:
+  name: "cluster-b"
+spec:
+  size: 3
+  backup:
+    backupIntervalInSecond: 300
+    maxBackups: 5
+    storageType: "S3"
+    s3:
+      s3Bucket: <S3-bucket-name>
+      awsSecret: <aws-secret-name>
+      prefix: <S3-prefix>
   restore:
     backupClusterName: "cluster-a"
     storageType: "S3"
