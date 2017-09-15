@@ -52,6 +52,13 @@ const (
 	eventModifyCluster clusterEventType = "Modify"
 )
 
+const (
+	clientPortName    = "etcd-client"
+	clientPortTLSName = "etcd-client-ssl"
+	serverPortName    = "etcd-server"
+	serverPortTLSName = "etcd-server-ssl"
+)
+
 type clusterEvent struct {
 	typ     clusterEventType
 	cluster *spec.EtcdCluster
@@ -447,12 +454,26 @@ func (c *Cluster) delete() {
 }
 
 func (c *Cluster) setupServices() error {
-	err := k8sutil.CreateClientService(c.config.KubeCli, c.cluster.Name, c.cluster.Namespace, c.cluster.AsOwner())
+	var cpn, spn string
+
+	if !c.isSecureClient() {
+		cpn = clientPortName
+	} else {
+		cpn = clientPortTLSName
+	}
+
+	if !c.isSecurePeer() {
+		spn = serverPortName
+	} else {
+		spn = serverPortTLSName
+	}
+
+	err := k8sutil.CreateClientService(c.config.KubeCli, c.cluster.Name, c.cluster.Namespace, cpn, c.cluster.AsOwner())
 	if err != nil {
 		return err
 	}
 
-	return k8sutil.CreatePeerService(c.config.KubeCli, c.cluster.Name, c.cluster.Namespace, c.cluster.AsOwner())
+	return k8sutil.CreatePeerService(c.config.KubeCli, c.cluster.Name, c.cluster.Namespace, cpn, spn, c.cluster.AsOwner())
 }
 
 func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
