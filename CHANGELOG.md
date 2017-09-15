@@ -9,6 +9,7 @@
 ### Removed
 
 - Remove operator level S3 flag.
+- Remove analytics flag. Disable Google analytics.
 
 ### Fixed
 
