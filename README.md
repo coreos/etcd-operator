@@ -348,7 +348,5 @@ Check the other two pods and you should see the same result.
 
 - Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with its node running in the same Kubernetes cluster.
 
-**The operator collects anonymous usage statistics to help us learn how the software is being used and how we can improve it. To disable collection, run the operator with the flag `-analytics=false`.**
-
 
 [k8s-home]: http://kubernetes.io

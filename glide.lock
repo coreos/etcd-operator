@@ -1,5 +1,5 @@
-hash: a7c2eabac68ed67b085e7307e6877aded7f2a10124f291dcd2db4f71b6648ff3
-updated: 2017-09-09T09:46:19.917983559-07:00
+hash: 578ea42fd23caa98ac15ba27b351aeca6f9a2144f0d4511dd714eab5e3eb8c08
+updated: 2017-09-15T15:34:19.916146056-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -147,8 +147,6 @@ imports:
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/jmespath/go-jmespath
   version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
-- name: github.com/jpillora/go-ogle-analytics
-  version: 14b04e0594ef6a9fd943363b135656f0ec8c9d0e
 - name: github.com/juju/ratelimit
   version: 5b9ff866471762aa2ab2dced63c9fb6f53921342
 - name: github.com/mailru/easyjson
@@ -220,7 +218,7 @@ imports:
   - jws
   - jwt
 - name: golang.org/x/sys
-  version: a5054c7c1385fd50d9394475365355a87a7873ec
+  version: 062cd7e4e68206d8bab9b18396626e855c992658
   subpackages:
   - unix
 - name: golang.org/x/text

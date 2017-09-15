@@ -75,8 +75,7 @@ func New(fc Config) (*Framework, error) {
 }
 
 func (f *Framework) CreateOperator(name string) error {
-	cmd := []string{"/usr/local/bin/etcd-operator", "--analytics=false",
-		"--backup-aws-secret=aws", "--backup-aws-config=aws", "--backup-s3-bucket=jenkins-etcd-operator"}
+	cmd := []string{"/usr/local/bin/etcd-operator"}
 	image := f.OldImage
 	d := &appsv1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{

@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/analytics"
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -112,7 +111,6 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 
 		c.clusters[clus.Name] = nc
 
-		analytics.ClusterCreated()
 		clustersCreated.Inc()
 		clustersTotal.Inc()
 
@@ -129,7 +127,6 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 		}
 		c.clusters[clus.Name].Delete()
 		delete(c.clusters, clus.Name)
-		analytics.ClusterDeleted()
 		clustersDeleted.Inc()
 		clustersTotal.Dec()
 	}

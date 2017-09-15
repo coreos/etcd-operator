@@ -24,7 +24,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/analytics"
 	"github.com/coreos/etcd-operator/pkg/chaos"
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/controller"
@@ -51,12 +50,11 @@ import (
 )
 
 var (
-	analyticsEnabled bool
-	pvProvisioner    string
-	namespace        string
-	name             string
-	listenAddr       string
-	gcInterval       time.Duration
+	pvProvisioner string
+	namespace     string
+	name          string
+	listenAddr    string
+	gcInterval    time.Duration
 
 	chaosLevel int
 
@@ -64,7 +62,6 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&analyticsEnabled, "analytics", true, "Send analytical event (Cluster Created/Deleted etc.) to Google Analytics")
 	flag.StringVar(&debug.DebugFilePath, "debug-logfile-path", "", "only for a self hosted cluster, the path where the debug logfile will be written, recommended to be under: /var/tmp/etcd-operator/debug/ to avoid any issue with lack of write permissions")
 	flag.StringVar(&pvProvisioner, "pv-provisioner", constants.PVProvisionerGCEPD, "persistent volume provisioner type")
 	flag.StringVar(&listenAddr, "listen-addr", "0.0.0.0:8080", "The address on which the HTTP server will listen to")
@@ -116,12 +113,6 @@ func main() {
 	logrus.Infof("Git SHA: %s", version.GitSHA)
 	logrus.Infof("Go Version: %s", runtime.Version())
 	logrus.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
-
-	if analyticsEnabled {
-		analytics.Enable()
-	}
-
-	analytics.OperatorStarted()
 
 	id, err := os.Hostname()
 	if err != nil {
