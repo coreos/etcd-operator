@@ -70,18 +70,6 @@ func init() {
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.DurationVar(&gcInterval, "gc-interval", 10*time.Minute, "GC interval")
 	flag.Parse()
-
-	// TODO: remove this and use CR client
-	restCfg, err := k8sutil.InClusterConfig()
-	if err != nil {
-		panic(err)
-	}
-	controller.MasterHost = restCfg.Host
-	restcli, _, err := client.New(restCfg)
-	if err != nil {
-		panic(err)
-	}
-	controller.KubeHttpCli = restcli.Client
 }
 
 func main() {
