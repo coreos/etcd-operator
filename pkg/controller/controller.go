@@ -16,7 +16,6 @@ package controller
 
 import (
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/client"
@@ -39,11 +38,6 @@ var (
 	}
 
 	initRetryWaitTime = 30 * time.Second
-
-	// Workaround for watching CR resource.
-	// TODO: remove this to use CR client.
-	KubeHttpCli *http.Client
-	MasterHost  string
 )
 
 type Event struct {
