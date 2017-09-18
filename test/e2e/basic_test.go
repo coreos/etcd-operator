@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
@@ -68,7 +68,7 @@ func TestPauseControl(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	updateFunc := func(cl *spec.EtcdCluster) {
+	updateFunc := func(cl *api.EtcdCluster) {
 		cl.Spec.Paused = true
 	}
 	if testEtcd, err = e2eutil.UpdateCluster(f.CRClient, testEtcd, 10, updateFunc); err != nil {
@@ -89,7 +89,7 @@ func TestPauseControl(t *testing.T) {
 		t.Fatalf("cluster should not be recovered: control is paused")
 	}
 
-	updateFunc = func(cl *spec.EtcdCluster) {
+	updateFunc = func(cl *api.EtcdCluster) {
 		cl.Spec.Paused = false
 	}
 	if testEtcd, err = e2eutil.UpdateCluster(f.CRClient, testEtcd, 10, updateFunc); err != nil {
@@ -124,7 +124,7 @@ func TestEtcdUpgrade(t *testing.T) {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	updateFunc := func(cl *spec.EtcdCluster) {
+	updateFunc := func(cl *api.EtcdCluster) {
 		cl = e2eutil.ClusterWithVersion(cl, "3.1.8")
 	}
 	_, err = e2eutil.UpdateCluster(f.CRClient, testEtcd, 10, updateFunc)

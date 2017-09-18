@@ -24,10 +24,10 @@ import (
 	"strings"
 	"time"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -54,7 +54,7 @@ const (
 
 type clusterEvent struct {
 	typ     clusterEventType
-	cluster *spec.EtcdCluster
+	cluster *api.EtcdCluster
 }
 
 type Config struct {
@@ -72,11 +72,11 @@ type Cluster struct {
 
 	config Config
 
-	cluster *spec.EtcdCluster
+	cluster *api.EtcdCluster
 
 	// in memory state of the cluster
 	// status is the source of truth after Cluster struct is materialized.
-	status        spec.ClusterStatus
+	status        api.ClusterStatus
 	memberCounter int
 
 	eventCh chan *clusterEvent
@@ -94,7 +94,7 @@ type Cluster struct {
 	gc *garbagecollection.GC
 }
 
-func New(config Config, cl *spec.EtcdCluster) *Cluster {
+func New(config Config, cl *api.EtcdCluster) *Cluster {
 	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", cl.Name)
 	var debugLogger *debug.DebugLogger
 	if cl.Spec.SelfHosted != nil {
@@ -115,11 +115,11 @@ func New(config Config, cl *spec.EtcdCluster) *Cluster {
 	go func() {
 		if err := c.setup(); err != nil {
 			c.logger.Errorf("cluster failed to setup: %v", err)
-			if c.status.Phase != spec.ClusterPhaseFailed {
+			if c.status.Phase != api.ClusterPhaseFailed {
 				c.status.SetReason(err.Error())
-				c.status.SetPhase(spec.ClusterPhaseFailed)
+				c.status.SetPhase(api.ClusterPhaseFailed)
 				if err := c.updateCRStatus(); err != nil {
-					c.logger.Errorf("failed to update cluster phase (%v): %v", spec.ClusterPhaseFailed, err)
+					c.logger.Errorf("failed to update cluster phase (%v): %v", api.ClusterPhaseFailed, err)
 				}
 			}
 			return
@@ -138,11 +138,11 @@ func (c *Cluster) setup() error {
 
 	var shouldCreateCluster bool
 	switch c.status.Phase {
-	case spec.ClusterPhaseNone:
+	case api.ClusterPhaseNone:
 		shouldCreateCluster = true
-	case spec.ClusterPhaseCreating:
+	case api.ClusterPhaseCreating:
 		return errCreatedCluster
-	case spec.ClusterPhaseRunning:
+	case api.ClusterPhaseRunning:
 		shouldCreateCluster = false
 
 	default:
@@ -180,10 +180,10 @@ func (c *Cluster) setup() error {
 }
 
 func (c *Cluster) create() error {
-	c.status.SetPhase(spec.ClusterPhaseCreating)
+	c.status.SetPhase(api.ClusterPhaseCreating)
 
 	if err := c.updateCRStatus(); err != nil {
-		return fmt.Errorf("cluster create: failed to update cluster phase (%v): %v", spec.ClusterPhaseCreating, err)
+		return fmt.Errorf("cluster create: failed to update cluster phase (%v): %v", api.ClusterPhaseCreating, err)
 	}
 	c.logClusterCreation()
 
@@ -253,7 +253,7 @@ func (c *Cluster) run() {
 		c.delete()
 	}()
 
-	c.status.SetPhase(spec.ClusterPhaseRunning)
+	c.status.SetPhase(api.ClusterPhaseRunning)
 	if err := c.updateCRStatus(); err != nil {
 		c.logger.Warningf("update initial CR status failed: %v", err)
 	}
@@ -361,7 +361,7 @@ func (c *Cluster) run() {
 	}
 }
 
-func (c *Cluster) updateBackupPolicy(ob, nb *spec.BackupPolicy) error {
+func (c *Cluster) updateBackupPolicy(ob, nb *api.BackupPolicy) error {
 	var err error
 	switch {
 	case ob == nil && nb != nil:
@@ -381,14 +381,14 @@ func (c *Cluster) updateBackupPolicy(ob, nb *spec.BackupPolicy) error {
 	return nil
 }
 
-func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
+func isSpecEqual(s1, s2 api.ClusterSpec) bool {
 	if s1.Size != s2.Size || s1.Paused != s2.Paused || s1.Version != s2.Version {
 		return false
 	}
 	return isBackupPolicyEqual(s1.Backup, s2.Backup)
 }
 
-func isBackupPolicyEqual(b1, b2 *spec.BackupPolicy) bool {
+func isBackupPolicyEqual(b1, b2 *api.BackupPolicy) bool {
 	return reflect.DeepEqual(b1, b2)
 }
 
@@ -427,7 +427,7 @@ func (c *Cluster) recover() error {
 	return c.startSeedMember(true)
 }
 
-func (c *Cluster) Update(cl *spec.EtcdCluster) {
+func (c *Cluster) Update(cl *api.EtcdCluster) {
 	c.send(&clusterEvent{
 		typ:     eventModifyCluster,
 		cluster: cl,
@@ -568,7 +568,7 @@ func (c *Cluster) reportFailedStatus() {
 	retryInterval := 5 * time.Second
 
 	f := func() (bool, error) {
-		c.status.SetPhase(spec.ClusterPhaseFailed)
+		c.status.SetPhase(api.ClusterPhaseFailed)
 		err := c.updateCRStatus()
 		if err == nil || k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return true, nil
@@ -614,7 +614,7 @@ func (c *Cluster) logClusterCreation() {
 	}
 }
 
-func (c *Cluster) logSpecUpdate(newSpec spec.ClusterSpec) {
+func (c *Cluster) logSpecUpdate(newSpec api.ClusterSpec) {
 	oldSpecBytes, err := json.MarshalIndent(c.cluster.Spec, "", "    ")
 	if err != nil {
 		c.logger.Errorf("failed to marshal cluster spec: %v", err)

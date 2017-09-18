@@ -20,7 +20,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 
@@ -72,7 +72,7 @@ func TestResize(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	updateFunc := func(cl *spec.EtcdCluster) {
+	updateFunc := func(cl *api.EtcdCluster) {
 		cl.Spec.Size = 5
 	}
 	_, err = e2eutil.UpdateCluster(testF.CRClient, testClus, 10, updateFunc)
@@ -152,7 +152,7 @@ func TestRestoreFromBackup(t *testing.T) {
 	})
 }
 
-func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
+func testRestoreWithBackupPolicy(t *testing.T, bp *api.BackupPolicy) {
 	name := newOperatorName()
 	// create operator
 	err := testF.CreateOperator(name)
@@ -224,7 +224,7 @@ func testRestoreWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
 	origClus.GenerateName = ""
 	origClus.Name = testClus.Name
 
-	origClus = e2eutil.ClusterWithRestore(origClus, &spec.RestorePolicy{
+	origClus = e2eutil.ClusterWithRestore(origClus, &api.RestorePolicy{
 		BackupClusterName: origClus.Name,
 		StorageType:       bp.StorageType,
 	})
@@ -269,7 +269,7 @@ func TestBackupForOldCluster(t *testing.T) {
 	})
 }
 
-func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
+func testBackupForOldClusterWithBackupPolicy(t *testing.T, bp *api.BackupPolicy) {
 	name := newOperatorName()
 	err := testF.CreateOperator(name)
 	if err != nil {
@@ -352,7 +352,7 @@ func TestDisasterRecovery(t *testing.T) {
 	})
 }
 
-func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *spec.BackupPolicy) {
+func testDisasterRecoveryWithBackupPolicy(t *testing.T, bp *api.BackupPolicy) {
 	name := newOperatorName()
 	err := testF.CreateOperator(name)
 	if err != nil {

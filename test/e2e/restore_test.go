@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
@@ -39,7 +39,7 @@ func testClusterRestore(t *testing.T, needDataClone bool) {
 	testClusterRestoreWithBackupPolicy(t, needDataClone, e2eutil.NewPVBackupPolicy(false, ""))
 }
 
-func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backupPolicy *spec.BackupPolicy) {
+func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backupPolicy *api.BackupPolicy) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
@@ -76,9 +76,9 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 
 	var storageCheckerOptions *e2eutil.StorageCheckerOptions
 	switch testEtcd.Spec.Backup.StorageType {
-	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+	case api.BackupStorageTypePersistentVolume, api.BackupStorageTypeDefault:
 		storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
-	case spec.BackupStorageTypeS3:
+	case api.BackupStorageTypeS3:
 		storageCheckerOptions = &e2eutil.StorageCheckerOptions{
 			S3Cli:    f.S3Cli,
 			S3Bucket: f.S3Bucket,
@@ -105,7 +105,7 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	}
 	waitRestoreTimeout := e2eutil.CalculateRestoreWaitTime(needDataClone)
 
-	origEtcd = e2eutil.ClusterWithRestore(origEtcd, &spec.RestorePolicy{
+	origEtcd = e2eutil.ClusterWithRestore(origEtcd, &api.RestorePolicy{
 		BackupClusterName: testEtcd.Name,
 		StorageType:       backupPolicy.StorageType,
 	})

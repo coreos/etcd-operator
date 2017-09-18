@@ -19,19 +19,19 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 )
 
 func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
 	cfg := Config{PVProvisioner: constants.PVProvisionerNone}
-	cl := &spec.EtcdCluster{
+	cl := &api.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "testing"},
-		Spec: spec.ClusterSpec{
-			Backup: &spec.BackupPolicy{
-				StorageType: spec.BackupStorageTypePersistentVolume,
-				StorageSource: spec.StorageSource{
-					PV: &spec.PVSource{VolumeSizeInMB: 512},
+		Spec: api.ClusterSpec{
+			Backup: &api.BackupPolicy{
+				StorageType: api.BackupStorageTypePersistentVolume,
+				StorageSource: api.StorageSource{
+					PV: &api.PVSource{VolumeSizeInMB: 512},
 				},
 				MaxBackups: 1,
 			},
@@ -45,11 +45,11 @@ func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
 
 func TestNewBackupManagerWithoutS3Config(t *testing.T) {
 	cfg := Config{}
-	cl := &spec.EtcdCluster{
+	cl := &api.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "testing"},
-		Spec: spec.ClusterSpec{
-			Backup: &spec.BackupPolicy{
-				StorageType: spec.BackupStorageTypeS3,
+		Spec: api.ClusterSpec{
+			Backup: &api.BackupPolicy{
+				StorageType: api.BackupStorageTypeS3,
 				MaxBackups:  1,
 			},
 		},
@@ -62,11 +62,11 @@ func TestNewBackupManagerWithoutS3Config(t *testing.T) {
 
 func TestNewBackupManagerWithoutABSCreds(t *testing.T) {
 	cfg := Config{}
-	cl := &spec.EtcdCluster{
+	cl := &api.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "testing"},
-		Spec: spec.ClusterSpec{
-			Backup: &spec.BackupPolicy{
-				StorageType: spec.BackupStorageTypeABS,
+		Spec: api.ClusterSpec{
+			Backup: &api.BackupPolicy{
+				StorageType: api.BackupStorageTypeABS,
 				MaxBackups:  1,
 			},
 		},

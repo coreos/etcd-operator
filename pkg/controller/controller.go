@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"time"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/cluster"
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
@@ -42,7 +42,7 @@ var (
 
 type Event struct {
 	Type   kwatch.EventType
-	Object *spec.EtcdCluster
+	Object *api.EtcdCluster
 }
 
 type Controller struct {

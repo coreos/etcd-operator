@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
@@ -42,11 +42,11 @@ func (c *Controller) Start() error {
 func (c *Controller) run() {
 	source := cache.NewListWatchFromClient(
 		c.Config.EtcdCRCli.RESTClient(),
-		spec.CRDResourcePlural,
+		api.CRDResourcePlural,
 		c.Config.Namespace,
 		fields.Everything())
 
-	_, informer := cache.NewIndexerInformer(source, &spec.EtcdCluster{}, 0, cache.ResourceEventHandlerFuncs{
+	_, informer := cache.NewIndexerInformer(source, &api.EtcdCluster{}, 0, cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.onAddEtcdClus,
 		UpdateFunc: c.onUpdateEtcdClus,
 		DeleteFunc: c.onDeleteEtcdClus,
@@ -72,21 +72,21 @@ func (c *Controller) initResource() error {
 }
 
 func (c *Controller) onAddEtcdClus(obj interface{}) {
-	c.syncEtcdClus(obj.(*spec.EtcdCluster))
+	c.syncEtcdClus(obj.(*api.EtcdCluster))
 }
 
 func (c *Controller) onUpdateEtcdClus(oldObj, newObj interface{}) {
-	c.syncEtcdClus(newObj.(*spec.EtcdCluster))
+	c.syncEtcdClus(newObj.(*api.EtcdCluster))
 }
 
 func (c *Controller) onDeleteEtcdClus(obj interface{}) {
-	clus, ok := obj.(*spec.EtcdCluster)
+	clus, ok := obj.(*api.EtcdCluster)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			panic(fmt.Sprintf("unknown object from EtcdCluster delete event: %#v", obj))
 		}
-		clus, ok = tombstone.Obj.(*spec.EtcdCluster)
+		clus, ok = tombstone.Obj.(*api.EtcdCluster)
 		if !ok {
 			panic(fmt.Sprintf("Tombstone contained object that is not an EtcdCluster: %#v", obj))
 		}
@@ -104,7 +104,7 @@ func (c *Controller) onDeleteEtcdClus(obj interface{}) {
 	pt.stop()
 }
 
-func (c *Controller) syncEtcdClus(clus *spec.EtcdCluster) {
+func (c *Controller) syncEtcdClus(clus *api.EtcdCluster) {
 	ev := &Event{
 		Type:   kwatch.Added,
 		Object: clus,

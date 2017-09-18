@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"os"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/backup"
 	"github.com/coreos/etcd-operator/pkg/backup/env"
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/version"
 
@@ -62,7 +62,7 @@ func main() {
 		panic("clusterName not set")
 	}
 
-	var cs spec.ClusterSpec
+	var cs api.ClusterSpec
 	sps := os.Getenv(env.ClusterSpec)
 	if err := json.Unmarshal([]byte(sps), &cs); err != nil {
 		logrus.Fatalf("fail to parse backup policy (%s): %v", sps, err)

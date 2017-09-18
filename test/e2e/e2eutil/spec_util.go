@@ -17,33 +17,33 @@ package e2eutil
 import (
 	"os"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func NewCluster(genName string, size int) *spec.EtcdCluster {
-	return &spec.EtcdCluster{
+func NewCluster(genName string, size int) *api.EtcdCluster {
+	return &api.EtcdCluster{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       spec.CRDResourceKind,
-			APIVersion: spec.SchemeGroupVersion.String(),
+			Kind:       api.CRDResourceKind,
+			APIVersion: api.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: genName,
 		},
-		Spec: spec.ClusterSpec{
+		Spec: api.ClusterSpec{
 			Size: size,
 		},
 	}
 }
 
-func NewS3BackupPolicy(cleanup bool) *spec.BackupPolicy {
-	return &spec.BackupPolicy{
+func NewS3BackupPolicy(cleanup bool) *api.BackupPolicy {
+	return &api.BackupPolicy{
 		BackupIntervalInSecond: 60 * 60,
 		MaxBackups:             5,
-		StorageType:            spec.BackupStorageTypeS3,
-		StorageSource: spec.StorageSource{
-			S3: &spec.S3Source{
+		StorageType:            api.BackupStorageTypeS3,
+		StorageSource: api.StorageSource{
+			S3: &api.S3Source{
 				S3Bucket:  os.Getenv("TEST_S3_BUCKET"),
 				AWSSecret: os.Getenv("TEST_AWS_SECRET"),
 			},
@@ -52,13 +52,13 @@ func NewS3BackupPolicy(cleanup bool) *spec.BackupPolicy {
 	}
 }
 
-func NewPVBackupPolicy(cleanup bool, storageClass string) *spec.BackupPolicy {
-	return &spec.BackupPolicy{
+func NewPVBackupPolicy(cleanup bool, storageClass string) *api.BackupPolicy {
+	return &api.BackupPolicy{
 		BackupIntervalInSecond: 60 * 60,
 		MaxBackups:             5,
-		StorageType:            spec.BackupStorageTypePersistentVolume,
-		StorageSource: spec.StorageSource{
-			PV: &spec.PVSource{
+		StorageType:            api.BackupStorageTypePersistentVolume,
+		StorageSource: api.StorageSource{
+			PV: &api.PVSource{
 				VolumeSizeInMB: 512,
 				StorageClass:   storageClass,
 			},
@@ -67,22 +67,22 @@ func NewPVBackupPolicy(cleanup bool, storageClass string) *spec.BackupPolicy {
 	}
 }
 
-func ClusterWithBackup(cl *spec.EtcdCluster, backupPolicy *spec.BackupPolicy) *spec.EtcdCluster {
+func ClusterWithBackup(cl *api.EtcdCluster, backupPolicy *api.BackupPolicy) *api.EtcdCluster {
 	cl.Spec.Backup = backupPolicy
 	return cl
 }
 
-func ClusterWithRestore(cl *spec.EtcdCluster, restorePolicy *spec.RestorePolicy) *spec.EtcdCluster {
+func ClusterWithRestore(cl *api.EtcdCluster, restorePolicy *api.RestorePolicy) *api.EtcdCluster {
 	cl.Spec.Restore = restorePolicy
 	return cl
 }
 
-func ClusterWithVersion(cl *spec.EtcdCluster, version string) *spec.EtcdCluster {
+func ClusterWithVersion(cl *api.EtcdCluster, version string) *api.EtcdCluster {
 	cl.Spec.Version = version
 	return cl
 }
 
-func ClusterWithSelfHosted(cl *spec.EtcdCluster, sh *spec.SelfHostedPolicy) *spec.EtcdCluster {
+func ClusterWithSelfHosted(cl *api.EtcdCluster, sh *api.SelfHostedPolicy) *api.EtcdCluster {
 	cl.Spec.SelfHosted = sh
 	return cl
 }

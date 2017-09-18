@@ -24,9 +24,9 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/client/experimentalclient"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/cluster/backupstorage"
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
@@ -50,13 +50,13 @@ type backupManager struct {
 	logger *logrus.Entry
 
 	config  Config
-	cluster *spec.EtcdCluster
+	cluster *api.EtcdCluster
 	s       backupstorage.Storage
 
 	bc experimentalclient.Backup
 }
 
-func newBackupManager(c Config, cl *spec.EtcdCluster, l *logrus.Entry) (*backupManager, error) {
+func newBackupManager(c Config, cl *api.EtcdCluster, l *logrus.Entry) (*backupManager, error) {
 	bm := &backupManager{
 		config:  c,
 		cluster: cl,
@@ -78,7 +78,7 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 
 	b := cl.Spec.Backup
 	switch b.StorageType {
-	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+	case api.BackupStorageTypePersistentVolume, api.BackupStorageTypeDefault:
 		storageClass := b.PV.StorageClass
 		if len(storageClass) == 0 {
 			if c.PVProvisioner == constants.PVProvisionerNone {
@@ -87,12 +87,12 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 			storageClass = k8sutil.StorageClassPrefix + "-" + path.Base(c.PVProvisioner)
 		}
 		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Name, cl.Namespace, storageClass, *b)
-	case spec.BackupStorageTypeS3:
+	case api.BackupStorageTypeS3:
 		if b.S3 == nil {
 			return nil, errNoS3ConfigForBackup
 		}
 		s, err = backupstorage.NewS3Storage(c.KubeCli, cl.Name, cl.Namespace, *b)
-	case spec.BackupStorageTypeABS:
+	case api.BackupStorageTypeABS:
 		if b.ABS == nil {
 			return nil, errNoABSCredsForBackup
 		}
@@ -142,7 +142,7 @@ func (bm *backupManager) createSidecarDeployment() error {
 	return err
 }
 
-func (bm *backupManager) updateSidecar(cl *spec.EtcdCluster) error {
+func (bm *backupManager) updateSidecar(cl *api.EtcdCluster) error {
 	// change local structs
 	bm.cluster = cl
 	var err error
@@ -162,13 +162,13 @@ func (bm *backupManager) makeSidecarDeployment() *appsv1beta1.Deployment {
 	cl := bm.cluster
 	podTemplate := k8sutil.NewBackupPodTemplate(cl.Name, bm.config.ServiceAccount, cl.Spec)
 	switch cl.Spec.Backup.StorageType {
-	case spec.BackupStorageTypeDefault, spec.BackupStorageTypePersistentVolume:
+	case api.BackupStorageTypeDefault, api.BackupStorageTypePersistentVolume:
 		k8sutil.PodSpecWithPV(&podTemplate.Spec, cl.Name)
-	case spec.BackupStorageTypeS3:
+	case api.BackupStorageTypeS3:
 		if ss := cl.Spec.Backup.S3; ss != nil {
 			k8sutil.AttachS3ToPodSpec(&podTemplate.Spec, *ss)
 		}
-	case spec.BackupStorageTypeABS:
+	case api.BackupStorageTypeABS:
 		if ws := cl.Spec.Backup.ABS; ws != nil {
 			k8sutil.AttachABSToPodSpec(&podTemplate.Spec, *ws)
 		}
@@ -216,13 +216,13 @@ func (bm *backupManager) getStatus() (*backupapi.ServiceStatus, error) {
 	return bm.bc.ServiceStatus(ctx)
 }
 
-func backupServiceStatusToTPRBackupServiceStatu(s *backupapi.ServiceStatus) *spec.BackupServiceStatus {
+func backupServiceStatusToTPRBackupServiceStatu(s *backupapi.ServiceStatus) *api.BackupServiceStatus {
 	b, err := json.Marshal(s)
 	if err != nil {
 		panic("unexpected json error")
 	}
 
-	var bs spec.BackupServiceStatus
+	var bs api.BackupServiceStatus
 	err = json.Unmarshal(b, &bs)
 	if err != nil {
 		panic("unexpected json error")
