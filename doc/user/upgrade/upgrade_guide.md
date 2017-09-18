@@ -22,6 +22,81 @@ $ kubectl edit deployment/etcd-operator
 ### Incompatible upgrade
 In the case of an incompatible upgrade, the process requires restoring a new cluster from backup. See the [incompatible upgrade guide](incompatible_upgrade.md) for more information.
 
+
+## v0.5.x -> v0.6.0
+
+### Breaking Change
+
+The v0.6.0 release removes [operator S3 flag](https://github.com/coreos/etcd-operator/blob/v0.5.1/doc/user/backup_config.md#operator-level-configuration).
+
+**Note:** if your cluster is not using operator S3 flag, then you just need recreate etcd-operator deployment with the `v0.6.0` image.
+
+If your cluster is using operator S3 flag for backup and want to use S3 backup in v0.6.0, then you need to migrate your cluster to use [cluster level backup](../backup_config.md#S3-on-aws).
+
+Steps for migration:
+
+- Create a backup of you current data using the [backup service guide](../backup_service.md#http-api-v1).
+
+- Create a new AWS secret `<aws-secret>` for [cluster level backup](../backup_config.md#s3-on-aws):
+
+  `$ kubectl -n <namespace> create secret generic <aws-secret> --from-file=$AWS_DIR/credentials --from-file=$AWS_DIR/config`
+
+- Change the backup field in your existing cluster backup spec to enable [cluster level backup](../backup_config.md#s3-on-aws):
+
+  From
+
+  ```yaml
+  backup:
+    backupIntervalInSecond: 30
+    maxBackups: 5
+    storageType: "S3"
+  ```
+
+  to
+
+  ```yaml
+  backup:
+    backupIntervalInSecond: 30
+    maxBackups: 5
+    storageType: "S3"
+    s3:
+      s3Bucket: <your-s3-bucket>
+      awsSecret: <aws-secret> 
+  ```
+
+- Apply the cluster backup spec:
+  `$ kubectl -n <namespace> apply -f <your-cluster-deployment>.yaml`
+
+- Update deployment spec to use `etcd-operator:v0.6.0` and remove the dependency on operator level S3 backup flags:
+
+  From
+
+  ```yaml
+  spec:
+    containers:
+    - name: etcd-operator
+      image: quay.io/coreos/etcd-operator:v0.5.2
+      command: 
+        - /usr/local/bin/etcd-operator
+        - --backup-aws-secret=aws
+        - --backup-aws-config=aws
+        - --backup-s3-bucket=<your-s3-bucket>
+  ```
+
+  to 
+
+  ```yaml
+  spec:
+    containers:
+    - name: etcd-operator
+      image: quay.io/coreos/etcd-operator:v0.6.0
+      command: 
+        - /usr/local/bin/etcd-operator
+  ```
+
+- Apply the updated deployment spec:
+  `$ kubectl -n <namespace> apply -f <your-etcd-operator-deployment>.yaml`
+
 ## v0.4.x -> v0.5.x
 For any `0.4.x` versions, please update to `0.5.0` first.
 
