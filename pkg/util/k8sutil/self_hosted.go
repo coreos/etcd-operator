@@ -19,7 +19,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 
 	"k8s.io/api/core/v1"
@@ -37,7 +37,7 @@ func selfHostedDataDir(ns, name string) string {
 	return path.Join(etcdVolumeMountDir, ns+"-"+name)
 }
 
-func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string, clusterName, state, token string, cs spec.ClusterSpec, owner metav1.OwnerReference) *v1.Pod {
+func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string, clusterName, state, token string, cs api.ClusterSpec, owner metav1.OwnerReference) *v1.Pod {
 	hostDataDir := selfHostedDataDir(m.Namespace, m.Name)
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+

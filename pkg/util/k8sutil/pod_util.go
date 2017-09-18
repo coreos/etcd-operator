@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 
 	"k8s.io/api/core/v1"
@@ -112,7 +112,7 @@ func podWithAntiAffinity(pod *v1.Pod, ls *metav1.LabelSelector) *v1.Pod {
 	return pod
 }
 
-func applyPodPolicy(clusterName string, pod *v1.Pod, policy *spec.PodPolicy) {
+func applyPodPolicy(clusterName string, pod *v1.Pod, policy *api.PodPolicy) {
 	if policy == nil {
 		return
 	}
@@ -141,7 +141,7 @@ func applyPodPolicy(clusterName string, pod *v1.Pod, policy *spec.PodPolicy) {
 }
 
 // only used for backup pod.
-func applyPodPolicyToPodTemplateSpec(clusterName string, pod *v1.PodTemplateSpec, policy *spec.PodPolicy) {
+func applyPodPolicyToPodTemplateSpec(clusterName string, pod *v1.PodTemplateSpec, policy *api.PodPolicy) {
 	if policy == nil {
 		return
 	}

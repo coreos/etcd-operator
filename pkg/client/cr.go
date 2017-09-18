@@ -17,7 +17,7 @@ package client
 import (
 	"context"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,16 +29,16 @@ type EtcdClusterCR interface {
 	RESTClient() *rest.RESTClient
 
 	// Create creates an etcd cluster CR with the desired CR
-	Create(ctx context.Context, cl *spec.EtcdCluster) (*spec.EtcdCluster, error)
+	Create(ctx context.Context, cl *api.EtcdCluster) (*api.EtcdCluster, error)
 
 	// Get returns the specified etcd cluster CR
-	Get(ctx context.Context, namespace, name string) (*spec.EtcdCluster, error)
+	Get(ctx context.Context, namespace, name string) (*api.EtcdCluster, error)
 
 	// Delete deletes the specified etcd cluster CR
 	Delete(ctx context.Context, namespace, name string) error
 
 	// Update updates the etcd cluster CR.
-	Update(ctx context.Context, etcdCluster *spec.EtcdCluster) (*spec.EtcdCluster, error)
+	Update(ctx context.Context, etcdCluster *api.EtcdCluster) (*api.EtcdCluster, error)
 }
 
 type etcdClusterCR struct {
@@ -74,12 +74,12 @@ func NewCRClient(cfg *rest.Config) (EtcdClusterCR, error) {
 // TODO: make this private so that we don't expose RESTClient once operator code uses this client instead of REST calls
 func New(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
 	crScheme := runtime.NewScheme()
-	if err := spec.AddToScheme(crScheme); err != nil {
+	if err := api.AddToScheme(crScheme); err != nil {
 		return nil, nil, err
 	}
 
 	config := *cfg
-	config.GroupVersion = &spec.SchemeGroupVersion
+	config.GroupVersion = &api.SchemeGroupVersion
 	config.APIPath = "/apis"
 	config.ContentType = runtime.ContentTypeJSON
 	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: serializer.NewCodecFactory(crScheme)}
@@ -96,22 +96,22 @@ func (c *etcdClusterCR) RESTClient() *rest.RESTClient {
 	return c.client
 }
 
-func (c *etcdClusterCR) Create(ctx context.Context, etcdCluster *spec.EtcdCluster) (*spec.EtcdCluster, error) {
-	result := &spec.EtcdCluster{}
+func (c *etcdClusterCR) Create(ctx context.Context, etcdCluster *api.EtcdCluster) (*api.EtcdCluster, error) {
+	result := &api.EtcdCluster{}
 	err := c.client.Post().Context(ctx).
 		Namespace(etcdCluster.Namespace).
-		Resource(spec.CRDResourcePlural).
+		Resource(api.CRDResourcePlural).
 		Body(etcdCluster).
 		Do().
 		Into(result)
 	return result, err
 }
 
-func (c *etcdClusterCR) Get(ctx context.Context, namespace, name string) (*spec.EtcdCluster, error) {
-	result := &spec.EtcdCluster{}
+func (c *etcdClusterCR) Get(ctx context.Context, namespace, name string) (*api.EtcdCluster, error) {
+	result := &api.EtcdCluster{}
 	err := c.client.Get().Context(ctx).
 		Namespace(namespace).
-		Resource(spec.CRDResourcePlural).
+		Resource(api.CRDResourcePlural).
 		Name(name).
 		Do().
 		Into(result)
@@ -121,17 +121,17 @@ func (c *etcdClusterCR) Get(ctx context.Context, namespace, name string) (*spec.
 func (c *etcdClusterCR) Delete(ctx context.Context, namespace, name string) error {
 	return c.client.Delete().Context(ctx).
 		Namespace(namespace).
-		Resource(spec.CRDResourcePlural).
+		Resource(api.CRDResourcePlural).
 		Name(name).
 		Do().
 		Error()
 }
 
-func (c *etcdClusterCR) Update(ctx context.Context, etcdCluster *spec.EtcdCluster) (*spec.EtcdCluster, error) {
-	result := &spec.EtcdCluster{}
+func (c *etcdClusterCR) Update(ctx context.Context, etcdCluster *api.EtcdCluster) (*api.EtcdCluster, error) {
+	result := &api.EtcdCluster{}
 	err := c.client.Put().Context(ctx).
 		Namespace(etcdCluster.Namespace).
-		Resource(spec.CRDResourcePlural).
+		Resource(api.CRDResourcePlural).
 		Name(etcdCluster.Name).
 		Body(etcdCluster).
 		Do().

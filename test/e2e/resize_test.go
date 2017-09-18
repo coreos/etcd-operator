@@ -19,7 +19,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
@@ -45,7 +45,7 @@ func TestResizeCluster3to5(t *testing.T) {
 	}
 	fmt.Println("reached to 3 members cluster")
 
-	updateFunc := func(cl *spec.EtcdCluster) {
+	updateFunc := func(cl *api.EtcdCluster) {
 		cl.Spec.Size = 5
 	}
 	if _, err := e2eutil.UpdateCluster(f.CRClient, testEtcd, 10, updateFunc); err != nil {
@@ -78,7 +78,7 @@ func TestResizeCluster5to3(t *testing.T) {
 	}
 	fmt.Println("reached to 5 members cluster")
 
-	updateFunc := func(cl *spec.EtcdCluster) {
+	updateFunc := func(cl *api.EtcdCluster) {
 		cl.Spec.Size = 3
 	}
 	if _, err := e2eutil.UpdateCluster(f.CRClient, testEtcd, 10, updateFunc); err != nil {

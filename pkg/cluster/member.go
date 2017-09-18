@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/pkg/errors"
@@ -76,7 +76,7 @@ func podsToMemberSet(pods []*v1.Pod, sc bool) etcdutil.MemberSet {
 	return members
 }
 
-func getMemberName(m *etcdserverpb.Member, clusterName string, selfHosted *spec.SelfHostedPolicy) (string, error) {
+func getMemberName(m *etcdserverpb.Member, clusterName string, selfHosted *api.SelfHostedPolicy) (string, error) {
 	if selfHosted != nil {
 		if len(m.Name) == 0 || len(m.ClientURLs) == 0 {
 			return "", newFatalError(fmt.Sprintf("unready self-hosted member (peerURL: %s)", m.PeerURLs[0]))

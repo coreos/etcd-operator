@@ -18,7 +18,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -244,7 +244,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	return c.recover()
 }
 
-func needUpgrade(pods []*v1.Pod, cs spec.ClusterSpec) bool {
+func needUpgrade(pods []*v1.Pod, cs api.ClusterSpec) bool {
 	return len(pods) == cs.Size && pickOneOldMember(pods, cs.Version) != nil
 }
 

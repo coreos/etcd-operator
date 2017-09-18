@@ -20,8 +20,8 @@ import (
 	"path"
 	"time"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	backupenv "github.com/coreos/etcd-operator/pkg/backup/env"
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
@@ -124,7 +124,7 @@ func PodSpecWithPV(ps *v1.PodSpec, clusterName string) {
 	}}
 }
 
-func AttachS3ToPodSpec(ps *v1.PodSpec, ss spec.S3Source) {
+func AttachS3ToPodSpec(ps *v1.PodSpec, ss api.S3Source) {
 	ps.Containers[0].VolumeMounts = append(ps.Containers[0].VolumeMounts, v1.VolumeMount{
 		Name:      awsSecretVolName,
 		MountPath: awsCredentialDir,
@@ -144,14 +144,14 @@ func AttachS3ToPodSpec(ps *v1.PodSpec, ss spec.S3Source) {
 }
 
 // AttachABSToPodSpec attaches ABS credentials to a Pod
-func AttachABSToPodSpec(ps *v1.PodSpec, ws spec.ABSSource) {
+func AttachABSToPodSpec(ps *v1.PodSpec, ws api.ABSSource) {
 	storageAccountSelector := v1.SecretKeySelector{
 		LocalObjectReference: v1.LocalObjectReference{Name: ws.ABSSecret},
-		Key:                  spec.ABSStorageAccount,
+		Key:                  api.ABSStorageAccount,
 	}
 	storageKeySelector := v1.SecretKeySelector{
 		LocalObjectReference: v1.LocalObjectReference{Name: ws.ABSSecret},
-		Key:                  spec.ABSStorageKey,
+		Key:                  api.ABSStorageKey,
 	}
 
 	ps.Containers[0].Env = append(ps.Containers[0].Env, v1.EnvVar{
@@ -166,7 +166,7 @@ func AttachABSToPodSpec(ps *v1.PodSpec, ws spec.ABSSource) {
 	})
 }
 
-func NewBackupPodTemplate(clusterName, account string, sp spec.ClusterSpec) v1.PodTemplateSpec {
+func NewBackupPodTemplate(clusterName, account string, sp api.ClusterSpec) v1.PodTemplateSpec {
 	b, err := json.Marshal(sp)
 	if err != nil {
 		panic("unexpected json error " + err.Error())

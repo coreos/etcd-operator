@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
@@ -57,9 +57,9 @@ func TLSTestCommon(t *testing.T, selfHosted bool) {
 
 	c := e2eutil.NewCluster("", 3)
 	c.Name = clusterName
-	c.Spec.TLS = &spec.TLSPolicy{
-		Static: &spec.StaticTLS{
-			Member: &spec.MemberSecret{
+	c.Spec.TLS = &api.TLSPolicy{
+		Static: &api.StaticTLS{
+			Member: &api.MemberSecret{
 				PeerSecret:   memberPeerTLSSecret,
 				ServerSecret: memberClientTLSSecret,
 			},
@@ -67,7 +67,7 @@ func TLSTestCommon(t *testing.T, selfHosted bool) {
 		},
 	}
 	if selfHosted {
-		c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
+		c = e2eutil.ClusterWithSelfHosted(c, &api.SelfHostedPolicy{})
 	}
 	c, err = e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
 	if err != nil {

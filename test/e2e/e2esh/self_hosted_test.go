@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eslow"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
@@ -43,7 +43,7 @@ func TestSelfHosted(t *testing.T) {
 func testCreateSelfHostedCluster(t *testing.T) {
 	f := framework.Global
 	c := e2eutil.NewCluster("test-etcd-", 3)
-	c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{})
+	c = e2eutil.ClusterWithSelfHosted(c, &api.SelfHostedPolicy{})
 	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
 	t.Logf("boot etcd URL: %s", bootURL)
 
 	c := e2eutil.NewCluster("test-etcd-", 3)
-	c = e2eutil.ClusterWithSelfHosted(c, &spec.SelfHostedPolicy{
+	c = e2eutil.ClusterWithSelfHosted(c, &api.SelfHostedPolicy{
 		BootMemberClientEndpoint: bootURL,
 	})
 	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
@@ -133,7 +133,7 @@ func testSelfHostedClusterWithBackup(t *testing.T) {
 
 	cl := e2eutil.NewCluster("test-cluster-", 3)
 	cl = e2eutil.ClusterWithBackup(cl, e2eutil.NewS3BackupPolicy(true))
-	cl = e2eutil.ClusterWithSelfHosted(cl, &spec.SelfHostedPolicy{})
+	cl = e2eutil.ClusterWithSelfHosted(cl, &api.SelfHostedPolicy{})
 
 	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, cl)
 	if err != nil {

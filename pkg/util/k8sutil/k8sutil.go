@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
@@ -208,7 +208,7 @@ func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.S
 	return svc
 }
 
-func AddRecoveryToPod(pod *v1.Pod, clusterName, token string, m *etcdutil.Member, cs spec.ClusterSpec) {
+func AddRecoveryToPod(pod *v1.Pod, clusterName, token string, m *etcdutil.Member, cs api.ClusterSpec) {
 	pod.Annotations[v1.PodInitContainersBetaAnnotationKey] =
 		makeRestoreInitContainerSpec(BackupServiceAddr(clusterName), token, cs.BaseImage, cs.Version, m)
 }
@@ -217,7 +217,7 @@ func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
 	o.SetOwnerReferences(append(o.GetOwnerReferences(), r))
 }
 
-func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec, owner metav1.OwnerReference) *v1.Pod {
+func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs api.ClusterSpec, owner metav1.OwnerReference) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",

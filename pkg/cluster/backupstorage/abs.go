@@ -17,8 +17,8 @@ package backupstorage
 import (
 	"path"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	backupabs "github.com/coreos/etcd-operator/pkg/backup/abs"
-	"github.com/coreos/etcd-operator/pkg/spec"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -27,13 +27,13 @@ import (
 type abs struct {
 	clusterName  string
 	namespace    string
-	backupPolicy spec.BackupPolicy
+	backupPolicy api.BackupPolicy
 	kubecli      kubernetes.Interface
 	abscli       *backupabs.ABS
 }
 
 // NewABSStorage returns a new ABS Storage implementation using the given kubecli, cluster name, namespace and backup policy
-func NewABSStorage(kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
+func NewABSStorage(kubecli kubernetes.Interface, clusterName, ns string, p api.BackupPolicy) (Storage, error) {
 	prefix := path.Join(ns, clusterName)
 
 	abscli, err := func() (*backupabs.ABS, error) {
@@ -88,7 +88,7 @@ func setupABSCreds(kubecli kubernetes.Interface, ns, secret string) (account, ke
 	if err != nil {
 		return "", "", err
 	}
-	account = string(se.Data[spec.ABSStorageAccount])
-	key = string(se.Data[spec.ABSStorageKey])
+	account = string(se.Data[api.ABSStorageAccount])
+	key = string(se.Data[api.ABSStorageKey])
 	return
 }

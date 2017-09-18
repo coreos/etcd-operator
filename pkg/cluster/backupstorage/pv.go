@@ -1,7 +1,7 @@
 package backupstorage
 
 import (
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"k8s.io/client-go/kubernetes"
@@ -11,11 +11,11 @@ type pv struct {
 	clusterName  string
 	namespace    string
 	storageClass string
-	backupPolicy spec.BackupPolicy
+	backupPolicy api.BackupPolicy
 	kubecli      kubernetes.Interface
 }
 
-func NewPVStorage(kubecli kubernetes.Interface, cn, ns, sc string, backupPolicy spec.BackupPolicy) (Storage, error) {
+func NewPVStorage(kubecli kubernetes.Interface, cn, ns, sc string, backupPolicy api.BackupPolicy) (Storage, error) {
 	s := &pv{
 		clusterName:  cn,
 		namespace:    ns,

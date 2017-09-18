@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
@@ -79,9 +79,9 @@ func TestBackupStatus(t *testing.T) {
 	defer func() {
 		var storageCheckerOptions *e2eutil.StorageCheckerOptions
 		switch testEtcd.Spec.Backup.StorageType {
-		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+		case api.BackupStorageTypePersistentVolume, api.BackupStorageTypeDefault:
 			storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
-		case spec.BackupStorageTypeS3:
+		case api.BackupStorageTypeS3:
 			storageCheckerOptions = &e2eutil.StorageCheckerOptions{
 				S3Cli:    f.S3Cli,
 				S3Bucket: f.S3Bucket,

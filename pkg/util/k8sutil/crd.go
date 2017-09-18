@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -32,15 +32,15 @@ import (
 
 // EtcdClusterCRUpdateFunc is a function to be used when atomically
 // updating a Cluster CR.
-type EtcdClusterCRUpdateFunc func(*spec.EtcdCluster)
+type EtcdClusterCRUpdateFunc func(*api.EtcdCluster)
 
-func GetClusterList(restcli rest.Interface, ns string) (*spec.EtcdClusterList, error) {
+func GetClusterList(restcli rest.Interface, ns string) (*api.EtcdClusterList, error) {
 	b, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
 	if err != nil {
 		return nil, err
 	}
 
-	clusters := &spec.EtcdClusterList{}
+	clusters := &api.EtcdClusterList{}
 	if err := json.Unmarshal(b, clusters); err != nil {
 		return nil, err
 	}
@@ -48,21 +48,21 @@ func GetClusterList(restcli rest.Interface, ns string) (*spec.EtcdClusterList, e
 }
 
 func listClustersURI(ns string) string {
-	return fmt.Sprintf("/apis/%s/namespaces/%s/%s", spec.SchemeGroupVersion.String(), ns, spec.CRDResourcePlural)
+	return fmt.Sprintf("/apis/%s/namespaces/%s/%s", api.SchemeGroupVersion.String(), ns, api.CRDResourcePlural)
 }
 
 func CreateCRD(clientset apiextensionsclient.Interface) error {
 	crd := &apiextensionsv1beta1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: spec.CRDName,
+			Name: api.CRDName,
 		},
 		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
-			Group:   spec.SchemeGroupVersion.Group,
-			Version: spec.SchemeGroupVersion.Version,
+			Group:   api.SchemeGroupVersion.Group,
+			Version: api.SchemeGroupVersion.Version,
 			Scope:   apiextensionsv1beta1.NamespaceScoped,
 			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
-				Plural:     spec.CRDResourcePlural,
-				Kind:       spec.CRDResourceKind,
+				Plural:     api.CRDResourcePlural,
+				Kind:       api.CRDResourceKind,
 				ShortNames: []string{"etcd"},
 			},
 		},
@@ -73,7 +73,7 @@ func CreateCRD(clientset apiextensionsclient.Interface) error {
 
 func WaitCRDReady(clientset apiextensionsclient.Interface) error {
 	err := retryutil.Retry(5*time.Second, 20, func() (bool, error) {
-		crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(spec.CRDName, metav1.GetOptions{})
+		crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(api.CRDName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}

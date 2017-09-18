@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/spec"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
@@ -90,13 +90,13 @@ func testDisasterRecovery(t *testing.T, numToKill int, storageClass string) {
 	testDisasterRecoveryWithBackupPolicy(t, numToKill, e2eutil.NewPVBackupPolicy(true, storageClass))
 }
 
-func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPolicy *spec.BackupPolicy) {
+func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPolicy *api.BackupPolicy) {
 	cl := e2eutil.NewCluster("test-etcd-", 3)
 	cl = e2eutil.ClusterWithBackup(cl, backupPolicy)
 	testDisasterRecoveryWithCluster(t, numToKill, cl)
 }
 
-func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.EtcdCluster) {
+func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *api.EtcdCluster) {
 	f := framework.Global
 
 	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, cl)
@@ -106,9 +106,9 @@ func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *spec.EtcdC
 	defer func() {
 		var storageCheckerOptions *e2eutil.StorageCheckerOptions
 		switch testEtcd.Spec.Backup.StorageType {
-		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+		case api.BackupStorageTypePersistentVolume, api.BackupStorageTypeDefault:
 			storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
-		case spec.BackupStorageTypeS3:
+		case api.BackupStorageTypeS3:
 			storageCheckerOptions = &e2eutil.StorageCheckerOptions{
 				S3Cli:    f.S3Cli,
 				S3Bucket: f.S3Bucket,
@@ -200,7 +200,7 @@ func TestDynamicAddBackupPolicy(t *testing.T) {
 		t.Fatalf("expecting retry failure, but err = %v", err)
 	}
 
-	uf := func(cl *spec.EtcdCluster) {
+	uf := func(cl *api.EtcdCluster) {
 		bp := e2eutil.NewS3BackupPolicy(true)
 		cl.Spec.Backup = bp
 	}
@@ -245,7 +245,7 @@ func TestDynamicRemoveBackupPolicy(t *testing.T) {
 		t.Fatalf("failed to create backup pod: %v", err)
 	}
 
-	uf := func(cl *spec.EtcdCluster) {
+	uf := func(cl *api.EtcdCluster) {
 		cl.Spec.Backup = nil
 	}
 	_, err = e2eutil.UpdateCluster(f.CRClient, clus, 10, uf)

@@ -7,9 +7,9 @@ import (
 	"path"
 	"path/filepath"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -22,12 +22,12 @@ type s3 struct {
 	namespace    string
 	s3Prefix     string
 	credsDir     string
-	backupPolicy spec.BackupPolicy
+	backupPolicy api.BackupPolicy
 	kubecli      kubernetes.Interface
 	s3cli        *backups3.S3
 }
 
-func NewS3Storage(kubecli kubernetes.Interface, clusterName, ns string, p spec.BackupPolicy) (Storage, error) {
+func NewS3Storage(kubecli kubernetes.Interface, clusterName, ns string, p api.BackupPolicy) (Storage, error) {
 	var (
 		prefix = backupapi.ToS3Prefix(p.S3.Prefix, ns, clusterName)
 		dir    string
@@ -96,7 +96,7 @@ func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, dir string) (*sess
 		return nil, fmt.Errorf("setup AWS config failed: get k8s secret failed: %v", err)
 	}
 
-	creds := se.Data[spec.AWSSecretCredentialsFileName]
+	creds := se.Data[api.AWSSecretCredentialsFileName]
 	if len(creds) != 0 {
 		credsFile := path.Join(dir, "credentials")
 		err = ioutil.WriteFile(credsFile, creds, 0600)
@@ -106,7 +106,7 @@ func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, dir string) (*sess
 		options.SharedConfigFiles = append(options.SharedConfigFiles, credsFile)
 	}
 
-	config := se.Data[spec.AWSSecretConfigFileName]
+	config := se.Data[api.AWSSecretConfigFileName]
 	if config != nil {
 		configFile := path.Join(dir, "config")
 		err = ioutil.WriteFile(configFile, config, 0600)

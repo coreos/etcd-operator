@@ -21,19 +21,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/cluster"
-	"github.com/coreos/etcd-operator/pkg/spec"
 )
 
 func TestHandleClusterEventUpdateFailedCluster(t *testing.T) {
 	c := New(Config{})
 
-	clus := &spec.EtcdCluster{
+	clus := &api.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},
-		Status: spec.ClusterStatus{
-			Phase: spec.ClusterPhaseFailed,
+		Status: api.ClusterStatus{
+			Phase: api.ClusterPhaseFailed,
 		},
 	}
 	e := &Event{
@@ -50,12 +50,12 @@ func TestHandleClusterEventUpdateFailedCluster(t *testing.T) {
 func TestHandleClusterEventDeleteFailedCluster(t *testing.T) {
 	c := New(Config{})
 	name := "tests"
-	clus := &spec.EtcdCluster{
+	clus := &api.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Status: spec.ClusterStatus{
-			Phase: spec.ClusterPhaseFailed,
+		Status: api.ClusterStatus{
+			Phase: api.ClusterPhaseFailed,
 		},
 	}
 	e := &Event{

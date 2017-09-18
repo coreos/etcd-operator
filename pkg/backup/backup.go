@@ -22,11 +22,11 @@ import (
 	"path"
 	"time"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
 	"github.com/coreos/etcd-operator/pkg/backup/abs"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -49,7 +49,7 @@ type Backup struct {
 
 	clusterName   string
 	namespace     string
-	policy        spec.BackupPolicy
+	policy        api.BackupPolicy
 	listenAddr    string
 	etcdTLSConfig *tls.Config
 	selfHosted    bool
@@ -62,7 +62,7 @@ type Backup struct {
 	recentBackupsStatus []backupapi.BackupStatus
 }
 
-func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSpec, listenAddr string) (*Backup, error) {
+func New(kclient kubernetes.Interface, clusterName, ns string, sp api.ClusterSpec, listenAddr string) (*Backup, error) {
 	bdir := path.Join(constants.BackupMountDir, PVBackupV1, clusterName)
 	// We created not only backup dir and but also tmp dir under it.
 	// tmp dir is used to store intermediate snapshot files.
@@ -75,9 +75,9 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 
 	var be backend
 	switch sp.Backup.StorageType {
-	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
+	case api.BackupStorageTypePersistentVolume, api.BackupStorageTypeDefault:
 		be = &fileBackend{dir: bdir}
-	case spec.BackupStorageTypeS3:
+	case api.BackupStorageTypeS3:
 		s3Prefix := ""
 		if sp.Backup.S3 != nil {
 			s3Prefix = sp.Backup.S3.Prefix
@@ -91,7 +91,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 			dir: tmpDir,
 			S3:  s3cli,
 		}
-	case spec.BackupStorageTypeABS:
+	case api.BackupStorageTypeABS:
 		absCli, err := abs.New(os.Getenv(env.ABSContainer),
 			os.Getenv(env.ABSStorageAccount),
 			os.Getenv(env.ABSStorageKey),
