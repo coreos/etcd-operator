@@ -17,7 +17,7 @@ package e2eutil
 import (
 	"os"
 
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

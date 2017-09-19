@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/client/experimentalclient"
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/cluster/backupstorage"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
