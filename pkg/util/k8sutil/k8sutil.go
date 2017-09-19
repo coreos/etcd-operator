@@ -75,8 +75,8 @@ func GetPodNames(pods []*v1.Pod) []string {
 	return res
 }
 
-func makeRestoreInitContainerSpec(backupAddr, token, baseImage, version string, m *etcdutil.Member) string {
-	spec := []v1.Container{
+func makeRestoreInitContainers(backupAddr, token, baseImage, version string, m *etcdutil.Member) []v1.Container {
+	return []v1.Container{
 		{
 			Name:  "fetch-backup",
 			Image: "tutum/curl",
@@ -101,11 +101,6 @@ func makeRestoreInitContainerSpec(backupAddr, token, baseImage, version string, 
 			VolumeMounts: etcdVolumeMounts(),
 		},
 	}
-	b, err := json.Marshal(spec)
-	if err != nil {
-		panic(err)
-	}
-	return string(b)
 }
 
 func ImageName(baseImage, version string) string {
@@ -209,8 +204,8 @@ func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.S
 }
 
 func AddRecoveryToPod(pod *v1.Pod, clusterName, token string, m *etcdutil.Member, cs api.ClusterSpec) {
-	pod.Annotations[v1.PodInitContainersBetaAnnotationKey] =
-		makeRestoreInitContainerSpec(BackupServiceAddr(clusterName), token, cs.BaseImage, cs.Version, m)
+	pod.Spec.InitContainers = makeRestoreInitContainers(
+		BackupServiceAddr(clusterName), token, cs.BaseImage, cs.Version, m)
 }
 
 func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
