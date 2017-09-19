@@ -116,7 +116,7 @@ func main() {
 	rl, err := resourcelock.New(resourcelock.EndpointsResourceLock,
 		namespace,
 		"etcd-operator",
-		kubecli.(*kubernetes.Clientset),
+		kubecli.CoreV1(),
 		resourcelock.ResourceLockConfig{
 			Identity:      id,
 			EventRecorder: createRecorder(kubecli, name, namespace),
