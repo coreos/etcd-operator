@@ -17,7 +17,7 @@ package client
 import (
 	"context"
 
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"k8s.io/apimachinery/pkg/runtime"

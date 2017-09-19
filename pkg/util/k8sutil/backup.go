@@ -20,7 +20,7 @@ import (
 	"path"
 	"time"
 
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	backupenv "github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"

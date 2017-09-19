@@ -7,7 +7,7 @@ import (
 	"path"
 	"path/filepath"
 
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta1"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
