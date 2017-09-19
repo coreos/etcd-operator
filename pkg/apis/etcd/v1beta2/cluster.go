@@ -35,6 +35,8 @@ var (
 	ErrBackupUnsetRestoreSet = errors.New("spec: backup policy must be set if restore policy is set")
 )
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // EtcdClusterList is a list of etcd clusters.
 type EtcdClusterList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -43,6 +45,9 @@ type EtcdClusterList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []EtcdCluster `json:"items"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type EtcdCluster struct {
 	metav1.TypeMeta   `json:",inline"`
