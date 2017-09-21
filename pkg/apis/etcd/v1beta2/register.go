@@ -34,6 +34,11 @@ var (
 	CRDName            = CRDResourcePlural + "." + groupName
 )
 
+// Resource gets an EtcdCluster GroupResource for a specified resource
+func Resource(resource string) schema.GroupResource {
+	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
+
 // addKnownTypes adds the set of types defined in this package to the supplied scheme.
 func addKnownTypes(s *runtime.Scheme) error {
 	s.AddKnownTypes(SchemeGroupVersion,
