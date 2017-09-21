@@ -1,21 +1,50 @@
 #!/usr/bin/env bash
 
-set -o errexit
-set -o nounset
-set -o pipefail
+# TODO: Once https://github.com/kubernetes/kubernetes/pull/52186 is merged,
+#   we would use codegen.sh from code-generator repo.
 
-# Once https://github.com/kubernetes/kubernetes/pull/52186 is merged,
-# we could use codegen.sh from code-generator repo.
+function codegen::join() { local IFS="$1"; shift; echo "$*"; }
 
-DOCKER_REPO_ROOT="/go/src/github.com/coreos/etcd-operator"
-IMAGE=${IMAGE:-"gcr.io/coreos-k8s-scale-testing/codegen"}
+function codegen::generate-groups() {
+  local GENS="$1" # the generators comma separated to run (deepcopy,defaulter,conversion,client,lister,informer) or "all"
+  local OUTPUT_PKG="$2" # the output package name (e.g. github.com/example/project)
+  local APIS_PKG="$3" # the external types dir (e.g. github.com/example/api or github.com/example/project/pkg/apis)
+  local GROUPS_WITH_VERSIONS="$4" # groupA:v1,v2,groupB,v1,groupC:v2
+  shift 4
 
-docker run --rm -ti \
-  -v "$PWD":"$DOCKER_REPO_ROOT" \
-  -w "$DOCKER_REPO_ROOT" \
-  "$IMAGE" deepcopy-gen \
-  --v 1 --logtostderr \
-  --go-header-file "./hack/k8s/codegen/boilerplate.go.txt" \
-  -i "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2" \
-  -O zz_generated.deepcopy \
-  --bounding-dirs "github.com/coreos/etcd-operator/pkg/apis"
+  # enumerate group versions
+  local FQ_APIS=() # e.g. k8s.io/api/apps/v1
+  for GVs in ${GROUPS_WITH_VERSIONS}; do
+    IFS=: read G Vs <<<"${GVs}"
+
+    # enumerate versions
+    for V in ${Vs//,/ }; do
+      FQ_APIS+=(${APIS_PKG}/${G}/${V})
+    done
+  done
+
+  if [ "${GENS}" = "all" ] || grep -qw "deepcopy" <<<"${GENS}"; then
+    echo "Generating deepcopy funcs"
+    ${GOPATH}/bin/deepcopy-gen -i $(codegen::join , "${FQ_APIS[@]}") -O zz_generated.deepcopy --bounding-dirs ${APIS_PKG} "$@"
+  fi
+
+  if [ "${GENS}" = "all" ] || grep -qw "client" <<<"${GENS}"; then
+    echo "Generating clientset for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/clientset"
+    ${GOPATH}/bin/client-gen --clientset-name versioned --input-base "" --input $(codegen::join , "${FQ_APIS[@]}") --clientset-path ${OUTPUT_PKG}/clientset "$@"
+  fi
+
+  if [ "${GENS}" = "all" ] || grep -qw "lister" <<<"${GENS}"; then
+    echo "Generating listers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/listers"
+    ${GOPATH}/bin/lister-gen --input-dirs $(codegen::join , "${FQ_APIS[@]}") --output-package ${OUTPUT_PKG}/listers "$@"
+  fi
+
+  if [ "${GENS}" = "all" ] || grep -qw "informer" <<<"${GENS}"; then
+    echo "Generating informers for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/informers"
+    ${GOPATH}/bin/informer-gen \
+             --input-dirs $(codegen::join , "${FQ_APIS[@]}") \
+             --versioned-clientset-package ${OUTPUT_PKG}/clientset/versioned \
+             --listers-package ${OUTPUT_PKG}/listers \
+             --output-package ${OUTPUT_PKG}/informers \
+             "$@"
+  fi
+}
