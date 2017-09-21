@@ -36,7 +36,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // for gcp auth
 	"k8s.io/client-go/rest"
 )
@@ -355,28 +354,12 @@ func CreatePatch(o, n, datastruct interface{}) ([]byte, error) {
 	return strategicpatch.CreateTwoWayMergePatch(oldData, newData, datastruct)
 }
 
-func ClonePod(p *v1.Pod) *v1.Pod {
-	np, err := scheme.Scheme.DeepCopy(p)
-	if err != nil {
-		panic("cannot deep copy pod")
-	}
-	return np.(*v1.Pod)
-}
-
-func cloneDeployment(d *appsv1beta1.Deployment) *appsv1beta1.Deployment {
-	cd, err := scheme.Scheme.DeepCopy(d)
-	if err != nil {
-		panic("cannot deep copy pod")
-	}
-	return cd.(*appsv1beta1.Deployment)
-}
-
 func PatchDeployment(kubecli kubernetes.Interface, namespace, name string, updateFunc func(*appsv1beta1.Deployment)) error {
 	od, err := kubecli.AppsV1beta1().Deployments(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	nd := cloneDeployment(od)
+	nd := od.DeepCopy()
 	updateFunc(nd)
 	patchData, err := CreatePatch(od, nd, appsv1beta1.Deployment{})
 	if err != nil {
