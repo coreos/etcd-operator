@@ -108,7 +108,7 @@ func New(config Config, cl *api.EtcdCluster) *Cluster {
 		cluster:     cl,
 		eventCh:     make(chan *clusterEvent, 100),
 		stopCh:      make(chan struct{}),
-		status:      cl.Status.Copy(),
+		status:      *(cl.Status.DeepCopy()),
 		gc:          garbagecollection.New(config.KubeCli, cl.Namespace),
 	}
 

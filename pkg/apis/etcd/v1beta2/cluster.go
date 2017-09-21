@@ -15,7 +15,6 @@
 package v1beta2
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -290,19 +289,6 @@ type MembersStatus struct {
 	Ready []string `json:"ready,omitempty"`
 	// Unready are the etcd members not ready to serve requests
 	Unready []string `json:"unready,omitempty"`
-}
-
-func (cs ClusterStatus) Copy() ClusterStatus {
-	newCS := ClusterStatus{}
-	b, err := json.Marshal(cs)
-	if err != nil {
-		panic(err)
-	}
-	err = json.Unmarshal(b, &newCS)
-	if err != nil {
-		panic(err)
-	}
-	return newCS
 }
 
 func (cs *ClusterStatus) IsFailed() bool {

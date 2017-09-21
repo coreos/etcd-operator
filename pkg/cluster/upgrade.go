@@ -33,7 +33,7 @@ func (c *Cluster) upgradeOneMember(memberName string) error {
 	if err != nil {
 		return fmt.Errorf("fail to get pod (%s): %v", memberName, err)
 	}
-	oldpod := k8sutil.ClonePod(pod)
+	oldpod := pod.DeepCopy()
 
 	c.logger.Infof("upgrading the etcd member %v from %s to %s", memberName, k8sutil.GetEtcdVersion(pod), c.cluster.Spec.Version)
 	pod.Spec.Containers[0].Image = k8sutil.ImageName(c.cluster.Spec.BaseImage, c.cluster.Spec.Version)
