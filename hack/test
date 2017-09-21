@@ -38,7 +38,7 @@ function fmt_pass {
 		fi
 	done
 
-	checkPkgs=$(go list ./client/... ./cmd/... ./pkg/... ./test/e2e/...)
+	checkPkgs=$(go list ./client/... ./cmd/... ./pkg/... ./test/e2e/... | grep -v generated)
 	
 	go get honnef.co/go/tools/cmd/gosimple || true
 	if which gosimple >/dev/null; then
