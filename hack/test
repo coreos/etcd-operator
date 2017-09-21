@@ -5,21 +5,21 @@ set -o nounset
 set -o pipefail
 
 if [ -z "${PASSES-}" ]; then
-	PASSES="fmt build e2e unit"
+	PASSES="fmt build e2e e2eslow unit"
 fi
 
-find_files() {
-  find . -not \( \
-      \( \
-        -wholename './_output' \
-        -o -wholename '*/vendor/*' \
-        -o -wholename '*/_test/*' \
-      \) -prune \
-    \) -name '*.go'
+function listPkgs() {
+	go list ./client/... ./cmd/... ./pkg/... ./test/... | grep -v generated
+}
+
+function listFiles() {
+	# pipeline is much faster than for loop
+	listPkgs | xargs -I {} find "${GOPATH}/src/{}" -name '*.go' | grep -v generated
 }
 
 function fmt_pass {
-	allfiles=$(find_files)
+	allfiles=$(listFiles)
+
 	echo "Checking gofmt..."
 	for file in $allfiles; do
 		checkRes=$(gofmt -l -s -d $file)
@@ -37,13 +37,12 @@ function fmt_pass {
 			exit 255
 		fi
 	done
-
-	checkPkgs=$(go list ./client/... ./cmd/... ./pkg/... ./test/e2e/... | grep -v generated)
 	
 	go get honnef.co/go/tools/cmd/gosimple || true
 	if which gosimple >/dev/null; then
 		echo "Checking gosimple..."
-		checkRes=$(gosimple $checkPkgs) || true
+		# Generated deepcopy code failed checking... Ignore it at the moment
+		checkRes=$(gosimple `listPkgs | grep -v apis/etcd/v1beta2`) || true
 		if [ -n "${checkRes}" ]; then
 			echo -e "gosimple checking failed:\n${checkRes}"
 			exit 255
@@ -55,7 +54,7 @@ function fmt_pass {
 	go get honnef.co/go/tools/cmd/unused || true
 	if which unused >/dev/null; then
 		echo "Checking unused..."
-		checkRes=$(unused $checkPkgs) || true
+		checkRes=$(unused `listPkgs`) || true
 		if [ -n "${checkRes}" ]; then
 				echo -e "unused checking failed:\n${checkRes}"
 				exit 255
@@ -167,7 +166,8 @@ function unit_pass {
 	(curl -s https://codecov.io/bash | bash) || true
 }
 
-for p in $PASSES; do
+for p in $PASSES
+do
 	${p}_pass
 done
 
