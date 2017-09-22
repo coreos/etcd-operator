@@ -179,7 +179,6 @@ func (c *Cluster) removeDeadMember(toRemove *etcdutil.Member) error {
 	}
 
 	c.logger.Infof("removing dead member %q", toRemove.Name)
-	c.status.AppendRemovingDeadMember(toRemove.Name)
 
 	return c.removeMember(toRemove)
 }

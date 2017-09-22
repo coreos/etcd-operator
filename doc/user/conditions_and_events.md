@@ -27,7 +27,7 @@ The etcd cluster Condition and its statuses are defined as:
   - Not present
 - Scaling
   - True: Scaling from current members size X to spec.size Y
-  - False: Reason for failure(e.g no more nodes to place member due to anti-affinity)
+  - False: Reason for failure (e.g no more nodes to place member due to anti-affinity)
   - Not present
 - Upgrading
   - True: Upgrading from version X to Y
