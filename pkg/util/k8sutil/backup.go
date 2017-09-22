@@ -183,7 +183,7 @@ func NewBackupPodTemplate(clusterName, account string, sp api.ClusterSpec) v1.Po
 					"--etcd-cluster=" + clusterName,
 				},
 				Env: []v1.EnvVar{{
-					Name:      "MY_POD_NAMESPACE",
+					Name:      constants.EnvOperatorPodNamespace,
 					ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 				}, {
 					Name:  backupenv.ClusterSpec,

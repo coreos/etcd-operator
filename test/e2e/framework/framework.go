@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/client"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -118,11 +119,11 @@ func (f *Framework) SetupEtcdOperator() error {
 					Command:         cmd,
 					Env: []v1.EnvVar{
 						{
-							Name:      "MY_POD_NAMESPACE",
+							Name:      constants.EnvOperatorPodNamespace,
 							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 						},
 						{
-							Name:      "MY_POD_NAME",
+							Name:      constants.EnvOperatorPodName,
 							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
 						},
 					},
