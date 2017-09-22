@@ -36,6 +36,14 @@ func ReplacingDeadMemberEvent(memberName string, cl *api.EtcdCluster) *v1.Event 
 	return event
 }
 
+func MemberUpgradedEvent(memberName, oldVersion, newVersion string, cl *api.EtcdCluster) *v1.Event {
+	event := newClusterEvent(cl)
+	event.Type = v1.EventTypeNormal
+	event.Reason = "Member Upgraded"
+	event.Message = fmt.Sprintf("Member %s upgraded from %s to %s ", memberName, oldVersion, newVersion)
+	return event
+}
+
 func newClusterEvent(cl *api.EtcdCluster) *v1.Event {
 	t := time.Now()
 	return &v1.Event{

@@ -49,5 +49,10 @@ func (c *Cluster) upgradeOneMember(memberName string) error {
 		return fmt.Errorf("fail to update the etcd member (%s): %v", memberName, err)
 	}
 	c.logger.Infof("finished upgrading the etcd member %v", memberName)
+	_, err = c.eventsCli.Create(k8sutil.MemberUpgradedEvent(memberName, k8sutil.GetEtcdVersion(oldpod), c.cluster.Spec.Version, c.cluster))
+	if err != nil {
+		c.logger.Errorf("failed to create member upgraded event: %v", err)
+	}
+
 	return nil
 }
