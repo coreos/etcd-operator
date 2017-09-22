@@ -179,6 +179,10 @@ func (c *Cluster) removeDeadMember(toRemove *etcdutil.Member) error {
 	}
 
 	c.logger.Infof("removing dead member %q", toRemove.Name)
+	_, err := c.eventsCli.Create(k8sutil.ReplacingDeadMemberEvent(toRemove.Name, c.cluster))
+	if err != nil {
+		c.logger.Errorf("failed to create replacing dead member event: %v", err)
+	}
 
 	return c.removeMember(toRemove)
 }
@@ -195,6 +199,10 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 		}
 	}
 	c.members.Remove(toRemove.Name)
+	_, err = c.eventsCli.Create(k8sutil.MemberRemoveEvent(toRemove.Name, c.cluster))
+	if err != nil {
+		c.logger.Errorf("failed to create remove member event: %v", err)
+	}
 	if err := c.removePod(toRemove.Name); err != nil {
 		return err
 	}

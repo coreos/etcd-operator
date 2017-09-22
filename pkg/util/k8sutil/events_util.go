@@ -13,6 +13,30 @@ import (
 )
 
 func NewMemberAddEvent(memberName string, cl *api.EtcdCluster) *v1.Event {
+	event := newClusterEvent(cl)
+	event.Type = v1.EventTypeNormal
+	event.Reason = "New Member Added"
+	event.Message = fmt.Sprintf("New member %s added to cluster", memberName)
+	return event
+}
+
+func MemberRemoveEvent(memberName string, cl *api.EtcdCluster) *v1.Event {
+	event := newClusterEvent(cl)
+	event.Type = v1.EventTypeNormal
+	event.Reason = "Member Removed"
+	event.Message = fmt.Sprintf("Existing member %s removed from the cluster", memberName)
+	return event
+}
+
+func ReplacingDeadMemberEvent(memberName string, cl *api.EtcdCluster) *v1.Event {
+	event := newClusterEvent(cl)
+	event.Type = v1.EventTypeNormal
+	event.Reason = "Replacing Dead Member"
+	event.Message = fmt.Sprintf("The dead member %s is being replaced", memberName)
+	return event
+}
+
+func newClusterEvent(cl *api.EtcdCluster) *v1.Event {
 	t := time.Now()
 	return &v1.Event{
 		ObjectMeta: metav1.ObjectMeta{
@@ -27,13 +51,10 @@ func NewMemberAddEvent(memberName string, cl *api.EtcdCluster) *v1.Event {
 			UID:             cl.UID,
 			ResourceVersion: cl.ResourceVersion,
 		},
-		Type:    v1.EventTypeNormal,
-		Reason:  "New Member Added",
-		Message: fmt.Sprintf("New member %s added to cluster", memberName),
 		Source: v1.EventSource{
 			Component: os.Getenv(constants.EnvOperatorPodName),
 		},
-		// Each New Member Add event is unique so it should not be collapsed with other events
+		// Each cluster event is unique so it should not be collapsed with other events
 		FirstTimestamp: metav1.Time{Time: t},
 		LastTimestamp:  metav1.Time{Time: t},
 		Count:          int32(1),
