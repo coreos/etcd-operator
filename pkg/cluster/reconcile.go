@@ -141,6 +141,10 @@ func (c *Cluster) addOneMember() error {
 	}
 	c.memberCounter++
 	c.logger.Infof("added member (%s)", newMember.Name)
+	_, err = c.eventsCli.Create(k8sutil.NewMemberAddEvent(newMember.Name, c.cluster))
+	if err != nil {
+		c.logger.Errorf("failed to create new member add event: %v", err)
+	}
 	return nil
 }
 

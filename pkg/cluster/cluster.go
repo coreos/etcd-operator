@@ -38,6 +38,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 var (
@@ -92,6 +93,8 @@ type Cluster struct {
 	tlsConfig *tls.Config
 
 	gc *garbagecollection.GC
+
+	eventsCli corev1.EventInterface
 }
 
 func New(config Config, cl *api.EtcdCluster) *Cluster {
@@ -110,6 +113,7 @@ func New(config Config, cl *api.EtcdCluster) *Cluster {
 		stopCh:      make(chan struct{}),
 		status:      *(cl.Status.DeepCopy()),
 		gc:          garbagecollection.New(config.KubeCli, cl.Namespace),
+		eventsCli:   config.KubeCli.Core().Events(cl.Namespace),
 	}
 
 	go func() {
@@ -406,6 +410,11 @@ func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	c.memberCounter++
 	c.members = ms
 	c.logger.Infof("cluster created with seed member (%s)", m.Name)
+	_, err := c.eventsCli.Create(k8sutil.NewMemberAddEvent(m.Name, c.cluster))
+	if err != nil {
+		c.logger.Errorf("failed to create new member add event: %v", err)
+	}
+
 	return nil
 }
 
