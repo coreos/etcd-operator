@@ -213,7 +213,7 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 }
 
 func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
-	c.status.AppendRecoveringCondition()
+	c.status.SetRecoveringCondition()
 
 	if c.cluster.Spec.SelfHosted != nil {
 		return errors.New("self-hosted cluster cannot be recovered from disaster")

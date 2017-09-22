@@ -134,10 +134,12 @@ func (cs *ClusterStatus) SetScalingDownCondition(from, to int) {
 	cs.setClusterCondition(*c)
 }
 
-func (cs *ClusterStatus) AppendRecoveringCondition() {
+func (cs *ClusterStatus) SetRecoveringCondition() {
 	c := newClusterCondition(ClusterConditionRecovering, v1.ConditionTrue,
 		"Disaster recovery", "Majority is down. Recovering from backup")
 	cs.setClusterCondition(*c)
+
+	cs.ClearCondition(ClusterConditionAvailable)
 }
 
 func (cs *ClusterStatus) SetUpgradingCondition(to string) {
