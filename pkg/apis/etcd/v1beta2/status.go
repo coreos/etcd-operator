@@ -124,12 +124,12 @@ func (cs *ClusterStatus) SetReason(r string) {
 	cs.Reason = r
 }
 
-func (cs *ClusterStatus) AppendScalingUpCondition(from, to int) {
+func (cs *ClusterStatus) SetScalingUpCondition(from, to int) {
 	c := newClusterCondition(ClusterConditionScaling, v1.ConditionTrue, "Scaling up", scalingMsg(from, to))
 	cs.setClusterCondition(*c)
 }
 
-func (cs *ClusterStatus) AppendScalingDownCondition(from, to int) {
+func (cs *ClusterStatus) SetScalingDownCondition(from, to int) {
 	c := newClusterCondition(ClusterConditionScaling, v1.ConditionTrue, "Scaling down", scalingMsg(from, to))
 	cs.setClusterCondition(*c)
 }
@@ -140,7 +140,7 @@ func (cs *ClusterStatus) AppendRecoveringCondition() {
 	cs.setClusterCondition(*c)
 }
 
-func (cs *ClusterStatus) AppendUpgradingCondition(to string) {
+func (cs *ClusterStatus) SetUpgradingCondition(to string) {
 	// TODO: show x/y members has upgraded.
 	c := newClusterCondition(ClusterConditionUpgrading, v1.ConditionTrue,
 		"Cluster upgrading", "upgrading to "+to)
@@ -150,6 +150,14 @@ func (cs *ClusterStatus) AppendUpgradingCondition(to string) {
 func (cs *ClusterStatus) SetReadyCondition() {
 	c := newClusterCondition(ClusterConditionAvailable, v1.ConditionTrue, "Cluster available", "")
 	cs.setClusterCondition(*c)
+}
+
+func (cs *ClusterStatus) ClearCondition(t ClusterConditionType) {
+	pos, _ := getClusterCondition(cs, t)
+	if pos == -1 {
+		return
+	}
+	cs.Conditions = append(cs.Conditions[:pos], cs.Conditions[pos+1:]...)
 }
 
 func (cs *ClusterStatus) setClusterCondition(c ClusterCondition) {

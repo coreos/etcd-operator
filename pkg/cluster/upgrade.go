@@ -25,7 +25,7 @@ import (
 )
 
 func (c *Cluster) upgradeOneMember(memberName string) error {
-	c.status.AppendUpgradingCondition(c.cluster.Spec.Version)
+	c.status.SetUpgradingCondition(c.cluster.Spec.Version)
 
 	ns := c.cluster.Namespace
 
