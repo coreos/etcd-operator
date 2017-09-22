@@ -214,7 +214,7 @@ func (c *Cluster) create() error {
 }
 
 func (c *Cluster) prepareSeedMember() error {
-	c.status.AppendScalingUpCondition(0, c.cluster.Spec.Size)
+	c.status.SetScalingUpCondition(0, c.cluster.Spec.Size)
 
 	var err error
 	if sh := c.cluster.Spec.SelfHosted; sh != nil {

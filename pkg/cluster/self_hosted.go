@@ -127,7 +127,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 		return nil
 	}
 
-	c.status.AppendScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
+	c.status.SetScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
 
 	newMember := c.newMember(c.memberCounter)
 	c.memberCounter++

@@ -45,6 +45,7 @@ func (c *Cluster) reconcile(pods []*v1.Pod) error {
 	if !running.IsEqual(c.members) || c.members.Size() != sp.Size {
 		return c.reconcileMembers(running)
 	}
+	c.status.ClearCondition(api.ClusterConditionScaling)
 
 	if needUpgrade(pods, sp) {
 		c.status.UpgradeVersionTo(sp.Version)
@@ -52,6 +53,7 @@ func (c *Cluster) reconcile(pods []*v1.Pod) error {
 		m := pickOneOldMember(pods, sp.Version)
 		return c.upgradeOneMember(m.Name)
 	}
+	c.status.ClearCondition(api.ClusterConditionUpgrading)
 
 	c.status.SetVersion(sp.Version)
 	c.status.SetReadyCondition()
@@ -114,7 +116,7 @@ func (c *Cluster) resize() error {
 }
 
 func (c *Cluster) addOneMember() error {
-	c.status.AppendScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
+	c.status.SetScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
 
 	cfg := clientv3.Config{
 		Endpoints:   c.members.ClientURLs(),
@@ -149,7 +151,7 @@ func (c *Cluster) addOneMember() error {
 }
 
 func (c *Cluster) removeOneMember() error {
-	c.status.AppendScalingDownCondition(c.members.Size(), c.cluster.Spec.Size)
+	c.status.SetScalingDownCondition(c.members.Size(), c.cluster.Spec.Size)
 
 	return c.removeMember(c.members.PickOne())
 }
