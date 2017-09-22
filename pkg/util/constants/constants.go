@@ -30,4 +30,7 @@ const (
 	PVProvisionerGCEPD  = "kubernetes.io/gce-pd"
 	PVProvisionerAWSEBS = "kubernetes.io/aws-ebs"
 	PVProvisionerNone   = "none"
+
+	EnvOperatorPodName      = "MY_POD_NAME"
+	EnvOperatorPodNamespace = "MY_POD_NAMESPACE"
 )

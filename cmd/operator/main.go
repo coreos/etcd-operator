@@ -73,13 +73,13 @@ func init() {
 }
 
 func main() {
-	namespace = os.Getenv("MY_POD_NAMESPACE")
+	namespace = os.Getenv(constants.EnvOperatorPodNamespace)
 	if len(namespace) == 0 {
-		logrus.Fatalf("must set env MY_POD_NAMESPACE")
+		logrus.Fatalf("must set env (%s)", constants.EnvOperatorPodNamespace)
 	}
-	name = os.Getenv("MY_POD_NAME")
+	name = os.Getenv(constants.EnvOperatorPodName)
 	if len(name) == 0 {
-		logrus.Fatalf("must set env MY_POD_NAME")
+		logrus.Fatalf("must set env (%s)", constants.EnvOperatorPodName)
 	}
 
 	c := make(chan os.Signal, 1)

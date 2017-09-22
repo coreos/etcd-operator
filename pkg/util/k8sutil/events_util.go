@@ -6,6 +6,7 @@ import (
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +31,7 @@ func NewMemberAddEvent(memberName string, cl *api.EtcdCluster) *v1.Event {
 		Reason:  "New Member Added",
 		Message: fmt.Sprintf("New member %s added to cluster", memberName),
 		Source: v1.EventSource{
-			Component: os.Getenv("MY_POD_NAME"),
+			Component: os.Getenv(constants.EnvOperatorPodName),
 		},
 		// Each New Member Add event is unique so it should not be collapsed with other events
 		FirstTimestamp: metav1.Time{Time: t},

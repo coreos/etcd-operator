@@ -23,6 +23,7 @@ import (
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup"
 	"github.com/coreos/etcd-operator/pkg/backup/env"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/version"
 
@@ -46,7 +47,7 @@ func init() {
 
 	flag.Parse()
 
-	namespace = os.Getenv("MY_POD_NAMESPACE")
+	namespace = os.Getenv(constants.EnvOperatorPodNamespace)
 	if len(namespace) == 0 {
 		namespace = "default"
 	}
