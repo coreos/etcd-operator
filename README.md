@@ -209,6 +209,8 @@ example-etcd-cluster-0003       1/1       Running   0          1m
 
 ## Disaster recovery
 
+> 🚨 Backup is currently only supported with etcd v3 API data. Any data stored using the etcd v2 API will **not** be backed up.
+
 If the majority of etcd members crash, but at least one backup exists for the cluster, the etcd operator can restore the entire cluster from the backup.
 
 By default, the etcd operator creates a storage class on initialization:
