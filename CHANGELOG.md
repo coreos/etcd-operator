@@ -1,10 +1,29 @@
 ## [Unreleased]
 
+### Added
+
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
+## [Release 0.6.0]
+
 **BREAKING CHANGE**: operator level S3 backup is removed. See [upgrade](./doc/user/upgrade/upgrade_guide.md) on how to upgrade from 0.5.x to 0.6.0. 
 
 ### Added
 
+- Add cluster events into EtcdCluster custom resource. See `doc/user/conditions_and_events.md` .
+
 ### Changed
+
+- Redefine status.conditions. See `doc/user/conditions_and_events.md` .
 
 ### Removed
 
