@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/client"
+	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
@@ -42,7 +43,7 @@ var Global *Framework
 type Framework struct {
 	opImage    string
 	KubeClient kubernetes.Interface
-	CRClient   client.EtcdClusterCR
+	CRClient   versioned.Interface
 	Namespace  string
 	S3Cli      *s3.S3
 	S3Bucket   string
@@ -63,14 +64,10 @@ func Setup() error {
 	if err != nil {
 		return err
 	}
-	crClient, err := client.NewCRClient(config)
-	if err != nil {
-		return err
-	}
 
 	Global = &Framework{
 		KubeClient: cli,
-		CRClient:   crClient,
+		CRClient:   client.MustNew(config),
 		Namespace:  *ns,
 		opImage:    *opImage,
 		S3Bucket:   os.Getenv("TEST_S3_BUCKET"),

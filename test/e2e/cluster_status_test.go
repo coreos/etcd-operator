@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -25,6 +24,8 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestReadyMembersStatus(t *testing.T) {
@@ -49,7 +50,7 @@ func TestReadyMembersStatus(t *testing.T) {
 	}
 
 	err = retryutil.Retry(5*time.Second, 3, func() (done bool, err error) {
-		currEtcd, err := f.CRClient.Get(context.TODO(), f.Namespace, testEtcd.Name)
+		currEtcd, err := f.CRClient.EtcdV1beta2().EtcdClusters(f.Namespace).Get(testEtcd.Name, metav1.GetOptions{})
 		if err != nil {
 			e2eutil.LogfWithTimestamp(t, "failed to get updated cluster object: %v", err)
 			return false, nil
@@ -108,7 +109,7 @@ func TestBackupStatus(t *testing.T) {
 	}
 
 	err = retryutil.Retry(5*time.Second, 6, func() (done bool, err error) {
-		c, err := f.CRClient.Get(context.TODO(), f.Namespace, testEtcd.Name)
+		c, err := f.CRClient.EtcdV1beta2().EtcdClusters(f.Namespace).Get(testEtcd.Name, metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("faied to get cluster spec: %v", err)
 		}

@@ -16,7 +16,6 @@ package e2eutil
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"path"
 	"strings"
@@ -25,7 +24,7 @@ import (
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
-	"github.com/coreos/etcd-operator/pkg/client"
+	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
@@ -79,7 +78,7 @@ func WaitUntilPodSizeReached(t *testing.T, kubeClient kubernetes.Interface, size
 	return names, nil
 }
 
-func WaitUntilSizeReached(t *testing.T, crClient client.EtcdClusterCR, size, retries int, cl *api.EtcdCluster) ([]string, error) {
+func WaitUntilSizeReached(t *testing.T, crClient versioned.Interface, size, retries int, cl *api.EtcdCluster) ([]string, error) {
 	return waitSizeReachedWithAccept(t, crClient, size, retries, cl)
 }
 
@@ -119,10 +118,10 @@ func getVersionFromImage(image string) string {
 	return strings.Split(image, ":v")[1]
 }
 
-func waitSizeReachedWithAccept(t *testing.T, crClient client.EtcdClusterCR, size, retries int, cl *api.EtcdCluster, accepts ...acceptFunc) ([]string, error) {
+func waitSizeReachedWithAccept(t *testing.T, crClient versioned.Interface, size, retries int, cl *api.EtcdCluster, accepts ...acceptFunc) ([]string, error) {
 	var names []string
 	err := retryutil.Retry(retryInterval, retries, func() (done bool, err error) {
-		currCluster, err := crClient.Get(context.TODO(), cl.Namespace, cl.Name)
+		currCluster, err := crClient.EtcdV1beta2().EtcdClusters(cl.Namespace).Get(cl.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -146,10 +145,10 @@ func waitSizeReachedWithAccept(t *testing.T, crClient client.EtcdClusterCR, size
 	return names, nil
 }
 
-func WaitUntilMembersWithNamesDeleted(t *testing.T, crClient client.EtcdClusterCR, retries int, cl *api.EtcdCluster, targetNames ...string) ([]string, error) {
+func WaitUntilMembersWithNamesDeleted(t *testing.T, crClient versioned.Interface, retries int, cl *api.EtcdCluster, targetNames ...string) ([]string, error) {
 	var remaining []string
 	err := retryutil.Retry(retryInterval, retries, func() (done bool, err error) {
-		currCluster, err := crClient.Get(context.TODO(), cl.Namespace, cl.Name)
+		currCluster, err := crClient.EtcdV1beta2().EtcdClusters(cl.Namespace).Get(cl.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}

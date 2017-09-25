@@ -15,7 +15,6 @@
 package upgradetest
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -67,7 +66,7 @@ func TestResize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testClus, err = testF.CRClient.Get(context.TODO(), testF.KubeNS, testClus.Name)
+	testClus, err = testF.CRClient.EtcdV1beta2().EtcdClusters(testF.KubeNS).Get(testClus.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

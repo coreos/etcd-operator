@@ -19,8 +19,8 @@ import (
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/cluster"
+	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
@@ -58,7 +58,7 @@ type Config struct {
 	PVProvisioner  string
 	KubeCli        kubernetes.Interface
 	KubeExtCli     apiextensionsclient.Interface
-	EtcdCRCli      client.EtcdClusterCR
+	EtcdCRCli      versioned.Interface
 }
 
 func (c *Config) Validate() error {
