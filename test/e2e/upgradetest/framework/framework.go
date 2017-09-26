@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/coreos/etcd-operator/pkg/client"
+	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
@@ -47,7 +48,7 @@ type Framework struct {
 	Config
 	// global var
 	KubeCli  kubernetes.Interface
-	CRClient client.EtcdClusterCR
+	CRClient versioned.Interface
 	S3Cli    *s3.S3
 	S3Bucket string
 }
@@ -61,15 +62,11 @@ func New(fc Config) (*Framework, error) {
 	if err != nil {
 		return nil, err
 	}
-	crClient, err := client.NewCRClient(kc)
-	if err != nil {
-		return nil, err
-	}
 
 	f := &Framework{
 		Config:   fc,
 		KubeCli:  kubecli,
-		CRClient: crClient,
+		CRClient: client.MustNew(kc),
 	}
 	err = f.setupAWS()
 	return f, err

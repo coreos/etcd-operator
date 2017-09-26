@@ -170,7 +170,7 @@ func newControllerConfig() controller.Config {
 		PVProvisioner:  pvProvisioner,
 		KubeCli:        kubecli,
 		KubeExtCli:     k8sutil.MustNewKubeExtClient(),
-		EtcdCRCli:      client.MustNewCRInCluster(),
+		EtcdCRCli:      client.MustNewInCluster(),
 	}
 
 	return cfg
