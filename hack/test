@@ -18,6 +18,10 @@ function listFiles() {
 }
 
 function fmt_pass {
+	if ! "./hack/k8s/codegen/verify-generated.sh"; then
+		exit 1
+	fi
+
 	allfiles=$(listFiles)
 
 	echo "Checking gofmt..."
