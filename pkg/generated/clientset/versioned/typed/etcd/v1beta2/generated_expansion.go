@@ -15,6 +15,4 @@ limitations under the License.
 */
 package v1beta2
 
-type EtcdBackupExpansion interface{}
-
 type EtcdClusterExpansion interface{}

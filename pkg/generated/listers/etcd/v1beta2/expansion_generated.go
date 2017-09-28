@@ -18,14 +18,6 @@ limitations under the License.
 
 package v1beta2
 
-// EtcdBackupListerExpansion allows custom methods to be added to
-// EtcdBackupLister.
-type EtcdBackupListerExpansion interface{}
-
-// EtcdBackupNamespaceListerExpansion allows custom methods to be added to
-// EtcdBackupNamespaceLister.
-type EtcdBackupNamespaceListerExpansion interface{}
-
 // EtcdClusterListerExpansion allows custom methods to be added to
 // EtcdClusterLister.
 type EtcdClusterListerExpansion interface{}
