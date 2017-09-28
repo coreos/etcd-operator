@@ -1,0 +1,11 @@
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdBackup"
+metadata:
+  name: example-etcd-cluster
+spec:
+  clusterName: example-etcd-cluster
+  storageType: s3
+  s3:
+    s3Bucket: jenkins-etcd-operator
+    prefix: prefix
+    awsSecret: aws

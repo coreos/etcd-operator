@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -x
+
+function go_build {
+	echo "building "${1}"..."
+	if [ ! -z ${GOINSTALL+x} ] && [ "${GOINSTALL}" = "y" ]
+	then
+  		GOBIN=${bin_dir} GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go install -installsuffix cgo  -ldflags "$go_ldflags" ./cmd/${1}/
+		mv ${bin_dir}/${1} ${bin_dir}/etcd-backup-${1}
+	else
+  		GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ${bin_dir}/etcd-${1} -installsuffix cgo  -ldflags "$go_ldflags" ./cmd/${1}/
+	fi
+}
+
+if ! which go > /dev/null; then
+	echo "golang needs to be installed"
+	exit 1
+fi
+
+GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
+
+gitHash="github.com/coreos/etcd-operator/etcd-backup-operator/version.GitSHA=${GIT_SHA}"
+
+go_ldflags="-X ${gitHash}"
+
+bin_dir="$(pwd)/_output/bin"
+mkdir -p ${bin_dir} || true
+
+go_build backup-operator
