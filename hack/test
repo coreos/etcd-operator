@@ -153,7 +153,7 @@ function unit_pass {
 	start_azurite
 	# coverage.txt is the combined coverage report consumed by codecov
 	echo "mode: atomic" > coverage.txt
-	TEST_PKGS=`go list ./pkg/...`
+	TEST_PKGS=$(listPkgs | grep -v e2e)
 	for pkg in $TEST_PKGS
 	do
 		go test -race -covermode=atomic -coverprofile=profile.out $pkg
