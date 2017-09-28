@@ -25,10 +25,6 @@ type FakeEtcdV1beta2 struct {
 	*testing.Fake
 }
 
-func (c *FakeEtcdV1beta2) EtcdBackups(namespace string) v1beta2.EtcdBackupInterface {
-	return &FakeEtcdBackups{c, namespace}
-}
-
 func (c *FakeEtcdV1beta2) EtcdClusters(namespace string) v1beta2.EtcdClusterInterface {
 	return &FakeEtcdClusters{c, namespace}
 }
