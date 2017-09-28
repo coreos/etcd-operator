@@ -24,6 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// EtcdBackups returns a EtcdBackupInformer.
+	EtcdBackups() EtcdBackupInformer
 	// EtcdClusters returns a EtcdClusterInformer.
 	EtcdClusters() EtcdClusterInformer
 }
@@ -35,6 +37,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory) Interface {
 	return &version{f}
+}
+
+// EtcdBackups returns a EtcdBackupInformer.
+func (v *version) EtcdBackups() EtcdBackupInformer {
+	return &etcdBackupInformer{factory: v.SharedInformerFactory}
 }
 
 // EtcdClusters returns a EtcdClusterInformer.
