@@ -1,5 +1,5 @@
 hash: e9d61724b47597bf36ba8081c08bb26080ea55ca94045602a6b8e59204043cc0
-updated: 2017-09-19T12:57:12.339614603-07:00
+updated: 2017-09-27T12:53:08.170552174-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -33,6 +33,8 @@ imports:
   - private/protocol/restxml
   - private/protocol/xml/xmlutil
   - service/s3
+  - service/s3/s3iface
+  - service/s3/s3manager
   - service/sts
 - name: github.com/Azure/azure-sdk-for-go
   version: 57db66900881e9fd21fd041a9d013514700ecab3
@@ -46,7 +48,7 @@ imports:
   - autorest/azure
   - autorest/date
 - name: github.com/beorn7/perks
-  version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
+  version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
   - quantile
 - name: github.com/coreos/etcd
@@ -178,7 +180,7 @@ imports:
   subpackages:
   - prometheus
 - name: github.com/prometheus/client_model
-  version: 6f3806018612930941127f2a7c6c453ba2c527d2
+  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
   subpackages:
   - go
 - name: github.com/prometheus/common
@@ -224,7 +226,7 @@ imports:
   - jws
   - jwt
 - name: golang.org/x/sys
-  version: 062cd7e4e68206d8bab9b18396626e855c992658
+  version: a5054c7c1385fd50d9394475365355a87a7873ec
   subpackages:
   - unix
 - name: golang.org/x/text
@@ -246,7 +248,7 @@ imports:
   subpackages:
   - rate
 - name: google.golang.org/appengine
-  version: d9a072cfa7b9736e44311ef77b3e09d804bfa599
+  version: 12d5545dc1cfa6047a286d5e853841b6471f4c19
   subpackages:
   - internal
   - internal/app_identity
@@ -357,6 +359,7 @@ imports:
   version: c6f8cf2c47d21d55fa0df928291b2580544886c8
   subpackages:
   - discovery
+  - discovery/fake
   - kubernetes
   - kubernetes/scheme
   - kubernetes/typed/admissionregistration/v1alpha1
@@ -387,6 +390,7 @@ imports:
   - plugin/pkg/client/auth/gcp
   - rest
   - rest/watch
+  - testing
   - third_party/forked/golang/template
   - tools/auth
   - tools/cache
@@ -406,6 +410,7 @@ imports:
   - util/homedir
   - util/integer
   - util/jsonpath
+  - util/workqueue
 - name: k8s.io/kube-openapi
   version: 80f07ef71bb4f781233c65aa8d0369e4ecafab87
   subpackages:
