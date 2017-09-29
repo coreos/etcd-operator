@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/coreos/etcd-operator/etcd-backup-operator/version"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	version "github.com/coreos/etcd-operator/version/etcd-backup-operator"
 
 	"github.com/Sirupsen/logrus"
 	"k8s.io/api/core/v1"
