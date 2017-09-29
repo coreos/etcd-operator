@@ -1,0 +1,24 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: etcd-backup-operator
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: etcd-backup-operator
+    spec:
+      containers:
+      - name: etcd-backup-operator
+        image: # TODO: replace temporary image with official quay image
+        imagePullPolicy: Always
+        env:
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
