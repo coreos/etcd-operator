@@ -24,6 +24,9 @@ const (
 	CRDResourceKind   = "EtcdCluster"
 	CRDResourcePlural = "etcdclusters"
 	groupName         = "etcd.database.coreos.com"
+
+	EtcdBackupResourceKind   = "EtcdBackup"
+	EtcdBackupResourcePlural = "etcdbackups"
 )
 
 var (
@@ -32,6 +35,7 @@ var (
 
 	SchemeGroupVersion = schema.GroupVersion{Group: groupName, Version: "v1beta2"}
 	CRDName            = CRDResourcePlural + "." + groupName
+	EtcdBackupCRDName  = EtcdBackupResourceKind + "." + groupName
 )
 
 // Resource gets an EtcdCluster GroupResource for a specified resource
