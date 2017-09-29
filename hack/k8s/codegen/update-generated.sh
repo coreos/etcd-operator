@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# TODO: Have a verify-generated.sh to check in CI
-
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -9,8 +7,14 @@ set -o pipefail
 DOCKER_REPO_ROOT="/go/src/github.com/coreos/etcd-operator"
 IMAGE=${IMAGE:-"gcr.io/coreos-k8s-scale-testing/codegen"}
 
-docker run --rm -ti \
+docker run --rm \
   -v "$PWD":"$DOCKER_REPO_ROOT" \
   -w "$DOCKER_REPO_ROOT" \
   "$IMAGE" \
-  "./hack/k8s/codegen/run_in_docker.sh"
+  "./hack/k8s/codegen/codegen.sh" \
+  "all" \
+  "github.com/coreos/etcd-operator/pkg/generated" \
+  "github.com/coreos/etcd-operator/pkg/apis" \
+  "etcd:v1beta2" \
+  --go-header-file "./hack/k8s/codegen/boilerplate.go.txt" \
+  $@
