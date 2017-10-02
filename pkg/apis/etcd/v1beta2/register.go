@@ -24,6 +24,9 @@ const (
 	CRDResourceKind   = "EtcdCluster"
 	CRDResourcePlural = "etcdclusters"
 	groupName         = "etcd.database.coreos.com"
+
+	EtcdBackupResourceKind   = "EtcdBackup"
+	EtcdBackupResourcePlural = "etcdbackups"
 )
 
 var (
