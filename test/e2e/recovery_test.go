@@ -128,7 +128,7 @@ func testDisasterRecoveryWithCluster(t *testing.T, numToKill int, cl *api.EtcdCl
 	fmt.Println("reached to 3 members cluster")
 	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Name, 6)
 	if err != nil {
-		t.Fatalf("failed to create backup pod: %v", err)
+		t.Fatalf("failed to wait backup pod up: %v", err)
 	}
 	// No left pod to make a backup from. We need to back up ahead.
 	// If there is any left pod, ooperator should be able to make a backup from it.
