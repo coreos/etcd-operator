@@ -191,9 +191,9 @@ func WaitBackupPodUp(t *testing.T, kubecli kubernetes.Interface, ns, clusterName
 		if err != nil {
 			return false, err
 		}
-		for i := range podList.Items {
-			if podList.Items[i].Status.Phase == v1.PodRunning {
-				LogfWithTimestamp(t, "backup pod (%s) is running", podList.Items[i].Name)
+		for _, p := range podList.Items {
+			LogfWithTimestamp(t, "backup pod (%s) phase: %v", p.Name, p.Status.Phase)
+			if p.Status.Phase == v1.PodRunning {
 				return true, nil
 			}
 		}
