@@ -358,6 +358,10 @@ func (c *Cluster) handleUpdateEvent(event *clusterEvent) error {
 	c.cluster = event.cluster
 
 	if isSpecEqual(event.cluster.Spec, *oldSpec) {
+		// We have some fields that once created could not be mutated.
+		if !reflect.DeepEqual(event.cluster.Spec, *oldSpec) {
+			c.logger.Infof("ignoring update event: %#v", event.cluster.Spec)
+		}
 		return nil
 	}
 	// TODO: we can't handle another upgrade while an upgrade is in progress
