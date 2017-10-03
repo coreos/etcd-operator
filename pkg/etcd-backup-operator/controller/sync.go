@@ -48,9 +48,29 @@ func (b *Backup) processItem(key string) error {
 
 	eb := obj.(*api.EtcdBackup)
 	// Remove fmt.Println(eb) when implementing handle backup logic.
-	fmt.Println(eb)
-	// TODO: handle backup
+	b.handleBackup(&eb.Spec)
 	return nil
+}
+
+func (b *Backup) handleBackup(spec *api.EtcdBackupSpec) error {
+	switch spec.StorageType {
+	case api.BackupStorageTypeS3:
+		return b.handleS3(spec.ClusterName, spec.S3)
+	default:
+		return fmt.Errorf("unknown StorageType: %v", spec.StorageType)
+	}
+}
+
+func (b *Backup) handleS3(clusterName string, s3 *api.S3Source) error {
+	s3b := &s3Backup{
+		namespace:   b.namespace,
+		clusterName: clusterName,
+		s3bucket:    s3.S3Bucket,
+		prefix:      toS3Prefix(s3.Prefix, b.namespace, clusterName),
+		awsSecret:   s3.AWSSecret,
+		kubecli:     b.kubecli,
+	}
+	return s3b.saveSnap()
 }
 
 func (b *Backup) handleErr(err error, key interface{}) {
