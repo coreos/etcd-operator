@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 )
 
 const (
@@ -66,7 +67,7 @@ func (b *Backup) handleS3(clusterName string, s3 *api.S3Source) error {
 		namespace:   b.namespace,
 		clusterName: clusterName,
 		s3bucket:    s3.S3Bucket,
-		prefix:      toS3Prefix(s3.Prefix, b.namespace, clusterName),
+		prefix:      backupapi.ToS3Prefix(s3.Prefix, b.namespace, clusterName),
 		awsSecret:   s3.AWSSecret,
 		kubecli:     b.kubecli,
 	}

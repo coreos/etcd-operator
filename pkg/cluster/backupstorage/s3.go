@@ -2,17 +2,15 @@ package backupstorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
+	"github.com/coreos/etcd-operator/pkg/util/backuputil"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 
-	"github.com/aws/aws-sdk-go/aws/session"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -37,7 +35,11 @@ func NewS3Storage(kubecli kubernetes.Interface, clusterName, ns string, p api.Ba
 		if err := os.MkdirAll(dir, 0700); err != nil {
 			return nil, err
 		}
-		options, err := setupAWSConfig(kubecli, ns, p.S3.AWSSecret, dir)
+		se, err := kubecli.CoreV1().Secrets(ns).Get(p.S3.AWSSecret, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("setup AWS config failed: get k8s secret failed: %v", err)
+		}
+		options, err := backuputil.NewAWSConfig(se, dir)
 		if err != nil {
 			return nil, err
 		}
@@ -85,36 +87,4 @@ func (s *s3) Delete() error {
 		return os.RemoveAll(s.credsDir)
 	}
 	return nil
-}
-
-func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, dir string) (*session.Options, error) {
-	options := &session.Options{}
-	options.SharedConfigState = session.SharedConfigEnable
-
-	se, err := kubecli.CoreV1().Secrets(ns).Get(secret, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("setup AWS config failed: get k8s secret failed: %v", err)
-	}
-
-	creds := se.Data[api.AWSSecretCredentialsFileName]
-	if len(creds) != 0 {
-		credsFile := path.Join(dir, "credentials")
-		err = ioutil.WriteFile(credsFile, creds, 0600)
-		if err != nil {
-			return nil, fmt.Errorf("setup AWS config failed: write credentials file failed: %v", err)
-		}
-		options.SharedConfigFiles = append(options.SharedConfigFiles, credsFile)
-	}
-
-	config := se.Data[api.AWSSecretConfigFileName]
-	if len(config) != 0 {
-		configFile := path.Join(dir, "config")
-		err = ioutil.WriteFile(configFile, config, 0600)
-		if err != nil {
-			return nil, fmt.Errorf("setup AWS config failed: write config file failed: %v", err)
-		}
-		options.SharedConfigFiles = append(options.SharedConfigFiles, configFile)
-	}
-
-	return options, nil
 }

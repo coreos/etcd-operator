@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
+	"github.com/coreos/etcd-operator/pkg/util/backuputil"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -198,7 +199,7 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 		logrus.Warning(msg)
 		return lastSnapRev, fmt.Errorf(msg)
 	}
-	member, rev := getMemberWithMaxRev(pods, b.etcdTLSConfig, b.selfHosted)
+	member, rev := backuputil.GetMemberWithMaxRev(pods, b.etcdTLSConfig)
 	if member == nil {
 		logrus.Warning("no reachable member")
 		return lastSnapRev, fmt.Errorf("no reachable member")
@@ -264,44 +265,6 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	}
 
 	return nil
-}
-
-func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config, selfHosted bool) (*etcdutil.Member, int64) {
-	var member *etcdutil.Member
-	maxRev := int64(0)
-	for _, pod := range pods {
-		m := &etcdutil.Member{
-			Name:         pod.Name,
-			Namespace:    pod.Namespace,
-			SecureClient: tc != nil,
-		}
-		cfg := clientv3.Config{
-			Endpoints:   []string{m.ClientURL()},
-			DialTimeout: constants.DefaultDialTimeout,
-			TLS:         tc,
-		}
-		etcdcli, err := clientv3.New(cfg)
-		if err != nil {
-			logrus.Warningf("failed to create etcd client for pod (%v): %v", pod.Name, err)
-			continue
-		}
-		defer etcdcli.Close()
-
-		ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
-		cancel()
-		if err != nil {
-			logrus.Warningf("getMaxRev: failed to get revision from member %s (%s)", m.Name, m.ClientURL())
-			continue
-		}
-
-		logrus.Infof("getMaxRev: member %s revision (%d)", m.Name, resp.Header.Revision)
-		if resp.Header.Revision > maxRev {
-			maxRev = resp.Header.Revision
-			member = m
-		}
-	}
-	return member, maxRev
 }
 
 func (b *Backup) getLatestBackupRev() int64 {

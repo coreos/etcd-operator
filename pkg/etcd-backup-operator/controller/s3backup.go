@@ -16,13 +16,11 @@ package controller
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"path"
 
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/util/backuputil"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -72,7 +70,7 @@ func (s *s3Backup) saveSnap() error {
 		logrus.Warning(msg)
 		return fmt.Errorf(msg)
 	}
-	member, rev := getMemberWithMaxRev(pods, nil)
+	member, rev := backuputil.GetMemberWithMaxRev(pods, nil)
 	if member == nil {
 		msg := "no reachable member"
 		logrus.Warning(msg)
@@ -150,7 +148,7 @@ func makeBackupName(ver string, rev int64) string {
 
 // NewS3Uploader returns a Uploader that is configured with proper aws config and credentials derived from Kubernetes secret.
 func newS3Uploader(bucket, prefix string, secret *v1.Secret) (*s3manager.Uploader, error) {
-	so, err := newAWSConfig(secret)
+	so, err := backuputil.NewAWSConfig(secret, tmpDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup aws config: (%v)", err)
 	}
@@ -159,78 +157,4 @@ func newS3Uploader(bucket, prefix string, secret *v1.Secret) (*s3manager.Uploade
 		return nil, fmt.Errorf("failed to create new AWS session: (%v)", err)
 	}
 	return s3manager.NewUploader(sess), nil
-}
-
-func newAWSConfig(secret *v1.Secret) (*session.Options, error) {
-	dir, err := ioutil.TempDir(tmpDir, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create dir %v: (%v)", dir, err)
-	}
-
-	options := &session.Options{}
-	options.SharedConfigState = session.SharedConfigEnable
-
-	creds := secret.Data[api.AWSSecretCredentialsFileName]
-	if len(creds) != 0 {
-		credsFile := path.Join(dir, "credentials")
-		err := ioutil.WriteFile(credsFile, creds, 0600)
-		if err != nil {
-			return nil, fmt.Errorf("failed to write credentials file: (%v)", err)
-		}
-		options.SharedConfigFiles = append(options.SharedConfigFiles, credsFile)
-	}
-
-	config := secret.Data[api.AWSSecretConfigFileName]
-	if config != nil {
-		configFile := path.Join(dir, "config")
-		err := ioutil.WriteFile(configFile, config, 0600)
-		if err != nil {
-			return nil, fmt.Errorf("failed to write config file: (%v)", err)
-		}
-		options.SharedConfigFiles = append(options.SharedConfigFiles, configFile)
-	}
-
-	return options, nil
-}
-
-func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config) (*etcdutil.Member, int64) {
-	var member *etcdutil.Member
-	maxRev := int64(0)
-	for _, pod := range pods {
-		m := &etcdutil.Member{
-			Name:         pod.Name,
-			Namespace:    pod.Namespace,
-			SecureClient: tc != nil,
-		}
-		cfg := clientv3.Config{
-			Endpoints:   []string{m.ClientURL()},
-			DialTimeout: constants.DefaultDialTimeout,
-			TLS:         tc,
-		}
-		etcdcli, err := clientv3.New(cfg)
-		if err != nil {
-			logrus.Warningf("failed to create etcd client for pod %v: (%v)", pod.Name, err)
-			continue
-		}
-		defer etcdcli.Close()
-		ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
-		cancel()
-		if err != nil {
-			logrus.Warningf("getMaxRev: failed to get revision from member %s (%s)", m.Name, m.ClientURL())
-			continue
-		}
-		logrus.Infof("getMaxRev: member %s revision (%d)", m.Name, resp.Header.Revision)
-		if resp.Header.Revision > maxRev {
-			maxRev = resp.Header.Revision
-			member = m
-		}
-	}
-	return member, maxRev
-}
-
-// toS3Prefix concatenates s3Prefix, S3V1, namespace, clusterName to a single s3 prefix.
-// the concatenated prefix determines the location of S3 backup files.
-func toS3Prefix(s3Prefix, namespace, clusterName string) string {
-	return path.Join(s3Prefix, S3V1, namespace, clusterName)
 }
