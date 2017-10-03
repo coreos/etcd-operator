@@ -10,7 +10,7 @@ import:
   version: 2bfb07d318ed549813240d1165fcebad6250c666
 - package: github.com/coreos/etcd
   version: v3.1.9
-- package: github.com/Sirupsen/logrus
+- package: github.com/sirupsen/logrus
   version: v1.0.0
 - package: github.com/pkg/errors
   version: v0.8.0

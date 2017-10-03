@@ -36,7 +36,7 @@ import (
 	"github.com/coreos/etcd-operator/version"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
