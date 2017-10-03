@@ -20,7 +20,6 @@ type Backup struct {
 	logger *logrus.Entry
 
 	namespace string
-	name      string
 	// k8s workqueue pattern
 	indexer  cache.Indexer
 	informer cache.Controller
@@ -36,7 +35,6 @@ func New() *Backup {
 	return &Backup{
 		logger:        logrus.WithField("pkg", "controller"),
 		namespace:     os.Getenv(constants.EnvOperatorPodNamespace),
-		name:          os.Getenv(constants.EnvOperatorPodName),
 		kubecli:       k8sutil.MustNewKubeClient(),
 		backupCRCli:   client.MustNewInCluster(),
 		kubeExtClient: k8sutil.MustNewKubeExtClient(),
