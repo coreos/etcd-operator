@@ -33,12 +33,14 @@ glide install --strip-vendor 1>/dev/null
 
 GIT_VERSION=$(git rev-parse HEAD)
 export OPERATOR_IMAGE=${OPERATOR_IMAGE:-"gcr.io/coreos-k8s-scale-testing/etcd-operator:$GIT_VERSION"}
+export ETCD_BACKUP_OPERATOR_IMAGE=${OPERATOR_IMAGE:-"gcr.io/coreos-k8s-scale-testing/etcd-backup-operator:$GIT_VERSION"}
 export PARALLEL_TEST="true"
 export RUN_INTEGRATION_TEST="true"
 export E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-.*}
 
 echo "UNIQUE_BUILD_NAME: ${UNIQUE_BUILD_NAME}"
 echo "OPERATOR_IMAGE: ${OPERATOR_IMAGE}"
+echo "ETCD_BACKUP_OPERATOR_IMAGE: ${ETCD_BACKUP_OPERATOR_IMAGE}"
 echo "TEST_NAMESPACE: ${TEST_NAMESPACE}"
 echo "AWS_TEST_ENABLED: ${AWS_TEST_ENABLED-}"
 echo "E2E_TEST_SELECTOR: ${E2E_TEST_SELECTOR}"

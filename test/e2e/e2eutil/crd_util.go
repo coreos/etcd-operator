@@ -47,6 +47,16 @@ func CreateCluster(t *testing.T, crClient versioned.Interface, namespace string,
 	return res, nil
 }
 
+func CreateBackupCR(t *testing.T, crClient versioned.Interface, namespace string, eb *api.EtcdBackup) (*api.EtcdBackup, error) {
+	eb.Namespace = namespace
+	rv, err := crClient.EtcdV1beta2().EtcdBackups(namespace).Create(eb)
+	if err != nil {
+		return nil, err
+	}
+	t.Logf("initiate etcd backup for cluster: %s", eb.Spec.ClusterName)
+	return rv, nil
+}
+
 func UpdateCluster(crClient versioned.Interface, cl *api.EtcdCluster, maxRetries int, updateFunc k8sutil.EtcdClusterCRUpdateFunc) (*api.EtcdCluster, error) {
 	return AtomicUpdateClusterCR(crClient, cl.Name, cl.Namespace, maxRetries, updateFunc)
 }
@@ -80,6 +90,11 @@ func DeleteCluster(t *testing.T, crClient versioned.Interface, kubeClient kubern
 		return err
 	}
 	return waitResourcesDeleted(t, kubeClient, cl)
+}
+
+func DeleteBackupCR(t *testing.T, crClient versioned.Interface, kubeClient kubernetes.Interface, eb *api.EtcdBackup) error {
+	t.Logf("deleting etcd backup cr: %v", eb.Name)
+	return crClient.EtcdV1beta2().EtcdBackups(eb.Namespace).Delete(eb.Name, nil)
 }
 
 func DeleteClusterAndBackup(t *testing.T, crClient versioned.Interface, kubecli kubernetes.Interface, cl *api.EtcdCluster, checkerOpt StorageCheckerOptions) error {
