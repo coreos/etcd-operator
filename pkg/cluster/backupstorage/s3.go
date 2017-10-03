@@ -107,7 +107,7 @@ func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, dir string) (*sess
 	}
 
 	config := se.Data[api.AWSSecretConfigFileName]
-	if config != nil {
+	if len(config) != 0 {
 		configFile := path.Join(dir, "config")
 		err = ioutil.WriteFile(configFile, config, 0600)
 		if err != nil {
