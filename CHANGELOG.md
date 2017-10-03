@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Fix the problem that operator might keep failing on version conflict updating CR status.
+
 ### Deprecated
 
 ### Security

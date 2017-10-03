@@ -268,22 +268,11 @@ func (c *Cluster) run() {
 		case event := <-c.eventCh:
 			switch event.typ {
 			case eventModifyCluster:
-				if isSpecEqual(event.cluster.Spec, c.cluster.Spec) {
-					break
-				}
-				// TODO: we can't handle another upgrade while an upgrade is in progress
-				c.logSpecUpdate(event.cluster.Spec)
-
-				ob, nb := c.cluster.Spec.Backup, event.cluster.Spec.Backup
-				c.cluster = event.cluster
-
-				if !isBackupPolicyEqual(ob, nb) {
-					err := c.updateBackupPolicy(ob, nb)
-					if err != nil {
-						c.logger.Errorf("failed to update backup policy: %v", err)
-						c.status.SetReason(err.Error())
-						return
-					}
+				err := c.handleUpdateEvent(event)
+				if err != nil {
+					c.logger.Errorf("handle update event failed: %v", err)
+					c.status.SetReason(err.Error())
+					return
 				}
 
 			case eventDeleteCluster:
@@ -362,6 +351,27 @@ func (c *Cluster) run() {
 			return
 		}
 	}
+}
+
+func (c *Cluster) handleUpdateEvent(event *clusterEvent) error {
+	oldSpec := c.cluster.Spec.DeepCopy()
+	c.cluster = event.cluster
+
+	if isSpecEqual(event.cluster.Spec, *oldSpec) {
+		return nil
+	}
+	// TODO: we can't handle another upgrade while an upgrade is in progress
+
+	c.logSpecUpdate(*oldSpec, event.cluster.Spec)
+
+	ob, nb := oldSpec.Backup, event.cluster.Spec.Backup
+	if !isBackupPolicyEqual(ob, nb) {
+		err := c.updateBackupPolicy(ob, nb)
+		if err != nil {
+			return fmt.Errorf("failed to update backup policy: %v", err)
+		}
+	}
+	return nil
 }
 
 func (c *Cluster) updateBackupPolicy(ob, nb *api.BackupPolicy) error {
@@ -623,8 +633,8 @@ func (c *Cluster) logClusterCreation() {
 	}
 }
 
-func (c *Cluster) logSpecUpdate(newSpec api.ClusterSpec) {
-	oldSpecBytes, err := json.MarshalIndent(c.cluster.Spec, "", "    ")
+func (c *Cluster) logSpecUpdate(oldSpec, newSpec api.ClusterSpec) {
+	oldSpecBytes, err := json.MarshalIndent(oldSpec, "", "    ")
 	if err != nil {
 		c.logger.Errorf("failed to marshal cluster spec: %v", err)
 	}
