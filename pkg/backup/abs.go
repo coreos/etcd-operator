@@ -21,7 +21,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/backup/abs"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // ensure absBackend satisfies backend interface.

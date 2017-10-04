@@ -20,7 +20,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 )
 

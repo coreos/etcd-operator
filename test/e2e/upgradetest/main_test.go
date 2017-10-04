@@ -21,7 +21,7 @@ import (
 
 	"github.com/coreos/etcd-operator/test/e2e/upgradetest/framework"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 var testF *framework.Framework

@@ -20,8 +20,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
+	"github.com/sirupsen/logrus"
 )
 
 // ensure s3Backend satisfies backend interface.

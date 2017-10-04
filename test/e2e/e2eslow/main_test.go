@@ -20,7 +20,7 @@ import (
 
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 func TestMain(m *testing.M) {

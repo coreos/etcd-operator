@@ -18,7 +18,7 @@ import (
 	"context"
 	"math/rand"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
