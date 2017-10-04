@@ -15,9 +15,11 @@
 package framework
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/client"
@@ -143,6 +145,12 @@ func (f *Framework) SetupEtcdOperator() error {
 
 	p, err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace, pod, 60*time.Second)
 	if err != nil {
+		// assuming `kubectl` installed on $PATH
+		cmd := exec.Command("kubectl", "-n", f.Namespace, "describe", "pod", "etcd-operator")
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Run() // Just ignore the error...
+		logrus.Info("describing etcd-operator pod:", out.String())
 		return err
 	}
 	logrus.Infof("etcd operator pod is running on node (%s)", p.Spec.NodeName)
