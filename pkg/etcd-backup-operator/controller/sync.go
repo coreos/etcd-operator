@@ -94,4 +94,5 @@ func (b *Backup) handleBackup(spec *api.EtcdBackupSpec) error {
 	default:
 		logrus.Fatalf("unknown StorageType: %v", spec.StorageType)
 	}
+	return nil
 }
