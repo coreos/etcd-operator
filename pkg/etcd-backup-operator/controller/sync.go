@@ -15,9 +15,8 @@
 package controller
 
 import (
-	"fmt"
-
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -93,6 +92,6 @@ func (b *Backup) handleBackup(spec *api.EtcdBackupSpec) error {
 	case api.BackupStorageTypeS3:
 		return b.handleS3(spec.ClusterName, spec.S3)
 	default:
-		return fmt.Errorf("unknown StorageType: %v", spec.StorageType)
+		logrus.Fatalf("unknown StorageType: %v", spec.StorageType)
 	}
 }
