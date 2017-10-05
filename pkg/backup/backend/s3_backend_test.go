@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package backend
 
 import (
 	"bytes"
@@ -23,10 +23,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/backup/s3"
+	"github.com/coreos/etcd-operator/pkg/backup/util"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/coreos/etcd-operator/pkg/backup/s3"
 )
 
 var r *rand.Rand // Rand for this package.
@@ -78,27 +80,27 @@ func testS3BackendPurge(t *testing.T, s3cli *s3.S3) {
 		t.Fatal(err)
 	}
 	s := &s3Backend{
-		S3:  s3cli,
+		s3:  s3cli,
 		dir: dir,
 	}
-	if _, err := s.save("3.1.0", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
+	if _, err := s.Save("3.1.0", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.save("3.1.0", 2, bytes.NewBuffer([]byte("ignore"))); err != nil {
+	if _, err := s.Save("3.1.0", 2, bytes.NewBuffer([]byte("ignore"))); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.purge(1); err != nil {
+	if err := s.Purge(1); err != nil {
 		t.Fatal(err)
 	}
 	names, err := s3cli.List()
 	if err != nil {
 		t.Fatal(err)
 	}
-	leftFiles := []string{makeBackupName("3.1.0", 2)}
+	leftFiles := []string{util.MakeBackupName("3.1.0", 2)}
 	if !reflect.DeepEqual(leftFiles, names) {
 		t.Errorf("left files after purge, want=%v, get=%v", leftFiles, names)
 	}
-	if err := s3cli.Delete(makeBackupName("3.1.0", 2)); err != nil {
+	if err := s3cli.Delete(util.MakeBackupName("3.1.0", 2)); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -109,21 +111,21 @@ func testS3BackendDelete(t *testing.T, s3cli *s3.S3) {
 		t.Fatal(err)
 	}
 	s := &s3Backend{
-		S3:  s3cli,
+		s3:  s3cli,
 		dir: dir,
 	}
-	if _, err := s.save("3.1.0", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
+	if _, err := s.Save("3.1.0", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
 		t.Fatal(err)
 	}
 	names, err := s3cli.List()
 	if err != nil {
 		t.Fatal(err)
 	}
-	leftFiles := []string{makeBackupName("3.1.0", 1)}
+	leftFiles := []string{util.MakeBackupName("3.1.0", 1)}
 	if !reflect.DeepEqual(leftFiles, names) {
 		t.Errorf("left files after purge, want=%v, get=%v", leftFiles, names)
 	}
-	if err := s3cli.Delete(makeBackupName("3.1.0", 1)); err != nil {
+	if err := s3cli.Delete(util.MakeBackupName("3.1.0", 1)); err != nil {
 		t.Fatal(err)
 	}
 	names, err = s3cli.List()
@@ -166,24 +168,24 @@ func TestS3BackendWithPrefix(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := &s3Backend{
-		S3:  s3Cli,
+		s3:  s3Cli,
 		dir: dir,
 	}
 	s2 := &s3Backend{
-		S3:  s3Cli2,
+		s3:  s3Cli2,
 		dir: dir,
 	}
 
-	if _, err := s.save("file1", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
+	if _, err := s.Save("file1", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := s2.save("file2", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
+	if _, err := s2.Save("file2", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
 		t.Fatal(err)
 	}
 
 	// verify s1 only have one file under prefix "prefix"
-	total, err := s.total()
+	total, err := s.Total()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +194,7 @@ func TestS3BackendWithPrefix(t *testing.T) {
 	}
 
 	// verify s2 only have one file under prefix "prefix2"
-	total, err = s2.total()
+	total, err = s2.Total()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,11 +203,11 @@ func TestS3BackendWithPrefix(t *testing.T) {
 	}
 
 	// clean up
-	if err = s.purge(1); err != nil {
+	if err = s.Purge(1); err != nil {
 		t.Fatal(err)
 	}
 
-	if err = s2.purge(1); err != nil {
+	if err = s2.Purge(1); err != nil {
 		t.Fatal(err)
 	}
 }

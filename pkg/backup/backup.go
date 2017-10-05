@@ -24,9 +24,11 @@ import (
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup/abs"
+	"github.com/coreos/etcd-operator/pkg/backup/backend"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
+	"github.com/coreos/etcd-operator/pkg/backup/util"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -54,7 +56,7 @@ type Backup struct {
 	etcdTLSConfig *tls.Config
 	selfHosted    bool
 
-	be backend
+	be backend.Backend
 
 	backupNow chan chan backupNowAck
 
@@ -67,16 +69,16 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp api.ClusterSpe
 	// We created not only backup dir and but also tmp dir under it.
 	// tmp dir is used to store intermediate snapshot files.
 	// It will be no-op if target dir existed.
-	tmpDir := path.Join(bdir, backupTmpDir)
+	tmpDir := path.Join(bdir, util.BackupTmpDir)
 	err := os.MkdirAll(tmpDir, 0700)
 	if err != nil {
 		return nil, err
 	}
 
-	var be backend
+	var be backend.Backend
 	switch sp.Backup.StorageType {
 	case api.BackupStorageTypePersistentVolume, api.BackupStorageTypeDefault:
-		be = &fileBackend{dir: bdir}
+		be = backend.NewFileBackend(bdir)
 	case api.BackupStorageTypeS3:
 		s3Prefix := ""
 		if sp.Backup.S3 != nil {
@@ -86,11 +88,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp api.ClusterSpe
 		if err != nil {
 			return nil, err
 		}
-
-		be = &s3Backend{
-			dir: tmpDir,
-			S3:  s3cli,
-		}
+		be = backend.NewS3Backend(s3cli, tmpDir)
 	case api.BackupStorageTypeABS:
 		absCli, err := abs.New(os.Getenv(env.ABSContainer),
 			os.Getenv(env.ABSStorageAccount),
@@ -99,10 +97,7 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp api.ClusterSpe
 		if err != nil {
 			return nil, err
 		}
-
-		be = &absBackend{
-			ABS: absCli,
-		}
+		be = backend.NewAbsBackend(absCli)
 	default:
 		return nil, fmt.Errorf("unsupported storage type: %v", sp.Backup.StorageType)
 	}
@@ -148,7 +143,7 @@ func (b *Backup) Run() {
 		}
 		for {
 			<-time.After(10 * time.Second)
-			err := b.be.purge(b.policy.MaxBackups)
+			err := b.be.Purge(b.policy.MaxBackups)
 			if err != nil {
 				logrus.Errorf("fail to purge backups: %v", err)
 			}
@@ -246,14 +241,14 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	defer cancel()
 	defer rc.Close()
 
-	n, err := b.be.save(resp.Version, rev, rc)
+	n, err := b.be.Save(resp.Version, rev, rc)
 	if err != nil {
 		return err
 	}
 
 	bs := backupapi.BackupStatus{
 		CreationTime:     time.Now().Format(time.RFC3339),
-		Size:             toMB(n),
+		Size:             util.ToMB(n),
 		Version:          resp.Version,
 		Revision:         rev,
 		TimeTookInSecond: int(time.Since(start).Seconds() + 1),
@@ -306,14 +301,14 @@ func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config, selfHosted bool) (*etcd
 
 func (b *Backup) getLatestBackupRev() int64 {
 	// If there is any error, we just exit backup sidecar because we can't serve the backup any way.
-	name, err := b.be.getLatest()
+	name, err := b.be.GetLatest()
 	if err != nil {
 		logrus.Fatal(err)
 	}
 	if len(name) == 0 {
 		return 0
 	}
-	rev, err := getRev(name)
+	rev, err := util.GetRev(name)
 	if err != nil {
 		logrus.Fatal(err)
 	}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package util
 
 import (
 	"reflect"
@@ -21,22 +21,22 @@ import (
 
 func TestFilterAndSortBackups(t *testing.T) {
 	names := []string{
-		makeBackupName("3.0.1", 12),
+		MakeBackupName("3.0.1", 12),
 		"3.0.1_18_etcd.tmp", // bad suffix
-		makeBackupName("3.0.1", 3),
-		makeBackupName("3.0.3", 19),
-		makeBackupName("3.0.0", 1),
+		MakeBackupName("3.0.1", 3),
+		MakeBackupName("3.0.3", 19),
+		MakeBackupName("3.0.0", 1),
 		"3.0.1_badbackup_etcd.backup", //bad backup name
 	}
 
 	w := []string{
-		makeBackupName("3.0.0", 1),
-		makeBackupName("3.0.1", 3),
-		makeBackupName("3.0.1", 12),
-		makeBackupName("3.0.3", 19),
+		MakeBackupName("3.0.0", 1),
+		MakeBackupName("3.0.1", 3),
+		MakeBackupName("3.0.1", 12),
+		MakeBackupName("3.0.3", 19),
 	}
 
-	got := filterAndSortBackups(names)
+	got := FilterAndSortBackups(names)
 	if !reflect.DeepEqual(got, w) {
 		t.Errorf("got = %v, want %v", got, w)
 	}
@@ -48,14 +48,14 @@ func TestGetRev(t *testing.T) {
 		rev  int64
 		werr bool
 	}{
-		{makeBackupName("3.0.0", 1), 1, false},
-		{makeBackupName("3.0.0", 8), 8, false},
+		{MakeBackupName("3.0.0", 1), 1, false},
+		{MakeBackupName("3.0.0", 8), 8, false},
 		{"3.0.1_badrev_etcd.backup", 0, true}, // bad rev in backup name
 		{"0", 0, true},                        // bad format
 	}
 
 	for i, tt := range tests {
-		rev, err := getRev(tt.name)
+		rev, err := GetRev(tt.name)
 		if rev != tt.rev {
 			t.Errorf("#%d: rev = %d, want %d", i, rev, tt.rev)
 		}
@@ -70,14 +70,14 @@ func TestGetRev(t *testing.T) {
 
 func TestGetLatestBackupName(t *testing.T) {
 	names := []string{
-		makeBackupName("3.0.0", 1),
-		makeBackupName("3.0.1", 12),
+		MakeBackupName("3.0.0", 1),
+		MakeBackupName("3.0.1", 12),
 		"3.0.1_18_etcd.tmp",           // bad suffix
 		"3.0.1_badbackup_etcd.backup", // bad backup name
 	}
 
-	wname := makeBackupName("3.0.1", 12)
-	gname := getLatestBackupName(names)
+	wname := MakeBackupName("3.0.1", 12)
+	gname := GetLatestBackupName(names)
 
 	if gname != wname {
 		t.Errorf("name = %s, want %s", gname, wname)
