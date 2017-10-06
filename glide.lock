@@ -1,5 +1,5 @@
-hash: e9d61724b47597bf36ba8081c08bb26080ea55ca94045602a6b8e59204043cc0
-updated: 2017-09-19T12:57:12.339614603-07:00
+hash: d60826b10d8ab4f8677b4a14ffa1d9af4aad17be2d043b6b50716fe4c4527e52
+updated: 2017-10-06T10:59:34.032721526-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -224,7 +224,7 @@ imports:
   - jws
   - jwt
 - name: golang.org/x/sys
-  version: 062cd7e4e68206d8bab9b18396626e855c992658
+  version: 7a4fde3fda8ef580a89dbae8138c26041be14299
   subpackages:
   - unix
 - name: golang.org/x/text
@@ -242,11 +242,11 @@ imports:
   - unicode/norm
   - width
 - name: golang.org/x/time
-  version: 8be79e1e0910c292df4e79c241bb7e8f7e725959
+  version: 6dc17368e09b0e8634d71cac8168d853e869a0c7
   subpackages:
   - rate
 - name: google.golang.org/appengine
-  version: d9a072cfa7b9736e44311ef77b3e09d804bfa599
+  version: 24e4144ec923c2374f6b06610c0df16a9222c3d9
   subpackages:
   - internal
   - internal/app_identity
@@ -357,6 +357,7 @@ imports:
   version: c6f8cf2c47d21d55fa0df928291b2580544886c8
   subpackages:
   - discovery
+  - discovery/fake
   - kubernetes
   - kubernetes/scheme
   - kubernetes/typed/admissionregistration/v1alpha1
@@ -387,6 +388,7 @@ imports:
   - plugin/pkg/client/auth/gcp
   - rest
   - rest/watch
+  - testing
   - third_party/forked/golang/template
   - tools/auth
   - tools/cache
@@ -406,6 +408,7 @@ imports:
   - util/homedir
   - util/integer
   - util/jsonpath
+  - util/workqueue
 - name: k8s.io/kube-openapi
   version: 80f07ef71bb4f781233c65aa8d0369e4ecafab87
   subpackages:
