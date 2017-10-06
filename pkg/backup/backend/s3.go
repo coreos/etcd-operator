@@ -54,7 +54,7 @@ func (sb *s3Backend) Save(version string, snapRev int64, rc io.Reader) (int64, e
 
 	n, err := io.Copy(tmpfile, rc)
 	if err != nil {
-		return -1, fmt.Errorf("failed to save snapshot: %v", err)
+		return -1, fmt.Errorf("failed to save snapshot to tmpfile: %v", err)
 	}
 	_, err = tmpfile.Seek(0, os.SEEK_SET)
 	if err != nil {
