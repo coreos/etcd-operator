@@ -12,27 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package backend
 
 import "io"
 
-type backend interface {
-	// save saves the backup from the given reader with given etcd version and revision.
+// Backend defines required backend operations
+type Backend interface {
+	// Save saves the backup from the given reader with given etcd version and revision.
 	// It returns the size of the snapshot saved.
-	save(etcdVersion string, rev int64, r io.Reader) (size int64, err error)
+	Save(etcdVersion string, rev int64, r io.Reader) (size int64, err error)
 
-	// get latest backup's name.
+	// GetLatest gets latest backup's name.
 	// If no backup is available, returns empty string name.
-	getLatest() (name string, err error)
+	GetLatest() (name string, err error)
 
-	// open a backup file for reading
-	open(name string) (rc io.ReadCloser, err error)
+	// Open opens a backup file for reading
+	Open(name string) (rc io.ReadCloser, err error)
 
-	// total returns the total number of available backups.
-	total() (int, error)
+	// Total returns the total number of available backups.
+	Total() (int, error)
 
-	// total returns the total size of the backups.
-	totalSize() (int64, error)
+	// TotalSize returns the total size of the backups.
+	TotalSize() (int64, error)
 
-	purge(maxBackupFiles int) error
+	// Purge purges backup files when backups are greater than maxBackupFiles.
+	Purge(maxBackupFiles int) error
 }

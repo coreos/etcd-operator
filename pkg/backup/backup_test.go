@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/coreos/etcd-operator/pkg/backup/backend"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 )
 
@@ -32,7 +33,7 @@ func TestRespHeaderHasVersionRevision(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 	b := &Backup{
-		be: &fileBackend{dir: d},
+		be: backend.NewFileBackend(d),
 	}
 	req := &http.Request{
 		URL: backupapi.NewBackupURL("http", "ignore", "", -1),
@@ -67,7 +68,7 @@ func TestServeBackup(t *testing.T) {
 
 	for i, tt := range tests {
 		b := &Backup{
-			be: &fileBackend{dir: d},
+			be: backend.NewFileBackend(d),
 		}
 		req := &http.Request{
 			URL: backupapi.NewBackupURL("http", "ignore", tt.reqVersion, tt.reqRevision),
@@ -107,7 +108,7 @@ func TestBackupVersionCompatiblity(t *testing.T) {
 
 	for i, tt := range tests {
 		b := &Backup{
-			be: &fileBackend{dir: d},
+			be: backend.NewFileBackend(d),
 		}
 		req := &http.Request{
 			URL: backupapi.NewBackupURL("http", "ignore", tt.reqVersion, -1),

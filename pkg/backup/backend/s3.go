@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package backend
 
 import (
 	"fmt"
@@ -21,22 +21,29 @@ import (
 	"path/filepath"
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
+	"github.com/coreos/etcd-operator/pkg/backup/util"
+
 	"github.com/sirupsen/logrus"
 )
 
 // ensure s3Backend satisfies backend interface.
-var _ backend = &s3Backend{}
+var _ Backend = &s3Backend{}
 
+// s3Backend is AWS S3 backend.
 type s3Backend struct {
-	S3 *s3.S3
+	s3 *s3.S3
 	// dir to temporarily store backup files before upload it to S3.
 	dir string
 }
 
-func (sb *s3Backend) save(version string, snapRev int64, rc io.Reader) (int64, error) {
+func NewS3Backend(s3 *s3.S3, dir string) Backend {
+	return &s3Backend{s3, dir}
+}
+
+func (sb *s3Backend) Save(version string, snapRev int64, rc io.Reader) (int64, error) {
 	// make a local file copy of the backup first, since s3 requires io.ReadSeeker.
-	key := makeBackupName(version, snapRev)
-	tmpfile, err := os.OpenFile(filepath.Join(sb.dir, key), os.O_RDWR|os.O_CREATE, backupFilePerm)
+	key := util.MakeBackupName(version, snapRev)
+	tmpfile, err := os.OpenFile(filepath.Join(sb.dir, key), os.O_RDWR|os.O_CREATE, util.BackupFilePerm)
 	if err != nil {
 		return -1, fmt.Errorf("failed to create snapshot tempfile: %v", err)
 	}
@@ -54,7 +61,7 @@ func (sb *s3Backend) save(version string, snapRev int64, rc io.Reader) (int64, e
 		return -1, err
 	}
 	// S3 put is atomic, so let's go ahead and put the key directly.
-	err = sb.S3.Put(key, tmpfile)
+	err = sb.s3.Put(key, tmpfile)
 	if err != nil {
 		return -1, err
 	}
@@ -62,30 +69,30 @@ func (sb *s3Backend) save(version string, snapRev int64, rc io.Reader) (int64, e
 	return n, nil
 }
 
-func (sb *s3Backend) getLatest() (string, error) {
-	keys, err := sb.S3.List()
+func (sb *s3Backend) GetLatest() (string, error) {
+	keys, err := sb.s3.List()
 	if err != nil {
 		return "", fmt.Errorf("failed to list s3 bucket: %v", err)
 	}
 
-	return getLatestBackupName(keys), nil
+	return util.GetLatestBackupName(keys), nil
 }
 
-func (sb *s3Backend) open(name string) (io.ReadCloser, error) {
-	return sb.S3.Get(name)
+func (sb *s3Backend) Open(name string) (io.ReadCloser, error) {
+	return sb.s3.Get(name)
 }
 
-func (sb *s3Backend) purge(maxBackupFiles int) error {
-	names, err := sb.S3.List()
+func (sb *s3Backend) Purge(maxBackupFiles int) error {
+	names, err := sb.s3.List()
 	if err != nil {
 		return err
 	}
-	bnames := filterAndSortBackups(names)
+	bnames := util.FilterAndSortBackups(names)
 	if len(bnames) < maxBackupFiles {
 		return nil
 	}
 	for i := 0; i < len(bnames)-maxBackupFiles; i++ {
-		err := sb.S3.Delete(bnames[i])
+		err := sb.s3.Delete(bnames[i])
 		if err != nil {
 			logrus.Errorf("fail to delete s3 file (%s): %v", bnames[i], err)
 		}
@@ -93,14 +100,14 @@ func (sb *s3Backend) purge(maxBackupFiles int) error {
 	return nil
 }
 
-func (sb *s3Backend) total() (int, error) {
-	names, err := sb.S3.List()
+func (sb *s3Backend) Total() (int, error) {
+	names, err := sb.s3.List()
 	if err != nil {
 		return -1, err
 	}
-	return len(filterAndSortBackups(names)), nil
+	return len(util.FilterAndSortBackups(names)), nil
 }
 
-func (sb *s3Backend) totalSize() (int64, error) {
-	return sb.S3.TotalSize()
+func (sb *s3Backend) TotalSize() (int64, error) {
+	return sb.s3.TotalSize()
 }

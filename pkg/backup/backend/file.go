@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package backend
 
 import (
 	"fmt"
@@ -22,25 +22,26 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/coreos/etcd-operator/pkg/backup/util"
+
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	backupTmpDir         = "tmp"
-	backupFilePerm       = 0600
-	backupFilenameSuffix = "etcd.backup"
-)
-
 // ensure fileBackend satisfies backend interface.
-var _ backend = &fileBackend{}
+var _ Backend = &fileBackend{}
 
+// fileBackend is file based backend.
 type fileBackend struct {
 	dir string
 }
 
-func (fb *fileBackend) save(version string, snapRev int64, rc io.Reader) (int64, error) {
-	filename := makeBackupName(version, snapRev)
-	tmpfile, err := os.OpenFile(filepath.Join(fb.dir, backupTmpDir, filename), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, backupFilePerm)
+func NewFileBackend(dir string) Backend {
+	return &fileBackend{dir}
+}
+
+func (fb *fileBackend) Save(version string, snapRev int64, rc io.Reader) (int64, error) {
+	filename := util.MakeBackupName(version, snapRev)
+	tmpfile, err := os.OpenFile(filepath.Join(fb.dir, util.BackupTmpDir, filename), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, util.BackupFilePerm)
 	if err != nil {
 		return -1, fmt.Errorf("failed to create snapshot tempfile: %v", err)
 	}
@@ -67,7 +68,7 @@ func (fb *fileBackend) save(version string, snapRev int64, rc io.Reader) (int64,
 	return n, nil
 }
 
-func (fb *fileBackend) getLatest() (string, error) {
+func (fb *fileBackend) GetLatest() (string, error) {
 	files, err := ioutil.ReadDir(fb.dir)
 	if err != nil {
 		return "", fmt.Errorf("failed to list dir (%s): error (%v)", fb.dir, err)
@@ -78,18 +79,18 @@ func (fb *fileBackend) getLatest() (string, error) {
 		names = append(names, f.Name())
 	}
 
-	fn := getLatestBackupName(names)
+	fn := util.GetLatestBackupName(names)
 	if fn == "" {
 		return "", nil
 	}
 	return fn, err
 }
 
-func (fb *fileBackend) open(name string) (io.ReadCloser, error) {
+func (fb *fileBackend) Open(name string) (io.ReadCloser, error) {
 	return os.Open(filepath.Join(fb.dir, name))
 }
 
-func (fb *fileBackend) purge(maxBackupFiles int) error {
+func (fb *fileBackend) Purge(maxBackupFiles int) error {
 	files, err := ioutil.ReadDir(fb.dir)
 	if err != nil {
 		return err
@@ -100,7 +101,7 @@ func (fb *fileBackend) purge(maxBackupFiles int) error {
 		names = append(names, f.Name())
 	}
 
-	bnames := filterAndSortBackups(names)
+	bnames := util.FilterAndSortBackups(names)
 	if len(bnames) < maxBackupFiles {
 		return nil
 	}
@@ -115,7 +116,7 @@ func (fb *fileBackend) purge(maxBackupFiles int) error {
 	return nil
 }
 
-func (fb *fileBackend) total() (int, error) {
+func (fb *fileBackend) Total() (int, error) {
 	files, err := ioutil.ReadDir(fb.dir)
 	if err != nil {
 		return -1, err
@@ -126,10 +127,10 @@ func (fb *fileBackend) total() (int, error) {
 		names = append(names, f.Name())
 	}
 
-	return len(filterAndSortBackups(names)), nil
+	return len(util.FilterAndSortBackups(names)), nil
 }
 
-func (fb *fileBackend) totalSize() (int64, error) {
+func (fb *fileBackend) TotalSize() (int64, error) {
 	files, err := ioutil.ReadDir(fb.dir)
 	if err != nil {
 		return -1, err

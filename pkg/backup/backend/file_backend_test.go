@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package backend
 
 import (
 	"io/ioutil"
@@ -20,15 +20,17 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/coreos/etcd-operator/pkg/backup/util"
 )
 
 func TestFileBackendGetLatest(t *testing.T) {
 	names := []string{
-		makeBackupName("3.0.4", 12), // ignore version
-		"3.0.1_18_etcd.tmp",         // bad suffix
-		makeBackupName("3.0.1", 3),
-		makeBackupName("3.0.3", 19),
-		makeBackupName("3.0.0", 1),
+		util.MakeBackupName("3.0.4", 12), // ignore version
+		"3.0.1_18_etcd.tmp",              // bad suffix
+		util.MakeBackupName("3.0.1", 3),
+		util.MakeBackupName("3.0.3", 19),
+		util.MakeBackupName("3.0.0", 1),
 		"3.0.1_badbackup_etcd.backup", // bad backup name
 	}
 
@@ -44,19 +46,19 @@ func TestFileBackendGetLatest(t *testing.T) {
 		}
 	}
 
-	name, err := fb.getLatest()
+	name, err := fb.GetLatest()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	rc, err := fb.open(name)
+	rc, err := fb.Open(name)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer rc.Close()
 
-	if name != makeBackupName("3.0.3", 19) {
-		t.Errorf("lastest name = %s, want %s", name, makeBackupName("3.0.3", 19))
+	if name != util.MakeBackupName("3.0.3", 19) {
+		t.Errorf("lastest name = %s, want %s", name, util.MakeBackupName("3.0.3", 19))
 	}
 
 	b, err := ioutil.ReadAll(rc)
@@ -64,8 +66,8 @@ func TestFileBackendGetLatest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if string(b) != makeBackupName("3.0.3", 19) {
-		t.Errorf("content = %s, want %s", string(b), makeBackupName("3.0.3", 19))
+	if string(b) != util.MakeBackupName("3.0.3", 19) {
+		t.Errorf("content = %s, want %s", string(b), util.MakeBackupName("3.0.3", 19))
 	}
 }
 
@@ -77,40 +79,40 @@ func TestFileBackendPurge(t *testing.T) {
 	}{{
 		maxFiles: 1,
 		files: []string{
-			makeBackupName("3.1.0", 1),
-			makeBackupName("3.1.0", 2),
+			util.MakeBackupName("3.1.0", 1),
+			util.MakeBackupName("3.1.0", 2),
 		},
-		leftFiles: []string{makeBackupName("3.1.0", 2)},
+		leftFiles: []string{util.MakeBackupName("3.1.0", 2)},
 	}, {
 		maxFiles: 1,
 		files: []string{
-			makeBackupName("3.1.0", 2), // ordering doesn't matter
-			makeBackupName("3.1.0", 1),
+			util.MakeBackupName("3.1.0", 2), // ordering doesn't matter
+			util.MakeBackupName("3.1.0", 1),
 		},
-		leftFiles: []string{makeBackupName("3.1.0", 2)},
+		leftFiles: []string{util.MakeBackupName("3.1.0", 2)},
 	}, {
 		maxFiles: 1,
 		files: []string{
-			makeBackupName("3.1.0", 1),
-			makeBackupName("3.0.0", 2), // we dont' care about version, only highest rev
+			util.MakeBackupName("3.1.0", 1),
+			util.MakeBackupName("3.0.0", 2), // we dont' care about version, only highest rev
 		},
-		leftFiles: []string{makeBackupName("3.0.0", 2)},
+		leftFiles: []string{util.MakeBackupName("3.0.0", 2)},
 	}, {
 		maxFiles: 1,
 		files: []string{
-			makeBackupName("3.1.0", 1),
-			makeBackupName("3.1.0", 2),
-			makeBackupName("3.1.0", 3), // keep the highest rev
+			util.MakeBackupName("3.1.0", 1),
+			util.MakeBackupName("3.1.0", 2),
+			util.MakeBackupName("3.1.0", 3), // keep the highest rev
 		},
-		leftFiles: []string{makeBackupName("3.1.0", 3)},
+		leftFiles: []string{util.MakeBackupName("3.1.0", 3)},
 	}, {
 		maxFiles: 2,
 		files: []string{
-			makeBackupName("3.1.0", 1),
-			makeBackupName("3.1.0", 2),
-			makeBackupName("3.1.0", 3), // keep two of the highest revs
+			util.MakeBackupName("3.1.0", 1),
+			util.MakeBackupName("3.1.0", 2),
+			util.MakeBackupName("3.1.0", 3), // keep two of the highest revs
 		},
-		leftFiles: []string{makeBackupName("3.1.0", 2), makeBackupName("3.1.0", 3)},
+		leftFiles: []string{util.MakeBackupName("3.1.0", 2), util.MakeBackupName("3.1.0", 3)},
 	}}
 
 	for i, tt := range tests {
@@ -125,7 +127,7 @@ func TestFileBackendPurge(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		fb.purge(tt.maxFiles)
+		fb.Purge(tt.maxFiles)
 		infos, err := ioutil.ReadDir(dir)
 		if err != nil {
 			t.Fatal(err)

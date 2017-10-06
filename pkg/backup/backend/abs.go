@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package backend
 
 import (
 	"fmt"
@@ -20,19 +20,25 @@ import (
 	"io/ioutil"
 
 	"github.com/coreos/etcd-operator/pkg/backup/abs"
+	"github.com/coreos/etcd-operator/pkg/backup/util"
 
 	"github.com/sirupsen/logrus"
 )
 
 // ensure absBackend satisfies backend interface.
-var _ backend = &absBackend{}
+var _ Backend = &absBackend{}
 
+// absBackend is the Azure Blob Storage backend.
 type absBackend struct {
 	ABS *abs.ABS
 }
 
-func (ab *absBackend) save(version string, snapRev int64, r io.Reader) (int64, error) {
-	key := makeBackupName(version, snapRev)
+func NewAbsBackend(abs *abs.ABS) Backend {
+	return &absBackend{abs}
+}
+
+func (ab *absBackend) Save(version string, snapRev int64, r io.Reader) (int64, error) {
+	key := util.MakeBackupName(version, snapRev)
 
 	err := ab.ABS.Put(key, r)
 	if err != nil {
@@ -48,25 +54,25 @@ func (ab *absBackend) save(version string, snapRev int64, r io.Reader) (int64, e
 	return n, nil
 }
 
-func (ab *absBackend) getLatest() (string, error) {
+func (ab *absBackend) GetLatest() (string, error) {
 	keys, err := ab.ABS.List()
 	if err != nil {
 		return "", fmt.Errorf("failed to list abs container: %v", err)
 	}
 
-	return getLatestBackupName(keys), nil
+	return util.GetLatestBackupName(keys), nil
 }
 
-func (ab *absBackend) open(name string) (io.ReadCloser, error) {
+func (ab *absBackend) Open(name string) (io.ReadCloser, error) {
 	return ab.ABS.Get(name)
 }
 
-func (ab *absBackend) purge(maxBackupFiles int) error {
+func (ab *absBackend) Purge(maxBackupFiles int) error {
 	names, err := ab.ABS.List()
 	if err != nil {
 		return err
 	}
-	bnames := filterAndSortBackups(names)
+	bnames := util.FilterAndSortBackups(names)
 	if len(bnames) < maxBackupFiles {
 		return nil
 	}
@@ -79,20 +85,20 @@ func (ab *absBackend) purge(maxBackupFiles int) error {
 	return nil
 }
 
-func (ab *absBackend) total() (int, error) {
+func (ab *absBackend) Total() (int, error) {
 	names, err := ab.ABS.List()
 	if err != nil {
 		return -1, err
 	}
-	return len(filterAndSortBackups(names)), err
+	return len(util.FilterAndSortBackups(names)), err
 }
 
-func (ab *absBackend) totalSize() (int64, error) {
+func (ab *absBackend) TotalSize() (int64, error) {
 	return ab.ABS.TotalSize()
 }
 
 func (ab *absBackend) getBlobSize(key string) (int64, error) {
-	rc, err := ab.open(key)
+	rc, err := ab.Open(key)
 
 	// TODO: use less expensive method of getting byte array length
 	b, err := ioutil.ReadAll(rc)

@@ -24,8 +24,9 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/coreos/etcd-operator/pkg/backup/util"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
 
@@ -92,10 +93,10 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fname = makeBackupName(version, revisioni)
+		fname = util.MakeBackupName(version, revisioni)
 
 	case len(revision) == 0:
-		fname, err = b.be.getLatest()
+		fname, err = b.be.GetLatest()
 		if err != nil {
 			logrus.Errorf("fail to serve backup: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -111,7 +112,7 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rc, err := b.be.open(fname)
+	rc, err := b.be.Open(fname)
 	if err != nil {
 		if os.IsNotExist(err) {
 			http.Error(w, "backup not found", http.StatusNotFound)
@@ -146,7 +147,7 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set(HTTPHeaderEtcdVersion, getVersionFromBackup(fname))
-	rev, err := getRev(fname)
+	rev, err := util.GetRev(fname)
 	if err != nil {
 		panic("unexpected error:" + err.Error()) // fname should have already been verified
 	}
@@ -163,19 +164,19 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Backup) serveStatus(w http.ResponseWriter, r *http.Request) {
-	t, err := b.be.total()
+	t, err := b.be.Total()
 	if err != nil {
 		http.Error(w, "failed to get total number of backups", http.StatusInternalServerError)
 		return
 	}
-	ts, err := b.be.totalSize()
+	ts, err := b.be.TotalSize()
 	if err != nil {
 		http.Error(w, "failed to get total size of backups", http.StatusInternalServerError)
 		return
 	}
 	s := backupapi.ServiceStatus{
 		Backups:    t,
-		BackupSize: toMB(ts),
+		BackupSize: util.ToMB(ts),
 	}
 	if len(b.recentBackupsStatus) != 0 {
 		s.RecentBackup = &b.recentBackupsStatus[len(b.recentBackupsStatus)-1]

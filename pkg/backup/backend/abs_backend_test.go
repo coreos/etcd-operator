@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backup
+package backend
 
 import (
 	"bytes"
@@ -23,8 +23,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/coreos/etcd-operator/pkg/backup/abs"
+	"github.com/coreos/etcd-operator/pkg/backup/util"
+
+	"github.com/Azure/azure-sdk-for-go/storage"
 )
 
 const integrationTestEnvVar = "RUN_INTEGRATION_TEST"
@@ -113,26 +115,26 @@ func TestABSBackendGetLatest(t *testing.T) {
 	}
 	ab := &absBackend{ABS: abs}
 
-	if _, err := ab.save("3.1.0", 1, bytes.NewBuffer([]byte(blobContents))); err != nil {
+	if _, err := ab.Save("3.1.0", 1, bytes.NewBuffer([]byte(blobContents))); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ab.save("3.1.1", 2, bytes.NewBuffer([]byte(blobContents))); err != nil {
+	if _, err := ab.Save("3.1.1", 2, bytes.NewBuffer([]byte(blobContents))); err != nil {
 		t.Fatal(err)
 	}
 
 	// test getLatest
-	name, err := ab.getLatest()
+	name, err := ab.GetLatest()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expected := makeBackupName("3.1.1", 2)
+	expected := util.MakeBackupName("3.1.1", 2)
 	if name != expected {
 		t.Errorf("lastest name = %s, want %s", name, expected)
 	}
 
 	// test total
-	totalBackups, err := ab.total()
+	totalBackups, err := ab.Total()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +143,7 @@ func TestABSBackendGetLatest(t *testing.T) {
 	}
 
 	// test open
-	rc, err := ab.open(name)
+	rc, err := ab.Open(name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,24 +198,24 @@ func TestABSBackendPurge(t *testing.T) {
 	}
 	ab := &absBackend{ABS: abs}
 
-	if _, err := ab.save("3.1.0", 1, bytes.NewBuffer([]byte(blobContents))); err != nil {
+	if _, err := ab.Save("3.1.0", 1, bytes.NewBuffer([]byte(blobContents))); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ab.save("3.1.0", 2, bytes.NewBuffer([]byte(blobContents))); err != nil {
+	if _, err := ab.Save("3.1.0", 2, bytes.NewBuffer([]byte(blobContents))); err != nil {
 		t.Fatal(err)
 	}
-	if err := ab.purge(1); err != nil {
+	if err := ab.Purge(1); err != nil {
 		t.Fatal(err)
 	}
 	names, err := abs.List()
 	if err != nil {
 		t.Fatal(err)
 	}
-	leftFiles := []string{makeBackupName("3.1.0", 2)}
+	leftFiles := []string{util.MakeBackupName("3.1.0", 2)}
 	if !reflect.DeepEqual(leftFiles, names) {
 		t.Errorf("left files after purge, want=%v, get=%v", leftFiles, names)
 	}
-	if err := abs.Delete(makeBackupName("3.1.0", 2)); err != nil {
+	if err := abs.Delete(util.MakeBackupName("3.1.0", 2)); err != nil {
 		t.Fatal(err)
 	}
 }
