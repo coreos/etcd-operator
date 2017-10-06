@@ -68,11 +68,12 @@ function fmt_pass {
 	fi
 }
 
-function build_backup_operator  {
+function build_backup_operator {
 	if ! "hack/build/etcd-backup-operator/build" ; then
 		echo "fail to build etcd-backup-operator"
 		exit 255
 	fi
+	IMAGE=$ETCD_BACKUP_OPERATOR_IMAGE hack/build/etcd-backup-operator/push
 }
 
 function build_pass {

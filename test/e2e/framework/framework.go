@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"time"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -34,6 +35,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -44,8 +47,10 @@ var Global *Framework
 
 type Framework struct {
 	opImage    string
+	bopImage   string
 	KubeClient kubernetes.Interface
 	CRClient   versioned.Interface
+	KubeExtCli apiextensionsclient.Interface
 	Namespace  string
 	S3Cli      *s3.S3
 	S3Bucket   string
@@ -55,6 +60,7 @@ type Framework struct {
 func Setup() error {
 	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
 	opImage := flag.String("operator-image", "", "operator image, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator")
+	bopImage := flag.String("backup-operator-image", "", "backup operator image, e.g. gcr.io/coreos-k8s-scale-testing/backup-etcd-operator")
 	ns := flag.String("namespace", "default", "e2e test namespace")
 	flag.Parse()
 
@@ -70,8 +76,10 @@ func Setup() error {
 	Global = &Framework{
 		KubeClient: cli,
 		CRClient:   client.MustNew(config),
+		KubeExtCli: k8sutil.MustNewKubeExtClientFromConfig(config),
 		Namespace:  *ns,
 		opImage:    *opImage,
+		bopImage:   *bopImage,
 		S3Bucket:   os.Getenv("TEST_S3_BUCKET"),
 	}
 	return Global.setup()
@@ -80,6 +88,9 @@ func Setup() error {
 func Teardown() error {
 	if err := Global.deleteEtcdOperator(); err != nil {
 		return err
+	}
+	if err := Global.deleteBackupCRD(); err != nil {
+		return fmt.Errorf("failed to delete backup CRD: (%v)", err)
 	}
 	// TODO: check all deleted and wait
 	Global = nil
@@ -92,6 +103,10 @@ func (f *Framework) setup() error {
 		return fmt.Errorf("failed to setup etcd operator: %v", err)
 	}
 	logrus.Info("etcd operator created successfully")
+	if err := f.setupBackupCRD(); err != nil {
+		return fmt.Errorf("failed to setup etcd backup CRD: %v", err)
+	}
+	logrus.Info("etcd backup CRD created successfully")
 	if os.Getenv("AWS_TEST_ENABLED") == "true" {
 		if err := f.setupAWS(); err != nil {
 			return fmt.Errorf("fail to setup aws: %v", err)
@@ -181,6 +196,49 @@ func (f *Framework) DeleteEtcdOperatorCompletely() error {
 	return nil
 }
 
+const etcdBackupOperator = "etcd-backup-operator"
+
+func (f *Framework) SetupEtcdBackupOperator() error {
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   etcdBackupOperator,
+			Labels: map[string]string{"name": etcdBackupOperator},
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:            etcdBackupOperator,
+					Image:           f.opImage,
+					ImagePullPolicy: v1.PullAlways,
+					Env: []v1.EnvVar{
+						{
+							Name:      constants.EnvOperatorPodNamespace,
+							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+						},
+						{
+							Name:      constants.EnvOperatorPodName,
+							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
+						},
+					},
+				},
+			},
+			RestartPolicy: v1.RestartPolicyNever,
+		},
+	}
+
+	p, err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace, pod, 60*time.Second)
+	if err != nil {
+		return err
+	}
+	logrus.Infof("etcd backup operator pod is running on node (%s)", p.Spec.NodeName)
+
+	return e2eutil.WaitUntilOperatorReady(f.KubeClient, f.Namespace, etcdBackupOperator)
+}
+
+func (f *Framework) DeleteEtcdBackupOperator() error {
+	return f.KubeClient.CoreV1().Pods(f.Namespace).Delete(etcdBackupOperator, metav1.NewDeleteOptions(1))
+}
+
 func (f *Framework) deleteEtcdOperator() error {
 	return f.KubeClient.CoreV1().Pods(f.Namespace).Delete("etcd-operator", metav1.NewDeleteOptions(1))
 }
@@ -200,4 +258,67 @@ func (f *Framework) setupAWS() error {
 	}
 	f.S3Cli = s3.New(sess)
 	return nil
+}
+
+func (f *Framework) setupBackupCRD() error {
+	if err := createBackupCRD(f.KubeExtCli); err != nil {
+		return err
+	}
+	if err := waitBackupCRDReady(f.KubeExtCli); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *Framework) deleteBackupCRD() error {
+	return deleteBackupCRD(f.KubeExtCli)
+}
+
+func createBackupCRD(clientset apiextensionsclient.Interface) error {
+	crd := &apiextensionsv1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: api.EtcdBackupCRDName,
+		},
+		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
+			Group:   api.SchemeGroupVersion.Group,
+			Version: api.SchemeGroupVersion.Version,
+			Scope:   apiextensionsv1beta1.NamespaceScoped,
+			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
+				Plural: api.EtcdBackupResourcePlural,
+				Kind:   api.EtcdBackupResourceKind,
+			},
+		},
+	}
+	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
+	return err
+}
+
+func waitBackupCRDReady(clientset apiextensionsclient.Interface) error {
+	err := retryutil.Retry(5*time.Second, 20, func() (bool, error) {
+		crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(api.EtcdBackupCRDName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		for _, cond := range crd.Status.Conditions {
+			switch cond.Type {
+			case apiextensionsv1beta1.Established:
+				if cond.Status == apiextensionsv1beta1.ConditionTrue {
+					return true, nil
+				}
+			case apiextensionsv1beta1.NamesAccepted:
+				if cond.Status == apiextensionsv1beta1.ConditionFalse {
+					return false, fmt.Errorf("Name conflict: %v", cond.Reason)
+				}
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		return fmt.Errorf("wait CRD created failed: %v", err)
+	}
+	return nil
+}
+
+func deleteBackupCRD(clientset apiextensionsclient.Interface) error {
+	return clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(api.EtcdBackupCRDName, &metav1.DeleteOptions{})
 }

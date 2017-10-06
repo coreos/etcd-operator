@@ -104,3 +104,7 @@ func MustNewKubeExtClient() apiextensionsclient.Interface {
 	}
 	return apiextensionsclient.NewForConfigOrDie(cfg)
 }
+
+func MustNewKubeExtClientFromConfig(cfg *rest.Config) apiextensionsclient.Interface {
+	return apiextensionsclient.NewForConfigOrDie(cfg)
+}
