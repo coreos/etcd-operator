@@ -67,6 +67,17 @@ type BackupController struct {
 	recentBackupsStatus []backupapi.BackupStatus
 }
 
+// NewBackupManager creates a BackupManager.
+func NewBackupManager(kclient kubernetes.Interface, clusterName string, namespace string, etcdTLSConfig *tls.Config, be backend.Backend) *BackupManager {
+	return &BackupManager{
+		kclient:       kclient,
+		clusterName:   clusterName,
+		namespace:     namespace,
+		etcdTLSConfig: etcdTLSConfig,
+		be:            be,
+	}
+}
+
 // NewBackupController creates a BackupController.
 func NewBackupController(kclient kubernetes.Interface, clusterName, ns string, sp api.ClusterSpec, listenAddr string) (*BackupController, error) {
 	bdir := path.Join(constants.BackupMountDir, PVBackupV1, clusterName)
