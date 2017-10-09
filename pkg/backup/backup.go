@@ -46,25 +46,29 @@ const (
 	maxRecentBackupStatusCount = 10
 )
 
-type Backup struct {
+// BackupManager backups an etcd cluster.
+type BackupManager struct {
 	kclient kubernetes.Interface
 
 	clusterName   string
 	namespace     string
-	policy        api.BackupPolicy
-	listenAddr    string
 	etcdTLSConfig *tls.Config
-	selfHosted    bool
 
 	be backend.Backend
+}
 
-	backupNow chan chan backupNowAck
-
+// BackupController controls when to do backup based on backup policy and incoming HTTP backup requests.
+type BackupController struct {
+	listenAddr    string
+	backupNow     chan chan backupNowAck
+	policy        api.BackupPolicy
+	backupManager *BackupManager
 	// recentBackupStatus keeps the statuses of 'maxRecentBackupStatusCount' recent backups.
 	recentBackupsStatus []backupapi.BackupStatus
 }
 
-func New(kclient kubernetes.Interface, clusterName, ns string, sp api.ClusterSpec, listenAddr string) (*Backup, error) {
+// NewBackupController creates a BackupController.
+func NewBackupController(kclient kubernetes.Interface, clusterName, ns string, sp api.ClusterSpec, listenAddr string) (*BackupController, error) {
 	bdir := path.Join(constants.BackupMountDir, PVBackupV1, clusterName)
 	// We created not only backup dir and but also tmp dir under it.
 	// tmp dir is used to store intermediate snapshot files.
@@ -114,36 +118,40 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp api.ClusterSpe
 		}
 	}
 
-	return &Backup{
+	bm := &BackupManager{
 		kclient:       kclient,
 		clusterName:   clusterName,
 		namespace:     ns,
-		policy:        *sp.Backup,
-		listenAddr:    listenAddr,
 		be:            be,
 		etcdTLSConfig: tc,
-		selfHosted:    sp.SelfHosted != nil,
+	}
 
-		backupNow: make(chan chan backupNowAck),
+	return &BackupController{
+		listenAddr:    listenAddr,
+		backupNow:     make(chan chan backupNowAck),
+		policy:        *sp.Backup,
+		backupManager: bm,
 	}, nil
 }
 
-func (b *Backup) Run() {
-	go b.startHTTP()
+// Run starts BackupController controller where it
+// controlls backups based on backup policy and HTTP backup requests.
+func (bc *BackupController) Run() {
+	go bc.startHTTP()
 
-	lastSnapRev := b.getLatestBackupRev()
+	lastSnapRev := bc.backupManager.getLatestBackupRev()
 	interval := constants.DefaultSnapshotInterval
-	if b.policy.BackupIntervalInSecond != 0 {
-		interval = time.Duration(b.policy.BackupIntervalInSecond) * time.Second
+	if bc.policy.BackupIntervalInSecond != 0 {
+		interval = time.Duration(bc.policy.BackupIntervalInSecond) * time.Second
 	}
 
 	go func() {
-		if b.policy.MaxBackups == 0 {
+		if bc.policy.MaxBackups == 0 {
 			return
 		}
 		for {
 			<-time.After(10 * time.Second)
-			err := b.be.Purge(b.policy.MaxBackups)
+			err := bc.backupManager.be.Purge(bc.policy.MaxBackups)
 			if err != nil {
 				logrus.Errorf("fail to purge backups: %v", err)
 			}
@@ -154,30 +162,39 @@ func (b *Backup) Run() {
 		var ackchan chan backupNowAck
 		select {
 		case <-time.After(interval):
-		case ackchan = <-b.backupNow:
+		case ackchan = <-bc.backupNow:
 			logrus.Info("received a backup request")
 		}
 
-		rev, err := b.saveSnap(lastSnapRev)
+		bs, err := bc.backupManager.SaveSnap(lastSnapRev)
 		if err != nil {
 			logrus.Errorf("failed to save snapshot: %v", err)
 		}
-		lastSnapRev = rev
+
+		if bs != nil {
+			lastSnapRev = bs.Revision
+			bc.recentBackupsStatus = append(bc.recentBackupsStatus, *bs)
+			if len(bc.recentBackupsStatus) > maxRecentBackupStatusCount {
+				bc.recentBackupsStatus = bc.recentBackupsStatus[1:]
+			}
+		}
 
 		if ackchan != nil {
 			ack := backupNowAck{err: err}
 			if err == nil {
-				ack.status = b.getLatestBackupStatus()
+				ack.status = bc.recentBackupsStatus[len(bc.recentBackupsStatus)-1]
 			}
 			ackchan <- ack
 		}
 	}
 }
 
-func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
-	podList, err := b.kclient.Core().Pods(b.namespace).List(k8sutil.ClusterListOpt(b.clusterName))
+// SaveSnap saves the snapshot if snapshot's revision is greater than the given lastSnapRev
+// and returns a BackupStatus containing saving backup metadata if SaveSnap succeeds.
+func (bm *BackupManager) SaveSnap(lastSnapRev int64) (*backupapi.BackupStatus, error) {
+	podList, err := bm.kclient.Core().Pods(bm.namespace).List(k8sutil.ClusterListOpt(bm.clusterName))
 	if err != nil {
-		return lastSnapRev, err
+		return nil, err
 	}
 
 	var pods []*v1.Pod
@@ -191,38 +208,39 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 	if len(pods) == 0 {
 		msg := "no running etcd pods found"
 		logrus.Warning(msg)
-		return lastSnapRev, fmt.Errorf(msg)
+		return nil, fmt.Errorf(msg)
 	}
-	member, rev := getMemberWithMaxRev(pods, b.etcdTLSConfig, b.selfHosted)
+	member, rev := getMemberWithMaxRev(pods, bm.etcdTLSConfig)
 	if member == nil {
 		logrus.Warning("no reachable member")
-		return lastSnapRev, fmt.Errorf("no reachable member")
+		return nil, fmt.Errorf("no reachable member")
 	}
 
 	if rev <= lastSnapRev {
 		logrus.Info("skipped creating new backup: no change since last time")
-		return lastSnapRev, nil
+		return nil, nil
 	}
 
-	log.Printf("saving backup for cluster (%s)", b.clusterName)
-	if err := b.writeSnap(member, rev); err != nil {
+	log.Printf("saving backup for cluster (%s)", bm.clusterName)
+	bs, err := bm.writeSnap(member, rev)
+	if err != nil {
 		err = fmt.Errorf("write snapshot failed: %v", err)
-		return lastSnapRev, err
+		return nil, err
 	}
-	return rev, nil
+	return bs, nil
 }
 
-func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
+func (bm *BackupManager) writeSnap(m *etcdutil.Member, rev int64) (*backupapi.BackupStatus, error) {
 	start := time.Now()
 
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.ClientURL()},
 		DialTimeout: constants.DefaultDialTimeout,
-		TLS:         b.etcdTLSConfig,
+		TLS:         bm.etcdTLSConfig,
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to create etcd client (%v)", err)
+		return nil, fmt.Errorf("failed to create etcd client (%v)", err)
 	}
 	defer etcdcli.Close()
 
@@ -230,38 +248,34 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 	resp, err := etcdcli.Maintenance.Status(ctx, m.ClientURL())
 	cancel()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
 	rc, err := etcdcli.Maintenance.Snapshot(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to receive snapshot (%v)", err)
+		return nil, fmt.Errorf("failed to receive snapshot (%v)", err)
 	}
 	defer cancel()
 	defer rc.Close()
 
-	n, err := b.be.Save(resp.Version, rev, rc)
+	n, err := bm.be.Save(resp.Version, rev, rc)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	bs := backupapi.BackupStatus{
+	bs := &backupapi.BackupStatus{
 		CreationTime:     time.Now().Format(time.RFC3339),
 		Size:             util.ToMB(n),
 		Version:          resp.Version,
 		Revision:         rev,
 		TimeTookInSecond: int(time.Since(start).Seconds() + 1),
 	}
-	b.recentBackupsStatus = append(b.recentBackupsStatus, bs)
-	if len(b.recentBackupsStatus) > maxRecentBackupStatusCount {
-		b.recentBackupsStatus = b.recentBackupsStatus[1:]
-	}
 
-	return nil
+	return bs, nil
 }
 
-func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config, selfHosted bool) (*etcdutil.Member, int64) {
+func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config) (*etcdutil.Member, int64) {
 	var member *etcdutil.Member
 	maxRev := int64(0)
 	for _, pod := range pods {
@@ -299,7 +313,7 @@ func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config, selfHosted bool) (*etcd
 	return member, maxRev
 }
 
-func (b *Backup) getLatestBackupRev() int64 {
+func (b *BackupManager) getLatestBackupRev() int64 {
 	// If there is any error, we just exit backup sidecar because we can't serve the backup any way.
 	name, err := b.be.GetLatest()
 	if err != nil {
@@ -313,8 +327,4 @@ func (b *Backup) getLatestBackupRev() int64 {
 		logrus.Fatal(err)
 	}
 	return rev
-}
-
-func (b *Backup) getLatestBackupStatus() backupapi.BackupStatus {
-	return b.recentBackupsStatus[len(b.recentBackupsStatus)-1]
 }

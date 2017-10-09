@@ -35,14 +35,14 @@ const (
 	HTTPHeaderRevision    = "X-Revision"
 )
 
-func (b *Backup) startHTTP() {
-	http.HandleFunc(backupapi.APIV1+"/backup", b.serveSnap)
-	http.HandleFunc(backupapi.APIV1+"/backupnow", b.serveBackupNow)
-	http.HandleFunc(backupapi.APIV1+"/status", b.serveStatus)
+func (bc *BackupController) startHTTP() {
+	http.HandleFunc(backupapi.APIV1+"/backup", bc.serveSnap)
+	http.HandleFunc(backupapi.APIV1+"/backupnow", bc.serveBackupNow)
+	http.HandleFunc(backupapi.APIV1+"/status", bc.serveStatus)
 	http.Handle("/metrics", prometheus.Handler())
 
-	logrus.Infof("listening on %v", b.listenAddr)
-	panic(http.ListenAndServe(b.listenAddr, nil))
+	logrus.Infof("listening on %v", bc.listenAddr)
+	panic(http.ListenAndServe(bc.listenAddr, nil))
 }
 
 type backupNowAck struct {
@@ -50,10 +50,10 @@ type backupNowAck struct {
 	status backupapi.BackupStatus
 }
 
-func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
+func (bc *BackupController) serveBackupNow(w http.ResponseWriter, r *http.Request) {
 	ackchan := make(chan backupNowAck, 1)
 	select {
-	case b.backupNow <- ackchan:
+	case bc.backupNow <- ackchan:
 	case <-time.After(time.Minute):
 		http.Error(w, "timeout", http.StatusRequestTimeout)
 		return
@@ -76,7 +76,7 @@ func (b *Backup) serveBackupNow(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
+func (bc *BackupController) serveSnap(w http.ResponseWriter, r *http.Request) {
 	var (
 		fname string
 		err   error
@@ -96,7 +96,7 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		fname = util.MakeBackupName(version, revisioni)
 
 	case len(revision) == 0:
-		fname, err = b.be.GetLatest()
+		fname, err = bc.backupManager.be.GetLatest()
 		if err != nil {
 			logrus.Errorf("fail to serve backup: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -112,7 +112,7 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rc, err := b.be.Open(fname)
+	rc, err := bc.backupManager.be.Open(fname)
 	if err != nil {
 		if os.IsNotExist(err) {
 			http.Error(w, "backup not found", http.StatusNotFound)
@@ -163,13 +163,13 @@ func (b *Backup) serveSnap(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (b *Backup) serveStatus(w http.ResponseWriter, r *http.Request) {
-	t, err := b.be.Total()
+func (bc *BackupController) serveStatus(w http.ResponseWriter, r *http.Request) {
+	t, err := bc.backupManager.be.Total()
 	if err != nil {
 		http.Error(w, "failed to get total number of backups", http.StatusInternalServerError)
 		return
 	}
-	ts, err := b.be.TotalSize()
+	ts, err := bc.backupManager.be.TotalSize()
 	if err != nil {
 		http.Error(w, "failed to get total size of backups", http.StatusInternalServerError)
 		return
@@ -178,8 +178,9 @@ func (b *Backup) serveStatus(w http.ResponseWriter, r *http.Request) {
 		Backups:    t,
 		BackupSize: util.ToMB(ts),
 	}
-	if len(b.recentBackupsStatus) != 0 {
-		s.RecentBackup = &b.recentBackupsStatus[len(b.recentBackupsStatus)-1]
+	rbs := bc.recentBackupsStatus
+	if len(rbs) != 0 {
+		s.RecentBackup = &rbs[len(rbs)-1]
 	}
 
 	je := json.NewEncoder(w)
