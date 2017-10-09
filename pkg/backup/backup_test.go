@@ -32,14 +32,17 @@ func TestRespHeaderHasVersionRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(d)
-	b := &Backup{
+	bm := &BackupManager{
 		be: backend.NewFileBackend(d),
+	}
+	bc := &BackupController{
+		backupManager: bm,
 	}
 	req := &http.Request{
 		URL: backupapi.NewBackupURL("http", "ignore", "", -1),
 	}
 	rr := httptest.NewRecorder()
-	b.serveSnap(rr, req)
+	bc.serveSnap(rr, req)
 	if get := rr.Header().Get(HTTPHeaderEtcdVersion); get != "3.1.0" {
 		t.Errorf("etcd version want=%s, get=%s", "3.1.0", get)
 	}
@@ -67,14 +70,17 @@ func TestServeBackup(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		b := &Backup{
+		bm := &BackupManager{
 			be: backend.NewFileBackend(d),
+		}
+		bc := &BackupController{
+			backupManager: bm,
 		}
 		req := &http.Request{
 			URL: backupapi.NewBackupURL("http", "ignore", tt.reqVersion, tt.reqRevision),
 		}
 		rr := httptest.NewRecorder()
-		b.serveSnap(rr, req)
+		bc.serveSnap(rr, req)
 
 		if rr.Code != tt.httpC {
 			if rr.Code != http.StatusOK {
@@ -107,14 +113,17 @@ func TestBackupVersionCompatiblity(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		b := &Backup{
+		bm := &BackupManager{
 			be: backend.NewFileBackend(d),
+		}
+		bc := &BackupController{
+			backupManager: bm,
 		}
 		req := &http.Request{
 			URL: backupapi.NewBackupURL("http", "ignore", tt.reqVersion, -1),
 		}
 		rr := httptest.NewRecorder()
-		b.serveSnap(rr, req)
+		bc.serveSnap(rr, req)
 
 		if rr.Code != tt.httpC {
 			if rr.Code != http.StatusOK {
