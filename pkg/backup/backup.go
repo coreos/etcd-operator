@@ -17,7 +17,7 @@ package backup
 import (
 	"crypto/tls"
 	"fmt"
-	"log"
+	"io"
 	"os"
 	"path"
 	"time"
@@ -162,6 +162,7 @@ func (b *Backup) Run() {
 		if err != nil {
 			logrus.Errorf("failed to save snapshot: %v", err)
 		}
+
 		lastSnapRev = rev
 
 		if ackchan != nil {
@@ -174,29 +175,16 @@ func (b *Backup) Run() {
 	}
 }
 
+// saveSnap saves the latest snapshot if the given current revision is greater lastSnapRev.
 func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
-	podList, err := b.kclient.Core().Pods(b.namespace).List(k8sutil.ClusterListOpt(b.clusterName))
+	start := time.Now()
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
+	rc, etcdVersion, rev, err := GetSnap(ctx, b.kclient, b.etcdTLSConfig, b.namespace, b.clusterName)
+	defer cancel()
+	defer rc.Close()
 	if err != nil {
-		return lastSnapRev, err
-	}
-
-	var pods []*v1.Pod
-	for i := range podList.Items {
-		pod := &podList.Items[i]
-		if pod.Status.Phase == v1.PodRunning {
-			pods = append(pods, pod)
-		}
-	}
-
-	if len(pods) == 0 {
-		msg := "no running etcd pods found"
-		logrus.Warning(msg)
-		return lastSnapRev, fmt.Errorf(msg)
-	}
-	member, rev := getMemberWithMaxRev(pods, b.etcdTLSConfig, b.selfHosted)
-	if member == nil {
-		logrus.Warning("no reachable member")
-		return lastSnapRev, fmt.Errorf("no reachable member")
+		return lastSnapRev, fmt.Errorf("failed to get snapshot: (%v)", err)
 	}
 
 	if rev <= lastSnapRev {
@@ -204,52 +192,15 @@ func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
 		return lastSnapRev, nil
 	}
 
-	log.Printf("saving backup for cluster (%s)", b.clusterName)
-	if err := b.writeSnap(member, rev); err != nil {
-		err = fmt.Errorf("write snapshot failed: %v", err)
-		return lastSnapRev, err
-	}
-	return rev, nil
-}
-
-func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
-	start := time.Now()
-
-	cfg := clientv3.Config{
-		Endpoints:   []string{m.ClientURL()},
-		DialTimeout: constants.DefaultDialTimeout,
-		TLS:         b.etcdTLSConfig,
-	}
-	etcdcli, err := clientv3.New(cfg)
+	n, err := WriteSnap(etcdVersion, rev, b.be, rc)
 	if err != nil {
-		return fmt.Errorf("failed to create etcd client (%v)", err)
-	}
-	defer etcdcli.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	resp, err := etcdcli.Maintenance.Status(ctx, m.ClientURL())
-	cancel()
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
-	rc, err := etcdcli.Maintenance.Snapshot(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to receive snapshot (%v)", err)
-	}
-	defer cancel()
-	defer rc.Close()
-
-	n, err := b.be.Save(resp.Version, rev, rc)
-	if err != nil {
-		return err
+		return 0, fmt.Errorf("failed to write snapshot to backend: (%v)", err)
 	}
 
 	bs := backupapi.BackupStatus{
 		CreationTime:     time.Now().Format(time.RFC3339),
 		Size:             util.ToMB(n),
-		Version:          resp.Version,
+		Version:          etcdVersion,
 		Revision:         rev,
 		TimeTookInSecond: int(time.Since(start).Seconds() + 1),
 	}
@@ -258,10 +209,103 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 		b.recentBackupsStatus = b.recentBackupsStatus[1:]
 	}
 
-	return nil
+	return 0, nil
 }
 
-func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config, selfHosted bool) (*etcdutil.Member, int64) {
+// WriteSnap writes the snapshot to the backend.
+func WriteSnap(version string, rev int64, be backend.Backend, rc io.ReadCloser) (int64, error) {
+	n, err := be.Save(version, rev, rc)
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
+// GetSnap gets the snapshot from the cluster member with the maximum revision.
+func GetSnap(ctx context.Context, kclient kubernetes.Interface, tls *tls.Config, namespace, clusterName string) (io.ReadCloser, string, int64, error) {
+	pods, err := getRunningPods(kclient, namespace, clusterName)
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("failed to retrieve running etcd pods: (%v)", err)
+	}
+	if len(pods) == 0 {
+		return nil, "", 0, fmt.Errorf("no running etcd pods found")
+	}
+
+	m, rev := getMemberWithMaxRev(pods, tls)
+	if m == nil {
+		return nil, "", 0, fmt.Errorf("no reachable member")
+	}
+
+	cfg := clientv3.Config{
+		Endpoints:   []string{m.ClientURL()},
+		DialTimeout: constants.DefaultDialTimeout,
+		TLS:         tls,
+	}
+	etcdcli, err := clientv3.New(cfg)
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("failed to create etcd client (%v)", err)
+	}
+	// when GetSnap fails, close etcdcli.
+	defer func() {
+		if err != nil {
+			etcdcli.Close()
+		}
+	}()
+	cctx, ccancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	resp, err := etcdcli.Maintenance.Status(cctx, m.ClientURL())
+	ccancel()
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("failed to get member status (%v)", err)
+	}
+
+	rc, err := etcdcli.Maintenance.Snapshot(ctx)
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("failed to get member snapshot (%v)", err)
+	}
+	// when context for getting/saving snapshot finishes, close the etcdcli.
+	go func() {
+		<-ctx.Done()
+		etcdcli.Close()
+	}()
+	return rc, resp.Version, rev, nil
+}
+
+func (b *Backup) getLatestBackupRev() int64 {
+	// If there is any error, we just exit backup sidecar because we can't serve the backup any way.
+	name, err := b.be.GetLatest()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	if len(name) == 0 {
+		return 0
+	}
+	rev, err := util.GetRev(name)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	return rev
+}
+
+func (b *Backup) getLatestBackupStatus() backupapi.BackupStatus {
+	return b.recentBackupsStatus[len(b.recentBackupsStatus)-1]
+}
+
+func getRunningPods(kclient kubernetes.Interface, namespace, clusterName string) ([]*v1.Pod, error) {
+	podList, err := kclient.Core().Pods(namespace).List(k8sutil.ClusterListOpt(clusterName))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pods: (%v)", err)
+	}
+	var pods []*v1.Pod
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if pod.Status.Phase == v1.PodRunning {
+			pods = append(pods, pod)
+		}
+	}
+	return pods, nil
+}
+
+func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config) (*etcdutil.Member, int64) {
 	var member *etcdutil.Member
 	maxRev := int64(0)
 	for _, pod := range pods {
@@ -297,24 +341,4 @@ func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config, selfHosted bool) (*etcd
 		}
 	}
 	return member, maxRev
-}
-
-func (b *Backup) getLatestBackupRev() int64 {
-	// If there is any error, we just exit backup sidecar because we can't serve the backup any way.
-	name, err := b.be.GetLatest()
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	if len(name) == 0 {
-		return 0
-	}
-	rev, err := util.GetRev(name)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	return rev
-}
-
-func (b *Backup) getLatestBackupStatus() backupapi.BackupStatus {
-	return b.recentBackupsStatus[len(b.recentBackupsStatus)-1]
 }

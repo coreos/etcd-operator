@@ -15,9 +15,8 @@
 package controller
 
 import (
-	"fmt"
-
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -61,10 +60,7 @@ func (b *Backup) processItem(key string) error {
 	}
 
 	eb := obj.(*api.EtcdBackup)
-	// Remove fmt.Println(eb) when implementing handle backup logic.
-	fmt.Println(eb)
-	// TODO: handle backup
-	return nil
+	return b.handleBackup(&eb.Spec)
 }
 
 func (b *Backup) handleErr(err error, key interface{}) {
@@ -89,4 +85,14 @@ func (b *Backup) handleErr(err error, key interface{}) {
 	b.queue.Forget(key)
 	// Report that, even after several retries, we could not successfully process this key
 	b.logger.Infof("Dropping Backup (%v) out of the queue: %v", key, err)
+}
+
+func (b *Backup) handleBackup(spec *api.EtcdBackupSpec) error {
+	switch spec.StorageType {
+	case api.BackupStorageTypeS3:
+		return b.handleS3(spec.ClusterName, spec.S3)
+	default:
+		logrus.Fatalf("unknown StorageType: %v", spec.StorageType)
+	}
+	return nil
 }
