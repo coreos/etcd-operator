@@ -12,6 +12,6 @@ Kuberentes nodes can be attached with labels. Users can [assign pods to nodes wi
 
 Even with container isolation, not all resources are isolated. Thus, performance interference can still affect etcd clusters' performance unexpectedly. We recommend dedicating nodes for each etcd pod to achieve predictable performance.
 
-Kuberentes node can be [tainted](https://github.com/kubernetes/kubernetes/blob/master/docs/design/taint-toleration-dedicated.md) with keys. Together with node selector feature, users can create nodes that are dedicated for only running etcd clusters. This is the **suggested way** to run high performance large scale etcd clusters.
+Kuberentes node can be [tainted](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/scheduling/taint-toleration-dedicated.md) with keys. Together with node selector feature, users can create nodes that are dedicated for only running etcd clusters. This is the **suggested way** to run high performance large scale etcd clusters.
 
 Use kubectl to taint the node with kubectl taint nodes etcd dedicated. Then only etcd pods, which tolerate this taint will be assigned to the nodes.
