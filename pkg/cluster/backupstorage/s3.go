@@ -37,7 +37,7 @@ func NewS3Storage(kubecli kubernetes.Interface, clusterName, ns string, p api.Ba
 		if err := os.MkdirAll(dir, 0700); err != nil {
 			return nil, err
 		}
-		options, err := setupAWSConfig(kubecli, ns, p.S3.AWSSecret, dir)
+		options, err := SetupAWSConfig(kubecli, ns, p.S3.AWSSecret, dir)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +87,8 @@ func (s *s3) Delete() error {
 	return nil
 }
 
-func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, dir string) (*session.Options, error) {
+// SetupAWSConfig setup local AWS config/credential files from Kubernetes aws secret.
+func SetupAWSConfig(kubecli kubernetes.Interface, ns, secret, dir string) (*session.Options, error) {
 	options := &session.Options{}
 	options.SharedConfigState = session.SharedConfigEnable
 
