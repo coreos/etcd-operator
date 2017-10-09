@@ -53,7 +53,6 @@ type BackupManager struct {
 	clusterName   string
 	namespace     string
 	etcdTLSConfig *tls.Config
-	selfHosted    bool
 
 	be backend.Backend
 }
@@ -125,7 +124,6 @@ func NewBackupController(kclient kubernetes.Interface, clusterName, ns string, s
 		namespace:     ns,
 		be:            be,
 		etcdTLSConfig: tc,
-		selfHosted:    sp.SelfHosted != nil,
 	}
 
 	return &BackupController{
