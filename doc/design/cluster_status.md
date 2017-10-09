@@ -33,5 +33,5 @@ In summary, the TPR:
 
 - receive spec update (or initialize spec) with a resource version
 - collect cluster status during reconciliation
-- automatically update cluster status with known resource version after reconciliation if there is a status change
+- atomically update cluster status with known resource version after reconciliation if there is a status change
   - retry if resource version does not match
