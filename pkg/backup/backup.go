@@ -16,8 +16,8 @@ package backup
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"time"
@@ -200,7 +200,7 @@ func (bc *BackupController) Run() {
 	}
 }
 
-// SaveSnap saves the snapshot if snapshot's revision is greater than the given lastSnapRev
+// SaveSnap saves the latest snapshot if its revision is greater than the given lastSnapRev
 // and returns a BackupStatus containing saving backup metadata if SaveSnap succeeds.
 func (bm *BackupManager) SaveSnap(lastSnapRev int64) (*backupapi.BackupStatus, error) {
 	podList, err := bm.kclient.Core().Pods(bm.namespace).List(k8sutil.ClusterListOpt(bm.clusterName))
@@ -217,14 +217,11 @@ func (bm *BackupManager) SaveSnap(lastSnapRev int64) (*backupapi.BackupStatus, e
 	}
 
 	if len(pods) == 0 {
-		msg := "no running etcd pods found"
-		logrus.Warning(msg)
-		return nil, fmt.Errorf(msg)
+		return nil, errors.New("no running etcd pods found")
 	}
 	member, rev := getMemberWithMaxRev(pods, bm.etcdTLSConfig)
 	if member == nil {
-		logrus.Warning("no reachable member")
-		return nil, fmt.Errorf("no reachable member")
+		return nil, errors.New("no reachable member")
 	}
 
 	if rev <= lastSnapRev {
@@ -232,12 +229,12 @@ func (bm *BackupManager) SaveSnap(lastSnapRev int64) (*backupapi.BackupStatus, e
 		return nil, nil
 	}
 
-	log.Printf("saving backup for cluster (%s)", bm.clusterName)
 	bs, err := bm.writeSnap(member, rev)
 	if err != nil {
-		err = fmt.Errorf("write snapshot failed: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("write snapshot failed: %v", err)
 	}
+	logrus.Infof("saved backup (rev: %v, etcdVersion: %v) for cluster (%s)",
+		bs.Revision, bs.Version, bm.clusterName)
 	return bs, nil
 }
 
