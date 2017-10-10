@@ -21,7 +21,7 @@ metadata:
   name: etcdbackups.etcd.database.coreos.com
 spec:
   group: etcd.database.coreos.com
-  version: v1alpha1
+  version: v1beta2
   Scope: Namespaced
   names: 
     kind: EtcdBackup
