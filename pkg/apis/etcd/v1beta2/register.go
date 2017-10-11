@@ -38,7 +38,7 @@ var (
 
 	SchemeGroupVersion = schema.GroupVersion{Group: groupName, Version: "v1beta2"}
 	CRDName            = CRDResourcePlural + "." + groupName
-	EtcdBackupCRDName  = EtcdBackupResourceKind + "." + groupName
+	EtcdBackupCRDName  = EtcdBackupResourcePlural + "." + groupName
 	EtcdRestoreCRDName = EtcdRestoreResourcePlural + "." + groupName
 )
 
