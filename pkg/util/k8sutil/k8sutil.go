@@ -145,7 +145,10 @@ func createService(kubecli kubernetes.Interface, svcName, clusterName, ns, clust
 	svc := newEtcdServiceManifest(svcName, clusterName, clusterIP, ports)
 	addOwnerRefToObject(svc.GetObjectMeta(), owner)
 	_, err := kubecli.CoreV1().Services(ns).Create(svc)
-	return err
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
 }
 
 // CreateAndWaitPod is a workaround for self hosted and util for testing.
