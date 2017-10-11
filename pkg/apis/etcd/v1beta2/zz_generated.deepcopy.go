@@ -563,7 +563,7 @@ func (in *EtcdRestoreList) DeepCopyInto(out *EtcdRestoreList) {
 	out.ListMeta = in.ListMeta
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]EtcdBackup, len(*in))
+		*out = make([]EtcdRestore, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
