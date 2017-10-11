@@ -177,7 +177,14 @@ func (c *Cluster) setup() error {
 	}
 
 	if shouldCreateCluster {
-		return c.create()
+		err := c.create()
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := c.setupServices(); err != nil {
+		return fmt.Errorf("cluster create: fail to create client service LB: %v", err)
 	}
 	return nil
 }
@@ -204,10 +211,6 @@ func (c *Cluster) create() error {
 		if err := c.prepareSeedMember(); err != nil {
 			return err
 		}
-	}
-
-	if err := c.setupServices(); err != nil {
-		return fmt.Errorf("cluster create: fail to create client service LB: %v", err)
 	}
 	return nil
 }
