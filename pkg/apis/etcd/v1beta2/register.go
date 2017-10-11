@@ -27,6 +27,9 @@ const (
 
 	EtcdBackupResourceKind   = "EtcdBackup"
 	EtcdBackupResourcePlural = "etcdbackups"
+
+	EtcdRestoreResourceKind   = "EtcdRestore"
+	EtcdRestoreResourcePlural = "etcdrestores"
 )
 
 var (
@@ -36,6 +39,7 @@ var (
 	SchemeGroupVersion = schema.GroupVersion{Group: groupName, Version: "v1beta2"}
 	CRDName            = CRDResourcePlural + "." + groupName
 	EtcdBackupCRDName  = EtcdBackupResourceKind + "." + groupName
+	EtcdRestoreCRDName = EtcdRestoreResourcePlural + "." + groupName
 )
 
 // Resource gets an EtcdCluster GroupResource for a specified resource
@@ -50,6 +54,8 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&EtcdClusterList{},
 		&EtcdBackup{},
 		&EtcdBackupList{},
+		&EtcdRestore{},
+		&EtcdRestoreList{},
 	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil

@@ -26,6 +26,7 @@ type EtcdV1beta2Interface interface {
 	RESTClient() rest.Interface
 	EtcdBackupsGetter
 	EtcdClustersGetter
+	EtcdRestoresGetter
 }
 
 // EtcdV1beta2Client is used to interact with features provided by the etcd.database.coreos.com group.
@@ -39,6 +40,10 @@ func (c *EtcdV1beta2Client) EtcdBackups(namespace string) EtcdBackupInterface {
 
 func (c *EtcdV1beta2Client) EtcdClusters(namespace string) EtcdClusterInterface {
 	return newEtcdClusters(c, namespace)
+}
+
+func (c *EtcdV1beta2Client) EtcdRestores(namespace string) EtcdRestoreInterface {
+	return newEtcdRestores(c, namespace)
 }
 
 // NewForConfig creates a new EtcdV1beta2Client for the given config.
