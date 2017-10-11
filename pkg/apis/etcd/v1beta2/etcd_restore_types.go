@@ -22,7 +22,7 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 type EtcdRestoreList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items           []EtcdBackup `json:"items"`
+	Items           []EtcdRestore `json:"items"`
 }
 
 // +genclient
