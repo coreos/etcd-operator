@@ -66,6 +66,18 @@ function fmt_pass {
 	else
 		echo "Skipping unused: failed to install"
 	fi
+
+	echo "Checking for license header..."
+	licRes=""
+	for file in $allfiles; do
+		if ! head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" ; then
+			licRes="${licRes}"$(echo -e "  ${file}")
+		fi
+	done
+	if [ -n "${licRes}" ]; then
+		echo -e "license header checking failed:\n${licRes}"
+		exit 255
+	fi
 }
 
 function build_backup_operator  {
