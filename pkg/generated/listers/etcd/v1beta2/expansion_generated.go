@@ -33,3 +33,11 @@ type EtcdClusterListerExpansion interface{}
 // EtcdClusterNamespaceListerExpansion allows custom methods to be added to
 // EtcdClusterNamespaceLister.
 type EtcdClusterNamespaceListerExpansion interface{}
+
+// EtcdRestoreListerExpansion allows custom methods to be added to
+// EtcdRestoreLister.
+type EtcdRestoreListerExpansion interface{}
+
+// EtcdRestoreNamespaceListerExpansion allows custom methods to be added to
+// EtcdRestoreNamespaceLister.
+type EtcdRestoreNamespaceListerExpansion interface{}

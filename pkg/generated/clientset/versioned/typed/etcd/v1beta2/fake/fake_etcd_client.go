@@ -33,6 +33,10 @@ func (c *FakeEtcdV1beta2) EtcdClusters(namespace string) v1beta2.EtcdClusterInte
 	return &FakeEtcdClusters{c, namespace}
 }
 
+func (c *FakeEtcdV1beta2) EtcdRestores(namespace string) v1beta2.EtcdRestoreInterface {
+	return &FakeEtcdRestores{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeEtcdV1beta2) RESTClient() rest.Interface {

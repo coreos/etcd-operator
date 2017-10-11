@@ -28,6 +28,8 @@ type Interface interface {
 	EtcdBackups() EtcdBackupInformer
 	// EtcdClusters returns a EtcdClusterInformer.
 	EtcdClusters() EtcdClusterInformer
+	// EtcdRestores returns a EtcdRestoreInformer.
+	EtcdRestores() EtcdRestoreInformer
 }
 
 type version struct {
@@ -47,4 +49,9 @@ func (v *version) EtcdBackups() EtcdBackupInformer {
 // EtcdClusters returns a EtcdClusterInformer.
 func (v *version) EtcdClusters() EtcdClusterInformer {
 	return &etcdClusterInformer{factory: v.SharedInformerFactory}
+}
+
+// EtcdRestores returns a EtcdRestoreInformer.
+func (v *version) EtcdRestores() EtcdRestoreInformer {
+	return &etcdRestoreInformer{factory: v.SharedInformerFactory}
 }

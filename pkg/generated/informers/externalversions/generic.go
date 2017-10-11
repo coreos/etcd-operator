@@ -56,6 +56,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Etcd().V1beta2().EtcdBackups().Informer()}, nil
 	case v1beta2.SchemeGroupVersion.WithResource("etcdclusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Etcd().V1beta2().EtcdClusters().Informer()}, nil
+	case v1beta2.SchemeGroupVersion.WithResource("etcdrestores"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Etcd().V1beta2().EtcdRestores().Informer()}, nil
 
 	}
 
