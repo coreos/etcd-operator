@@ -87,9 +87,17 @@ function build_backup_operator  {
 	fi
 }
 
+function build_restore_operator  {
+	if ! "hack/build/etcd-restore-operator/build" ; then
+		echo "fail to build etcd-restore-operator"
+		exit 255
+	fi
+}
+
 function build_pass {
 	IMAGE=$OPERATOR_IMAGE hack/build/operator/build
 	build_backup_operator
+	build_restore_operator
 }
 
 function e2e_pass {
