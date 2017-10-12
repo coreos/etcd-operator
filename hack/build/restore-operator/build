@@ -6,7 +6,7 @@ set -o pipefail
 
 function go_build {
 	echo "building "${1}"..."
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ${bin_dir}/${1} -installsuffix cgo -ldflags "$go_ldflags" ./cmd/${1}/
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ${bin_dir}/etcd-${1} -installsuffix cgo -ldflags "$go_ldflags" ./cmd/${1}/
 }
 
 if ! which go > /dev/null; then
@@ -16,11 +16,11 @@ fi
 
 GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
 
-gitHash="github.com/coreos/etcd-operator/version/etcd-restore-operator.GitSHA=${GIT_SHA}"
+gitHash="github.com/coreos/etcd-operator/version/restore-operator.GitSHA=${GIT_SHA}"
 
 go_ldflags="-X ${gitHash}"
 
 bin_dir="$(pwd)/_output/bin"
 mkdir -p ${bin_dir} || true
 
-go_build etcd-restore-operator
+go_build restore-operator
