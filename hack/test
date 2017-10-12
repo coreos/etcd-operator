@@ -88,8 +88,8 @@ function build_backup_operator  {
 }
 
 function build_restore_operator  {
-	if ! "hack/build/etcd-restore-operator/build" ; then
-		echo "fail to build etcd-restore-operator"
+	if ! "hack/build/restore-operator/build" ; then
+		echo "fail to build restore operator"
 		exit 255
 	fi
 }
