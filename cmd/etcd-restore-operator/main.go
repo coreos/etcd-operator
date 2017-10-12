@@ -15,10 +15,12 @@
 package main
 
 import (
+	"context"
 	"os"
 	"runtime"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/controller/restorecontroller"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	version "github.com/coreos/etcd-operator/version/etcd-restore-operator"
 
@@ -88,5 +90,9 @@ func createRecorder(kubecli kubernetes.Interface, name, namespace string) record
 }
 
 func run(stop <-chan struct{}) {
-	// TODO
+	c := restorecontroller.New()
+	err := c.Start(context.TODO())
+	if err != nil {
+		logrus.Fatalf("etcd restore operator stopped with error: %v", err)
+	}
 }
