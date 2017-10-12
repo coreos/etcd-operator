@@ -81,8 +81,8 @@ function fmt_pass {
 }
 
 function build_backup_operator  {
-	if ! "hack/build/etcd-backup-operator/build" ; then
-		echo "fail to build etcd-backup-operator"
+	if ! "hack/build/backup-operator/build" ; then
+		echo "fail to build backup-operator"
 		exit 255
 	fi
 }
