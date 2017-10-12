@@ -22,7 +22,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/controller/restorecontroller"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-	version "github.com/coreos/etcd-operator/version/etcd-restore-operator"
+	version "github.com/coreos/etcd-operator/version/restore-operator"
 
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
