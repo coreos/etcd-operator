@@ -20,7 +20,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/etcd-backup-operator/controller"
+	controller "github.com/coreos/etcd-operator/pkg/controller/backup-operator"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	version "github.com/coreos/etcd-operator/version/backup-operator"
 
