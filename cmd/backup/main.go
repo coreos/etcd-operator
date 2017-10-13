@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -31,10 +32,11 @@ import (
 )
 
 var (
-	masterHost  string
-	clusterName string
-	listenAddr  string
-	namespace   string
+	masterHost      string
+	clusterName     string
+	listenAddr      string
+	namespace       string
+	serveBackupOnly bool
 
 	printVersion bool
 )
@@ -44,6 +46,7 @@ func init() {
 	flag.StringVar(&clusterName, "etcd-cluster", "", "")
 	flag.StringVar(&listenAddr, "listen", "0.0.0.0:19999", "")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
+	flag.BoolVar(&serveBackupOnly, "serve-backup-only", false, "feature gate for simpler service to serve backup only")
 
 	flag.Parse()
 
@@ -74,5 +77,12 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("failed to create backup sidecar: %v", err)
 	}
-	bk.Run()
+
+	ctx := context.Background()
+	go bk.StartHTTP()
+	if !serveBackupOnly {
+		go bk.Run()
+	}
+
+	<-ctx.Done()
 }
