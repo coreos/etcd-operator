@@ -127,8 +127,6 @@ func NewBackupController(kclient kubernetes.Interface, clusterName, ns string, s
 // Run starts BackupController controller where it
 // controlls backups based on backup policy and HTTP backup requests.
 func (bc *BackupController) Run() {
-	go bc.startHTTP()
-
 	lastSnapRev := bc.backupManager.getLatestBackupRev()
 	interval := constants.DefaultSnapshotInterval
 	if bc.policy.BackupIntervalInSecond != 0 {
