@@ -45,7 +45,7 @@ type RestoreSpec struct {
 	// BackupSpec defines the same spec that backup operator uses to save the backup.
 	// restore operator will have the same logic as backup operator to discover
 	// any existing backups and find the one with largest revision.
-	BackupSpec EtcdBackupSpec `json:"backupSpec"`
+	BackupSpec BackupSpec `json:"backupSpec"`
 }
 
 // RestoreStatus reports the status of this restore operation.
