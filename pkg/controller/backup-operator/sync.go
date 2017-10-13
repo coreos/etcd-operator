@@ -104,7 +104,7 @@ func (b *Backup) handleErr(err error, key interface{}) {
 	b.logger.Infof("Dropping etcd backup (%v) out of the queue: %v", key, err)
 }
 
-func (b *Backup) handleBackup(spec *api.EtcdBackupSpec) error {
+func (b *Backup) handleBackup(spec *api.BackupSpec) error {
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
 		return handleS3(b.kubecli, spec.S3, b.namespace, spec.ClusterName)
