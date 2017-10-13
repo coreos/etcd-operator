@@ -31,8 +31,7 @@ const (
 	HTTPHeaderRevision    = "X-Revision"
 )
 
-// StartHTTP starts to listen for incoming backup http requests.
-func (bc *BackupController) StartHTTP() {
+func (bc *BackupController) startHTTP() {
 	http.HandleFunc(backupapi.APIV1+"/backup", bc.backupServer.ServeBackup)
 	http.HandleFunc(backupapi.APIV1+"/backupnow", bc.serveBackupNow)
 	http.HandleFunc(backupapi.APIV1+"/status", bc.serveStatus)

@@ -74,6 +74,5 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("failed to create backup sidecar: %v", err)
 	}
-	bk.StartHTTP()
 	bk.Run()
 }
