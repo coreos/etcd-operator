@@ -26,7 +26,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/chaos"
 	"github.com/coreos/etcd-operator/pkg/client"
-	"github.com/coreos/etcd-operator/pkg/controller"
+	controller "github.com/coreos/etcd-operator/pkg/controller/operator"
 	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
