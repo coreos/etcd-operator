@@ -48,6 +48,7 @@ type BackupController struct {
 	backupNow     chan chan backupNowAck
 	policy        api.BackupPolicy
 	backupManager *BackupManager
+	backupServer  *BackupServer
 	// recentBackupStatus keeps the statuses of 'maxRecentBackupStatusCount' recent backups.
 	recentBackupsStatus []backupapi.BackupStatus
 }
@@ -110,12 +111,16 @@ func NewBackupController(kclient kubernetes.Interface, clusterName, ns string, s
 		be:            be,
 		etcdTLSConfig: tc,
 	}
+	bs := &BackupServer{
+		backend: be,
+	}
 
 	return &BackupController{
 		listenAddr:    listenAddr,
 		backupNow:     make(chan chan backupNowAck),
 		policy:        *sp.Backup,
 		backupManager: bm,
+		backupServer:  bs,
 	}, nil
 }
 

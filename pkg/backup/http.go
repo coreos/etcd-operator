@@ -16,11 +16,7 @@ package backup
 
 import (
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
@@ -36,7 +32,7 @@ const (
 )
 
 func (bc *BackupController) startHTTP() {
-	http.HandleFunc(backupapi.APIV1+"/backup", bc.serveSnap)
+	http.HandleFunc(backupapi.APIV1+"/backup", bc.backupServer.ServeBackup)
 	http.HandleFunc(backupapi.APIV1+"/backupnow", bc.serveBackupNow)
 	http.HandleFunc(backupapi.APIV1+"/status", bc.serveStatus)
 	http.Handle("/metrics", prometheus.Handler())
@@ -73,90 +69,6 @@ func (bc *BackupController) serveBackupNow(w http.ResponseWriter, r *http.Reques
 	case <-time.After(10 * time.Minute):
 		http.Error(w, "timeout", http.StatusRequestTimeout)
 		return
-	}
-}
-
-func (bc *BackupController) serveSnap(w http.ResponseWriter, r *http.Request) {
-	var (
-		fname string
-		err   error
-	)
-
-	revision := r.FormValue(backupapi.HTTPQueryRevisionKey)
-	version := r.FormValue(backupapi.HTTPQueryVersionKey)
-
-	switch {
-	case len(revision) != 0 && len(version) != 0:
-		revisioni, err := strconv.ParseInt(revision, 10, 64)
-		if err != nil {
-			http.Error(w, "revision is not a vaild integer", http.StatusBadRequest)
-			return
-		}
-
-		fname = util.MakeBackupName(version, revisioni)
-
-	case len(revision) == 0:
-		fname, err = bc.backupManager.be.GetLatest()
-		if err != nil {
-			logrus.Errorf("fail to serve backup: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if len(fname) == 0 {
-			http.NotFound(w, r)
-			return
-		}
-
-	default:
-		http.Error(w, "version must be provided when revision is provided.", http.StatusBadRequest)
-		return
-	}
-
-	rc, err := bc.backupManager.be.Open(fname)
-	if err != nil {
-		if os.IsNotExist(err) {
-			http.Error(w, "backup not found", http.StatusNotFound)
-			return
-		}
-
-		logrus.Errorf("fail to open backup (%s): %v", fname, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rc.Close()
-
-	serV, err := getMajorMinorVersionFromBackup(fname)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("fail to parse etcd version from file (%s): %v", fname, err), http.StatusInternalServerError)
-		return
-	}
-
-	// If version param is empty, we don't need to check compatibility.
-	// This could happen if user manually requests it.
-	if len(version) != 0 {
-		reqV, err := getMajorAndMinorVersion(version)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("invalid param 'version' (%s): %v", version, err), http.StatusBadRequest)
-			return
-		}
-
-		if !isVersionCompatible(reqV, serV) {
-			http.Error(w, fmt.Sprintf("requested version (%s) is not compatible with the backup (%s)", reqV, serV), http.StatusBadRequest)
-			return
-		}
-	}
-
-	w.Header().Set(HTTPHeaderEtcdVersion, getVersionFromBackup(fname))
-	rev := util.MustParseRevision(fname)
-	w.Header().Set(HTTPHeaderRevision, strconv.FormatInt(rev, 10))
-
-	if r.Method == http.MethodHead {
-		return
-	}
-
-	_, err = io.Copy(w, rc)
-	if err != nil {
-		logrus.Errorf("failed to write backup to %s: %v", r.RemoteAddr, err)
 	}
 }
 
