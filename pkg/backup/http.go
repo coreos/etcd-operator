@@ -31,7 +31,7 @@ const (
 	HTTPHeaderRevision    = "X-Revision"
 )
 
-func (bc *BackupController) startHTTP() {
+func (bc *BackupController) StartHTTP() {
 	http.HandleFunc(backupapi.APIV1+"/backup", bc.backupServer.ServeBackup)
 	http.HandleFunc(backupapi.APIV1+"/backupnow", bc.serveBackupNow)
 	http.HandleFunc(backupapi.APIV1+"/status", bc.serveStatus)
