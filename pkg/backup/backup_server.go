@@ -33,6 +33,11 @@ type BackupServer struct {
 	backend backend.Backend
 }
 
+// NewBackupServer creates a BackupServer.
+func NewBackupServer(backend backend.Backend) *BackupServer {
+	return &BackupServer{backend}
+}
+
 // ServeBackup serves the backup request:
 // - For GET, it returns the headers of etcd version and revision, with backup data.
 //   For HEAD, it only returns the headers.
