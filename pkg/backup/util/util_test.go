@@ -42,7 +42,7 @@ func TestFilterAndSortBackups(t *testing.T) {
 	}
 }
 
-func TestGetRev(t *testing.T) {
+func TestParseRevision(t *testing.T) {
 	tests := []struct {
 		name string
 		rev  int64
@@ -55,7 +55,7 @@ func TestGetRev(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		rev, err := GetRev(tt.name)
+		rev, err := parseRevision(tt.name)
 		if rev != tt.rev {
 			t.Errorf("#%d: rev = %d, want %d", i, rev, tt.rev)
 		}

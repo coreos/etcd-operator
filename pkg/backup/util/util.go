@@ -39,13 +39,25 @@ func MakeBackupName(ver string, rev int64) string {
 	return fmt.Sprintf("%s_%016x_%s", ver, rev, BackupFilenameSuffix)
 }
 
-func GetRev(name string) (int64, error) {
+func MustParseRevision(name string) int64 {
+	rev, err := parseRevision(name)
+	if err != nil {
+		panic(err)
+	}
+	return rev
+}
+
+func parseRevision(name string) (int64, error) {
 	parts := strings.SplitN(name, "_", 3)
 	if len(parts) != 3 {
 		return 0, fmt.Errorf("bad backup name: %s", name)
 	}
-
-	return strconv.ParseInt(parts[1], 16, 64)
+	revStr := parts[1]
+	rev, err := strconv.ParseInt(revStr, 16, 64)
+	if err != nil {
+		return 0, fmt.Errorf("unexpected revision string: %s, err: %v", revStr, err)
+	}
+	return rev, nil
 }
 
 func FilterAndSortBackups(names []string) []string {
@@ -54,7 +66,7 @@ func FilterAndSortBackups(names []string) []string {
 		if !IsBackup(n) {
 			continue
 		}
-		_, err := GetRev(n)
+		_, err := parseRevision(n)
 		if err != nil {
 			logrus.Errorf("fail to get rev from backup (%s): %v", n, err)
 			continue
@@ -71,16 +83,7 @@ type backupNames []string
 func (bn backupNames) Len() int { return len(bn) }
 
 func (bn backupNames) Less(i, j int) bool {
-	ri, err := GetRev(bn[i])
-	if err != nil {
-		panic(err)
-	}
-	rj, err := GetRev(bn[j])
-	if err != nil {
-		panic(err)
-	}
-
-	return ri < rj
+	return MustParseRevision(bn[i]) < MustParseRevision(bn[j])
 }
 
 func (bn backupNames) Swap(i, j int) {
