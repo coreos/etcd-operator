@@ -147,10 +147,7 @@ func (bc *BackupController) serveSnap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set(HTTPHeaderEtcdVersion, getVersionFromBackup(fname))
-	rev, err := util.GetRev(fname)
-	if err != nil {
-		panic("unexpected error:" + err.Error()) // fname should have already been verified
-	}
+	rev := util.MustParseRevision(fname)
 	w.Header().Set(HTTPHeaderRevision, strconv.FormatInt(rev, 10))
 
 	if r.Method == http.MethodHead {

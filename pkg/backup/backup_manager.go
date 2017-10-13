@@ -181,11 +181,7 @@ func (b *BackupManager) getLatestBackupRev() int64 {
 	if len(name) == 0 {
 		return 0
 	}
-	rev, err := util.GetRev(name)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	return rev
+	return util.MustParseRevision(name)
 }
 
 func createEtcdClient(url string, tlsConfig *tls.Config) (*clientv3.Client, error) {
