@@ -53,9 +53,21 @@ type BackupController struct {
 	recentBackupsStatus []backupapi.BackupStatus
 }
 
+// BackupControllerConfig contains configuration data to construct BackupController.
+type BackupControllerConfig struct {
+	Kclient kubernetes.Interface
+
+	ListenAddr  string
+	ClusterName string
+	Namespace   string
+
+	TLS          *api.TLSPolicy
+	BackupPolicy *api.BackupPolicy
+}
+
 // NewBackupController creates a BackupController.
-func NewBackupController(kclient kubernetes.Interface, clusterName, ns string, sp api.ClusterSpec, listenAddr string) (*BackupController, error) {
-	bdir := path.Join(constants.BackupMountDir, PVBackupV1, clusterName)
+func NewBackupController(config *BackupControllerConfig) (*BackupController, error) {
+	bdir := path.Join(constants.BackupMountDir, PVBackupV1, config.ClusterName)
 	// We created not only backup dir and but also tmp dir under it.
 	// tmp dir is used to store intermediate snapshot files.
 	// It will be no-op if target dir existed.
@@ -66,15 +78,16 @@ func NewBackupController(kclient kubernetes.Interface, clusterName, ns string, s
 	}
 
 	var be backend.Backend
-	switch sp.Backup.StorageType {
+	bp := config.BackupPolicy
+	switch bp.StorageType {
 	case api.BackupStorageTypePersistentVolume, api.BackupStorageTypeDefault:
 		be = backend.NewFileBackend(bdir)
 	case api.BackupStorageTypeS3:
 		s3Prefix := ""
-		if sp.Backup.S3 != nil {
-			s3Prefix = sp.Backup.S3.Prefix
+		if bp.S3 != nil {
+			s3Prefix = bp.S3.Prefix
 		}
-		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), backupapi.ToS3Prefix(s3Prefix, ns, clusterName))
+		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), backupapi.ToS3Prefix(s3Prefix, config.Namespace, config.ClusterName))
 		if err != nil {
 			return nil, err
 		}
@@ -83,18 +96,18 @@ func NewBackupController(kclient kubernetes.Interface, clusterName, ns string, s
 		absCli, err := abs.New(os.Getenv(env.ABSContainer),
 			os.Getenv(env.ABSStorageAccount),
 			os.Getenv(env.ABSStorageKey),
-			path.Join(ns, clusterName))
+			path.Join(config.Namespace, config.ClusterName))
 		if err != nil {
 			return nil, err
 		}
 		be = backend.NewAbsBackend(absCli)
 	default:
-		return nil, fmt.Errorf("unsupported storage type: %v", sp.Backup.StorageType)
+		return nil, fmt.Errorf("unsupported storage type: %v", bp.StorageType)
 	}
 
 	var tc *tls.Config
-	if sp.TLS.IsSecureClient() {
-		d, err := k8sutil.GetTLSDataFromSecret(kclient, ns, sp.TLS.Static.OperatorSecret)
+	if config.TLS.IsSecureClient() {
+		d, err := k8sutil.GetTLSDataFromSecret(config.Kclient, config.Namespace, config.TLS.Static.OperatorSecret)
 		if err != nil {
 			return nil, err
 		}
@@ -105,9 +118,9 @@ func NewBackupController(kclient kubernetes.Interface, clusterName, ns string, s
 	}
 
 	bm := &BackupManager{
-		kclient:       kclient,
-		clusterName:   clusterName,
-		namespace:     ns,
+		kclient:       config.Kclient,
+		clusterName:   config.ClusterName,
+		namespace:     config.Namespace,
 		be:            be,
 		etcdTLSConfig: tc,
 	}
@@ -116,9 +129,9 @@ func NewBackupController(kclient kubernetes.Interface, clusterName, ns string, s
 	}
 
 	return &BackupController{
-		listenAddr:    listenAddr,
+		listenAddr:    config.ListenAddr,
 		backupNow:     make(chan chan backupNowAck),
-		policy:        *sp.Backup,
+		policy:        *bp,
 		backupManager: bm,
 		backupServer:  bs,
 	}, nil

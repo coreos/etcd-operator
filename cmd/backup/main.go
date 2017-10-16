@@ -66,14 +66,20 @@ func main() {
 		panic("clusterName not set")
 	}
 
-	var cs api.ClusterSpec
-	sps := os.Getenv(env.ClusterSpec)
-	if err := json.Unmarshal([]byte(sps), &cs); err != nil {
-		logrus.Fatalf("fail to parse backup policy (%s): %v", sps, err)
+	bp, tls, err := parseSpecsFromEnv()
+	if err != nil {
+		logrus.Fatalf("failed to parse specs from environment: %v", err)
+	}
+	bc := &backup.BackupControllerConfig{
+		Kclient:      k8sutil.MustNewKubeClient(),
+		ListenAddr:   listenAddr,
+		ClusterName:  clusterName,
+		Namespace:    namespace,
+		TLS:          tls,
+		BackupPolicy: bp,
 	}
 
-	kclient := k8sutil.MustNewKubeClient()
-	bk, err := backup.NewBackupController(kclient, clusterName, namespace, cs, listenAddr)
+	bk, err := backup.NewBackupController(bc)
 	if err != nil {
 		logrus.Fatalf("failed to create backup sidecar: %v", err)
 	}
@@ -85,4 +91,38 @@ func main() {
 	}
 
 	<-ctx.Done()
+}
+
+// parseSpecsFromEnv parses ClusterSpec and BackupSpec from env if any.
+func parseSpecsFromEnv() (*api.BackupPolicy, *api.TLSPolicy, error) {
+	var (
+		bp api.BackupPolicy
+		cs api.ClusterSpec
+	)
+
+	sps := os.Getenv(env.ClusterSpec)
+	if err := json.Unmarshal([]byte(sps), &cs); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse cluster spec (%s): %v", sps, err)
+	}
+
+	if ebs := os.Getenv(env.BackupSpec); len(ebs) != 0 {
+		var bs api.BackupSpec
+		if err := json.Unmarshal([]byte(ebs), &bs); err != nil {
+			return nil, nil, fmt.Errorf("failed to parse backup spec (%s): %v", ebs, err)
+		}
+		bp.StorageType = api.BackupStorageType(bs.StorageType)
+		switch bp.StorageType {
+		case api.BackupStorageTypeS3:
+			bp.StorageSource.S3 = bs.BackupStorageSource.S3
+		default:
+			return nil, nil, fmt.Errorf("unknown backup type (%v)", bp.StorageType)
+		}
+	} else {
+		if cs.Backup == nil {
+			return nil, nil, fmt.Errorf("backup policy not found")
+		}
+		bp = *cs.Backup
+	}
+
+	return &bp, cs.TLS, nil
 }
