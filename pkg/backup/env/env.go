@@ -16,6 +16,7 @@ package env
 
 const (
 	ClusterSpec       = "CLUSTER_SPEC"
+	BackupSpec        = "BACKUP_SPEC"
 	AWSS3Bucket       = "AWS_S3_BUCKET"
 	AWSConfig         = "AWS_CONFIG_FILE"
 	ABSContainer      = "AZURE_STORAGE_CONTAINER"
