@@ -134,11 +134,7 @@ func New(config Config, cl *api.EtcdCluster) *Cluster {
 }
 
 func (c *Cluster) setup() error {
-	err := c.cluster.Spec.Validate()
-	if err != nil {
-		return fmt.Errorf("invalid cluster spec: %v", err)
-	}
-
+	var err error
 	var shouldCreateCluster bool
 	switch c.status.Phase {
 	case api.ClusterPhaseNone:
