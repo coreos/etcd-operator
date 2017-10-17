@@ -67,6 +67,7 @@ func (bp *BackupPolicy) Validate() error {
 		if pv := bp.StorageSource.PV; pv == nil || pv.VolumeSizeInMB <= 0 {
 			return errPVZeroSize
 		}
+		// TODO: the backup policy should be invalid if pv.StorageClass == "" and --create-storage-class == false
 	}
 	return nil
 }

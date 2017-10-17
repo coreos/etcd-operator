@@ -73,7 +73,7 @@ func New(fc Config) (*Framework, error) {
 }
 
 func (f *Framework) CreateOperator(name string) error {
-	cmd := []string{"/usr/local/bin/etcd-operator"}
+	cmd := []string{"/usr/local/bin/etcd-operator", "--create-crd=true", "--create-storage-class=true"}
 	image := f.OldImage
 	d := &appsv1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{

@@ -76,7 +76,7 @@ func (c *Controller) initResource() error {
 	if err != nil && !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 		return fmt.Errorf("fail to create CRD: %v", err)
 	}
-	if c.Config.PVProvisioner != constants.PVProvisionerNone {
+	if c.Config.CreateStorageClass && (c.Config.PVProvisioner != constants.PVProvisionerNone) {
 		err = k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
 		if err != nil && !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
 			return fmt.Errorf("fail to create storage class: %v", err)
