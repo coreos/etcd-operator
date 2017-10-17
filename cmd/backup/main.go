@@ -32,10 +32,12 @@ import (
 )
 
 var (
-	masterHost      string
-	clusterName     string
-	listenAddr      string
-	namespace       string
+	masterHost  string
+	clusterName string
+	listenAddr  string
+	namespace   string
+	// serveBackupOnly flag indicates that this backup service only serves
+	// http backup requests.
 	serveBackupOnly bool
 
 	printVersion bool
@@ -46,7 +48,6 @@ func init() {
 	flag.StringVar(&clusterName, "etcd-cluster", "", "")
 	flag.StringVar(&listenAddr, "listen", "0.0.0.0:19999", "")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
-	flag.BoolVar(&serveBackupOnly, "serve-backup-only", false, "feature gate for simpler service to serve backup only")
 
 	flag.Parse()
 
@@ -106,6 +107,8 @@ func parseSpecsFromEnv() (*api.BackupPolicy, *api.TLSPolicy, error) {
 	}
 
 	if ebs := os.Getenv(env.BackupSpec); len(ebs) != 0 {
+		// set serveBackupOnly to true if backup spec exists.
+		serveBackupOnly = true
 		var bs api.BackupSpec
 		if err := json.Unmarshal([]byte(ebs), &bs); err != nil {
 			return nil, nil, fmt.Errorf("failed to parse backup spec (%s): %v", ebs, err)
