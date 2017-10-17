@@ -36,7 +36,7 @@ import (
 
 // BackupManager backups an etcd cluster.
 type BackupManager struct {
-	kclient kubernetes.Interface
+	kubecli kubernetes.Interface
 
 	clusterName   string
 	namespace     string
@@ -46,9 +46,9 @@ type BackupManager struct {
 }
 
 // NewBackupManager creates a BackupManager.
-func NewBackupManager(kclient kubernetes.Interface, clusterName string, namespace string, etcdTLSConfig *tls.Config, be backend.Backend) *BackupManager {
+func NewBackupManager(kubecli kubernetes.Interface, clusterName string, namespace string, etcdTLSConfig *tls.Config, be backend.Backend) *BackupManager {
 	return &BackupManager{
-		kclient:       kclient,
+		kubecli:       kubecli,
 		clusterName:   clusterName,
 		namespace:     namespace,
 		etcdTLSConfig: etcdTLSConfig,
@@ -59,7 +59,7 @@ func NewBackupManager(kclient kubernetes.Interface, clusterName string, namespac
 // SaveSnap saves the latest snapshot if its revision is greater than the given lastSnapRev
 // and returns a BackupStatus containing saving backup metadata if SaveSnap succeeds.
 func (bm *BackupManager) SaveSnap(lastSnapRev int64) (*backupapi.BackupStatus, error) {
-	podList, err := bm.kclient.Core().Pods(bm.namespace).List(k8sutil.ClusterListOpt(bm.clusterName))
+	podList, err := bm.kubecli.Core().Pods(bm.namespace).List(k8sutil.ClusterListOpt(bm.clusterName))
 	if err != nil {
 		return nil, err
 	}

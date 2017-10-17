@@ -72,7 +72,7 @@ func main() {
 		logrus.Fatalf("failed to parse specs from environment: %v", err)
 	}
 	bc := &backup.BackupControllerConfig{
-		Kclient:      k8sutil.MustNewKubeClient(),
+		Kubecli:      k8sutil.MustNewKubeClient(),
 		ListenAddr:   listenAddr,
 		ClusterName:  clusterName,
 		Namespace:    namespace,

@@ -55,7 +55,7 @@ type BackupController struct {
 
 // BackupControllerConfig contains configuration data to construct BackupController.
 type BackupControllerConfig struct {
-	Kclient kubernetes.Interface
+	Kubecli kubernetes.Interface
 
 	ListenAddr  string
 	ClusterName string
@@ -107,7 +107,7 @@ func NewBackupController(config *BackupControllerConfig) (*BackupController, err
 
 	var tc *tls.Config
 	if config.TLS.IsSecureClient() {
-		d, err := k8sutil.GetTLSDataFromSecret(config.Kclient, config.Namespace, config.TLS.Static.OperatorSecret)
+		d, err := k8sutil.GetTLSDataFromSecret(config.Kubecli, config.Namespace, config.TLS.Static.OperatorSecret)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +118,7 @@ func NewBackupController(config *BackupControllerConfig) (*BackupController, err
 	}
 
 	bm := &BackupManager{
-		kclient:       config.Kclient,
+		kubecli:       config.Kubecli,
 		clusterName:   config.ClusterName,
 		namespace:     config.Namespace,
 		be:            be,
