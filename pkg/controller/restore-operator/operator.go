@@ -17,6 +17,7 @@ package controller
 import (
 	"context"
 	"os"
+	"sync"
 
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
@@ -40,6 +41,9 @@ type Restore struct {
 
 	kubecli      kubernetes.Interface
 	restoreCRCli versioned.Interface
+
+	// backupServers is a map of cluster name to backupServer.
+	backupServers sync.Map
 }
 
 // New creates a restore operator.
@@ -55,6 +59,7 @@ func New() *Restore {
 // Start starts the restore operator.
 func (r *Restore) Start(ctx context.Context) error {
 	go r.run(ctx)
+	go r.startHTTP()
 	<-ctx.Done()
 	return ctx.Err()
 }
