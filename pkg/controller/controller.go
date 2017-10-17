@@ -92,8 +92,11 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 		return fmt.Errorf("ignore failed cluster (%s). Please delete its CR", clus.Name)
 	}
 
-	// TODO: add validation to spec update.
 	clus.Spec.Cleanup()
+
+	if err := clus.Spec.Validate(); err != nil {
+		return fmt.Errorf("invalid cluster spec. please fix the following problem with the cluster spec: %v", err)
+	}
 
 	switch event.Type {
 	case kwatch.Added:

@@ -5,6 +5,7 @@
 is specified, backup binary changes to serve http backup requests only mode.
 
 ### Changed
+- An EtcdCluster CR with an invalid spec will not be marked as failed. Any changes that result in an invalid spec will be ignored and logged by the operator.
 
 ### Removed
 
