@@ -1,6 +1,8 @@
 ## [Unreleased]
 
 ### Added
+- backup binary supports serving backup defined by backupSpec. In addition, when backupSpec
+is specified, backup binary changes to serve http backup requests only mode.
 
 ### Changed
 
