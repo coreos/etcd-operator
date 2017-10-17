@@ -22,7 +22,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const listenAddr = "0.0.0.0:19999"
+const (
+	backupHTTPPath = "/backup"
+	listenAddr = "0.0.0.0:19999"
+)
 
 func (r *Restore) startHTTP() {
 	http.HandleFunc(backupapi.APIV1+"/backup", r.serveBackup)
@@ -49,4 +52,24 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) {
 		r.backupServers.Delete(clusterName)
 		logrus.Infof("serving backup for cluster %v done", clusterName)
 	}()
+)
+
+// BackupServer is restore operator specific http server that
+// wraps around backup.BackupServer to provide:
+// - additional <clusterName> path parsing and business logic.
+// - Close() method for cleanup.
+type BackupServer struct {
+	*backup.BackupServer
+	backupServers *sync.Map
+}
+
+// path: /backup/<cluster-name>
+func (bs *BackupServer) serveBackup(w http.ResponseWriter, r *http.Request) {
+	clusterName := r.URL.Path[len(backupHTTPPath+"/")]
+	v, ok := bs.backupServers.Load(clusterName)
+	if !ok {
+		// return Not Found
+	}
+	b := v.(*backup.BackupServer)
+	b.ServeBackup(w, r)
 }
