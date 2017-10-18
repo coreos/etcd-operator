@@ -19,11 +19,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/url"
 	"reflect"
 	"strings"
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
@@ -31,7 +33,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
-	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -474,14 +475,16 @@ func (c *Cluster) setupServices() error {
 }
 
 func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
-	token := ""
+	var pod *v1.Pod
 	if state == "new" {
-		token = uuid.New()
-	}
-
-	pod := k8sutil.NewEtcdPod(m, members.PeerURLPairs(), c.cluster.Name, state, token, c.cluster.Spec, c.cluster.AsOwner())
-	if needRecovery {
-		k8sutil.AddRecoveryToPod(pod, c.cluster.Name, token, m, c.cluster.Spec)
+		var backupURL *url.URL
+		if needRecovery {
+			serviceAddr := k8sutil.BackupServiceAddr(c.cluster.Name)
+			backupURL = backupapi.NewBackupURL("http", serviceAddr, c.cluster.Spec.Version, -1)
+		}
+		pod = k8sutil.NewSeedMemberPod(c.cluster.Name, members, m, c.cluster.Spec, c.cluster.AsOwner(), backupURL)
+	} else {
+		pod = k8sutil.NewEtcdPod(m, members.PeerURLPairs(), c.cluster.Name, state, "", c.cluster.Spec, c.cluster.AsOwner())
 	}
 	_, err := c.config.KubeCli.Core().Pods(c.cluster.Namespace).Create(pod)
 	return err
