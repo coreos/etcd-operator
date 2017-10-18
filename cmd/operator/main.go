@@ -71,8 +71,7 @@ func init() {
 	// chaos level will be removed once we have a formal tool to inject failures.
 	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the operator.")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
-	// create-crd will be removed once the default behavior is not to create a CRD
-	flag.BoolVar(&createCRD, "create-crd", false, "The operator will not create the EtcdCluster CRD when this flag is set to false.")
+	flag.BoolVar(&createCRD, "create-crd", true, "The operator will not create the EtcdCluster CRD when this flag is set to false.")
 	// create-storage-class will be removed once the default behavior is not to create storage class
 	flag.BoolVar(&createStorageClass, "create-storage-class", false, "The operator will not create any StorageClass when this flag is set to false. This flag needs to be true before the --pv-provisioner flag can be used to set a provisioner for a new StorageClass.")
 	flag.DurationVar(&gcInterval, "gc-interval", 10*time.Minute, "GC interval")
