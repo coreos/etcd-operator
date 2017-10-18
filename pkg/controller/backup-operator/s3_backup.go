@@ -16,50 +16,22 @@ package controller
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup"
-	"github.com/coreos/etcd-operator/pkg/backup/backend"
-	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
-	backupS3 "github.com/coreos/etcd-operator/pkg/backup/s3"
-	"github.com/coreos/etcd-operator/pkg/cluster/backupstorage"
+	"github.com/coreos/etcd-operator/pkg/controller/controllerutil"
 
 	"k8s.io/client-go/kubernetes"
-)
-
-const (
-	tmpdir = "/tmp"
 )
 
 // TODO: replace this with generic backend interface for other options (PV, Azure)
 // handleS3 backups up etcd cluster to s3.
 func handleS3(kubecli kubernetes.Interface, s3 *api.S3Source, namespace, clusterName string) error {
-	awsDir, err := ioutil.TempDir(tmpdir, "")
-	if err != nil {
-		return fmt.Errorf("failed to create aws config/cred dir: (%v)", err)
-	}
-	defer os.RemoveAll(awsDir)
-
-	so, err := backupstorage.SetupAWSConfig(kubecli, namespace, s3.AWSSecret, awsDir)
-	if err != nil {
-		return fmt.Errorf("failed to setup aws config: (%v)", err)
-	}
-
-	prefix := backupapi.ToS3Prefix(s3.Prefix, namespace, clusterName)
-	s3cli, err := backupS3.NewFromSessionOpt(s3.S3Bucket, prefix, *so)
-	if err != nil {
-		return fmt.Errorf("failed to create aws cli: (%v)", err)
-	}
-
-	backupDir, err := ioutil.TempDir(tmpdir, "")
+	be, err := controllerutil.NewS3backend(kubecli, s3, namespace, clusterName)
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(backupDir)
-
-	be := backend.NewS3Backend(s3cli, backupDir)
+	defer be.Close()
 	bm := backup.NewBackupManager(kubecli, clusterName, namespace, nil, be)
 	// this SaveSnap takes 0 as lastSnapRev to indicate that it
 	// saves any snapshot with revision > 0.
