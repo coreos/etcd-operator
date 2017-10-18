@@ -24,7 +24,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/sirupsen/logrus"
-	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -39,25 +38,22 @@ type Backup struct {
 	informer cache.Controller
 	queue    workqueue.RateLimitingInterface
 
-	kubecli       kubernetes.Interface
-	backupCRCli   versioned.Interface
-	kubeExtClient apiextensionsclient.Interface
+	kubecli     kubernetes.Interface
+	backupCRCli versioned.Interface
 }
 
 // New creates a backup operator.
 func New() *Backup {
 	return &Backup{
-		logger:        logrus.WithField("pkg", "controller"),
-		namespace:     os.Getenv(constants.EnvOperatorPodNamespace),
-		kubecli:       k8sutil.MustNewKubeClient(),
-		backupCRCli:   client.MustNewInCluster(),
-		kubeExtClient: k8sutil.MustNewKubeExtClient(),
+		logger:      logrus.WithField("pkg", "controller"),
+		namespace:   os.Getenv(constants.EnvOperatorPodNamespace),
+		kubecli:     k8sutil.MustNewKubeClient(),
+		backupCRCli: client.MustNewInCluster(),
 	}
 }
 
 // Start starts the Backup operator.
 func (b *Backup) Start(ctx context.Context) error {
-	// TODO: check if crd exists.
 	go b.run(ctx)
 	<-ctx.Done()
 	return ctx.Err()

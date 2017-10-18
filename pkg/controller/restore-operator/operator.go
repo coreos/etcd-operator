@@ -24,7 +24,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/sirupsen/logrus"
-	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -39,25 +38,22 @@ type Restore struct {
 	informer cache.Controller
 	queue    workqueue.RateLimitingInterface
 
-	kubecli       kubernetes.Interface
-	restoreCRCli  versioned.Interface
-	kubeExtClient apiextensionsclient.Interface
+	kubecli      kubernetes.Interface
+	restoreCRCli versioned.Interface
 }
 
 // New creates a restore operator.
 func New() *Restore {
 	return &Restore{
-		logger:        logrus.WithField("pkg", "controller"),
-		namespace:     os.Getenv(constants.EnvOperatorPodNamespace),
-		kubecli:       k8sutil.MustNewKubeClient(),
-		restoreCRCli:  client.MustNewInCluster(),
-		kubeExtClient: k8sutil.MustNewKubeExtClient(),
+		logger:       logrus.WithField("pkg", "controller"),
+		namespace:    os.Getenv(constants.EnvOperatorPodNamespace),
+		kubecli:      k8sutil.MustNewKubeClient(),
+		restoreCRCli: client.MustNewInCluster(),
 	}
 }
 
 // Start starts the restore operator.
 func (r *Restore) Start(ctx context.Context) error {
-	// TODO: check if crd exists.
 	go r.run(ctx)
 	<-ctx.Done()
 	return ctx.Err()
