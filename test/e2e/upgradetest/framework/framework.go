@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	"k8s.io/api/core/v1"
+	v1beta1storage "k8s.io/api/storage/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -38,10 +39,12 @@ import (
 
 type Config struct {
 	// program flags
-	KubeConfig string
-	KubeNS     string
-	OldImage   string
-	NewImage   string
+	KubeConfig       string
+	KubeNS           string
+	OldImage         string
+	NewImage         string
+	StorageClassName string
+	Provisioner      string
 }
 
 type Framework struct {
@@ -68,12 +71,16 @@ func New(fc Config) (*Framework, error) {
 		KubeCli:  kubecli,
 		CRClient: client.MustNew(kc),
 	}
+	err = f.setupStorageClass()
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup storage class(%v): %v", f.Config.StorageClassName, err)
+	}
 	err = f.setupAWS()
 	return f, err
 }
 
 func (f *Framework) CreateOperator(name string) error {
-	cmd := []string{"/usr/local/bin/etcd-operator", "--create-crd=true", "--create-storage-class=true"}
+	cmd := []string{"/usr/local/bin/etcd-operator"}
 	image := f.OldImage
 	d := &appsv1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -188,6 +195,20 @@ func (f *Framework) setupAWS() error {
 	}
 	f.S3Cli = s3.New(sess)
 	f.S3Bucket = "jenkins-etcd-operator"
+	return nil
+}
+
+func (f *Framework) setupStorageClass() error {
+	class := &v1beta1storage.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: f.StorageClassName,
+		},
+		Provisioner: f.Provisioner,
+	}
+	_, err := f.KubeCli.StorageV1beta1().StorageClasses().Create(class)
+	if err != nil && !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+		return fmt.Errorf("fail to create storage class: %v", err)
+	}
 	return nil
 }
 

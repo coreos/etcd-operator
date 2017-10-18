@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/client"
@@ -34,6 +35,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
+	v1beta1storage "k8s.io/api/storage/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -43,18 +45,21 @@ import (
 var Global *Framework
 
 type Framework struct {
-	opImage    string
-	KubeClient kubernetes.Interface
-	CRClient   versioned.Interface
-	Namespace  string
-	S3Cli      *s3.S3
-	S3Bucket   string
+	opImage          string
+	KubeClient       kubernetes.Interface
+	CRClient         versioned.Interface
+	Namespace        string
+	S3Cli            *s3.S3
+	S3Bucket         string
+	StorageClassName string
+	Provisioner      string
 }
 
 // Setup setups a test framework and points "Global" to it.
 func Setup() error {
 	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
 	opImage := flag.String("operator-image", "", "operator image, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator")
+	pvProvisioner := flag.String("pv-provisioner", constants.PVProvisionerGCEPD, "persistent volume provisioner type: the default is kubernetes.io/gce-pd. This should be set according to where the tests are running")
 	ns := flag.String("namespace", "default", "e2e test namespace")
 	flag.Parse()
 
@@ -68,11 +73,13 @@ func Setup() error {
 	}
 
 	Global = &Framework{
-		KubeClient: cli,
-		CRClient:   client.MustNew(config),
-		Namespace:  *ns,
-		opImage:    *opImage,
-		S3Bucket:   os.Getenv("TEST_S3_BUCKET"),
+		KubeClient:       cli,
+		CRClient:         client.MustNew(config),
+		Namespace:        *ns,
+		opImage:          *opImage,
+		S3Bucket:         os.Getenv("TEST_S3_BUCKET"),
+		StorageClassName: "e2e-" + path.Base(*pvProvisioner),
+		Provisioner:      *pvProvisioner,
 	}
 	return Global.setup()
 }
@@ -88,6 +95,9 @@ func Teardown() error {
 }
 
 func (f *Framework) setup() error {
+	if err := f.setupStorageClass(); err != nil {
+		return fmt.Errorf("failed to setup storageclass(%v): %v", f.StorageClassName, err)
+	}
 	if err := f.SetupEtcdOperator(); err != nil {
 		return fmt.Errorf("failed to setup etcd operator: %v", err)
 	}
@@ -103,7 +113,7 @@ func (f *Framework) setup() error {
 
 func (f *Framework) SetupEtcdOperator() error {
 	// TODO: unify this and the yaml file in example/
-	cmd := []string{"/usr/local/bin/etcd-operator", "--create-crd=true", "--create-storage-class=true"}
+	cmd := []string{"/usr/local/bin/etcd-operator"}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "etcd-operator",
@@ -199,5 +209,19 @@ func (f *Framework) setupAWS() error {
 		return err
 	}
 	f.S3Cli = s3.New(sess)
+	return nil
+}
+
+func (f *Framework) setupStorageClass() error {
+	class := &v1beta1storage.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: f.StorageClassName,
+		},
+		Provisioner: f.Provisioner,
+	}
+	_, err := f.KubeClient.StorageV1beta1().StorageClasses().Create(class)
+	if err != nil && !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
+		return fmt.Errorf("fail to create storage class: %v", err)
+	}
 	return nil
 }
