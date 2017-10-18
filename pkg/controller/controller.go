@@ -53,12 +53,14 @@ type Controller struct {
 }
 
 type Config struct {
-	Namespace      string
-	ServiceAccount string
-	PVProvisioner  string
-	KubeCli        kubernetes.Interface
-	KubeExtCli     apiextensionsclient.Interface
-	EtcdCRCli      versioned.Interface
+	Namespace          string
+	ServiceAccount     string
+	PVProvisioner      string
+	KubeCli            kubernetes.Interface
+	KubeExtCli         apiextensionsclient.Interface
+	EtcdCRCli          versioned.Interface
+	CreateCRD          bool
+	CreateStorageClass bool
 }
 
 func (c *Config) Validate() error {
@@ -140,9 +142,11 @@ func (c *Controller) makeClusterConfig() cluster.Config {
 }
 
 func (c *Controller) initCRD() error {
-	err := k8sutil.CreateCRD(c.KubeExtCli)
-	if err != nil {
-		return err
+	if c.Config.CreateCRD {
+		err := k8sutil.CreateCRD(c.KubeExtCli)
+		if err != nil {
+			return err
+		}
 	}
 	return k8sutil.WaitCRDReady(c.KubeExtCli)
 }

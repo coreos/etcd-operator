@@ -103,7 +103,7 @@ func (f *Framework) setup() error {
 
 func (f *Framework) SetupEtcdOperator() error {
 	// TODO: unify this and the yaml file in example/
-	cmd := []string{"/usr/local/bin/etcd-operator"}
+	cmd := []string{"/usr/local/bin/etcd-operator", "--create-crd=true", "--create-storage-class=true"}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "etcd-operator",

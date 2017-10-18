@@ -59,15 +59,22 @@ var (
 	chaosLevel int
 
 	printVersion bool
+
+	createCRD          bool
+	createStorageClass bool
 )
 
 func init() {
 	flag.StringVar(&debug.DebugFilePath, "debug-logfile-path", "", "only for a self hosted cluster, the path where the debug logfile will be written, recommended to be under: /var/tmp/etcd-operator/debug/ to avoid any issue with lack of write permissions")
-	flag.StringVar(&pvProvisioner, "pv-provisioner", constants.PVProvisionerGCEPD, "persistent volume provisioner type")
+	flag.StringVar(&pvProvisioner, "pv-provisioner", constants.PVProvisionerGCEPD, "persistent volume provisioner type. DEPRECATION WARNING: the pv-provisioner flag will be removed in next release.")
 	flag.StringVar(&listenAddr, "listen-addr", "0.0.0.0:8080", "The address on which the HTTP server will listen to")
 	// chaos level will be removed once we have a formal tool to inject failures.
 	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the operator.")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
+	// create-crd will be removed once the default behavior is not to create a CRD
+	flag.BoolVar(&createCRD, "create-crd", false, "The operator will not create the EtcdCluster CRD when this flag is set to false.")
+	// create-storage-class will be removed once the default behavior is not to create storage class
+	flag.BoolVar(&createStorageClass, "create-storage-class", false, "The operator will not create any StorageClass when this flag is set to false. This flag needs to be true before the --pv-provisioner flag can be used to set a provisioner for a new StorageClass.")
 	flag.DurationVar(&gcInterval, "gc-interval", 10*time.Minute, "GC interval")
 	flag.Parse()
 }
@@ -81,6 +88,8 @@ func main() {
 	if len(name) == 0 {
 		logrus.Fatalf("must set env (%s)", constants.EnvOperatorPodName)
 	}
+
+	logrus.Infof("DEPRECATION WARNING: the pv-provisioner flag will be removed in next release.")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c)
@@ -165,12 +174,14 @@ func newControllerConfig() controller.Config {
 	}
 
 	cfg := controller.Config{
-		Namespace:      namespace,
-		ServiceAccount: serviceAccount,
-		PVProvisioner:  pvProvisioner,
-		KubeCli:        kubecli,
-		KubeExtCli:     k8sutil.MustNewKubeExtClient(),
-		EtcdCRCli:      client.MustNewInCluster(),
+		Namespace:          namespace,
+		ServiceAccount:     serviceAccount,
+		PVProvisioner:      pvProvisioner,
+		KubeCli:            kubecli,
+		KubeExtCli:         k8sutil.MustNewKubeExtClient(),
+		EtcdCRCli:          client.MustNewInCluster(),
+		CreateCRD:          createCRD,
+		CreateStorageClass: createStorageClass,
 	}
 
 	return cfg
