@@ -14,11 +14,7 @@
 
 package controller
 
-import (
-	"fmt"
-
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-)
+import api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 
 const (
 	// Copy from deployment_controller.go:
@@ -61,9 +57,9 @@ func (r *Restore) processItem(key string) error {
 	}
 
 	er := obj.(*api.EtcdRestore)
-	// TODO: handle EtcdRestore.
-	fmt.Println(er)
-	return err
+	r.restoreCRs.Store(er.Spec.BackupSpec.ClusterName, er)
+	// TODO: create seed member.
+	return nil
 }
 
 func (r *Restore) handleErr(err error, key interface{}) {
