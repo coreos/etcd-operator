@@ -16,12 +16,10 @@ package controller
 
 import (
 	"context"
-	"os"
 	"sync"
 
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/sirupsen/logrus"
@@ -34,6 +32,7 @@ type Restore struct {
 	logger *logrus.Entry
 
 	namespace string
+	mySvcAddr string
 	// k8s workqueue pattern
 	indexer  cache.Indexer
 	informer cache.Controller
@@ -47,10 +46,11 @@ type Restore struct {
 }
 
 // New creates a restore operator.
-func New() *Restore {
+func New(namespace, mySvcAddr string) *Restore {
 	return &Restore{
 		logger:       logrus.WithField("pkg", "controller"),
-		namespace:    os.Getenv(constants.EnvOperatorPodNamespace),
+		namespace:    namespace,
+		mySvcAddr:    mySvcAddr,
 		kubecli:      k8sutil.MustNewKubeClient(),
 		restoreCRCli: client.MustNewInCluster(),
 	}

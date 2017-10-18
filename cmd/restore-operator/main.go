@@ -35,14 +35,25 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
+var (
+	namespace string
+	// This is the address of k8s service to restore operator itself for accessing
+	// backup HTTP endpoints. For example, "restore-operator:19999"
+	serviceAddrForSelf string
+)
+
 func main() {
-	namespace := os.Getenv(constants.EnvOperatorPodNamespace)
+	namespace = os.Getenv(constants.EnvOperatorPodNamespace)
 	if len(namespace) == 0 {
 		logrus.Fatalf("must set env %s", constants.EnvOperatorPodNamespace)
 	}
 	name := os.Getenv(constants.EnvOperatorPodName)
 	if len(name) == 0 {
 		logrus.Fatalf("must set env %s", constants.EnvOperatorPodName)
+	}
+	serviceAddrForSelf = os.Getenv("SERVICE_ADDR")
+	if len(serviceAddrForSelf) == 0 {
+		logrus.Fatalf("must set env %s", "SERVICE_ADDR")
 	}
 	id, err := os.Hostname()
 	if err != nil {
@@ -91,7 +102,7 @@ func createRecorder(kubecli kubernetes.Interface, name, namespace string) record
 }
 
 func run(stop <-chan struct{}) {
-	c := controller.New()
+	c := controller.New(namespace, serviceAddrForSelf)
 	err := c.Start(context.TODO())
 	if err != nil {
 		logrus.Fatalf("etcd restore operator stopped with error: %v", err)
