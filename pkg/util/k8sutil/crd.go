@@ -68,7 +68,10 @@ func CreateCRD(clientset apiextensionsclient.Interface) error {
 		},
 	}
 	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
-	return err
+	if err != nil && !IsKubernetesResourceAlreadyExistError(err) {
+		return err
+	}
+	return nil
 }
 
 func WaitCRDReady(clientset apiextensionsclient.Interface) error {
