@@ -42,8 +42,8 @@ type Restore struct {
 	kubecli      kubernetes.Interface
 	restoreCRCli versioned.Interface
 
-	// backupServers is a map of cluster name to backupServer.
-	backupServers sync.Map
+	// restoreCRs is a map of cluster name to restore cr.
+	restoreCRs sync.Map
 }
 
 // New creates a restore operator.

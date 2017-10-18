@@ -57,12 +57,9 @@ func (r *Restore) processItem(key string) error {
 	}
 
 	er := obj.(*api.EtcdRestore)
-	return r.handleRestore(er)
-}
-
-func (r *Restore) handleRestore(er *api.EtcdRestore) error {
-	bs := er.Spec.BackupSpec
-	return r.handleBackup(&bs)
+	r.restoreCRs.Store(er.Spec.BackupSpec.ClusterName, er)
+	// TODO: create seed member.
+	return nil
 }
 
 func (r *Restore) handleErr(err error, key interface{}) {

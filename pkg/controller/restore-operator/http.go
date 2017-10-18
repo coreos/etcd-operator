@@ -18,58 +18,55 @@ import (
 	"fmt"
 	"net/http"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/backup"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
+	"github.com/coreos/etcd-operator/pkg/controller/controllerutil"
+
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	backupHTTPPath = "/backup"
-	listenAddr = "0.0.0.0:19999"
+	backupHTTPPath = backupapi.APIV1 + "/backup/"
+	listenAddr     = "0.0.0.0:19999"
 )
 
 func (r *Restore) startHTTP() {
-	http.HandleFunc(backupapi.APIV1+"/backup", r.serveBackup)
+	http.HandleFunc(backupapi.APIV1+"/backup/", r.serveBackup)
 	logrus.Infof("listening on %v", listenAddr)
 	panic(http.ListenAndServe(listenAddr, nil))
 }
 
+// serveBackup parses incoming request url of the form /backup/<cluster-name>
+// get the etcd cluster name.
+// Then it returns the etcd cluster backup snapshot to the caller.
 func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) {
-	clusterName := req.URL.Query().Get("cluster")
+	clusterName := string(req.URL.Path[len(backupHTTPPath):])
 	if len(clusterName) == 0 {
 		http.Error(w, "cluster is not specified", http.StatusBadRequest)
 		return
 	}
-	v, ok := r.backupServers.Load(clusterName)
+	v, ok := r.restoreCRs.Load(clusterName)
 	if !ok {
 		http.Error(w, fmt.Sprintf("cluster %v backup server not found", clusterName), http.StatusInternalServerError)
 		return
 	}
-	go func() {
-		logrus.Infof("serving backup for cluster %v", clusterName)
-		bs := v.(*backupServer)
+
+	logrus.Infof("serving backup for cluster %v", clusterName)
+	cr := v.(*api.EtcdRestore)
+	spec := cr.Spec.BackupSpec
+	switch spec.StorageType {
+	case api.BackupStorageTypeS3:
+		s3Spec := spec.S3
+		be, err := controllerutil.NewS3backend(r.kubecli, s3Spec, r.namespace, clusterName)
+		if err != nil {
+			http.Error(w, "failed to create s3 backend", http.StatusInternalServerError)
+			return
+		}
+		bs := backup.NewBackupServer(be)
 		bs.ServeBackup(w, req)
-		bs.close()
-		r.backupServers.Delete(clusterName)
-		logrus.Infof("serving backup for cluster %v done", clusterName)
-	}()
-)
-
-// BackupServer is restore operator specific http server that
-// wraps around backup.BackupServer to provide:
-// - additional <clusterName> path parsing and business logic.
-// - Close() method for cleanup.
-type BackupServer struct {
-	*backup.BackupServer
-	backupServers *sync.Map
-}
-
-// path: /backup/<cluster-name>
-func (bs *BackupServer) serveBackup(w http.ResponseWriter, r *http.Request) {
-	clusterName := r.URL.Path[len(backupHTTPPath+"/")]
-	v, ok := bs.backupServers.Load(clusterName)
-	if !ok {
-		// return Not Found
+		be.Close()
+	default:
+		http.Error(w, fmt.Sprintf("unknown storage type %v", spec.StorageType), http.StatusInternalServerError)
 	}
-	b := v.(*backup.BackupServer)
-	b.ServeBackup(w, r)
 }
