@@ -142,11 +142,9 @@ func (c *Controller) makeClusterConfig() cluster.Config {
 }
 
 func (c *Controller) initCRD() error {
-	if c.Config.CreateCRD {
-		err := k8sutil.CreateCRD(c.KubeExtCli)
-		if err != nil {
-			return err
-		}
+	err := k8sutil.CreateCRD(c.KubeExtCli)
+	if err != nil {
+		return fmt.Errorf("failed to create CRD: %v", err)
 	}
 	return k8sutil.WaitCRDReady(c.KubeExtCli)
 }
