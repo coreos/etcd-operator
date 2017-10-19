@@ -53,10 +53,16 @@ func (r *Restore) processItem(key string) error {
 		return err
 	}
 	if !exists {
+		cn, ok := r.clusterNames.Load(key)
+		if ok {
+			r.restoreCRs.Delete(cn)
+			r.clusterNames.Delete(key)
+		}
 		return nil
 	}
 
 	er := obj.(*api.EtcdRestore)
+	r.clusterNames.Store(key, er.Spec.BackupSpec.ClusterName)
 	r.restoreCRs.Store(er.Spec.BackupSpec.ClusterName, er)
 	// TODO: create seed member.
 	return nil
