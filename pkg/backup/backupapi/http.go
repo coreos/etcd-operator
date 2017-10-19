@@ -27,10 +27,15 @@ const (
 
 // NewBackupURL creates a URL struct for retrieving an existing backup.
 func NewBackupURL(scheme, host, version string, revision int64) *url.URL {
+	return BackupURLForCluster(scheme, host, "", version, revision)
+}
+
+// BackupURLForCluster creates a URL struct for retrieving an existing backup of given cluster.
+func BackupURLForCluster(scheme, host, clusterName, version string, revision int64) *url.URL {
 	u := &url.URL{
 		Scheme: scheme,
 		Host:   host,
-		Path:   path.Join(APIV1, "backup"),
+		Path:   path.Join(APIV1, "backup", clusterName),
 	}
 	uv := url.Values{}
 	uv.Set(HTTPQueryVersionKey, version)
