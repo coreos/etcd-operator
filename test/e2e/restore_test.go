@@ -36,7 +36,7 @@ func TestClusterRestoreDifferentName(t *testing.T) {
 }
 
 func testClusterRestore(t *testing.T, needDataClone bool) {
-	testClusterRestoreWithBackupPolicy(t, needDataClone, e2eutil.NewPVBackupPolicy(false, ""))
+	testClusterRestoreWithBackupPolicy(t, needDataClone, e2eutil.NewPVBackupPolicy(false, framework.Global.StorageClassName))
 }
 
 func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backupPolicy *api.BackupPolicy) {

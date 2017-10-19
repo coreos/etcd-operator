@@ -64,17 +64,7 @@ func TestDisasterRecoveryMaj(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testDisasterRecovery(t, 2, "")
-}
-
-// TestDisasterRecoveryMajWithCustomStorageClass ensures that the operator
-// will make a backup using a custom storage class with the state from the
-// one remaining pod.
-func TestDisasterRecoveryMajWithCustomStorageClass(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
-	testDisasterRecovery(t, 2, "standard")
+	testDisasterRecovery(t, 2, framework.Global.StorageClassName)
 }
 
 // testDisasterRecoveryAll tests disaster recovery that
@@ -83,7 +73,7 @@ func TestDisasterRecoveryAll(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
-	testDisasterRecovery(t, 3, "")
+	testDisasterRecovery(t, 3, framework.Global.StorageClassName)
 }
 
 func testDisasterRecovery(t *testing.T, numToKill int, storageClass string) {
