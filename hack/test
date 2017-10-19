@@ -188,6 +188,7 @@ function unit_pass {
 	TEST_PKGS=$(listPkgs | grep -v e2e)
 	for pkg in $TEST_PKGS
 	do
+		go test -i -race -covermode=atomic -coverprofile=profile.out $pkg # cache duplicate builds
 		go test -race -covermode=atomic -coverprofile=profile.out $pkg
 		if [ -f profile.out ]; then
 			tail -n +2 profile.out >> coverage.txt
