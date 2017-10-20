@@ -43,133 +43,66 @@ $ kubectl delete ns $TEST_NAMESPACE
 
 ## Production setup
 
-For production, we recommend users to limit access to only the resources operator needs, and create a specific role, service account for operator.
+For production, we recommend users to limit access to only the resources operator needs, and create a specific role, for the operator.
 
-### Create ClusterRole
+The example below binds a role to the `default` service account in the namespace that the etcd-operator is running in. To bind to a different serviceaccount modify the `subjects.name` field in the [rolebinding templates](../../example/rbac) as needed.
 
-We will use ClusterRole instead of Role because etcd operator accesses non-namespaced resources, e.g. Custom Resource Definitions.
+### Role vs ClusterRole
 
-Create the following ClusterRole
+The permission model required for the etcd-operator depends on the value of its `--create-crd` flag:
+- `--create-crd=true` This the default behavior in which the operator will first try to create the CRD if it doesn't exist
+  - In this mode the operator requires a ClusterRole with the permission to create a CRD.
+- `--create-crd=false` The operator skips creating the CRD before creating the CR
+  - In this mode the operator can be run with just a Role without the permission to create a CRD.
 
-```bash
-$ cat <<EOF | kubectl create -f -
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRole
-metadata:
-  name: etcd-operator
-rules:
-- apiGroups:
-  - etcd.database.coreos.com
-  resources:
-  - etcdclusters
-  verbs:
-  - "*"
-- apiGroups:
-  - apiextensions.k8s.io
-  resources:
-  - customresourcedefinitions
-  verbs:
-  - "*"
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - "*"
-- apiGroups: 
-  - ""
-  resources:
-  - pods
-  - services
-  - endpoints
-  - persistentvolumeclaims
-  - events
-  verbs:
-  - "*"
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  verbs:
-  - "*"
-EOF
+
+## Setup RBAC
+
+Setup the RBAC rules using either a ClusterRole or Role depending on the use case as shown below.
+
+Modify and export the following environment variables. These will be used to fill out the [RBAC templates](../../example/rbac):
+```
+export ROLE_NAME=<role-name>
+export ROLE_BINDING_NAME=<role-binding-name>
+export NAMESPACE=<namespace>
 ```
 
-If you plan on setting up TLS in any of your clusters, add this to the above
-input:
+### RBAC with ClusterRole (create-crd=true)
 
-```
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-```
+1. Create a ClusterRole:
 
-If you need to use S3 backup, add this to the above input:
+    ```sh
+    sed -e "s/<ROLE_NAME>/${ROLE_NAME}/g" example/rbac/cluster-role-template.yaml \
+      | kubectl create -f -
+    ```
 
-```
-- apiGroups: 
-  - ""
-  resources: 
-  - secrets
-  - configmaps
-  verbs:
-  - get
-```
+2. Create a ClusterRoleBinding which binds the default serviceaccount in the namespace to the ClusterRole:
 
-### Create Service Account
+    ```sh
+    sed -e "s/<ROLE_NAME>/${ROLE_NAME}/g" \
+      -e "s/<ROLE_BINDING_NAME>/${ROLE_BINDING_NAME}/g" \
+      -e "s/<NAMESPACE>/${NAMESPACE}/g" \
+      example/rbac/cluster-role-binding-template.yaml \
+      | kubectl create -f -
+    ```
 
-Modify or export env `ETCD_OPERATOR_NS` to your current namespace, 
-and create ServiceAccount for etcd operator:
+### RBAC with Role (create-crd=false)
 
-```bash
-$ cat <<EOF | kubectl create -f -
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: etcd-operator
-  namespace: $ETCD_OPERATOR_NS
-EOF
-```
+1. Create a Role:
 
-### Create ClusterRoleBinding
+    ```sh
+    sed -e "s/<ROLE_NAME>/${ROLE_NAME}/g" \
+      -e "s/<NAMESPACE>/${NAMESPACE}/g" \
+      example/rbac/role-template.yaml \
+      | kubectl create -f -
+    ```
 
-Modify or export env `ETCD_OPERATOR_NS` to your current namespace, 
-and create ClusterRoleBinding for etcd operator:
+2. Create a RoleBinding which binds the default serviceaccount in the namespace to the Role:
 
-```bash
-$ cat <<EOF | kubectl create -f -
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
-metadata:
-  name: etcd-operator
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: etcd-operator
-subjects:
-- kind: ServiceAccount
-  name: etcd-operator
-  namespace: $ETCD_OPERATOR_NS
-EOF
-```
-
-### Run deployment with service account
-
-For etcd operator pod or deployment, fill the pod template with service account `etcd-operator` created above.
-
-For example:
-
-```yaml
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: etcd-operator
-spec:
-  template:
-    spec:
-      serviceAccountName: etcd-operator
-      ...
-```
+    ```sh
+    sed -e "s/<ROLE_NAME>/${ROLE_NAME}/g" \
+      -e "s/<ROLE_BINDING_NAME>/${ROLE_BINDING_NAME}/g" \
+      -e "s/<NAMESPACE>/${NAMESPACE}/g" \
+      example/rbac/role-binding-template.yaml \
+      | kubectl create -f -
+    ```
