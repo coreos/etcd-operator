@@ -1,10 +1,16 @@
 ## [Unreleased]
 
 ### Added
+
 - backup binary supports serving backup defined by backupSpec. In addition, when backupSpec
 is specified, backup binary changes to serve http backup requests only mode.
+- Add operator flag `--create-crd`. By default it is `true` and operator will create EtcdCluster CRD.
+  It can be set to `false` and operator won't create EtcdCluster CRD.
+- Add operator flag `--create-storage-class`. By default it is `false` and operator won't create default storage class.
+  It can be set to `true` and operator will create default storage class.
 
 ### Changed
+
 - An EtcdCluster CR with an invalid spec will not be marked as failed. Any changes that result in an invalid spec will be ignored and logged by the operator.
 
 ### Removed
@@ -14,6 +20,8 @@ is specified, backup binary changes to serve http backup requests only mode.
 - Fix the problem that operator might keep failing on version conflict updating CR status.
 
 ### Deprecated
+
+- The operator flag `--pv-provisioner` is depercated. We recommend to use per cluster storageClass.
 
 ### Security
 
