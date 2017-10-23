@@ -2,9 +2,13 @@
 
 ## Install etcd operator
 
-Before you create the etcd-operator make sure you setup the necessary [rbac rules](./rbac.md) if your Kubernetes version is 1.7 or higher.
+Set up basic [RBAC rules](./rbac.md) for etcd operator:
 
-Create deployment:
+```bash
+$ example/rbac/create_role.sh
+```
+
+Create a deployment for etcd operator:
 
 ```bash
 $ kubectl create -f example/deployment.yaml
