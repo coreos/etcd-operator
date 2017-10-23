@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+The operator will no longer create a storage class specified by `--pv-provisioner` by default. If applicable then see the [upgrade guide](./doc/user/upgrade/upgrade_guide.md) on how to upgrade from `v0.6.0` to `v0.6.1` .
+
 ### Added
 
 - backup binary supports serving backup defined by backupSpec. In addition, when backupSpec
