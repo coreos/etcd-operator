@@ -22,6 +22,35 @@ $ kubectl edit deployment/etcd-operator
 ### Incompatible upgrade
 In the case of an incompatible upgrade, the process requires restoring a new cluster from backup. See the [incompatible upgrade guide](incompatible_upgrade.md) for more information.
 
+## v0.6.0 -> v0.6.1
+
+In `v0.6.1+` the operator will no longer create a storage class specified by `--pv-provisioner` by default. This behavior is set by the new flag `--create-storage-class` which by default is `false`.
+
+**Note:** If your cluster does not have the following backup policy then you can simply upgrade the operator to the `v0.6.1` image.
+
+Backup policy that has `StorageType=PersistentVolume` but `pv.storageClass` is unset. For example:
+```yaml
+spec:
+    backup:
+      backupIntervalInSecond: 30
+      maxBackups: 5
+      pv:
+        storageClass: ""
+        volumeSizeInMB: 512
+      storageType: PersistentVolume
+```
+
+So if your cluster has the above backup policy then do the following steps before upgrading the operator image to `v0.6.1`.
+
+
+- Confirm the name of the storage class for a given cluster:
+
+  ```sh
+  kubectl -n <namespace> get pvc -l=etcd_cluster=<cluster-name> -o yaml | grep storage-class
+  ```
+
+- Edit your etcd cluster spec by changing the `spec.backup.pv.storageClass` field to the name of the existing storage class from the previous step.
+- Wait for the the backup sidecar to be updated.
 
 ## v0.5.x -> v0.6.0
 
