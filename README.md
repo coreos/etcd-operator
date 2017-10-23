@@ -213,9 +213,10 @@ example-etcd-cluster-0003       1/1       Running   0          1m
 
 If the majority of etcd members crash, but at least one backup exists for the cluster, the etcd operator can restore the entire cluster from the backup.
 
-By default, the etcd operator creates a storage class on initialization:
+Before creating a backup enabled cluster you will need a storage class for the backup spec. For example create a storage class that provisions a GCEPersistentDisk:
 
 ```
+$ kubectl create -f example/example-storage-class-gce-pd.yaml
 $ kubectl get storageclass
 NAME                 TYPE
 etcd-backup-gce-pd   kubernetes.io/gce-pd
@@ -223,7 +224,7 @@ etcd-backup-gce-pd   kubernetes.io/gce-pd
 
 This is used to request the persistent volume to store the backup data. See [other backup options](doc/user/backup_config.md).
 
-To enable backup, create an etcd cluster with [backup enabled spec](example/example-etcd-cluster-with-backup.yaml).
+To enable backup, create an etcd cluster with [backup enabled spec](example/example-etcd-cluster-with-backup.yaml) that specifies the above storage class name.
 
 ```
 $ kubectl create -f example/example-etcd-cluster-with-backup.yaml

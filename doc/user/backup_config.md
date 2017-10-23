@@ -27,19 +27,48 @@ This spec field provides more granular control over how to persist etcd data to 
 
 ## PV on GCE
 
+This is essentially saving backups to an instance of GCE PD if running on GCE Kubernetes.
+
 **Note: It is recommended to use the StorageClass spec field because --pv-provisioner will be deprecated in a future release**
 
-By default, operator supports saving backup to PV on GCE.
-This is done by passing flag `--pv-provisioner=kubernetes.io/gce-pd` to operator, which is also the default value.
-This is essentially saving backups to an instance of GCE PD.
+### Using the storage class field:
+
+Create your own storage class with the provisioner for GCE PD:
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: storage-class-gce-pd
+provisioner: kubernetes.io/gce-pd
+```
+Then specify the name of the above storage class in the cluster backup spec field `spec.backup.pv.storageClass`.
+
+### Using the pv provisioner flag:
+
+This is done by passing the flags `--create-storage-class=true` and `--pv-provisioner=kubernetes.io/gce-pd` to operator and leaving the `spec.backup.pv.storageClass` vaule unset.
+
 
 ## PV on AWS
 
+This is essentially saving backups on an instance of AWS EBS if running on AWS Kubernetes.
+
 **Note: It is recommended to use the StorageClass spec field because --pv-provisioner will be deprecated in a future release**
 
-If running on AWS Kubernetes, pass the flag `--pv-provisioner=kubernetes.io/aws-ebs` to operator.
-See [AWS deployment](../../example/deployment-aws.yaml).
-This is essentially saving backups on an instance of AWS EBS.
+### Using the storage class field:
+
+Create your own storage class with the provisioner for AWS EBS:
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: storage-class-aws-ebs
+provisioner: kubernetes.io/aws-ebs
+```
+Then specify the name of the above storage class in the cluster backup spec field `spec.backup.pv.storageClass`.
+
+### Using the pv provisioner flag:
+
+This is done by passing the flags `--create-storage-class=true` and `--pv-provisioner=kubernetes.io/aws-ebs` to operator and leaving the `spec.backup.pv.storageClass` vaule unset.
 
 ## S3 on AWS
 

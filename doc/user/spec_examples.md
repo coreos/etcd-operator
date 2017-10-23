@@ -45,7 +45,7 @@ spec:
 
 ### Three members cluster with PV backup
 
-See [example](../../example/example-etcd-cluster-with-backup.yaml) .
+See [example backup spec](../../example/example-etcd-cluster-with-backup.yaml) that uses the [storage class](../../example/example-storage-class-gce-pd.yaml).
 
 ### S3 backup and cluster specific S3 configuration
 
