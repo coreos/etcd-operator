@@ -71,6 +71,7 @@ func (r *Restore) processItem(key string) error {
 	return r.handleCR(obj.(*api.EtcdRestore), key)
 }
 
+// handleCR takes in EtcdRestore CR and prepares the seed so that etcd operator can take over it later.
 func (r *Restore) handleCR(er *api.EtcdRestore, key string) error {
 	// don't process the CR if it has a status since
 	// having a status means that the CR has been processed before.
@@ -80,7 +81,7 @@ func (r *Restore) handleCR(er *api.EtcdRestore, key string) error {
 	clusterName := er.Spec.BackupSpec.ClusterName
 	r.clusterNames.Store(key, clusterName)
 	r.restoreCRs.Store(clusterName, er)
-	err := createSeedPod(r.kubecli, er.Spec.ClusterSpec, er.AsOwner(), r.namespace, er.Spec.ClusterSpec.Version, r.mySvcAddr, clusterName)
+	err := prepareSeed(r.kubecli, er.Spec.ClusterSpec, er.AsOwner(), r.namespace, er.Spec.ClusterSpec.Version, r.mySvcAddr, clusterName)
 	r.reportStatus(err, er)
 	return err
 }
@@ -98,7 +99,10 @@ func (r *Restore) reportStatus(rerr error, er *api.EtcdRestore) {
 	}
 }
 
-func createSeedPod(kubecli kubernetes.Interface, cs api.ClusterSpec, owner metav1.OwnerReference, namespace, etcdVersion, svcAddr, clusterName string) error {
+// prepareSeed creates:
+// - a seed member that will fetch backup, restore data, and eventually starts etcd container.
+// - a headless service so that we can provide etcd pod a domain name.
+func prepareSeed(kubecli kubernetes.Interface, cs api.ClusterSpec, owner metav1.OwnerReference, namespace, etcdVersion, svcAddr, clusterName string) error {
 	err := k8sutil.CreatePeerService(kubecli, clusterName, namespace, owner)
 	if err != nil {
 		return err
