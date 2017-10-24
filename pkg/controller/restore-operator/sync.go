@@ -14,7 +14,15 @@
 
 package controller
 
-import api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+import (
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
+	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+)
 
 const (
 	// Copy from deployment_controller.go:
@@ -62,10 +70,35 @@ func (r *Restore) processItem(key string) error {
 	}
 
 	er := obj.(*api.EtcdRestore)
-	r.clusterNames.Store(key, er.Spec.BackupSpec.ClusterName)
-	r.restoreCRs.Store(er.Spec.BackupSpec.ClusterName, er)
-	// TODO: create seed member.
-	return nil
+	clusterName := er.Spec.BackupSpec.ClusterName
+	r.clusterNames.Store(key, clusterName)
+	r.restoreCRs.Store(clusterName, er)
+	return createSeedPod(r.kubecli, er.Spec.ClusterSpec, er.AsOwner(), r.namespace, er.Spec.ClusterSpec.Version, r.mySvcAddr, clusterName)
+}
+
+func createSeedPod(kubecli kubernetes.Interface, cs api.ClusterSpec, owner metav1.OwnerReference, namespace, etcdVersion, svcAddr, clusterName string) error {
+	err := k8sutil.CreateClientService(kubecli, clusterName, namespace, owner)
+	if err != nil {
+		return err
+	}
+	err = k8sutil.CreatePeerService(kubecli, clusterName, namespace, owner)
+	if err != nil {
+		return err
+	}
+
+	m := &etcdutil.Member{
+		Name:      etcdutil.CreateMemberName(clusterName, 0),
+		Namespace: namespace,
+		// TODO: support TLS
+		SecurePeer:   false,
+		SecureClient: false,
+	}
+	ms := etcdutil.NewMemberSet(m)
+	backupURL := backupapi.BackupURLForCluster("http", svcAddr, clusterName, etcdVersion, -1)
+	cs.Cleanup()
+	pod := k8sutil.NewSeedMemberPod(clusterName, ms, m, cs, owner, backupURL)
+	_, err = kubecli.Core().Pods(namespace).Create(pod)
+	return err
 }
 
 func (r *Restore) handleErr(err error, key interface{}) {
