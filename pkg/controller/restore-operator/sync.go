@@ -68,24 +68,31 @@ func (r *Restore) processItem(key string) error {
 		}
 		return nil
 	}
+	return r.handleCR(obj.(*api.EtcdRestore), key)
+}
 
-	er := obj.(*api.EtcdRestore)
+func (r *Restore) handleCR(er *api.EtcdRestore, key string) error {
+	// don't process the CR if it has a status since
+	// having a status means that the CR has been processed before.
+	if er.Status.Succeeded || len(er.Status.Reason) != 0 {
+		return nil
+	}
 	clusterName := er.Spec.BackupSpec.ClusterName
 	r.clusterNames.Store(key, clusterName)
 	r.restoreCRs.Store(clusterName, er)
-	err = createSeedPod(r.kubecli, er.Spec.ClusterSpec, er.AsOwner(), r.namespace, er.Spec.ClusterSpec.Version, r.mySvcAddr, clusterName)
+	err := createSeedPod(r.kubecli, er.Spec.ClusterSpec, er.AsOwner(), r.namespace, er.Spec.ClusterSpec.Version, r.mySvcAddr, clusterName)
 	r.reportStatus(err, er)
 	return err
 }
 
-func (r *Restore) reportStatus(err error, er *api.EtcdRestore) {
-	if err != nil {
+func (r *Restore) reportStatus(rerr error, er *api.EtcdRestore) {
+	if rerr != nil {
 		er.Status.Succeeded = false
-		er.Status.Reason = err.Error()
+		er.Status.Reason = rerr.Error()
 	} else {
 		er.Status.Succeeded = true
 	}
-	_, err = r.restoreCRCli.EtcdV1beta2().EtcdRestores(r.namespace).Update(er)
+	_, err := r.restoreCRCli.EtcdV1beta2().EtcdRestores(r.namespace).Update(er)
 	if err != nil {
 		r.logger.Warningf("failed to update status of restore CR %v : (%v)", er.Name, err)
 	}
