@@ -61,20 +61,25 @@ func (b *Backup) processItem(key string) error {
 	}
 
 	eb := obj.(*api.EtcdBackup)
+	// don't process the CR if it has a status since
+	// having a status means that the CR has been processed before.
+	if eb.Status.Succeeded || len(eb.Status.Reason) != 0 {
+		return nil
+	}
 	err = b.handleBackup(&eb.Spec)
 	// Report backup status
 	b.reportBackupStatus(err, eb)
 	return err
 }
 
-func (b *Backup) reportBackupStatus(err error, eb *api.EtcdBackup) {
-	if err != nil {
+func (b *Backup) reportBackupStatus(berr error, eb *api.EtcdBackup) {
+	if berr != nil {
 		eb.Status.Succeeded = false
-		eb.Status.Reason = err.Error()
+		eb.Status.Reason = berr.Error()
 	} else {
 		eb.Status.Succeeded = true
 	}
-	_, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(eb)
+	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(eb)
 	if err != nil {
 		b.logger.Warningf("failed to update status of backup CR %v : (%v)", eb.Name, err)
 	}
