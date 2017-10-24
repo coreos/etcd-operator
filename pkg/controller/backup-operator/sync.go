@@ -72,14 +72,14 @@ func (b *Backup) processItem(key string) error {
 	return err
 }
 
-func (b *Backup) reportBackupStatus(err error, eb *api.EtcdBackup) {
-	if err != nil {
+func (b *Backup) reportBackupStatus(berr error, eb *api.EtcdBackup) {
+	if berr != nil {
 		eb.Status.Succeeded = false
-		eb.Status.Reason = err.Error()
+		eb.Status.Reason = berr.Error()
 	} else {
 		eb.Status.Succeeded = true
 	}
-	_, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(eb)
+	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(eb)
 	if err != nil {
 		b.logger.Warningf("failed to update status of backup CR %v : (%v)", eb.Name, err)
 	}
