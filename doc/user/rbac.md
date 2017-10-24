@@ -2,45 +2,6 @@
 
 If RBAC is in place, users need to setup RBAC rules for etcd operator. This doc serves a tutorial for it.
 
-## Quick setup
-
-If you just want to play with etcd operator, there is a quick setup.
-
-It assumes that your cluster has an admin role. For example, on [Tectonic](https://coreos.com/tectonic/),
-there is a `admin` ClusterRole. We are using that here.
-
-Modify or export env `$TEST_NAMESPACE` to a new namespace, then create it:
-
-```bash
-$ kubectl create ns $TEST_NAMESPACE
-```
-
-Then create cluster role binding:
-
-```bash
-$ cat <<EOF | kubectl create -f -
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
-metadata:
-  name: example-etcd-operator
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: admin
-subjects:
-- kind: ServiceAccount
-  name: default
-  namespace: $TEST_NAMESPACE
-EOF
-```
-
-Now you can start playing. One you are done, clean them up:
-
-```bash
-$ kubectl delete clusterrolebinding example-etcd-operator
-$ kubectl delete ns $TEST_NAMESPACE
-```
-
 ## Production setup
 
 For production, we recommend users to limit access to only the resources operator needs, and create a specific role, for the operator.
