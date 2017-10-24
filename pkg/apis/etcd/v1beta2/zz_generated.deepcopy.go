@@ -27,129 +27,124 @@ import (
 	reflect "reflect"
 )
 
-func init() {
-	SchemeBuilder.Register(RegisterDeepCopies)
-}
-
-// RegisterDeepCopies adds deep-copy functions to the given scheme. Public
-// to allow building arbitrary schemes.
+// GetGeneratedDeepCopyFuncs returns the generated funcs, since we aren't registering them.
 //
 // Deprecated: deepcopy registration will go away when static deepcopy is fully implemented.
-func RegisterDeepCopies(scheme *runtime.Scheme) error {
-	return scheme.AddGeneratedDeepCopyFuncs(
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+func GetGeneratedDeepCopyFuncs() []conversion.GeneratedDeepCopyFunc {
+	return []conversion.GeneratedDeepCopyFunc{
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ABSSource).DeepCopyInto(out.(*ABSSource))
 			return nil
 		}, InType: reflect.TypeOf(&ABSSource{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*BackupCRStatus).DeepCopyInto(out.(*BackupCRStatus))
 			return nil
 		}, InType: reflect.TypeOf(&BackupCRStatus{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*BackupPolicy).DeepCopyInto(out.(*BackupPolicy))
 			return nil
 		}, InType: reflect.TypeOf(&BackupPolicy{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*BackupServiceStatus).DeepCopyInto(out.(*BackupServiceStatus))
 			return nil
 		}, InType: reflect.TypeOf(&BackupServiceStatus{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*BackupSpec).DeepCopyInto(out.(*BackupSpec))
 			return nil
 		}, InType: reflect.TypeOf(&BackupSpec{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*BackupStatus).DeepCopyInto(out.(*BackupStatus))
 			return nil
 		}, InType: reflect.TypeOf(&BackupStatus{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*BackupStorageSource).DeepCopyInto(out.(*BackupStorageSource))
 			return nil
 		}, InType: reflect.TypeOf(&BackupStorageSource{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ClusterCondition).DeepCopyInto(out.(*ClusterCondition))
 			return nil
 		}, InType: reflect.TypeOf(&ClusterCondition{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ClusterSpec).DeepCopyInto(out.(*ClusterSpec))
 			return nil
 		}, InType: reflect.TypeOf(&ClusterSpec{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ClusterStatus).DeepCopyInto(out.(*ClusterStatus))
 			return nil
 		}, InType: reflect.TypeOf(&ClusterStatus{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*EtcdBackup).DeepCopyInto(out.(*EtcdBackup))
 			return nil
 		}, InType: reflect.TypeOf(&EtcdBackup{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*EtcdBackupList).DeepCopyInto(out.(*EtcdBackupList))
 			return nil
 		}, InType: reflect.TypeOf(&EtcdBackupList{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*EtcdCluster).DeepCopyInto(out.(*EtcdCluster))
 			return nil
 		}, InType: reflect.TypeOf(&EtcdCluster{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*EtcdClusterList).DeepCopyInto(out.(*EtcdClusterList))
 			return nil
 		}, InType: reflect.TypeOf(&EtcdClusterList{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*EtcdRestore).DeepCopyInto(out.(*EtcdRestore))
 			return nil
 		}, InType: reflect.TypeOf(&EtcdRestore{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*EtcdRestoreList).DeepCopyInto(out.(*EtcdRestoreList))
 			return nil
 		}, InType: reflect.TypeOf(&EtcdRestoreList{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*MemberSecret).DeepCopyInto(out.(*MemberSecret))
 			return nil
 		}, InType: reflect.TypeOf(&MemberSecret{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*MembersStatus).DeepCopyInto(out.(*MembersStatus))
 			return nil
 		}, InType: reflect.TypeOf(&MembersStatus{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*PVSource).DeepCopyInto(out.(*PVSource))
 			return nil
 		}, InType: reflect.TypeOf(&PVSource{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*PodPolicy).DeepCopyInto(out.(*PodPolicy))
 			return nil
 		}, InType: reflect.TypeOf(&PodPolicy{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*RestorePolicy).DeepCopyInto(out.(*RestorePolicy))
 			return nil
 		}, InType: reflect.TypeOf(&RestorePolicy{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*RestoreSpec).DeepCopyInto(out.(*RestoreSpec))
 			return nil
 		}, InType: reflect.TypeOf(&RestoreSpec{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*RestoreStatus).DeepCopyInto(out.(*RestoreStatus))
 			return nil
 		}, InType: reflect.TypeOf(&RestoreStatus{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*S3Source).DeepCopyInto(out.(*S3Source))
 			return nil
 		}, InType: reflect.TypeOf(&S3Source{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*SelfHostedPolicy).DeepCopyInto(out.(*SelfHostedPolicy))
 			return nil
 		}, InType: reflect.TypeOf(&SelfHostedPolicy{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*StaticTLS).DeepCopyInto(out.(*StaticTLS))
 			return nil
 		}, InType: reflect.TypeOf(&StaticTLS{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*StorageSource).DeepCopyInto(out.(*StorageSource))
 			return nil
 		}, InType: reflect.TypeOf(&StorageSource{})},
-		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
+		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*TLSPolicy).DeepCopyInto(out.(*TLSPolicy))
 			return nil
 		}, InType: reflect.TypeOf(&TLSPolicy{})},
-	)
+	}
 }
 
 // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
