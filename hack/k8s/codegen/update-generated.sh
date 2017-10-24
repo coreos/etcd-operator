@@ -11,7 +11,7 @@ docker run --rm \
   -v "$PWD":"$DOCKER_REPO_ROOT" \
   -w "$DOCKER_REPO_ROOT" \
   "$IMAGE" \
-  "./hack/k8s/codegen/codegen.sh" \
+  "/go/src/k8s.io/code-generator/generate-groups.sh"  \
   "all" \
   "github.com/coreos/etcd-operator/pkg/generated" \
   "github.com/coreos/etcd-operator/pkg/apis" \
