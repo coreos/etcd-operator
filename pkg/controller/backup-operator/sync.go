@@ -61,6 +61,11 @@ func (b *Backup) processItem(key string) error {
 	}
 
 	eb := obj.(*api.EtcdBackup)
+	// don't process the CR if it has a status since
+	// having a status means that the CR has been processed before.
+	if eb.Status.Succeeded || len(eb.Status.Reason) != 0 {
+		return nil
+	}
 	err = b.handleBackup(&eb.Spec)
 	// Report backup status
 	b.reportBackupStatus(err, eb)
