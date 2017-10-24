@@ -11,4 +11,5 @@ spec:
     maxBackups: 5
     storageType: "PersistentVolume"
     pv:
+      storageClass: etcd-backup-gce-pd
       volumeSizeInMB: 512
