@@ -28,7 +28,7 @@ import (
 
 func (r *Restore) run(ctx context.Context) {
 	source := cache.NewListWatchFromClient(
-		r.restoreCRCli.EtcdV1beta2().RESTClient(),
+		r.etcdCRCli.EtcdV1beta2().RESTClient(),
 		api.EtcdRestoreResourcePlural,
 		r.namespace,
 		fields.Everything(),

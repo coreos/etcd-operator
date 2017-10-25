@@ -36,21 +36,10 @@ type EtcdRestore struct {
 	Status            RestoreStatus `json:"status,omitempty"`
 }
 
-func (er *EtcdRestore) AsOwner() metav1.OwnerReference {
-	trueVar := true
-	return metav1.OwnerReference{
-		APIVersion: SchemeGroupVersion.String(),
-		Kind:       EtcdRestoreResourceKind,
-		Name:       er.Name,
-		UID:        er.UID,
-		Controller: &trueVar,
-	}
-}
-
 // RestoreSpec defines how to restore an etcd cluster from existing backup.
 type RestoreSpec struct {
 	// ClusterSpec defines the same spec that etcd operator will run later.
-	// using this spec, restore operator will create the seed etcd member that
+	// using this spec, restore operator will prepare the seed that
 	// etcd operator will pick up later.
 	ClusterSpec ClusterSpec `json:"clusterSpec"`
 	// BackupSpec defines the same spec that backup operator uses to save the backup.

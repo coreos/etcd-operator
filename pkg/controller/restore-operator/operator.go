@@ -38,8 +38,8 @@ type Restore struct {
 	informer cache.Controller
 	queue    workqueue.RateLimitingInterface
 
-	kubecli      kubernetes.Interface
-	restoreCRCli versioned.Interface
+	kubecli   kubernetes.Interface
+	etcdCRCli versioned.Interface
 
 	// restoreCRs is a map of cluster name to restore cr.
 	restoreCRs sync.Map
@@ -50,11 +50,11 @@ type Restore struct {
 // New creates a restore operator.
 func New(namespace, mySvcAddr string) *Restore {
 	return &Restore{
-		logger:       logrus.WithField("pkg", "controller"),
-		namespace:    namespace,
-		mySvcAddr:    mySvcAddr,
-		kubecli:      k8sutil.MustNewKubeClient(),
-		restoreCRCli: client.MustNewInCluster(),
+		logger:    logrus.WithField("pkg", "controller"),
+		namespace: namespace,
+		mySvcAddr: mySvcAddr,
+		kubecli:   k8sutil.MustNewKubeClient(),
+		etcdCRCli: client.MustNewInCluster(),
 	}
 }
 
