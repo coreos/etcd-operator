@@ -5,10 +5,10 @@ if ! which docker > /dev/null; then
 	exit 1
 fi
 
-: ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-backup-operator"}
+: ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator"}
 
 echo "building container..."
-docker build --tag "${IMAGE}" -f hack/build/backup-operator/Dockerfile . 1>/dev/null
+docker build --tag "${IMAGE}" -f hack/build/Dockerfile . 1>/dev/null
 
 # For gcr users, do "gcloud docker -a" to have access.
 
