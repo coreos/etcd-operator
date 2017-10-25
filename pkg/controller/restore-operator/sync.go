@@ -99,11 +99,7 @@ func (r *Restore) reportStatus(rerr error, er *api.EtcdRestore) {
 }
 
 func createSeedPod(kubecli kubernetes.Interface, cs api.ClusterSpec, owner metav1.OwnerReference, namespace, etcdVersion, svcAddr, clusterName string) error {
-	err := k8sutil.CreateClientService(kubecli, clusterName, namespace, owner)
-	if err != nil {
-		return err
-	}
-	err = k8sutil.CreatePeerService(kubecli, clusterName, namespace, owner)
+	err := k8sutil.CreatePeerService(kubecli, clusterName, namespace, owner)
 	if err != nil {
 		return err
 	}
