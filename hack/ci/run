@@ -28,8 +28,7 @@ cleanup() {
 
 trap cleanup EXIT
 
-# glog would complain "flag redefined: log_dir" without stripping vendor
-glide install --strip-vendor 1>/dev/null
+dep ensure
 
 GIT_VERSION=$(git rev-parse HEAD)
 export OPERATOR_IMAGE=${OPERATOR_IMAGE:-"gcr.io/coreos-k8s-scale-testing/etcd-operator:$GIT_VERSION"}
