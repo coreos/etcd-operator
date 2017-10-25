@@ -112,9 +112,9 @@ func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 	return p
 }
 
-func CreateClientService(kubecli kubernetes.Interface, clusterName, ns string, owner metav1.OwnerReference) error {
+func CreateClientService(kubecli kubernetes.Interface, clusterName, ns string, clientPortName string, owner metav1.OwnerReference) error {
 	ports := []v1.ServicePort{{
-		Name:       "client",
+		Name:       clientPortName,
 		Port:       2379,
 		TargetPort: intstr.FromInt(2379),
 		Protocol:   v1.ProtocolTCP,
@@ -126,14 +126,14 @@ func ClientServiceName(clusterName string) string {
 	return clusterName + "-client"
 }
 
-func CreatePeerService(kubecli kubernetes.Interface, clusterName, ns string, owner metav1.OwnerReference) error {
+func CreatePeerService(kubecli kubernetes.Interface, clusterName, ns string, clientPortName, serverPortName string, owner metav1.OwnerReference) error {
 	ports := []v1.ServicePort{{
-		Name:       "client",
+		Name:       clientPortName,
 		Port:       2379,
 		TargetPort: intstr.FromInt(2379),
 		Protocol:   v1.ProtocolTCP,
 	}, {
-		Name:       "peer",
+		Name:       serverPortName,
 		Port:       2380,
 		TargetPort: intstr.FromInt(2380),
 		Protocol:   v1.ProtocolTCP,
