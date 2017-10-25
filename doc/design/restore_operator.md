@@ -39,7 +39,7 @@ Restore Spec defined as:
 // RestoreSpec defines how to restore an etcd cluster from exsiting backup.
 type RestoreSpec struct {
 	// EtcdCluster defines the same spec that etcd operator will run later.
-	// Using this spec, restore operator will create the seed etcd member that
+	// Using this spec, restore operator will prepare the seed that
 	// etcd operator will pick up later.
 	EtcdCluster ClusterSpec
 	// EtcdBackup defines the same spec that backup operator uses to save the backup.
@@ -57,38 +57,3 @@ type RestoreStatus struct {
 	Reason string
 }
 ```
-
-## OwnerRef Management of Seed Member Pod
-
-Restore operator will set owner reference of seed member Pod to related Restore CR
-
-```
-ownerReferences:
-- apiVersion: etcdrestores.etcd.database.coreos.com/v1beta2
-  kind: EtcdRestore
-	controller: false
-	...
-```
-
-But it is not the managing controller because we want to make etcd operator the one.
-Note that `controller` field is more a sign than real effect.
-
-Restore operator will add a special annotation to seed Member Pod:
-
-```
-"etcdcluster.alpha.etcd.coreos.com/seedmember": "true"
-```
-
-
-etcd operator will find `SeedMember` and append related EtcdCluster onto seed member Pod's OwnerRef.
-
-```
-ownerReferences:
-- apiVersion: etcdclusters.etcd.database.coreos.com/v1beta2
-  kind: EtcdCluster
-	controller: true
-	...
-```
-
-The seed member Pod's lifecycle will be bound to both related EtcdRestore and EtcdCluster resources.
-EtcdBackup and EtcdRestore resources are job-type and we recommend deleting them after finished.

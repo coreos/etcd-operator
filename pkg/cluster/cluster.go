@@ -203,9 +203,6 @@ func (c *Cluster) create() error {
 		}
 	}
 
-	if err := c.setupServices(); err != nil {
-		return fmt.Errorf("cluster create: fail to create client service LB: %v", err)
-	}
 	return nil
 }
 
@@ -246,6 +243,9 @@ func (c *Cluster) send(ev *clusterEvent) {
 }
 
 func (c *Cluster) run() {
+	if err := c.setupServices(); err != nil {
+		c.logger.Errorf("fail to setup etcd services: %v", err)
+	}
 
 	defer func() {
 		c.logger.Infof("deleting the failed cluster")
