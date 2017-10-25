@@ -1,0 +1,53 @@
+
+[[constraint]]
+  name = "github.com/Azure/azure-sdk-for-go"
+  version = "10.3.0-beta"
+
+[[constraint]]
+  name = "github.com/aws/aws-sdk-go"
+  version = "1.10.9"
+
+[[constraint]]
+  name = "github.com/coreos/etcd"
+  version = "3.1.9"
+
+[[constraint]]
+  name = "github.com/coreos/go-semver"
+  version = "0.2.0"
+
+[[constraint]]
+  name = "github.com/golang/glog"
+
+[[constraint]]
+  name = "github.com/pborman/uuid"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.8.0"
+
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "0.8.0"
+
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "golang.org/x/net"
+
+[[constraint]]
+  name = "golang.org/x/time"
+
+[[constraint]]
+  name = "k8s.io/api"
+
+[[constraint]]
+  name = "k8s.io/apiextensions-apiserver"
+
+[[constraint]]
+  name = "k8s.io/apimachinery"
+
+[[constraint]]
+  name = "k8s.io/client-go"
