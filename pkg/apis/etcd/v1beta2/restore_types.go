@@ -46,6 +46,27 @@ type RestoreSpec struct {
 	// restore operator will have the same logic as backup operator to discover
 	// any existing backups and find the one with largest revision.
 	BackupSpec BackupSpec `json:"backupSpec"`
+	// TODO: Remove BackupSpec once RestoreSource is implemented
+	// RestoreSource tells the where to get the backup and restore from.
+	RestoreSource RestoreSource `json:",inline"`
+}
+
+type RestoreSource struct {
+	// S3 tells where on S3 the backup is saved and how to fetch the backup.
+	S3 *S3RestoreSource `json:"s3,omitempty"`
+}
+
+type S3RestoreSource struct {
+	// The S3 path where the backup is saved.
+	Path string `json:"path"`
+
+	// The name of the secret object that stores the AWS credential and config files.
+	// The file name of the credential MUST be 'credentials'.
+	// The file name of the config MUST be 'config'.
+	// The profile to use in both files will be 'default'.
+	//
+	// AWSSecret overwrites the default etcd operator wide AWS credential and config.
+	AWSSecret string `json:"awsSecret"`
 }
 
 // RestoreStatus reports the status of this restore operation.

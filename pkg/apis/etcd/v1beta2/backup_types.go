@@ -57,4 +57,7 @@ type BackupCRStatus struct {
 	Succeeded bool `json:"succeeded"`
 	// Reason indicates the reason for any backup related failures.
 	Reason string `json:"Reason,omitempty"`
+	// If S3Source is used to store the backup, this field reports the
+	// S3 path where the backup is saved.
+	S3Path string `json:"s3Path,omitempty"`
 }
