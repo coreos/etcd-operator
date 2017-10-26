@@ -45,7 +45,7 @@ See the [Resources and Labels](./doc/user/resource_labels.md) doc for an overvie
 
 ## Deploy etcd operator
 
-See [instructions on how to install/uninstall etcd operator](doc/user/op_guide.md) .
+See [instructions on how to install/uninstall etcd operator](doc/user/install_guide.md) .
 
 ## Create and destroy an etcd cluster
 
