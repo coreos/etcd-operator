@@ -11,8 +11,10 @@ spec:
     spec:
       containers:
       - name: etcd-backup-operator
-        image: # TODO: replace temporary image with official quay image
+        image: <operator-image>
         imagePullPolicy: Always
+        command:
+        - etcd-backup-operator
         env:
         - name: MY_POD_NAMESPACE
           valueFrom:

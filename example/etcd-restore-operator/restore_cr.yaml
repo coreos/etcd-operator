@@ -1,0 +1,14 @@
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdRestore"
+metadata:
+  name: example-etcd-cluster
+spec:
+  clusterSpec:
+    size: 3
+    version: "3.1.8"
+  backupSpec:
+    clusterName: example-etcd-cluster
+    storageType: S3
+    s3:
+      s3Bucket: <s3-bucket-name>
+      awsSecret: <aws-secret>

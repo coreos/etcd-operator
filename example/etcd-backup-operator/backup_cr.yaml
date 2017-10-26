@@ -6,6 +6,5 @@ spec:
   clusterName: example-etcd-cluster
   storageType: S3
   s3:
-    s3Bucket: jenkins-etcd-operator
-    prefix: prefix
-    awsSecret: aws
+    s3Bucket: <s3-bucket-name>
+    awsSecret: <aws-secret>
