@@ -2,6 +2,8 @@
 
 ### Added
 
+- Add `ServiceName` and `ClientPort` into ClusterStatus.
+
 ### Changed
 
 ### Removed
