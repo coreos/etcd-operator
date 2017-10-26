@@ -16,13 +16,16 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/sirupsen/logrus"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -38,8 +41,9 @@ type Restore struct {
 	informer cache.Controller
 	queue    workqueue.RateLimitingInterface
 
-	kubecli   kubernetes.Interface
-	etcdCRCli versioned.Interface
+	kubecli    kubernetes.Interface
+	etcdCRCli  versioned.Interface
+	kubeExtCli apiextensionsclient.Interface
 
 	// restoreCRs is a map of cluster name to restore cr.
 	restoreCRs sync.Map
@@ -50,18 +54,30 @@ type Restore struct {
 // New creates a restore operator.
 func New(namespace, mySvcAddr string) *Restore {
 	return &Restore{
-		logger:    logrus.WithField("pkg", "controller"),
-		namespace: namespace,
-		mySvcAddr: mySvcAddr,
-		kubecli:   k8sutil.MustNewKubeClient(),
-		etcdCRCli: client.MustNewInCluster(),
+		logger:     logrus.WithField("pkg", "controller"),
+		namespace:  namespace,
+		mySvcAddr:  mySvcAddr,
+		kubecli:    k8sutil.MustNewKubeClient(),
+		etcdCRCli:  client.MustNewInCluster(),
+		kubeExtCli: k8sutil.MustNewKubeExtClient(),
 	}
 }
 
 // Start starts the restore operator.
 func (r *Restore) Start(ctx context.Context) error {
+	if err := r.initCRD(); err != nil {
+		return err
+	}
 	go r.run(ctx)
 	go r.startHTTP()
 	<-ctx.Done()
 	return ctx.Err()
+}
+
+func (r *Restore) initCRD() error {
+	err := k8sutil.CreateCRD(r.kubeExtCli, api.EtcdRestoreCRDName, api.EtcdRestoreResourceKind, api.EtcdRestoreResourcePlural, "")
+	if err != nil {
+		return fmt.Errorf("failed to create CRD: %v", err)
+	}
+	return k8sutil.WaitCRDReady(r.kubeExtCli, api.EtcdRestoreCRDName)
 }
