@@ -9,9 +9,9 @@ print_usage() {
   echo "$(basename "$0") - Create Kubernetes RBAC role and role bindings for etcd-operator
 Usage: $(basename "$0") [options...]
 Options:
-  --role-name=STRING         Name of Role or ClusterRole to create
+  --role-name=STRING         Name of ClusterRole to create
                                (default=\"etcd-operator\", environment variable: ROLE_NAME)
-  --role-binding-name=STRING Name of RoleBinding or ClusterRoleBinding to create
+  --role-binding-name=STRING Name of ClusterRoleBinding to create
                                (default=\"etcd-operator\", environment variable: ROLE_BINDING_NAME)
   --namespace=STRING         namespace to create role and role binding in. Must already exist.
                                (default=\"default\", environment vairable: NAMESPACE)
