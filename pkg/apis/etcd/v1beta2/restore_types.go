@@ -53,5 +53,5 @@ type RestoreStatus struct {
 	// Succeeded indicates if the backup has Succeeded.
 	Succeeded bool `json:"succeeded"`
 	// Reason indicates the reason for any backup related failures.
-	Reason string `json:"reason"`
+	Reason string `json:"reason,omitempty"`
 }
