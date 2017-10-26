@@ -16,14 +16,17 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"os"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/sirupsen/logrus"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -40,6 +43,7 @@ type Backup struct {
 
 	kubecli     kubernetes.Interface
 	backupCRCli versioned.Interface
+	kubeExtCli  apiextensionsclient.Interface
 }
 
 // New creates a backup operator.
@@ -49,12 +53,24 @@ func New() *Backup {
 		namespace:   os.Getenv(constants.EnvOperatorPodNamespace),
 		kubecli:     k8sutil.MustNewKubeClient(),
 		backupCRCli: client.MustNewInCluster(),
+		kubeExtCli:  k8sutil.MustNewKubeExtClient(),
 	}
 }
 
 // Start starts the Backup operator.
 func (b *Backup) Start(ctx context.Context) error {
+	if err := b.initCRD(); err != nil {
+		return err
+	}
 	go b.run(ctx)
 	<-ctx.Done()
 	return ctx.Err()
+}
+
+func (b *Backup) initCRD() error {
+	err := k8sutil.CreateCRD(b.kubeExtCli, api.EtcdBackupCRDName, api.EtcdBackupResourceKind, api.EtcdBackupResourcePlural, "")
+	if err != nil {
+		return fmt.Errorf("failed to create CRD: %v", err)
+	}
+	return k8sutil.WaitCRDReady(b.kubeExtCli, api.EtcdBackupCRDName)
 }
