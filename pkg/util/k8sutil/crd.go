@@ -61,11 +61,13 @@ func CreateCRD(clientset apiextensionsclient.Interface, crdName, rkind, rplural,
 			Version: api.SchemeGroupVersion.Version,
 			Scope:   apiextensionsv1beta1.NamespaceScoped,
 			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
-				Plural:     rplural,
-				Kind:       rkind,
-				ShortNames: []string{shortName},
+				Plural: rplural,
+				Kind:   rkind,
 			},
 		},
+	}
+	if len(shortName) != 0 {
+		crd.Spec.Names.ShortNames = []string{shortName}
 	}
 	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
 	if err != nil && !IsKubernetesResourceAlreadyExistError(err) {
