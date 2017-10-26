@@ -40,16 +40,24 @@ const (
 type ClusterStatus struct {
 	// Phase is the cluster running phase
 	Phase  ClusterPhase `json:"phase"`
-	Reason string       `json:"reason"`
+	Reason string       `json:"reason,omitempty"`
 
 	// ControlPuased indicates the operator pauses the control of the cluster.
-	ControlPaused bool `json:"controlPaused"`
+	ControlPaused bool `json:"controlPaused,omitempty"`
 
 	// Condition keeps track of all cluster conditions, if they exist.
-	Conditions []ClusterCondition `json:"conditions"`
+	Conditions []ClusterCondition `json:"conditions,omitempty"`
 
 	// Size is the current size of the cluster
 	Size int `json:"size"`
+
+	// ServiceName is the LB service for accessing etcd nodes.
+	ServiceName string `json:"serviceName,omitempty"`
+
+	// ClientPort is the port for etcd client to access.
+	// It's the same on client LB service and etcd nodes.
+	ClientPort int `json:"clientPort,omitempty"`
+
 	// Members are the etcd members in the cluster
 	Members MembersStatus `json:"members"`
 	// CurrentVersion is the current cluster version

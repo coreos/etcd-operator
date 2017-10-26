@@ -42,6 +42,9 @@ import (
 )
 
 const (
+	// EtcdClientPort is the client port on client service and etcd nodes.
+	EtcdClientPort = 2379
+
 	etcdVolumeMountDir       = "/var/etcd"
 	dataDir                  = etcdVolumeMountDir + "/data"
 	backupFile               = "/var/etcd/latest.backup"
@@ -115,8 +118,8 @@ func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 func CreateClientService(kubecli kubernetes.Interface, clusterName, ns string, owner metav1.OwnerReference) error {
 	ports := []v1.ServicePort{{
 		Name:       "client",
-		Port:       2379,
-		TargetPort: intstr.FromInt(2379),
+		Port:       EtcdClientPort,
+		TargetPort: intstr.FromInt(EtcdClientPort),
 		Protocol:   v1.ProtocolTCP,
 	}}
 	return createService(kubecli, ClientServiceName(clusterName), clusterName, ns, "", ports, owner)
@@ -129,8 +132,8 @@ func ClientServiceName(clusterName string) string {
 func CreatePeerService(kubecli kubernetes.Interface, clusterName, ns string, owner metav1.OwnerReference) error {
 	ports := []v1.ServicePort{{
 		Name:       "client",
-		Port:       2379,
-		TargetPort: intstr.FromInt(2379),
+		Port:       EtcdClientPort,
+		TargetPort: intstr.FromInt(EtcdClientPort),
 		Protocol:   v1.ProtocolTCP,
 	}, {
 		Name:       "peer",

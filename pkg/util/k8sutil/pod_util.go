@@ -48,7 +48,7 @@ func etcdContainer(commands, baseImage, version string) v1.Container {
 			},
 			{
 				Name:          "client",
-				ContainerPort: int32(2379),
+				ContainerPort: int32(EtcdClientPort),
 				Protocol:      v1.ProtocolTCP,
 			},
 		},
@@ -73,7 +73,7 @@ func etcdLivenessProbe(isSecure bool) *v1.Probe {
 	cmd := "ETCDCTL_API=3 etcdctl get foo"
 	if isSecure {
 		tlsFlags := fmt.Sprintf("--cert=%[1]s/%[2]s --key=%[1]s/%[3]s --cacert=%[1]s/%[4]s", operatorEtcdTLSDir, etcdutil.CliCertFile, etcdutil.CliKeyFile, etcdutil.CliCAFile)
-		cmd = fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=https://localhost:2379 %s get foo", tlsFlags)
+		cmd = fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=https://localhost:%d %s get foo", EtcdClientPort, tlsFlags)
 	}
 	return &v1.Probe{
 		Handler: v1.Handler{

@@ -245,6 +245,8 @@ func (c *Cluster) run() {
 	if err := c.setupServices(); err != nil {
 		c.logger.Errorf("fail to setup etcd services: %v", err)
 	}
+	c.status.ServiceName = k8sutil.ClientServiceName(c.cluster.Name)
+	c.status.ClientPort = k8sutil.EtcdClientPort
 
 	defer func() {
 		c.logger.Infof("deleting the failed cluster")
