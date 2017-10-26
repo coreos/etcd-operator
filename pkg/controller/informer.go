@@ -54,7 +54,7 @@ func (c *Controller) Start() error {
 func (c *Controller) run() {
 	source := cache.NewListWatchFromClient(
 		c.Config.EtcdCRCli.EtcdV1beta2().RESTClient(),
-		api.CRDResourcePlural,
+		api.EtcdClusterResourcePlural,
 		c.Config.Namespace,
 		fields.Everything())
 

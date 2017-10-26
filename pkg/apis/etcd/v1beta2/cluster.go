@@ -57,7 +57,7 @@ func (c *EtcdCluster) AsOwner() metav1.OwnerReference {
 	trueVar := true
 	return metav1.OwnerReference{
 		APIVersion: SchemeGroupVersion.String(),
-		Kind:       CRDResourceKind,
+		Kind:       EtcdClusterResourceKind,
 		Name:       c.Name,
 		UID:        c.UID,
 		Controller: &trueVar,

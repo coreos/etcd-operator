@@ -67,7 +67,7 @@ func newClusterEvent(cl *api.EtcdCluster) *v1.Event {
 		},
 		InvolvedObject: v1.ObjectReference{
 			APIVersion:      api.SchemeGroupVersion.String(),
-			Kind:            api.CRDResourceKind,
+			Kind:            api.EtcdClusterResourceKind,
 			Name:            cl.Name,
 			Namespace:       cl.Namespace,
 			UID:             cl.UID,

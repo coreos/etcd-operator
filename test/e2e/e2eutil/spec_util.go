@@ -25,7 +25,7 @@ import (
 func NewCluster(genName string, size int) *api.EtcdCluster {
 	return &api.EtcdCluster{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       api.CRDResourceKind,
+			Kind:       api.EtcdClusterResourceKind,
 			APIVersion: api.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
