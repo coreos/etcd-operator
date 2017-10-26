@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	CRDResourceKind   = "EtcdCluster"
-	CRDResourcePlural = "etcdclusters"
-	groupName         = "etcd.database.coreos.com"
+	EtcdClusterResourceKind   = "EtcdCluster"
+	EtcdClusterResourcePlural = "etcdclusters"
+	groupName                 = "etcd.database.coreos.com"
 
 	EtcdBackupResourceKind   = "EtcdBackup"
 	EtcdBackupResourcePlural = "etcdbackups"
@@ -37,7 +37,7 @@ var (
 	AddToScheme   = SchemeBuilder.AddToScheme
 
 	SchemeGroupVersion = schema.GroupVersion{Group: groupName, Version: "v1beta2"}
-	CRDName            = CRDResourcePlural + "." + groupName
+	EtcdClusterCRDName = EtcdClusterResourcePlural + "." + groupName
 	EtcdBackupCRDName  = EtcdBackupResourcePlural + "." + groupName
 	EtcdRestoreCRDName = EtcdRestoreResourcePlural + "." + groupName
 )

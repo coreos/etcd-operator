@@ -48,22 +48,22 @@ func GetClusterList(restcli rest.Interface, ns string) (*api.EtcdClusterList, er
 }
 
 func listClustersURI(ns string) string {
-	return fmt.Sprintf("/apis/%s/namespaces/%s/%s", api.SchemeGroupVersion.String(), ns, api.CRDResourcePlural)
+	return fmt.Sprintf("/apis/%s/namespaces/%s/%s", api.SchemeGroupVersion.String(), ns, api.EtcdClusterResourcePlural)
 }
 
-func CreateCRD(clientset apiextensionsclient.Interface) error {
+func CreateCRD(clientset apiextensionsclient.Interface, crdName, rkind, rplural, shortName string) error {
 	crd := &apiextensionsv1beta1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: api.CRDName,
+			Name: crdName,
 		},
 		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
 			Group:   api.SchemeGroupVersion.Group,
 			Version: api.SchemeGroupVersion.Version,
 			Scope:   apiextensionsv1beta1.NamespaceScoped,
 			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
-				Plural:     api.CRDResourcePlural,
-				Kind:       api.CRDResourceKind,
-				ShortNames: []string{"etcd"},
+				Plural:     rplural,
+				Kind:       rkind,
+				ShortNames: []string{shortName},
 			},
 		},
 	}
@@ -74,9 +74,9 @@ func CreateCRD(clientset apiextensionsclient.Interface) error {
 	return nil
 }
 
-func WaitCRDReady(clientset apiextensionsclient.Interface) error {
+func WaitCRDReady(clientset apiextensionsclient.Interface, crdName string) error {
 	err := retryutil.Retry(5*time.Second, 20, func() (bool, error) {
-		crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(api.CRDName, metav1.GetOptions{})
+		crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(crdName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
