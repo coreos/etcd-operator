@@ -33,7 +33,10 @@ const (
 	ABSStorageKey = "storage-key"
 )
 
-var errPVZeroSize = errors.New("PV backup should not have 0 size volume")
+var (
+	errPVZeroSize       = errors.New("PV backup should not have 0 size volume")
+	errPVNoStorageClass = errors.New("PV backup must have a storage class set")
+)
 
 type BackupPolicy struct {
 	// Pod defines the policy to create the backup pod.
@@ -64,10 +67,13 @@ func (bp *BackupPolicy) Validate() error {
 		return errors.New("MaxBackups value should be >= 0")
 	}
 	if bp.StorageType == BackupStorageTypePersistentVolume {
-		if pv := bp.StorageSource.PV; pv == nil || pv.VolumeSizeInMB <= 0 {
+		pv := bp.StorageSource.PV
+		if pv == nil || pv.VolumeSizeInMB <= 0 {
 			return errPVZeroSize
 		}
-		// TODO: the backup policy should be invalid if pv.StorageClass == "" and --create-storage-class == false
+		if len(pv.StorageClass) == 0 {
+			return errPVNoStorageClass
+		}
 	}
 	return nil
 }

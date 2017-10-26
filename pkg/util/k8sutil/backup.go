@@ -27,7 +27,6 @@ import (
 
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	"k8s.io/api/core/v1"
-	v1beta1storage "k8s.io/api/storage/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -35,9 +34,6 @@ import (
 )
 
 const (
-	// StorageClassPrefix is the prefix used when creating custom storage classes
-	// for backups through a given provisioner.
-	StorageClassPrefix        = "etcd-backup"
 	BackupPodSelectorAppField = "etcd_backup_tool"
 	backupPVVolName           = "etcd-backup-storage"
 	awsCredentialDir          = "/root/.aws/"
@@ -46,19 +42,6 @@ const (
 
 	PVBackupV1 = "v1" // TODO: refactor and combine this with pkg/backup.PVBackupV1
 )
-
-func CreateStorageClass(kubecli kubernetes.Interface, pvProvisioner string) error {
-	// We need to get rid of prefix because naming doesn't support "/".
-	name := StorageClassPrefix + "-" + path.Base(pvProvisioner)
-	class := &v1beta1storage.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Provisioner: pvProvisioner,
-	}
-	_, err := kubecli.StorageV1beta1().StorageClasses().Create(class)
-	return err
-}
 
 func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, storageClass string, volumeSizeInMB int) error {
 	name := makePVCName(clusterName)
