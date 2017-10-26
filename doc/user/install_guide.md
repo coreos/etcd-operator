@@ -28,15 +28,13 @@ Note that the etcd clusters managed by etcd operator will **NOT** be deleted eve
 This is an intentional design to prevent accidental operator failure from killing all the etcd clusters.
 In order to delete all clusters, delete all cluster CR objects before uninstall the operator.
 
-Delete deployment:
+Cleanup etcd operator:
 
 ```bash
-$ kubectl delete -f example/deployment.yaml
-```
-
-Delete leader election endpoint
-```bash
-$ kubectl delete endpoints etcd-operator
+kubectl delete -f example/deployment.yaml
+kubectl delete endpoints etcd-operator
+kubectl delete clusterrole etcd-operator
+kubectl delete clusterrolebinding etcd-operator
 ```
 
 ## Installation via Helm

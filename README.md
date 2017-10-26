@@ -37,7 +37,7 @@ See the [Resources and Labels](./doc/user/resource_labels.md) doc for an overvie
 ## Requirements
 
 - Kubernetes 1.7+
-- etcd 3.0+
+- etcd 3.1+
 
 ## Demo
 
