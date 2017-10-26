@@ -20,28 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 )
-
-func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
-	cfg := Config{PVProvisioner: constants.PVProvisionerNone}
-	cl := &api.EtcdCluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "testing"},
-		Spec: api.ClusterSpec{
-			Backup: &api.BackupPolicy{
-				StorageType: api.BackupStorageTypePersistentVolume,
-				StorageSource: api.StorageSource{
-					PV: &api.PVSource{VolumeSizeInMB: 512},
-				},
-				MaxBackups: 1,
-			},
-		},
-	}
-	_, err := newBackupManager(cfg, cl, nil)
-	if err != errNoPVForBackup {
-		t.Errorf("expect err=%v, get=%v", errNoPVForBackup, err)
-	}
-}
 
 func TestNewBackupManagerWithoutS3Config(t *testing.T) {
 	cfg := Config{}

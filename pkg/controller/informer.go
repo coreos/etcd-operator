@@ -20,8 +20,6 @@ import (
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
 
 	"k8s.io/apimachinery/pkg/fields"
@@ -76,12 +74,6 @@ func (c *Controller) initResource() error {
 		err := c.initCRD()
 		if err != nil {
 			return fmt.Errorf("fail to init CRD: %v", err)
-		}
-	}
-	if c.Config.CreateStorageClass && (c.Config.PVProvisioner != constants.PVProvisionerNone) {
-		err := k8sutil.CreateStorageClass(c.KubeCli, c.PVProvisioner)
-		if err != nil && !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-			return fmt.Errorf("fail to create storage class: %v", err)
 		}
 	}
 	return nil

@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path"
 	"time"
 
 	"github.com/coreos/etcd-operator/client/experimentalclient"
@@ -29,7 +28,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/cluster/backupstorage"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/sirupsen/logrus"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,7 +39,6 @@ const (
 )
 
 var (
-	errNoPVForBackup       = errors.New("no backup could be created due to PVProvisioner (none) is set")
 	errNoS3ConfigForBackup = errors.New("no backup could be created due to S3 configuration not set")
 	errNoABSCredsForBackup = errors.New("no backup could be created due to ABS credentials not set")
 )
@@ -80,12 +77,6 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 	switch b.StorageType {
 	case api.BackupStorageTypePersistentVolume, api.BackupStorageTypeDefault:
 		storageClass := b.PV.StorageClass
-		if len(storageClass) == 0 {
-			if c.PVProvisioner == constants.PVProvisionerNone {
-				return nil, errNoPVForBackup
-			}
-			storageClass = k8sutil.StorageClassPrefix + "-" + path.Base(c.PVProvisioner)
-		}
 		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Name, cl.Namespace, storageClass, *b)
 	case api.BackupStorageTypeS3:
 		if b.S3 == nil {

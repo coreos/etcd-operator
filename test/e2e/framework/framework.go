@@ -59,7 +59,7 @@ type Framework struct {
 func Setup() error {
 	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
 	opImage := flag.String("operator-image", "", "operator image, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator")
-	pvProvisioner := flag.String("pv-provisioner", constants.PVProvisionerGCEPD, "persistent volume provisioner type: the default is kubernetes.io/gce-pd. This should be set according to where the tests are running")
+	pvProvisioner := flag.String("pv-provisioner", "kubernetes.io/gce-pd", "persistent volume provisioner type: the default is kubernetes.io/gce-pd. This should be set according to where the tests are running")
 	ns := flag.String("namespace", "default", "e2e test namespace")
 	flag.Parse()
 

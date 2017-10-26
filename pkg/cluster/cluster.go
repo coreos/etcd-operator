@@ -59,7 +59,6 @@ type clusterEvent struct {
 }
 
 type Config struct {
-	PVProvisioner  string
 	ServiceAccount string
 
 	KubeCli   kubernetes.Interface

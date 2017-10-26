@@ -21,7 +21,6 @@ import (
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/sirupsen/logrus"
@@ -30,15 +29,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-var (
-	supportedPVProvisioners = map[string]struct{}{
-		constants.PVProvisionerGCEPD:  {},
-		constants.PVProvisionerAWSEBS: {},
-		constants.PVProvisionerNone:   {},
-	}
-
-	initRetryWaitTime = 30 * time.Second
-)
+var initRetryWaitTime = 30 * time.Second
 
 type Event struct {
 	Type   kwatch.EventType
@@ -53,24 +44,12 @@ type Controller struct {
 }
 
 type Config struct {
-	Namespace          string
-	ServiceAccount     string
-	PVProvisioner      string
-	KubeCli            kubernetes.Interface
-	KubeExtCli         apiextensionsclient.Interface
-	EtcdCRCli          versioned.Interface
-	CreateCRD          bool
-	CreateStorageClass bool
-}
-
-func (c *Config) Validate() error {
-	if _, ok := supportedPVProvisioners[c.PVProvisioner]; !ok {
-		return fmt.Errorf(
-			"persistent volume provisioner %s is not supported: options = %v",
-			c.PVProvisioner, supportedPVProvisioners,
-		)
-	}
-	return nil
+	Namespace      string
+	ServiceAccount string
+	KubeCli        kubernetes.Interface
+	KubeExtCli     apiextensionsclient.Interface
+	EtcdCRCli      versioned.Interface
+	CreateCRD      bool
 }
 
 func New(cfg Config) *Controller {
@@ -134,7 +113,6 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 
 func (c *Controller) makeClusterConfig() cluster.Config {
 	return cluster.Config{
-		PVProvisioner:  c.PVProvisioner,
 		ServiceAccount: c.Config.ServiceAccount,
 		KubeCli:        c.Config.KubeCli,
 		EtcdCRCli:      c.Config.EtcdCRCli,
