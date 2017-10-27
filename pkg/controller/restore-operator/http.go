@@ -20,8 +20,10 @@ import (
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup"
+	"github.com/coreos/etcd-operator/pkg/backup/backend"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
-	"github.com/coreos/etcd-operator/pkg/controller/controllerutil"
+	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
+	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
 
 	"github.com/sirupsen/logrus"
 )
@@ -57,16 +59,28 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) {
 	spec := cr.Spec.BackupSpec
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
-		s3Spec := spec.S3
-		be, err := controllerutil.NewS3backend(r.kubecli, s3Spec, r.namespace, clusterName)
+		bs, cli, err := r.makeBackupServer(spec.S3, clusterName)
 		if err != nil {
-			http.Error(w, "failed to create s3 backend", http.StatusInternalServerError)
+			http.Error(w, "failed to create S3 backup server", http.StatusInternalServerError)
 			return
 		}
-		bs := backup.NewBackupServer(be)
+
 		bs.ServeBackup(w, req)
-		be.Close()
+		cli.Close()
 	default:
-		http.Error(w, fmt.Sprintf("unknown storage type %v", spec.StorageType), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("unknown storage type %v", spec.StorageType), http.StatusBadRequest)
 	}
+}
+
+func (r *Restore) makeBackupServer(s3 *api.S3Source, clusterName string) (*backup.BackupServer, *s3factory.S3Client, error) {
+	cli, err := s3factory.NewClientFromSecret(r.kubecli, r.namespace, s3.AWSSecret)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	prefix := backupapi.ToS3Prefix(s3.Prefix, r.namespace, clusterName)
+	s3cli := backups3.NewFromClient(s3.S3Bucket, prefix, cli.S3)
+	be := backend.NewS3Backend(s3cli)
+	bs := backup.NewBackupServer(be)
+	return bs, cli, nil
 }

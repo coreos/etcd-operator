@@ -16,7 +16,6 @@ package backend
 
 import (
 	"bytes"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"reflect"
@@ -75,13 +74,8 @@ func TestS3Backend(t *testing.T) {
 }
 
 func testS3BackendPurge(t *testing.T, s3cli *s3.S3) {
-	dir, err := ioutil.TempDir("", "etcd-operator-test")
-	if err != nil {
-		t.Fatal(err)
-	}
 	s := &s3Backend{
-		s3:  s3cli,
-		dir: dir,
+		s3: s3cli,
 	}
 	if _, err := s.Save("3.1.0", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
 		t.Fatal(err)
@@ -106,13 +100,8 @@ func testS3BackendPurge(t *testing.T, s3cli *s3.S3) {
 }
 
 func testS3BackendDelete(t *testing.T, s3cli *s3.S3) {
-	dir, err := ioutil.TempDir("", "etcd-operator-test")
-	if err != nil {
-		t.Fatal(err)
-	}
 	s := &s3Backend{
-		s3:  s3cli,
-		dir: dir,
+		s3: s3cli,
 	}
 	if _, err := s.Save("3.1.0", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {
 		t.Fatal(err)
@@ -162,18 +151,11 @@ func TestS3BackendWithPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir, err := ioutil.TempDir("", "etcd-operator-test")
-	defer os.RemoveAll(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
 	s := &s3Backend{
-		s3:  s3Cli,
-		dir: dir,
+		s3: s3Cli,
 	}
 	s2 := &s3Backend{
-		s3:  s3Cli2,
-		dir: dir,
+		s3: s3Cli2,
 	}
 
 	if _, err := s.Save("file1", 1, bytes.NewBuffer([]byte("ignore"))); err != nil {

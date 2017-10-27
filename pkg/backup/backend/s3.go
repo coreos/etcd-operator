@@ -17,13 +17,18 @@ package backend
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/backup/util"
 
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	tmpDir              = "/tmp"
+	tmpBackupFilePrefix = "etcd-backup-"
 )
 
 // ensure s3Backend satisfies backend interface.
@@ -32,18 +37,15 @@ var _ Backend = &s3Backend{}
 // s3Backend is AWS S3 backend.
 type s3Backend struct {
 	s3 *s3.S3
-	// dir to temporarily store backup files before upload it to S3.
-	dir string
 }
 
-func NewS3Backend(s3 *s3.S3, dir string) Backend {
-	return &s3Backend{s3, dir}
+func NewS3Backend(s3 *s3.S3) Backend {
+	return &s3Backend{s3}
 }
 
 func (sb *s3Backend) Save(version string, snapRev int64, rc io.Reader) (int64, error) {
 	// make a local file copy of the backup first, since s3 requires io.ReadSeeker.
-	key := util.MakeBackupName(version, snapRev)
-	tmpfile, err := os.OpenFile(filepath.Join(sb.dir, key), os.O_RDWR|os.O_CREATE, util.BackupFilePerm)
+	tmpfile, err := ioutil.TempFile(tmpDir, tmpBackupFilePrefix)
 	if err != nil {
 		return -1, fmt.Errorf("failed to create snapshot tempfile: %v", err)
 	}
@@ -61,6 +63,7 @@ func (sb *s3Backend) Save(version string, snapRev int64, rc io.Reader) (int64, e
 		return -1, err
 	}
 	// S3 put is atomic, so let's go ahead and put the key directly.
+	key := util.MakeBackupName(version, snapRev)
 	err = sb.s3.Put(key, tmpfile)
 	if err != nil {
 		return -1, err
