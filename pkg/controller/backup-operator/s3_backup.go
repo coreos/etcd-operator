@@ -16,28 +16,39 @@ package controller
 
 import (
 	"fmt"
+	"path"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup"
+	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
+	"github.com/coreos/etcd-operator/pkg/backup/util"
 	"github.com/coreos/etcd-operator/pkg/controller/controllerutil"
 
 	"k8s.io/client-go/kubernetes"
 )
 
 // TODO: replace this with generic backend interface for other options (PV, Azure)
-// handleS3 backups up etcd cluster to s3.
-func handleS3(kubecli kubernetes.Interface, s3 *api.S3Source, namespace, clusterName string) error {
+// handleS3 backups up etcd cluster to s3 and return s3 path for the backup file.
+func handleS3(kubecli kubernetes.Interface, s3 *api.S3Source, namespace, clusterName string) (string, error) {
 	be, err := controllerutil.NewS3backend(kubecli, s3, namespace, clusterName)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer be.Close()
+
 	bm := backup.NewBackupManager(kubecli, clusterName, namespace, nil, be)
 	// this SaveSnap takes 0 as lastSnapRev to indicate that it
 	// saves any snapshot with revision > 0.
-	_, err = bm.SaveSnap(0)
+	bs, err := bm.SaveSnap(0)
 	if err != nil {
-		return fmt.Errorf("failed to save snapshot (%v)", err)
+		return "", fmt.Errorf("failed to save snapshot (%v)", err)
 	}
-	return nil
+	prefix := backupapi.ToS3Prefix(s3.Prefix, namespace, clusterName)
+	bn := util.MakeBackupName(bs.Version, bs.Revision)
+	return toS3Path(s3.S3Bucket, prefix, bn), nil
+}
+
+// toS3Path returns the full s3 path of the backup file based s3Bucket, prefix, and backupName.
+func toS3Path(s3Bucket, prefix, backupName string) string {
+	return path.Join(s3Bucket, prefix, backupName)
 }

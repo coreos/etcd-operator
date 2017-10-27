@@ -66,18 +66,19 @@ func (b *Backup) processItem(key string) error {
 	if eb.Status.Succeeded || len(eb.Status.Reason) != 0 {
 		return nil
 	}
-	err = b.handleBackup(&eb.Spec)
+	bs, err := b.handleBackup(&eb.Spec)
 	// Report backup status
-	b.reportBackupStatus(err, eb)
+	b.reportBackupStatus(bs, err, eb)
 	return err
 }
 
-func (b *Backup) reportBackupStatus(berr error, eb *api.EtcdBackup) {
+func (b *Backup) reportBackupStatus(bs *api.BackupCRStatus, berr error, eb *api.EtcdBackup) {
 	if berr != nil {
 		eb.Status.Succeeded = false
 		eb.Status.Reason = berr.Error()
 	} else {
 		eb.Status.Succeeded = true
+		eb.Status.S3Path = bs.S3Path
 	}
 	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(eb)
 	if err != nil {
@@ -109,12 +110,16 @@ func (b *Backup) handleErr(err error, key interface{}) {
 	b.logger.Infof("Dropping etcd backup (%v) out of the queue: %v", key, err)
 }
 
-func (b *Backup) handleBackup(spec *api.BackupSpec) error {
+func (b *Backup) handleBackup(spec *api.BackupSpec) (*api.BackupCRStatus, error) {
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
-		return handleS3(b.kubecli, spec.S3, b.namespace, spec.ClusterName)
+		s3path, err := handleS3(b.kubecli, spec.S3, b.namespace, spec.ClusterName)
+		if err != nil {
+			return nil, err
+		}
+		return &api.BackupCRStatus{S3Path: s3path}, nil
 	default:
 		logrus.Fatalf("unknown StorageType: %v", spec.StorageType)
 	}
-	return nil
+	return nil, nil
 }
