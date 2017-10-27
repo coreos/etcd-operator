@@ -52,6 +52,29 @@ func NewS3BackupPolicy(cleanup bool) *api.BackupPolicy {
 	}
 }
 
+// NewS3Backup creates a EtcdBackup object using clusterName.
+func NewS3Backup(clusterName string) *api.EtcdBackup {
+	return &api.EtcdBackup{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       api.EtcdBackupResourceKind,
+			APIVersion: api.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: clusterName,
+		},
+		Spec: api.BackupSpec{
+			ClusterName: clusterName,
+			StorageType: api.BackupStorageTypeS3,
+			BackupStorageSource: api.BackupStorageSource{
+				S3: &api.S3Source{
+					S3Bucket:  os.Getenv("TEST_S3_BUCKET"),
+					AWSSecret: os.Getenv("TEST_AWS_SECRET"),
+				},
+			},
+		},
+	}
+}
+
 func NewPVBackupPolicy(cleanup bool, storageClass string) *api.BackupPolicy {
 	return &api.BackupPolicy{
 		BackupIntervalInSecond: 60 * 60,
