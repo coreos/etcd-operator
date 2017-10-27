@@ -167,17 +167,21 @@ func (f *Framework) SetupEtcdOperator() error {
 
 	p, err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace, pod, 60*time.Second)
 	if err != nil {
-		// assuming `kubectl` installed on $PATH
-		cmd := exec.Command("kubectl", "-n", f.Namespace, "describe", "pod", "etcd-operator")
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Run() // Just ignore the error...
-		logrus.Info("describing etcd-operator pod:", out.String())
+		describePod(f.Namespace, "etcd-operator")
 		return err
 	}
 	logrus.Infof("etcd operator pod is running on node (%s)", p.Spec.NodeName)
 
 	return e2eutil.WaitUntilOperatorReady(f.KubeClient, f.Namespace, "etcd-operator")
+}
+
+func describePod(ns, name string) {
+	// assuming `kubectl` installed on $PATH
+	cmd := exec.Command("kubectl", "-n", ns, "describe", "pod", name)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Run() // Just ignore the error...
+	logrus.Infof("describing %s pod: %s", name, out.String())
 }
 
 func (f *Framework) DeleteEtcdOperatorCompletely() error {
@@ -236,6 +240,7 @@ func (f *Framework) SetupEtcdBackupOperator() error {
 
 	p, err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace, pod, 60*time.Second)
 	if err != nil {
+		describePod(f.Namespace, etcdBackupOperatorName)
 		return err
 	}
 	logrus.Infof("etcd backup operator pod is running on node (%s)", p.Spec.NodeName)
