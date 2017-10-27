@@ -67,20 +67,16 @@ type BackupControllerConfig struct {
 
 // NewBackupController creates a BackupController.
 func NewBackupController(config *BackupControllerConfig) (*BackupController, error) {
-	bdir := path.Join(constants.BackupMountDir, PVBackupV1, config.ClusterName)
-	// We created not only backup dir and but also tmp dir under it.
-	// tmp dir is used to store intermediate snapshot files.
-	// It will be no-op if target dir existed.
-	tmpDir := path.Join(bdir, util.BackupTmpDir)
-	err := os.MkdirAll(tmpDir, 0700)
-	if err != nil {
-		return nil, err
-	}
-
 	var be backend.Backend
 	bp := config.BackupPolicy
+
 	switch bp.StorageType {
 	case api.BackupStorageTypePersistentVolume, api.BackupStorageTypeDefault:
+		bdir := path.Join(constants.BackupMountDir, PVBackupV1, config.ClusterName)
+		err := os.MkdirAll(path.Join(bdir, util.BackupTmpDir), 0700)
+		if err != nil {
+			return nil, err
+		}
 		be = backend.NewFileBackend(bdir)
 	case api.BackupStorageTypeS3:
 		s3Prefix := ""
@@ -91,7 +87,7 @@ func NewBackupController(config *BackupControllerConfig) (*BackupController, err
 		if err != nil {
 			return nil, err
 		}
-		be = backend.NewS3Backend(s3cli, tmpDir)
+		be = backend.NewS3Backend(s3cli)
 	case api.BackupStorageTypeABS:
 		absCli, err := abs.New(os.Getenv(env.ABSContainer),
 			os.Getenv(env.ABSStorageAccount),
