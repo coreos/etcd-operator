@@ -44,6 +44,8 @@ import (
 
 var Global *Framework
 
+const etcdBackupOperator = "etcd-backup-operator"
+
 type Framework struct {
 	opImage          string
 	KubeClient       kubernetes.Interface
@@ -88,6 +90,9 @@ func Teardown() error {
 	if err := Global.deleteEtcdOperator(); err != nil {
 		return err
 	}
+	if err := Global.DeleteEtcdBackupOperator(); err != nil {
+		return fmt.Errorf("failed to delete etcd backup operator: %v", err)
+	}
 	// TODO: check all deleted and wait
 	Global = nil
 	logrus.Info("e2e teardown successfully")
@@ -107,6 +112,11 @@ func (f *Framework) setup() error {
 			return fmt.Errorf("fail to setup aws: %v", err)
 		}
 	}
+	if err := f.SetupEtcdBackupOperator(); err != nil {
+		return fmt.Errorf("failed to create etcd backup operator: %v", err)
+	}
+	logrus.Info("etcd backup operator created successfully")
+
 	logrus.Info("e2e setup successfully")
 	return nil
 }
@@ -189,6 +199,52 @@ func (f *Framework) DeleteEtcdOperatorCompletely() error {
 		return fmt.Errorf("fail to wait etcd operator pod gone from API: %v", err)
 	}
 	return nil
+}
+
+// SetupEtcdBackupOperator creates a etcd backup operator deployment with name as "etcd-backup-operator",
+// and it waits until the operator pod is ready.
+func (f *Framework) SetupEtcdBackupOperator() error {
+	cmd := []string{"/usr/local/bin/etcd-backup-operator"}
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   etcdBackupOperator,
+			Labels: map[string]string{"name": etcdBackupOperator},
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:            etcdBackupOperator,
+					Image:           f.opImage,
+					ImagePullPolicy: v1.PullAlways,
+					Command:         cmd,
+					Env: []v1.EnvVar{
+						{
+							Name:      constants.EnvOperatorPodNamespace,
+							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+						},
+						{
+							Name:      constants.EnvOperatorPodName,
+							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
+						},
+					},
+				},
+			},
+			RestartPolicy: v1.RestartPolicyNever,
+		},
+	}
+
+	p, err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace, pod, 60*time.Second)
+	if err != nil {
+		return err
+	}
+	logrus.Infof("etcd backup operator pod is running on node (%s)", p.Spec.NodeName)
+
+	return e2eutil.WaitUntilOperatorReady(f.KubeClient, f.Namespace, etcdBackupOperator)
+}
+
+// DeleteEtcdBackupOperator deletes an etcd backup operator with the name as "etcd-backup-operator".
+func (f *Framework) DeleteEtcdBackupOperator() error {
+	return f.KubeClient.CoreV1().Pods(f.Namespace).Delete(etcdBackupOperator, metav1.NewDeleteOptions(1))
 }
 
 func (f *Framework) deleteEtcdOperator() error {
