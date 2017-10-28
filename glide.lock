@@ -1,5 +1,5 @@
-hash: d60826b10d8ab4f8677b4a14ffa1d9af4aad17be2d043b6b50716fe4c4527e52
-updated: 2017-10-06T10:59:34.032721526-07:00
+hash: 40e734218f16881c0236eb6ef3ad345e96391781382c52d1273160d7de4ec36c
+updated: 2017-10-27T15:42:39.7145968-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -202,7 +202,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: golang.org/x/crypto
-  version: d172538b2cfce0c13cee31e647d0367aa8cd2486
+  version: 81e90905daefcd6fd217b62423c0908922eadb30
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
@@ -224,9 +224,10 @@ imports:
   - jws
   - jwt
 - name: golang.org/x/sys
-  version: 7a4fde3fda8ef580a89dbae8138c26041be14299
+  version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
   subpackages:
   - unix
+  - windows
 - name: golang.org/x/text
   version: b19bf474d317b857955b12035d2c5acb57ce8b01
   subpackages:
@@ -242,11 +243,11 @@ imports:
   - unicode/norm
   - width
 - name: golang.org/x/time
-  version: 6dc17368e09b0e8634d71cac8168d853e869a0c7
+  version: 8be79e1e0910c292df4e79c241bb7e8f7e725959
   subpackages:
   - rate
 - name: google.golang.org/appengine
-  version: 24e4144ec923c2374f6b06610c0df16a9222c3d9
+  version: d9a072cfa7b9736e44311ef77b3e09d804bfa599
   subpackages:
   - internal
   - internal/app_identity
@@ -273,7 +274,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
 - name: k8s.io/api
-  version: 926789af7ddda62752e08bc9b93f1d1ebbc7b2de
+  version: 4df58c811fe2e65feb879227b2b245e4dc26e7ad
   subpackages:
   - admissionregistration/v1alpha1
   - apps/v1beta1
@@ -300,7 +301,7 @@ imports:
   - storage/v1
   - storage/v1beta1
 - name: k8s.io/apiextensions-apiserver
-  version: 2bfb07d318ed549813240d1165fcebad6250c666
+  version: e509bb64fe1116e12a32273a2032426aa1a5fd26
   subpackages:
   - pkg/apis/apiextensions
   - pkg/apis/apiextensions/v1beta1
@@ -308,7 +309,7 @@ imports:
   - pkg/client/clientset/clientset/scheme
   - pkg/client/clientset/clientset/typed/apiextensions/v1beta1
 - name: k8s.io/apimachinery
-  version: a28c9b0b532638dcfb2c8b1b6f8f1e4a21041752
+  version: 019ae5ada31de202164b118aee88ee2d14075c31
   subpackages:
   - pkg/api/equality
   - pkg/api/errors
@@ -354,7 +355,7 @@ imports:
   - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 - name: k8s.io/client-go
-  version: c6f8cf2c47d21d55fa0df928291b2580544886c8
+  version: 35ccd4336052e7d73018b1382413534936f34eee
   subpackages:
   - discovery
   - discovery/fake
@@ -410,7 +411,7 @@ imports:
   - util/jsonpath
   - util/workqueue
 - name: k8s.io/kube-openapi
-  version: 80f07ef71bb4f781233c65aa8d0369e4ecafab87
+  version: 868f2f29720b192240e18284659231b440f9cda5
   subpackages:
   - pkg/common
 testImports: []
