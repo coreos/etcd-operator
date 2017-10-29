@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/sirupsen/logrus"
 )
@@ -39,27 +40,42 @@ func (r *Restore) startHTTP() {
 	panic(http.ListenAndServe(listenAddr, nil))
 }
 
-// serveBackup parses incoming request url of the form /backup/<cluster-name>
-// get the etcd cluster name.
+// serveBackup parses incoming request url of the form /backup/<restore-name>
+// get the etcd restore name.
 // Then it returns the etcd cluster backup snapshot to the caller.
 func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) {
-	clusterName := string(req.URL.Path[len(backupHTTPPath):])
-	if len(clusterName) == 0 {
-		http.Error(w, "cluster is not specified", http.StatusBadRequest)
-		return
-	}
-	v, ok := r.restoreCRs.Load(clusterName)
-	if !ok {
-		http.Error(w, fmt.Sprintf("cluster %v backup server not found", clusterName), http.StatusInternalServerError)
+	restoreName := string(req.URL.Path[len(backupHTTPPath):])
+	if len(restoreName) == 0 {
+		http.Error(w, "restore name is not specified", http.StatusNotFound)
 		return
 	}
 
-	logrus.Infof("serving backup for cluster %v", clusterName)
+	obj := &api.EtcdRestore{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      restoreName,
+			Namespace: r.namespace,
+		},
+	}
+	v, exists, err := r.indexer.Get(obj)
+	if err != nil {
+		msg := fmt.Sprintf("failed to get restore CR for restore-name (%v): %v", restoreName, err)
+		logrus.Error(msg)
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+	if !exists {
+		msg := fmt.Sprintf("no restore CR found for restore-name (%v)", restoreName)
+		logrus.Error(msg)
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+
+	logrus.Infof("serving backup for restore CR %v", restoreName)
 	cr := v.(*api.EtcdRestore)
 	spec := cr.Spec.BackupSpec
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
-		bs, cli, err := r.makeBackupServer(spec.S3, clusterName)
+		bs, cli, err := r.makeBackupServer(spec.S3, spec.ClusterName)
 		if err != nil {
 			http.Error(w, "failed to create S3 backup server", http.StatusInternalServerError)
 			return

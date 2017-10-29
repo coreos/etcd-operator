@@ -62,11 +62,6 @@ func (r *Restore) processItem(key string) error {
 		return err
 	}
 	if !exists {
-		cn, ok := r.clusterNames.Load(key)
-		if ok {
-			r.restoreCRs.Delete(cn)
-			r.clusterNames.Delete(key)
-		}
 		return nil
 	}
 	return r.handleCR(obj.(*api.EtcdRestore), key)
@@ -79,9 +74,6 @@ func (r *Restore) handleCR(er *api.EtcdRestore, key string) error {
 	if er.Status.Succeeded || len(er.Status.Reason) != 0 {
 		return nil
 	}
-	clusterName := er.Spec.BackupSpec.ClusterName
-	r.clusterNames.Store(key, clusterName)
-	r.restoreCRs.Store(clusterName, er)
 	err := r.prepareSeed(er)
 	r.reportStatus(err, er)
 	return err
