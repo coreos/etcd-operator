@@ -45,10 +45,10 @@ type Restore struct {
 	etcdCRCli  versioned.Interface
 	kubeExtCli apiextensionsclient.Interface
 
-	// restoreCRs is a map of cluster name to restore cr.
+	// restoreCRs is a map of restore name to restore cr.
 	restoreCRs sync.Map
-	// clusterNames is map of informer's indexer keys to cluster names
-	clusterNames sync.Map
+	// restoreNames is map of informer's indexer keys to restore names
+	restoreNames sync.Map
 }
 
 // New creates a restore operator.
