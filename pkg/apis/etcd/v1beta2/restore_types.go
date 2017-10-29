@@ -57,7 +57,9 @@ type RestoreSource struct {
 }
 
 type S3RestoreSource struct {
-	// The S3 path where the backup is saved.
+	// The full S3 path where the backup is saved.
+	// The format of the path should be: "<s3-bucket-name>/<path-to-backup-file>"
+	// e.g: "etcd-backups/v1/default/example-etcd-cluster/3.1.8_0000000000000001_etcd.backup"
 	Path string `json:"path"`
 
 	// The name of the secret object that stores the AWS credential and config files.
