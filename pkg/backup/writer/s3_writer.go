@@ -12,43 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package reader
+package writer
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/coreos/etcd-operator/pkg/backup/util"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
-// ensure s3Reader satisfies reader interface.
-var _ Reader = &s3Reader{}
-
-// s3Reader provides Reader imlementation for reading a file from S3
-type s3Reader struct {
-	s3 *s3.S3
+type s3Writer struct {
+	u *s3manager.Uploader
 }
 
-func NewS3Reader(s3 *s3.S3) Reader {
-	return &s3Reader{s3}
+// NewS3Writer creates a s3 writer.
+func NewS3Writer(s3 *s3.S3) Writer {
+	return &s3Writer{s3manager.NewUploaderWithClient(s3)}
 }
 
-// Open opens the file on path where path must be in the format "<s3-bucket-name>/<key>"
-func (s3r *s3Reader) Open(path string) (io.ReadCloser, error) {
-	bucket, key, err := util.ParseBucketAndKey(path)
+// Write writes the backup file to the given s3 path, "<s3-bucket-name>/<key>".
+func (s3w *s3Writer) Write(path string, r io.Reader) error {
+	bk, key, err := util.ParseBucketAndKey(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse s3 bucket and key: %v", err)
-	}
-	resp, err := s3r.s3.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
-	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return resp.Body, nil
+	_, err = s3w.u.Upload(
+		&s3manager.UploadInput{
+			Bucket: aws.String(bk),
+			Key:    aws.String(key),
+			Body:   r,
+		})
+	return err
 }
