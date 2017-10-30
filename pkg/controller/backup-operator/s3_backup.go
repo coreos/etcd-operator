@@ -27,8 +27,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const backupName = "etcd.backup"
-
 // TODO: replace this with generic backend interface for other options (PV, Azure)
 // handleS3 backups up etcd cluster to s3 and return s3 path for the backup file.
 func handleS3(kubecli kubernetes.Interface, s3 *api.S3Source, namespace, clusterName string) (string, error) {
@@ -37,18 +35,12 @@ func handleS3(kubecli kubernetes.Interface, s3 *api.S3Source, namespace, cluster
 		return "", err
 	}
 	defer cli.Close()
-	prefix := backupapi.ToS3Prefix(s3.Prefix, namespace, clusterName)
 	// TODO: support TLS.
-	bm := backup.NewBackupManagerFromWriter(kubecli, nil, writer.NewS3Writer(cli.S3), clusterName, namespace)
-	fullS3Path := toS3Path(s3.S3Bucket, prefix, backupName)
-	err = bm.SaveSnapWithPath(fullS3Path)
+	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewS3Writer(cli.S3), clusterName, namespace)
+	s3Prefix := backupapi.ToS3Prefix(s3.Prefix, namespace, clusterName)
+	fullPath, err := bm.SaveSnapWithPrefix(path.Join(s3.S3Bucket, s3Prefix))
 	if err != nil {
 		return "", fmt.Errorf("failed to save snapshot (%v)", err)
 	}
-	return fullS3Path, nil
-}
-
-// toS3Path returns the full s3 path of the backup file based s3Bucket, prefix, and backupName.
-func toS3Path(s3Bucket, prefix, backupName string) string {
-	return path.Join(s3Bucket, prefix, backupName)
+	return fullPath, nil
 }
