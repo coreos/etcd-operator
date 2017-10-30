@@ -59,39 +59,18 @@ func NewBackupManager(kubecli kubernetes.Interface, clusterName string, namespac
 // SaveSnap saves the latest snapshot if its revision is greater than the given lastSnapRev
 // and returns a BackupStatus containing saving backup metadata if SaveSnap succeeds.
 func (bm *BackupManager) SaveSnap(lastSnapRev int64) (*backupapi.BackupStatus, error) {
-	podList, err := bm.kubecli.Core().Pods(bm.namespace).List(k8sutil.ClusterListOpt(bm.clusterName))
+	etcdcli, rev, err := bm.etcdClientWithMaxRevision()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create etcd client with max revision failed: %v", err)
 	}
-
-	var pods []*v1.Pod
-	for i := range podList.Items {
-		pod := &podList.Items[i]
-		if pod.Status.Phase == v1.PodRunning {
-			pods = append(pods, pod)
-		}
-	}
-
-	if len(pods) == 0 {
-		return nil, errors.New("no running etcd pods found")
-	}
-	member, rev := getMemberWithMaxRev(pods, bm.etcdTLSConfig)
-	if member == nil {
-		return nil, errors.New("no reachable member")
-	}
+	defer etcdcli.Close()
 
 	if rev <= lastSnapRev {
 		logrus.Info("skipped creating new backup: no change since last time")
 		return nil, nil
 	}
 
-	etcdcli, err := createEtcdClient(member.ClientURL(), bm.etcdTLSConfig)
-	if err != nil {
-		return nil, fmt.Errorf("create etcd client failed: %v", err)
-	}
-	defer etcdcli.Close()
-
-	bs, err := bm.writeSnap(etcdcli.Maintenance, member.ClientURL(), rev)
+	bs, err := bm.writeSnap(etcdcli.Maintenance, etcdcli.Endpoints()[0], rev)
 	if err != nil {
 		return nil, fmt.Errorf("write snapshot failed: %v", err)
 	}
@@ -132,6 +111,37 @@ func (bm *BackupManager) writeSnap(mcli clientv3.Maintenance, endpoint string, r
 	}
 
 	return bs, nil
+}
+
+// etcdClientWithMaxRevision gets the etcd member with the maximum kv store revision
+// and returns the etcd client and the rev of that member.
+func (bm *BackupManager) etcdClientWithMaxRevision() (*clientv3.Client, int64, error) {
+	podList, err := bm.kubecli.Core().Pods(bm.namespace).List(k8sutil.ClusterListOpt(bm.clusterName))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var pods []*v1.Pod
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if pod.Status.Phase == v1.PodRunning {
+			pods = append(pods, pod)
+		}
+	}
+
+	if len(pods) == 0 {
+		return nil, 0, errors.New("no running etcd pods found")
+	}
+	member, rev := getMemberWithMaxRev(pods, bm.etcdTLSConfig)
+	if member == nil {
+		return nil, 0, errors.New("no reachable member")
+	}
+
+	etcdcli, err := createEtcdClient(member.ClientURL(), bm.etcdTLSConfig)
+	if err != nil {
+		return nil, 0, fmt.Errorf("create etcd client failed: %v", err)
+	}
+	return etcdcli, rev, nil
 }
 
 func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config) (*etcdutil.Member, int64) {
