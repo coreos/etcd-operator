@@ -17,7 +17,8 @@ package reader
 import (
 	"fmt"
 	"io"
-	"strings"
+
+	"github.com/coreos/etcd-operator/pkg/backup/util"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -37,7 +38,7 @@ func NewS3Reader(s3 *s3.S3) Reader {
 
 // Open opens the file on path where path must be in the format "<s3-bucket-name>/<key>"
 func (s3r *s3Reader) Open(path string) (io.ReadCloser, error) {
-	bucket, key, err := parseBucketAndKey(path)
+	bucket, key, err := util.ParseBucketAndKey(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse s3 bucket and key: %v", err)
 	}
@@ -50,14 +51,4 @@ func (s3r *s3Reader) Open(path string) (io.ReadCloser, error) {
 	}
 
 	return resp.Body, nil
-}
-
-// parseBucketAndKey parses the path to return the s3 bucket name and key(path in the bucket)
-// returns error if path is not in the format <s3-bucket-name>/<key>
-func parseBucketAndKey(path string) (string, string, error) {
-	toks := strings.SplitN(path, "/", 2)
-	if len(toks) != 2 || len(toks[0]) == 0 || len(toks[1]) == 0 {
-		return "", "", fmt.Errorf("Invalid S3 path (%v)", path)
-	}
-	return toks[0], toks[1], nil
 }
