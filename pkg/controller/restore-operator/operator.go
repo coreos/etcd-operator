@@ -17,7 +17,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/client"
@@ -44,11 +43,6 @@ type Restore struct {
 	kubecli    kubernetes.Interface
 	etcdCRCli  versioned.Interface
 	kubeExtCli apiextensionsclient.Interface
-
-	// restoreCRs is a map of cluster name to restore cr.
-	restoreCRs sync.Map
-	// clusterNames is map of informer's indexer keys to cluster names
-	clusterNames sync.Map
 }
 
 // New creates a restore operator.
