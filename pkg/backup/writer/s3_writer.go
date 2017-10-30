@@ -15,6 +15,7 @@
 package writer
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/coreos/etcd-operator/pkg/backup/util"
@@ -25,26 +26,40 @@ import (
 )
 
 type s3Writer struct {
-	u *s3manager.Uploader
+	s3 *s3.S3
 }
 
 // NewS3Writer creates a s3 writer.
 func NewS3Writer(s3 *s3.S3) Writer {
-	return &s3Writer{s3manager.NewUploaderWithClient(s3)}
+	return &s3Writer{s3}
 }
 
 // Write writes the backup file to the given s3 path, "<s3-bucket-name>/<key>".
-func (s3w *s3Writer) Write(path string, r io.Reader) error {
+func (s3w *s3Writer) Write(path string, r io.Reader) (int64, error) {
 	bk, key, err := util.ParseBucketAndKey(path)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	_, err = s3w.u.Upload(
+	_, err = s3manager.NewUploaderWithClient(s3w.s3).Upload(
 		&s3manager.UploadInput{
 			Bucket: aws.String(bk),
 			Key:    aws.String(key),
 			Body:   r,
 		})
-	return err
+	if err != nil {
+		return 0, err
+	}
+
+	resp, err := s3w.s3.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(bk),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return 0, err
+	}
+	if resp.ContentLength == nil {
+		return 0, fmt.Errorf("failed to compute s3 object size")
+	}
+	return *resp.ContentLength, nil
 }

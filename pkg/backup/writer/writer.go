@@ -18,6 +18,6 @@ import "io"
 
 // Writer defines the required writer operations.
 type Writer interface {
-	// Write writes a backup file to the given path.
-	Write(path string, r io.Reader) error
+	// Write writes a backup file to the given path and returns size of written file.
+	Write(path string, r io.Reader) (int64, error)
 }
