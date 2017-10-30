@@ -15,18 +15,18 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-	"github.com/coreos/etcd-operator/pkg/backup"
-	"github.com/coreos/etcd-operator/pkg/backup/backend"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
-	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
+	"github.com/coreos/etcd-operator/pkg/backup/reader"
 	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -35,19 +35,26 @@ const (
 )
 
 func (r *Restore) startHTTP() {
-	http.HandleFunc(backupapi.APIV1+"/backup/", r.serveBackup)
+	http.HandleFunc(backupapi.APIV1+"/backup/", r.handleServeBackup)
 	logrus.Infof("listening on %v", listenAddr)
 	panic(http.ListenAndServe(listenAddr, nil))
+}
+
+func (r *Restore) handleServeBackup(w http.ResponseWriter, req *http.Request) {
+	err := r.serveBackup(w, req)
+	if err != nil {
+		logrus.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // serveBackup parses incoming request url of the form /backup/<restore-name>
 // get the etcd restore name.
 // Then it returns the etcd cluster backup snapshot to the caller.
-func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) {
+func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 	restoreName := string(req.URL.Path[len(backupHTTPPath):])
 	if len(restoreName) == 0 {
-		http.Error(w, "restore name is not specified", http.StatusNotFound)
-		return
+		return errors.New("restore name is not specified")
 	}
 
 	obj := &api.EtcdRestore{
@@ -58,45 +65,46 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) {
 	}
 	v, exists, err := r.indexer.Get(obj)
 	if err != nil {
-		msg := fmt.Sprintf("failed to get restore CR for restore-name (%v): %v", restoreName, err)
-		logrus.Error(msg)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
+		return fmt.Errorf("failed to get restore CR for restore-name (%v): %v", restoreName, err)
 	}
 	if !exists {
-		msg := fmt.Sprintf("no restore CR found for restore-name (%v)", restoreName)
-		logrus.Error(msg)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
+		return fmt.Errorf("no restore CR found for restore-name (%v)", restoreName)
 	}
 
 	logrus.Infof("serving backup for restore CR %v", restoreName)
 	cr := v.(*api.EtcdRestore)
-	spec := cr.Spec.BackupSpec
-	switch spec.StorageType {
-	case api.BackupStorageTypeS3:
-		bs, cli, err := r.makeBackupServer(spec.S3, spec.ClusterName)
-		if err != nil {
-			http.Error(w, "failed to create S3 backup server", http.StatusInternalServerError)
-			return
+	restoreSource := cr.Spec.RestoreSource
+	var backupReader reader.Reader
+	var path string
+
+	switch {
+	case restoreSource.S3 != nil:
+		s3RestoreSource := restoreSource.S3
+		if len(s3RestoreSource.AWSSecret) == 0 || len(s3RestoreSource.Path) == 0 {
+			return errors.New("invalid s3 restore source field (spec.s3), must specify all required subfields")
 		}
 
-		bs.ServeBackup(w, req)
-		cli.Close()
+		s3Cli, err := s3factory.NewClientFromSecret(r.kubecli, r.namespace, s3RestoreSource.AWSSecret)
+		if err != nil {
+			return fmt.Errorf("failed to create S3 client: %v", err)
+		}
+		defer s3Cli.Close()
+
+		backupReader = reader.NewS3Reader(s3Cli.S3)
+		path = s3RestoreSource.Path
 	default:
-		http.Error(w, fmt.Sprintf("unknown storage type %v", spec.StorageType), http.StatusBadRequest)
+		return errors.New("restore CR must have a restore source specified")
 	}
-}
 
-func (r *Restore) makeBackupServer(s3 *api.S3Source, clusterName string) (*backup.BackupServer, *s3factory.S3Client, error) {
-	cli, err := s3factory.NewClientFromSecret(r.kubecli, r.namespace, s3.AWSSecret)
+	rc, err := backupReader.Open(path)
 	if err != nil {
-		return nil, nil, err
+		return fmt.Errorf("failed to read backup file(%v): %v", path, err)
 	}
+	defer rc.Close()
 
-	prefix := backupapi.ToS3Prefix(s3.Prefix, r.namespace, clusterName)
-	s3cli := backups3.NewFromClient(s3.S3Bucket, prefix, cli.S3)
-	be := backend.NewS3Backend(s3cli)
-	bs := backup.NewBackupServer(be)
-	return bs, cli, nil
+	_, err = io.Copy(w, rc)
+	if err != nil {
+		return fmt.Errorf("failed to write backup to %s: %v", req.RemoteAddr, err)
+	}
+	return nil
 }
