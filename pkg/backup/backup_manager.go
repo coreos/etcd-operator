@@ -23,11 +23,12 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/backend"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/util"
+	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-	"github.com/coreos/etcd/clientv3"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"k8s.io/api/core/v1"
@@ -43,6 +44,7 @@ type BackupManager struct {
 	etcdTLSConfig *tls.Config
 
 	be backend.Backend
+	bw writer.Writer
 }
 
 // NewBackupManager creates a BackupManager.
@@ -53,6 +55,17 @@ func NewBackupManager(kubecli kubernetes.Interface, clusterName string, namespac
 		namespace:     namespace,
 		etcdTLSConfig: etcdTLSConfig,
 		be:            be,
+	}
+}
+
+// NewBackupManagerFromWriter creates a BackupManager with backup writer.
+func NewBackupManagerFromWriter(kubecli kubernetes.Interface, etcdTLSConfig *tls.Config, bw writer.Writer, clusterName, namespace string) *BackupManager {
+	return &BackupManager{
+		kubecli:       kubecli,
+		clusterName:   clusterName,
+		namespace:     namespace,
+		etcdTLSConfig: etcdTLSConfig,
+		bw:            bw,
 	}
 }
 
@@ -77,6 +90,25 @@ func (bm *BackupManager) SaveSnap(lastSnapRev int64) (*backupapi.BackupStatus, e
 	logrus.Infof("saved backup (rev: %v, etcdVersion: %v) for cluster (%s)",
 		bs.Revision, bs.Version, bm.clusterName)
 	return bs, nil
+}
+
+// SaveSnapWithPath saves latest snapshot to a given path.
+func (bm *BackupManager) SaveSnapWithPath(path string) error {
+	etcdcli, _, err := bm.etcdClientWithMaxRevision()
+	if err != nil {
+		return fmt.Errorf("create etcd client failed: %v", err)
+	}
+	defer etcdcli.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
+	rc, err := etcdcli.Snapshot(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to receive snapshot (%v)", err)
+	}
+	defer cancel()
+	defer rc.Close()
+
+	return bm.bw.Write(path, rc)
 }
 
 func (bm *BackupManager) writeSnap(mcli clientv3.Maintenance, endpoint string, rev int64) (*backupapi.BackupStatus, error) {
