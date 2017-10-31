@@ -101,11 +101,11 @@ func (bm *BackupManager) writeSnap(mcli clientv3.Maintenance, endpoint string, r
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
+	defer cancel()
 	rc, err := mcli.Snapshot(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to receive snapshot (%v)", err)
 	}
-	defer cancel()
 	defer rc.Close()
 
 	n, err := bm.be.Save(version, rev, rc)
@@ -138,11 +138,11 @@ func (bm *BackupManager) SaveSnapWithPrefix(prefix string) (string, error) {
 	defer etcdcli.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
+	defer cancel() // Can't cancel() after Snapshot() because that will close the reader.
 	rc, err := etcdcli.Snapshot(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to receive snapshot (%v)", err)
 	}
-	defer cancel()
 	defer rc.Close()
 
 	version, err := getEtcdVersion(etcdcli.Maintenance, etcdcli.Endpoints()[0])
