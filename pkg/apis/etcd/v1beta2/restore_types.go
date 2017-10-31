@@ -43,11 +43,6 @@ type RestoreSpec struct {
 	// using this spec, restore operator will prepare the seed that
 	// etcd operator will pick up later.
 	ClusterSpec ClusterSpec `json:"clusterSpec"`
-	// BackupSpec defines the same spec that backup operator uses to save the backup.
-	// restore operator will have the same logic as backup operator to discover
-	// any existing backups and find the one with largest revision.
-	BackupSpec BackupSpec `json:"backupSpec"`
-	// TODO: Remove BackupSpec once RestoreSource is implemented
 	// RestoreSource tells the where to get the backup and restore from.
 	RestoreSource `json:",inline"`
 }
