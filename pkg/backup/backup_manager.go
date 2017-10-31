@@ -18,16 +18,18 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"path"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/backend"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/util"
+	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-	"github.com/coreos/etcd/clientv3"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"k8s.io/api/core/v1"
@@ -43,6 +45,7 @@ type BackupManager struct {
 	etcdTLSConfig *tls.Config
 
 	be backend.Backend
+	bw writer.Writer
 }
 
 // NewBackupManager creates a BackupManager.
@@ -53,6 +56,16 @@ func NewBackupManager(kubecli kubernetes.Interface, clusterName string, namespac
 		namespace:     namespace,
 		etcdTLSConfig: etcdTLSConfig,
 		be:            be,
+	}
+}
+
+// NewBackupManagerFromWriter creates a BackupManager with backup writer.
+func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, clusterName, namespace string) *BackupManager {
+	return &BackupManager{
+		kubecli:     kubecli,
+		clusterName: clusterName,
+		namespace:   namespace,
+		bw:          bw,
 	}
 }
 
@@ -82,14 +95,12 @@ func (bm *BackupManager) SaveSnap(lastSnapRev int64) (*backupapi.BackupStatus, e
 func (bm *BackupManager) writeSnap(mcli clientv3.Maintenance, endpoint string, rev int64) (*backupapi.BackupStatus, error) {
 	start := time.Now()
 
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	resp, err := mcli.Status(ctx, endpoint)
-	cancel()
+	version, err := getEtcdVersion(mcli, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
 	rc, err := mcli.Snapshot(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to receive snapshot (%v)", err)
@@ -97,7 +108,7 @@ func (bm *BackupManager) writeSnap(mcli clientv3.Maintenance, endpoint string, r
 	defer cancel()
 	defer rc.Close()
 
-	n, err := bm.be.Save(resp.Version, rev, rc)
+	n, err := bm.be.Save(version, rev, rc)
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +116,55 @@ func (bm *BackupManager) writeSnap(mcli clientv3.Maintenance, endpoint string, r
 	bs := &backupapi.BackupStatus{
 		CreationTime:     time.Now().Format(time.RFC3339),
 		Size:             util.ToMB(n),
-		Version:          resp.Version,
+		Version:          version,
 		Revision:         rev,
 		TimeTookInSecond: int(time.Since(start).Seconds() + 1),
 	}
 
 	return bs, nil
+}
+
+// SaveSnapWithPrefix uses backup writer to save latest snapshot to a path prepended with the given prefix
+// and returns file size and full path.
+// the full path has the format of prefix/<etcd_version>_<snapshot_reversion>_etcd.backup
+// e.g prefix = etcd-backups/v1/default/example-etcd-cluster and
+// backup object name = 3.1.8_0000000000000001_etcd.backup
+// full path is "etcd-backups/v1/default/example-etcd-cluster/3.1.8_0000000000000001_etcd.backup".
+func (bm *BackupManager) SaveSnapWithPrefix(prefix string) (string, error) {
+	etcdcli, rev, err := bm.etcdClientWithMaxRevision()
+	if err != nil {
+		return "", fmt.Errorf("create etcd client failed: %v", err)
+	}
+	defer etcdcli.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
+	rc, err := etcdcli.Snapshot(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to receive snapshot (%v)", err)
+	}
+	defer cancel()
+	defer rc.Close()
+
+	version, err := getEtcdVersion(etcdcli.Maintenance, etcdcli.Endpoints()[0])
+	if err != nil {
+		return "", err
+	}
+	fullPath := path.Join(prefix, util.MakeBackupName(version, rev))
+	_, err = bm.bw.Write(fullPath, rc)
+	if err != nil {
+		return "", fmt.Errorf("failed to write snapshot (%v)", err)
+	}
+	return fullPath, nil
+}
+
+func getEtcdVersion(mcli clientv3.Maintenance, endpoint string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
+	resp, err := mcli.Status(ctx, endpoint)
+	cancel()
+	if err != nil {
+		return "", fmt.Errorf("failed to receive etcd version (%v)", err)
+	}
+	return resp.Version, nil
 }
 
 // etcdClientWithMaxRevision gets the etcd member with the maximum kv store revision

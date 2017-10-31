@@ -20,10 +20,8 @@ import (
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup"
-	"github.com/coreos/etcd-operator/pkg/backup/backend"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
-	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
-	"github.com/coreos/etcd-operator/pkg/backup/util"
+	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
 
 	"k8s.io/client-go/kubernetes"
@@ -37,23 +35,12 @@ func handleS3(kubecli kubernetes.Interface, s3 *api.S3Source, namespace, cluster
 		return "", err
 	}
 	defer cli.Close()
-	prefix := backupapi.ToS3Prefix(s3.Prefix, namespace, clusterName)
-	s3cli := backups3.NewFromClient(s3.S3Bucket, prefix, cli.S3)
-	be := backend.NewS3Backend(s3cli)
-	bm := backup.NewBackupManager(kubecli, clusterName, namespace, nil, be)
-
-	// this SaveSnap takes 0 as lastSnapRev to indicate that it
-	// saves any snapshot with revision > 0.
-	bs, err := bm.SaveSnap(0)
+	// TODO: support TLS.
+	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewS3Writer(cli.S3), clusterName, namespace)
+	s3Prefix := backupapi.ToS3Prefix(s3.Prefix, namespace, clusterName)
+	fullPath, err := bm.SaveSnapWithPrefix(path.Join(s3.S3Bucket, s3Prefix))
 	if err != nil {
 		return "", fmt.Errorf("failed to save snapshot (%v)", err)
 	}
-
-	bn := util.MakeBackupName(bs.Version, bs.Revision)
-	return toS3Path(s3.S3Bucket, prefix, bn), nil
-}
-
-// toS3Path returns the full s3 path of the backup file based s3Bucket, prefix, and backupName.
-func toS3Path(s3Bucket, prefix, backupName string) string {
-	return path.Join(s3Bucket, prefix, backupName)
+	return fullPath, nil
 }
