@@ -58,8 +58,8 @@ func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, 
 // and returns file size and full path.
 // the full path has the format of prefix/<etcd_version>_<snapshot_reversion>_etcd.backup
 // e.g prefix = etcd-backups/v1/default/example-etcd-cluster and
-// backup object name = 3.1.8_0000000000000001_etcd.backup
-// full path is "etcd-backups/v1/default/example-etcd-cluster/3.1.8_0000000000000001_etcd.backup".
+// backup object name = 3.2.10_0000000000000001_etcd.backup
+// full path is "etcd-backups/v1/default/example-etcd-cluster/3.2.10_0000000000000001_etcd.backup".
 func (bm *BackupManager) SaveSnapWithPrefix(prefix string) (string, error) {
 	etcdcli, rev, err := bm.etcdClientWithMaxRevision()
 	if err != nil {

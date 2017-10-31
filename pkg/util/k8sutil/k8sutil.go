@@ -249,10 +249,16 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		"etcd_cluster": clusterName,
 	}
 
-	if strings.HasPrefix(cs.Version, "3.0.") {
-		// DNS entries might not warm up initially. 3.0.x etcd will exit without retrying.
-		commands = fmt.Sprintf("sleep 5; %s", commands)
-	}
+	// In etcd 3.2, TLS listener will do a reverse-DNS lookup for pod IP -> hostname.
+	// If DNS entry is not warmed up, it will return empty result and peer connection will be rejected.
+	ft := `
+	while ( ! nslookup %s )
+	do
+		sleep 2
+	done
+	%s
+	`
+	commands = fmt.Sprintf(ft, m.Addr(), commands)
 	container := containerWithLivenessProbe(etcdContainer(commands, cs.BaseImage, cs.Version), etcdLivenessProbe(cs.TLS.IsSecureClient()))
 
 	if cs.Pod != nil {

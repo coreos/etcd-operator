@@ -14,7 +14,7 @@ This will use default version that etcd operator chooses.
 ```yaml
 spec:
   size: 3
-  version: "3.1.8"
+  version: "3.2.10"
 ```
 
 ### Three members cluster with node selector and anti-affinity

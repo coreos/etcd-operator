@@ -35,7 +35,12 @@ func PreparePeerTLSSecret(clusterName, ns, secretName string) error {
 	certPath := filepath.Join(dir, "peer.crt")
 	keyPath := filepath.Join(dir, "peer.key")
 	caPath := filepath.Join(dir, "peer-ca.crt")
-	hosts := []string{fmt.Sprintf("*.%s.%s.svc", clusterName, ns)}
+	hosts := []string{
+		fmt.Sprintf("*.%s.%s.svc", clusterName, ns),
+		// Due to issue https://github.com/coreos/etcd/issues/8797,
+		// we need to provide FQDN in certs at the moment.
+		fmt.Sprintf("*.%s.%s.svc.cluster.local", clusterName, ns),
+	}
 
 	err = prepareTLSCerts(certPath, keyPath, caPath, hosts)
 	if err != nil {

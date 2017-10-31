@@ -1,0 +1,19 @@
+{
+    "CN": "etcd peer",
+    "hosts": [
+        "*.example.default.svc",
+        "*.example.default.svc.cluster.local"
+    ],
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+            "C": "US",
+            "L": "CA",
+            "ST": "San Francisco"
+        }
+    ]
+}
+

@@ -37,7 +37,7 @@ See the [Resources and Labels](./doc/user/resource_labels.md) doc for an overvie
 ## Requirements
 
 - Kubernetes 1.8+
-- etcd 3.1+
+- etcd 3.2.10+
 
 ## Demo
 
@@ -101,7 +101,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 5
-  version: "3.1.8"
+  version: "3.2.10"
 ```
 
 Apply the size change to the cluster CR:
@@ -129,7 +129,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 3
-  version: "3.1.8"
+  version: "3.2.10"
 ```
 ```
 $ kubectl apply -f example/example-etcd-cluster.yaml
@@ -214,20 +214,21 @@ example-etcd-cluster-0003       1/1       Running   0          1m
 Have the following yaml file ready:
 
 ```
-$ cat 3.0-etcd-cluster.yaml
+$ cat upgrade-example.yaml
 apiVersion: "etcd.database.coreos.com/v1beta2"
 kind: "EtcdCluster"
 metadata:
   name: "example-etcd-cluster"
 spec:
   size: 3
-  version: "3.0.16"
+  version: "3.1.10"
+  baseImage: "quay.io/coreos/etcd"
 ```
 
-Create an etcd cluster with the version specified (3.0.16) in the yaml file:
+Create an etcd cluster with the version specified (3.1.10) in the yaml file:
 
 ```
-$ kubectl apply -f 3.0-etcd-cluster.yaml
+$ kubectl apply -f upgrade-example.yaml
 $ kubectl get pods
 NAME                           READY     STATUS    RESTARTS   AGE
 example-etcd-cluster-0000      1/1       Running   0          37s
@@ -235,37 +236,37 @@ example-etcd-cluster-0001      1/1       Running   0          25s
 example-etcd-cluster-0002      1/1       Running   0          14s
 ```
 
-The container image version should be 3.0.16:
+The container image version should be 3.1.10:
 
 ```
 $ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
-    image: quay.io/coreos/etcd:v3.0.16
+    image: quay.io/coreos/etcd:v3.1.10
 ```
 
-Now modify the file `3.0-etcd-cluster.yaml` and change the `version` from 3.0.16 to 3.1.8:
+Now modify the file `upgrade-example` and change the `version` from 3.1.10 to 3.2.10:
 
 ```
-$ cat 3.0-etcd-cluster.yaml
+$ cat upgrade-example
 apiVersion: "etcd.database.coreos.com/v1beta2"
 kind: "EtcdCluster"
 metadata:
   name: "example-etcd-cluster"
 spec:
   size: 3
-  version: "3.1.8"
+  version: "3.2.10"
 ```
 
 Apply the version change to the cluster CR:
 
 ```
-$ kubectl apply -f 3.0-etcd-cluster.yaml
+$ kubectl apply -f upgrade-example
 ```
 
-Wait ~30 seconds. The container image version should be updated to v3.1.8:
+Wait ~30 seconds. The container image version should be updated to v3.2.10:
 
 ```
 $ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
-    image: quay.io/coreos/etcd:v3.1.8
+    image: gcr.io/etcd-development/etcd:v3.2.10
 ```
 
 Check the other two pods and you should see the same result.
