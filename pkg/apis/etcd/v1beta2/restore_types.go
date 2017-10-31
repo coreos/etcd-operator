@@ -29,6 +29,7 @@ type EtcdRestoreList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // EtcdRestore represents a Kubernetes EtcdRestore Custom Resource.
+// The EtcdRestore CR name will be used as the name of the new restored cluster.
 type EtcdRestore struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`

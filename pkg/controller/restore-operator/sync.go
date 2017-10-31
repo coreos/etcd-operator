@@ -21,7 +21,9 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -134,7 +136,9 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 	}()
 
 	cs := er.Spec.ClusterSpec
-	clusterName := er.Spec.BackupSpec.ClusterName
+	// Use the restore CR's name as the name of the etcd cluster being restored
+	clusterName := er.Name
+
 	ec := &api.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: clusterName},
 		Spec:       cs,
@@ -149,9 +153,26 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 
 	r.createSeedMember(cs, r.mySvcAddr, clusterName, ec.AsOwner())
 
-	ec.Spec.Paused = false
-	_, err = r.etcdCRCli.EtcdV1beta2().EtcdClusters(r.namespace).Update(ec)
-	return err
+	// Retry updating the etcdcluster CR spec.paused=false. The etcd-operator will update the CR once so there needs to be a single retry in case of conflict
+	err = retryutil.Retry(2, 1, func() (bool, error) {
+		ec, err = r.etcdCRCli.EtcdV1beta2().EtcdClusters(r.namespace).Get(clusterName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		ec.Spec.Paused = false
+		_, err = r.etcdCRCli.EtcdV1beta2().EtcdClusters(r.namespace).Update(ec)
+		if err != nil {
+			if apierrors.IsConflict(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update etcdcluster CR to spec.paused=false: %v", err)
+	}
+	return nil
 }
 
 func (r *Restore) createSeedMember(cs api.ClusterSpec, svcAddr, clusterName string, owner metav1.OwnerReference) error {
@@ -163,8 +184,7 @@ func (r *Restore) createSeedMember(cs api.ClusterSpec, svcAddr, clusterName stri
 		SecureClient: false,
 	}
 	ms := etcdutil.NewMemberSet(m)
-	etcdVersion := cs.Version
-	backupURL := backupapi.BackupURLForCluster("http", svcAddr, clusterName, etcdVersion, -1)
+	backupURL := backupapi.BackupURLForRestore("http", svcAddr, clusterName)
 	cs.Cleanup()
 	pod := k8sutil.NewSeedMemberPod(clusterName, ms, m, cs, owner, backupURL)
 	_, err := r.kubecli.Core().Pods(r.namespace).Create(pod)
