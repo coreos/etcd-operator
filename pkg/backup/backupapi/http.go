@@ -27,11 +27,11 @@ const (
 
 // NewBackupURL creates a URL struct for retrieving an existing backup.
 func NewBackupURL(scheme, host, version string, revision int64) *url.URL {
-	return BackupURLForCluster(scheme, host, "", version, revision)
+	return backupURLForCluster(scheme, host, "", version, revision)
 }
 
-// BackupURLForCluster creates a URL struct for retrieving an existing backup of given cluster.
-func BackupURLForCluster(scheme, host, clusterName, version string, revision int64) *url.URL {
+// backupURLForCluster creates a URL struct for retrieving an existing backup of given cluster.
+func backupURLForCluster(scheme, host, clusterName, version string, revision int64) *url.URL {
 	u := &url.URL{
 		Scheme: scheme,
 		Host:   host,
@@ -45,4 +45,13 @@ func BackupURLForCluster(scheme, host, clusterName, version string, revision int
 	u.RawQuery = uv.Encode()
 
 	return u
+}
+
+// BackupURLForRestore creates a URL struct for retrieving an existing backup specified by a restore CR
+func BackupURLForRestore(scheme, host, restoreName string) *url.URL {
+	return &url.URL{
+		Scheme: scheme,
+		Host:   host,
+		Path:   path.Join(APIV1, "backup", restoreName),
+	}
 }
