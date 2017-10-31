@@ -15,6 +15,7 @@
 package cluster
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -25,7 +26,6 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"golang.org/x/net/context"
 	"k8s.io/api/core/v1"
 )
 

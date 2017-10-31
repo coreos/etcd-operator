@@ -15,13 +15,12 @@
 package etcdutil
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd/clientv3"
-
-	"golang.org/x/net/context"
 )
 
 func ListMembers(clientURLs []string, tc *tls.Config) (*clientv3.MemberListResponse, error) {

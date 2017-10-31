@@ -16,6 +16,7 @@ package backup
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"io/ioutil"
 	"os"
@@ -25,7 +26,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/backend"
 	"github.com/coreos/etcd-operator/pkg/backup/util"
 	"github.com/coreos/etcd/clientv3"
-	"golang.org/x/net/context"
 )
 
 const (

@@ -15,6 +15,7 @@
 package backup
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -31,7 +32,6 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
