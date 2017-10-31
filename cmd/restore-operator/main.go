@@ -51,9 +51,9 @@ func main() {
 	if len(name) == 0 {
 		logrus.Fatalf("must set env %s", constants.EnvOperatorPodName)
 	}
-	serviceAddrForSelf = os.Getenv("SERVICE_ADDR")
+	serviceAddrForSelf = os.Getenv(constants.EnvRestoreOperatorServiceName)
 	if len(serviceAddrForSelf) == 0 {
-		logrus.Fatalf("must set env %s", "SERVICE_ADDR")
+		logrus.Fatalf("must set env %s", constants.EnvRestoreOperatorServiceName)
 	}
 	id, err := os.Hostname()
 	if err != nil {
