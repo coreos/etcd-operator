@@ -759,7 +759,6 @@ func (in *RestoreSource) DeepCopy() *RestoreSource {
 func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 	*out = *in
 	in.ClusterSpec.DeepCopyInto(&out.ClusterSpec)
-	in.BackupSpec.DeepCopyInto(&out.BackupSpec)
 	in.RestoreSource.DeepCopyInto(&out.RestoreSource)
 	return
 }
