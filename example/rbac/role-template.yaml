@@ -8,6 +8,8 @@ rules:
   - etcd.database.coreos.com
   resources:
   - etcdclusters
+  - etcdbackups
+  - etcdrestores
   verbs:
   - "*"
 - apiGroups:

@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/client"
@@ -36,6 +37,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	v1beta1storage "k8s.io/api/storage/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -44,7 +46,12 @@ import (
 
 var Global *Framework
 
-const etcdBackupOperatorName = "etcd-backup-operator"
+const (
+	etcdBackupOperatorName         = "etcd-backup-operator"
+	etcdRestoreOperatorName        = "etcd-restore-operator"
+	etcdRestoreOperatorServiceName = "etcd-restore-operator"
+	etcdRestoreServicePort         = 19999
+)
 
 type Framework struct {
 	opImage          string
@@ -94,6 +101,14 @@ func Teardown() error {
 	if err != nil {
 		return fmt.Errorf("failed to delete etcd backup operator: %v", err)
 	}
+	err = Global.KubeClient.CoreV1().Pods(Global.Namespace).Delete(etcdRestoreOperatorName, metav1.NewDeleteOptions(1))
+	if err != nil {
+		return fmt.Errorf("failed to delete etcd restore operator pod: %v", err)
+	}
+	err = Global.KubeClient.CoreV1().Services(Global.Namespace).Delete(etcdRestoreOperatorServiceName, metav1.NewDeleteOptions(1))
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete etcd restore operator service: %v", err)
+	}
 	// TODO: check all deleted and wait
 	Global = nil
 	logrus.Info("e2e teardown successfully")
@@ -118,6 +133,12 @@ func (f *Framework) setup() error {
 		return fmt.Errorf("failed to create etcd backup operator: %v", err)
 	}
 	logrus.Info("etcd backup operator created successfully")
+
+	err = f.SetupEtcdRestoreOperatorAndService()
+	if err != nil {
+		return err
+	}
+	logrus.Info("etcd restore operator pod and service created successfully")
 
 	logrus.Info("e2e setup successfully")
 	return nil
@@ -207,7 +228,7 @@ func (f *Framework) DeleteEtcdOperatorCompletely() error {
 	return nil
 }
 
-// SetupEtcdBackupOperator creates a etcd backup operator deployment with name as "etcd-backup-operator".
+// SetupEtcdBackupOperator creates a etcd backup operator pod with name as "etcd-backup-operator".
 func (f *Framework) SetupEtcdBackupOperator() error {
 	cmd := []string{"/usr/local/bin/etcd-backup-operator"}
 	pod := &v1.Pod{
@@ -244,6 +265,68 @@ func (f *Framework) SetupEtcdBackupOperator() error {
 		return err
 	}
 	logrus.Infof("etcd backup operator pod is running on node (%s)", p.Spec.NodeName)
+	return nil
+}
+
+// SetupEtcdRestoreOperatorAndService creates an etcd restore operator pod and the restore operator service.
+func (f *Framework) SetupEtcdRestoreOperatorAndService() error {
+	cmd := []string{"/usr/local/bin/etcd-restore-operator"}
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   etcdRestoreOperatorName,
+			Labels: map[string]string{"name": etcdRestoreOperatorName},
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:            etcdRestoreOperatorName,
+					Image:           f.opImage,
+					ImagePullPolicy: v1.PullAlways,
+					Command:         cmd,
+					Env: []v1.EnvVar{
+						{
+							Name:      constants.EnvOperatorPodNamespace,
+							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+						},
+						{
+							Name:      constants.EnvOperatorPodName,
+							ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
+						},
+						{
+							Name:  constants.EnvRestoreOperatorServiceName,
+							Value: etcdRestoreOperatorServiceName + ":" + strconv.Itoa(etcdRestoreServicePort),
+						},
+					},
+				},
+			},
+			RestartPolicy: v1.RestartPolicyNever,
+		},
+	}
+
+	p, err := k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace, pod, 60*time.Second)
+	if err != nil {
+		describePod(f.Namespace, etcdRestoreOperatorName)
+		return fmt.Errorf("create restore-operator pod failed: %v", err)
+	}
+	logrus.Infof("restore-operator pod is running on node (%s)", p.Spec.NodeName)
+
+	svc := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   etcdRestoreOperatorServiceName,
+			Labels: map[string]string{"name": etcdRestoreOperatorServiceName},
+		},
+		Spec: v1.ServiceSpec{
+			Selector: map[string]string{"name": etcdRestoreOperatorName},
+			Ports: []v1.ServicePort{{
+				Protocol: v1.ProtocolTCP,
+				Port:     etcdRestoreServicePort,
+			}},
+		},
+	}
+	_, err = f.KubeClient.CoreV1().Services(f.Namespace).Create(svc)
+	if err != nil {
+		return fmt.Errorf("create restore-operator service failed: %v", err)
+	}
 	return nil
 }
 
