@@ -178,7 +178,7 @@ func (bc *BackupController) Run() {
 
 		if ackchan != nil {
 			ack := backupNowAck{err: err}
-			if err == nil {
+			if err == nil && len(bc.recentBackupsStatus) > 0 {
 				ack.status = bc.recentBackupsStatus[len(bc.recentBackupsStatus)-1]
 			}
 			ackchan <- ack
