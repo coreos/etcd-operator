@@ -75,6 +75,34 @@ func NewS3Backup(clusterName string) *api.EtcdBackup {
 	}
 }
 
+// NewS3RestoreSource returns an S3RestoreSource with the specified path and secret
+func NewS3RestoreSource(path, awsSecret string) *api.S3RestoreSource {
+	return &api.S3RestoreSource{
+		Path:      path,
+		AWSSecret: awsSecret,
+	}
+}
+
+// NewEtcdRestore returns an EtcdRestore CR with the specified RestoreSource
+func NewEtcdRestore(restoreName, version string, size int, restoreSource api.RestoreSource) *api.EtcdRestore {
+	return &api.EtcdRestore{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       api.EtcdRestoreResourceKind,
+			APIVersion: api.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: restoreName,
+		},
+		Spec: api.RestoreSpec{
+			ClusterSpec: api.ClusterSpec{
+				Size:    size,
+				Version: version,
+			},
+			RestoreSource: restoreSource,
+		},
+	}
+}
+
 func NewPVBackupPolicy(cleanup bool, storageClass string) *api.BackupPolicy {
 	return &api.BackupPolicy{
 		BackupIntervalInSecond: 60 * 60,
