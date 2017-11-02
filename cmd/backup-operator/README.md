@@ -10,15 +10,12 @@ Try out etcd backup operator by running it on Kubernetes and then create a `Etcd
 >Note: The demo uses the `default` namespace.
 
 Prerequisites: 
-* access to a Kubernetes environment.
-* see [Instruction][etcd_cluster_deploy] to deploy an etcd cluster. 
+* A running etcd cluster named `example-etcd-cluster`. See [instructions][etcd_cluster_deploy] to deploy it.
 
 ### Deploy etcd backup operator
 
-Once `example-etcd-cluster` is running, let's create a backup for `example-etcd-cluster` using etcd backup operator. 
-
-First, deploy an etcd backup operator:
-> Note: etcd backup operator also creates EtcdBackup CRD when starting.
+Create a deployment of etcd backup operator:
+> Note: etcd backup operator creates EtcdBackup CRD automatically
 
 ```sh
 $ kubectl create -f example/etcd-backup-operator/deployment.yaml
@@ -27,29 +24,34 @@ NAME                                    READY     STATUS    RESTARTS   AGE
 etcd-backup-operator-1102130733-hhgt7   1/1       Running   0          3s
 ```
 
-### Create AWS Secret
+### Setup AWS Secret
 
-Create a Kubernetes secret that contains aws config/credential; etcd backup operator uses the secret to gain access to S3 in order to save the etcd snapshot.
+Create a Kubernetes secret that contains aws config/credential;
+the secret will be used later to save etcd backup into S3.
 
-Verify that the local aws config and credentials files exist:
-```sh
-$ cat $AWS_DIR/credentials
-[default]
-aws_access_key_id = XXX
-aws_secret_access_key = XXX
+1. Verify that the local aws config and credentials files exist:
 
-$ cat $AWS_DIR/config
-[default]
-region = <region>
-```
+    ```sh
+    $ cat $AWS_DIR/credentials
+    [default]
+    aws_access_key_id = XXX
+    aws_secret_access_key = XXX
 
-Create kubernetes secret `aws`:
+    $ cat $AWS_DIR/config
+    [default]
+    region = <region>
+    ```
 
-`kubectl create secret generic aws --from-file=$AWS_DIR/credentials --from-file=$AWS_DIR/config`
+2. Create secret `aws`:
 
-### Create Backup CR
+    ```
+    kubectl create secret generic aws --from-file=$AWS_DIR/credentials --from-file=$AWS_DIR/config
+    ```
 
-Fill the template `example/etcd-backup-operator/backup_cr.yaml` with concrete `s3Bucket` and `awsSecret` values and trigger a backup:
+### Create EtcdBackup CR
+
+Create EtcdBackup CR:
+>Note: this example uses S3 Bucket "mybucket" and k8s secret "aws"
 
 ```sh
 sed -e 's/<s3-bucket-name>/mybucket/g' \
@@ -60,7 +62,8 @@ sed -e 's/<s3-bucket-name>/mybucket/g' \
 
 ### Verify status
 
-Verify the backup status by checking the `status` section of the `EtcdBackup` CR:
+Check the `status` section of the `EtcdBackup` CR:
+
 ```
 $ kubectl get EtcdBackup example-etcd-cluster-backup -o yaml
 apiVersion: etcd.database.coreos.com/v1beta2
@@ -77,7 +80,8 @@ This demonstrates etcd backup operator's basic one time backup functionality.
 
 ### Cleanup
 
-Delete the etcd-backup-operator deployment and the `EtcdBackup` CR. Deleting the `EtcdBackup` CR won't delete the backup in S3.
+Delete the etcd-backup-operator deployment and the `EtcdBackup` CR.
+> Note: Deleting the `EtcdBackup` CR won't delete the backup in S3.
 
 ```sh
 kubectl delete etcdbackup example-etcd-cluster-backup
