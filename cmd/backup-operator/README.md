@@ -13,7 +13,7 @@ Prerequisites:
 * access to a Kubernetes environment.
 * see [Instruction][etcd_cluster_deploy] to deploy an etcd cluster. 
 
-### Deploy etcd restore operator
+### Deploy etcd backup operator
 
 Once `example-etcd-cluster` is running, let's create a backup for `example-etcd-cluster` using etcd backup operator. 
 
@@ -29,7 +29,7 @@ etcd-backup-operator-1102130733-hhgt7   1/1       Running   0          3s
 
 ### Create AWS Secret
 
-Then, create an Kubernetes secret that contains aws config/credential; etcd operator uses the secret to gain access to S3 in order to save the etcd snapshot.
+Create a Kubernetes secret that contains aws config/credential; etcd backup operator uses the secret to gain access to S3 in order to save the etcd snapshot.
 
 Verify that the local aws config and credentials files exist:
 ```sh
