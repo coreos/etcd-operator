@@ -62,7 +62,7 @@ sed -e 's/<s3-bucket-name>/mybucket/g' \
 
 Verify the backup status by checking the `status` section of the `EtcdBackup` CR:
 ```
-$ kubectl get EtcdBackup example-etcd-cluster -o yaml
+$ kubectl get EtcdBackup example-etcd-cluster-backup -o yaml
 apiVersion: etcd.database.coreos.com/v1beta2
 kind: EtcdBackup
 ...
@@ -75,9 +75,16 @@ status:
 
 This demonstrates etcd backup operator's basic one time backup functionality.
 
+### Cleanup
+
+Delete the etcd-backup-operator deployment and the `EtcdBackup` CR. Deleting the `EtcdBackup` CR won't delete the backup in S3.
+
+```sh
+kubectl delete etcdbackup example-etcd-cluster-backup
+kubectl delete -f example/etcd-backup-operator/deployment.yaml
+```
 
 [Kube]:https://github.com/kubernetes/kubernetes
 [s3]:https://aws.amazon.com/s3/
 [etcd_cluster_deploy]:https://github.com/coreos/etcd-operator#create-and-destroy-an-etcd-cluster
 [minikube]:https://github.com/kubernetes/minikube
-

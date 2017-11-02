@@ -1,7 +1,7 @@
 apiVersion: "etcd.database.coreos.com/v1beta2"
 kind: "EtcdBackup"
 metadata:
-  name: example-etcd-cluster
+  name: example-etcd-cluster-backup
 spec:
   clusterName: example-etcd-cluster
   storageType: S3
