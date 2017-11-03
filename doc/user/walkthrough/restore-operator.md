@@ -129,7 +129,4 @@ kubect delete -f example/etcd-restore-operator/deployment.yaml
 ```
 
 
-[backup-operator-README]:../backup-operator/README.md
-[install-guide]:../../doc/user/install_guide.md
-[RBAC-guide]:../../doc/user/rbac.md
-[restore-cr]:../../example/etcd-restore-operator/restore_cr.yaml
+[backup-operator-README]:./backup-operator.md
