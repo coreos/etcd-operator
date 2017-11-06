@@ -37,21 +37,6 @@ func NewCluster(genName string, size int) *api.EtcdCluster {
 	}
 }
 
-func NewS3BackupPolicy(cleanup bool) *api.BackupPolicy {
-	return &api.BackupPolicy{
-		BackupIntervalInSecond: 60 * 60,
-		MaxBackups:             5,
-		StorageType:            api.BackupStorageTypeS3,
-		StorageSource: api.StorageSource{
-			S3: &api.S3Source{
-				S3Bucket:  os.Getenv("TEST_S3_BUCKET"),
-				AWSSecret: os.Getenv("TEST_AWS_SECRET"),
-			},
-		},
-		AutoDelete: cleanup,
-	}
-}
-
 // NewS3Backup creates a EtcdBackup object using clusterName.
 func NewS3Backup(clusterName string) *api.EtcdBackup {
 	return &api.EtcdBackup{
@@ -101,31 +86,6 @@ func NewEtcdRestore(restoreName, version string, size int, restoreSource api.Res
 			RestoreSource: restoreSource,
 		},
 	}
-}
-
-func NewPVBackupPolicy(cleanup bool, storageClass string) *api.BackupPolicy {
-	return &api.BackupPolicy{
-		BackupIntervalInSecond: 60 * 60,
-		MaxBackups:             5,
-		StorageType:            api.BackupStorageTypePersistentVolume,
-		StorageSource: api.StorageSource{
-			PV: &api.PVSource{
-				VolumeSizeInMB: 512,
-				StorageClass:   storageClass,
-			},
-		},
-		AutoDelete: cleanup,
-	}
-}
-
-func ClusterWithBackup(cl *api.EtcdCluster, backupPolicy *api.BackupPolicy) *api.EtcdCluster {
-	cl.Spec.Backup = backupPolicy
-	return cl
-}
-
-func ClusterWithRestore(cl *api.EtcdCluster, restorePolicy *api.RestorePolicy) *api.EtcdCluster {
-	cl.Spec.Restore = restorePolicy
-	return cl
 }
 
 func ClusterWithVersion(cl *api.EtcdCluster, version string) *api.EtcdCluster {
