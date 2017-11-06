@@ -16,7 +16,6 @@ package e2esh
 
 import (
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -35,7 +34,6 @@ import (
 func TestSelfHosted(t *testing.T) {
 	t.Run("create self hosted cluster from scratch", testCreateSelfHostedCluster)
 	t.Run("migrate boot member to self hosted cluster", testCreateSelfHostedClusterWithBootMember)
-	t.Run("backup for self hosted cluster", testSelfHostedClusterWithBackup)
 	t.Run("TLS for self hosted cluster", func(t *testing.T) { e2eslow.TLSTestCommon(t, true) })
 	cleanupSelfHostedHostpath()
 }
@@ -122,47 +120,6 @@ func startEtcd(f *framework.Framework) (*v1.Pod, error) {
 		},
 	}
 	return k8sutil.CreateAndWaitPod(f.KubeClient, f.Namespace, p, 30*time.Second)
-}
-
-func testSelfHostedClusterWithBackup(t *testing.T) {
-	if os.Getenv("AWS_TEST_ENABLED") != "true" {
-		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
-	}
-
-	f := framework.Global
-
-	cl := e2eutil.NewCluster("test-cluster-", 3)
-	cl = e2eutil.ClusterWithBackup(cl, e2eutil.NewS3BackupPolicy(true))
-	cl = e2eutil.ClusterWithSelfHosted(cl, &api.SelfHostedPolicy{})
-
-	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, cl)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		storageCheckerOptions := e2eutil.StorageCheckerOptions{
-			S3Cli:    f.S3Cli,
-			S3Bucket: f.S3Bucket,
-		}
-		err := e2eutil.DeleteClusterAndBackup(t, f.CRClient, f.KubeClient, testEtcd, storageCheckerOptions)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	_, err = e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, testEtcd)
-	if err != nil {
-		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
-	}
-	fmt.Println("reached to 3 members cluster")
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Name, 6)
-	if err != nil {
-		t.Fatalf("failed to create backup pod: %v", err)
-	}
-	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Name)
-	if err != nil {
-		t.Fatalf("fail to make a latest backup: %v", err)
-	}
 }
 
 func cleanupSelfHostedHostpath() {

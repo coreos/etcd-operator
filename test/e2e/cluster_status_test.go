@@ -15,12 +15,10 @@
 package e2e
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
@@ -63,73 +61,5 @@ func TestReadyMembersStatus(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("failed to get size of ReadyMembers to reach %d : %v", size, err)
-	}
-}
-
-func TestBackupStatus(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
-	f := framework.Global
-
-	bp := e2eutil.NewPVBackupPolicy(true, f.StorageClassName)
-	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.ClusterWithBackup(e2eutil.NewCluster("test-etcd-", 1), bp))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		var storageCheckerOptions *e2eutil.StorageCheckerOptions
-		switch testEtcd.Spec.Backup.StorageType {
-		case api.BackupStorageTypePersistentVolume, api.BackupStorageTypeDefault:
-			storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
-		case api.BackupStorageTypeS3:
-			storageCheckerOptions = &e2eutil.StorageCheckerOptions{
-				S3Cli:    f.S3Cli,
-				S3Bucket: f.S3Bucket,
-			}
-		}
-
-		err := e2eutil.DeleteClusterAndBackup(t, f.CRClient, f.KubeClient, testEtcd, *storageCheckerOptions)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	_, err = e2eutil.WaitUntilSizeReached(t, f.CRClient, 1, 6, testEtcd)
-	if err != nil {
-		t.Fatalf("failed to create 1 members etcd cluster: %v", err)
-	}
-	err = e2eutil.WaitBackupPodUp(t, f.KubeClient, f.Namespace, testEtcd.Name, 6)
-	if err != nil {
-		t.Fatalf("failed to create backup pod: %v", err)
-	}
-	err = e2eutil.MakeBackup(f.KubeClient, f.Namespace, testEtcd.Name)
-	if err != nil {
-		t.Fatalf("fail to make backup: %v", err)
-	}
-
-	err = retryutil.Retry(5*time.Second, 6, func() (done bool, err error) {
-		c, err := f.CRClient.EtcdV1beta2().EtcdClusters(f.Namespace).Get(testEtcd.Name, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("faied to get cluster spec: %v", err)
-		}
-		bs := c.Status.BackupServiceStatus
-		if bs == nil {
-			e2eutil.LogfWithTimestamp(t, "backup status is nil")
-			return false, nil
-		}
-		// We expect it will make one backup eventually.
-		if bs.Backups < 1 {
-			e2eutil.LogfWithTimestamp(t, "backup number is %v", bs.Backups)
-			return false, nil
-		}
-		if bs.BackupSize == 0 {
-			return false, fmt.Errorf("backupsize = 0, want > 0")
-		}
-		return true, nil
-	})
-
-	if err != nil {
-		t.Error(err)
 	}
 }
