@@ -37,6 +37,15 @@ func NewCluster(genName string, size int) *api.EtcdCluster {
 	}
 }
 
+func AddPV(c *api.EtcdCluster, storageClass string) {
+	c.Spec.Pod = &api.PodPolicy{
+		PV: &api.PVSource{
+			VolumeSizeInMB: 512,
+			StorageClass:   storageClass,
+		},
+	}
+}
+
 func NewS3BackupPolicy(cleanup bool) *api.BackupPolicy {
 	return &api.BackupPolicy{
 		BackupIntervalInSecond: 60 * 60,
