@@ -17,19 +17,16 @@ package e2eutil
 import (
 	"bytes"
 	"fmt"
-	"path"
 	"strings"
 	"testing"
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-	backups3 "github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	"k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -182,25 +179,6 @@ func presentIn(a string, list []string) bool {
 	return false
 }
 
-func WaitBackupPodUp(t *testing.T, kubecli kubernetes.Interface, ns, clusterName string, retries int) error {
-	ls := labels.SelectorFromSet(k8sutil.BackupSidecarLabels(clusterName))
-	return retryutil.Retry(retryInterval, retries, func() (done bool, err error) {
-		podList, err := kubecli.CoreV1().Pods(ns).List(metav1.ListOptions{
-			LabelSelector: ls.String(),
-		})
-		if err != nil {
-			return false, err
-		}
-		for _, p := range podList.Items {
-			LogfWithTimestamp(t, "backup pod (%s) phase: %v", p.Name, p.Status.Phase)
-			if p.Status.Phase == v1.PodRunning {
-				return true, nil
-			}
-		}
-		return false, nil
-	})
-}
-
 func waitResourcesDeleted(t *testing.T, kubeClient kubernetes.Interface, cl *api.EtcdCluster) error {
 	undeletedPods, err := WaitPodsDeleted(kubeClient, cl.Namespace, 3, k8sutil.ClusterListOpt(cl.Name))
 	if err != nil {
@@ -232,72 +210,6 @@ func waitResourcesDeleted(t *testing.T, kubeClient kubernetes.Interface, cl *api
 	})
 	if err != nil {
 		return fmt.Errorf("fail to wait services deleted: %v", err)
-	}
-	return nil
-}
-
-func WaitBackupDeleted(kubeClient kubernetes.Interface, cl *api.EtcdCluster, checkerOpt StorageCheckerOptions) error {
-	retries := 3
-	if checkerOpt.DeletedFromAPI {
-		// Currently waiting deployment to be gone from API takes a lot of time.
-		// TODO: revisit this when we use "background propagate" deletion policy.
-		retries = 30
-	}
-	err := retryutil.Retry(retryInterval, retries, func() (bool, error) {
-		d, err := kubeClient.AppsV1beta1().Deployments(cl.Namespace).Get(k8sutil.BackupSidecarName(cl.Name), metav1.GetOptions{})
-		// If we don't need to wait deployment to be completely gone, we can say it is deleted
-		// as long as DeletionTimestamp is not nil. Otherwise, we need to wait it is gone by checking not found error.
-		if (!checkerOpt.DeletedFromAPI && d.DeletionTimestamp != nil) || apierrors.IsNotFound(err) {
-			return true, nil
-		}
-		if err == nil {
-			return false, nil
-		}
-		return false, err
-	})
-	if err != nil {
-		return fmt.Errorf("failed to wait backup Deployment deleted: %v", err)
-	}
-
-	_, err = WaitPodsDeleted(kubeClient, cl.Namespace, 2,
-		metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(map[string]string{
-				"app":          k8sutil.BackupPodSelectorAppField,
-				"etcd_cluster": cl.Name,
-			}).String(),
-		})
-	if err != nil {
-		return fmt.Errorf("failed to wait backup pod terminated: %v", err)
-	}
-	// The rest is to track backup storage, e.g. PV or S3 "dir" deleted.
-	// If AutoDelete=false, we don't delete them and thus don't check them.
-	if !cl.Spec.Backup.AutoDelete {
-		return nil
-	}
-	err = retryutil.Retry(retryInterval, 3, func() (done bool, err error) {
-		switch cl.Spec.Backup.StorageType {
-		case api.BackupStorageTypePersistentVolume, api.BackupStorageTypeDefault:
-			pl, err := kubeClient.CoreV1().PersistentVolumeClaims(cl.Namespace).List(k8sutil.ClusterListOpt(cl.Name))
-			if err != nil {
-				return false, err
-			}
-			if len(pl.Items) > 0 {
-				return false, nil
-			}
-		case api.BackupStorageTypeS3:
-			s3cli := backups3.NewFromClient(checkerOpt.S3Bucket, path.Join(cl.Namespace, cl.Name), checkerOpt.S3Cli)
-			keys, err := s3cli.List()
-			if err != nil {
-				return false, err
-			}
-			if len(keys) > 0 {
-				return false, nil
-			}
-		}
-		return true, nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to wait storage (%s) to be deleted: %v", cl.Spec.Backup.StorageType, err)
 	}
 	return nil
 }

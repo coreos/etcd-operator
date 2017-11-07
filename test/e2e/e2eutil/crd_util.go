@@ -15,7 +15,6 @@
 package e2eutil
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -80,17 +79,4 @@ func DeleteCluster(t *testing.T, crClient versioned.Interface, kubeClient kubern
 		return err
 	}
 	return waitResourcesDeleted(t, kubeClient, cl)
-}
-
-func DeleteClusterAndBackup(t *testing.T, crClient versioned.Interface, kubecli kubernetes.Interface, cl *api.EtcdCluster, checkerOpt StorageCheckerOptions) error {
-	err := DeleteCluster(t, crClient, kubecli, cl)
-	if err != nil {
-		return err
-	}
-	t.Logf("waiting backup deleted of cluster (%v)", cl.Name)
-	err = WaitBackupDeleted(kubecli, cl, checkerOpt)
-	if err != nil {
-		return fmt.Errorf("fail to wait backup deleted: %v", err)
-	}
-	return nil
 }
