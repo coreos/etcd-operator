@@ -40,7 +40,6 @@ gitHash="github.com/coreos/etcd-operator/version.GitSHA=${GIT_SHA}"
 go_ldflags="-X ${ldKVPairs} -X ${gitHash}"
 
 go_build operator
-go_build backup
 
 docker build --tag "${IMAGE}" -f hack/build/operator/Dockerfile . 1>/dev/null
 # For gcr users, do "gcloud docker -a" to have access.
