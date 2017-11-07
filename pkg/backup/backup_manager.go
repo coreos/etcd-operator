@@ -20,10 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"time"
 
-	"github.com/coreos/etcd-operator/pkg/backup/backend"
-	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/util"
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -44,19 +41,7 @@ type BackupManager struct {
 	namespace     string
 	etcdTLSConfig *tls.Config
 
-	be backend.Backend
 	bw writer.Writer
-}
-
-// NewBackupManager creates a BackupManager.
-func NewBackupManager(kubecli kubernetes.Interface, clusterName string, namespace string, etcdTLSConfig *tls.Config, be backend.Backend) *BackupManager {
-	return &BackupManager{
-		kubecli:       kubecli,
-		clusterName:   clusterName,
-		namespace:     namespace,
-		etcdTLSConfig: etcdTLSConfig,
-		be:            be,
-	}
 }
 
 // NewBackupManagerFromWriter creates a BackupManager with backup writer.
@@ -67,61 +52,6 @@ func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, 
 		namespace:   namespace,
 		bw:          bw,
 	}
-}
-
-// SaveSnap saves the latest snapshot if its revision is greater than the given lastSnapRev
-// and returns a BackupStatus containing saving backup metadata if SaveSnap succeeds.
-func (bm *BackupManager) SaveSnap(lastSnapRev int64) (*backupapi.BackupStatus, error) {
-	etcdcli, rev, err := bm.etcdClientWithMaxRevision()
-	if err != nil {
-		return nil, fmt.Errorf("create etcd client with max revision failed: %v", err)
-	}
-	defer etcdcli.Close()
-
-	if rev <= lastSnapRev {
-		logrus.Info("skipped creating new backup: no change since last time")
-		return nil, nil
-	}
-
-	bs, err := bm.writeSnap(etcdcli.Maintenance, etcdcli.Endpoints()[0], rev)
-	if err != nil {
-		return nil, fmt.Errorf("write snapshot failed: %v", err)
-	}
-	logrus.Infof("saved backup (rev: %v, etcdVersion: %v) for cluster (%s)",
-		bs.Revision, bs.Version, bm.clusterName)
-	return bs, nil
-}
-
-func (bm *BackupManager) writeSnap(mcli clientv3.Maintenance, endpoint string, rev int64) (*backupapi.BackupStatus, error) {
-	start := time.Now()
-
-	version, err := getEtcdVersion(mcli, endpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
-	defer cancel()
-	rc, err := mcli.Snapshot(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to receive snapshot (%v)", err)
-	}
-	defer rc.Close()
-
-	n, err := bm.be.Save(version, rev, rc)
-	if err != nil {
-		return nil, err
-	}
-
-	bs := &backupapi.BackupStatus{
-		CreationTime:     time.Now().Format(time.RFC3339),
-		Size:             util.ToMB(n),
-		Version:          version,
-		Revision:         rev,
-		TimeTookInSecond: int(time.Since(start).Seconds() + 1),
-	}
-
-	return bs, nil
 }
 
 // SaveSnapWithPrefix uses backup writer to save latest snapshot to a path prepended with the given prefix
