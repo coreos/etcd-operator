@@ -40,7 +40,6 @@ export E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-.*}
 echo "UNIQUE_BUILD_NAME: ${UNIQUE_BUILD_NAME}"
 echo "OPERATOR_IMAGE: ${OPERATOR_IMAGE}"
 echo "TEST_NAMESPACE: ${TEST_NAMESPACE}"
-echo "AWS_TEST_ENABLED: ${AWS_TEST_ENABLED-}"
 echo "E2E_TEST_SELECTOR: ${E2E_TEST_SELECTOR}"
 
 gcloud docker -a # have docker command access to gcloud 
