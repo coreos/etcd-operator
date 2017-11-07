@@ -137,53 +137,7 @@ function upgrade_pass {
 		--new-image=$UPGRADE_TO
 }
 
-function start_minio {
-	docker_exist
-	if ! command -v mc >/dev/null; then
-		echo "mc not installed"
-		exist 255
-	fi
-	if [ -z "$MINIO_ACCESS_KEY" ] && [ -z "$MINIO_SECRET_KEY" ]; then
-		echo "MINIO_ACCESS_KEY and MINIO_SECRET_KEY env var are not set!"
-		exit 255
-	fi
-
-	# find running minio.
-	RUNNING_MINIO=$(docker ps -q -f ancestor=minio/minio)
-	# if minio isn't running, start it.
-	if [ -z "$RUNNING_MINIO" ]; then
-		docker pull minio/minio
-		docker run -d -p 9000:9000 \
-  			-e "MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY" \
-  			-e "MINIO_SECRET_KEY=$MINIO_SECRET_KEY" \
-  			minio/minio server /export
-		mc config host add myminio http://127.0.0.1:9000 "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
-		sleep 1s
-		# create test-bucket.
-		mc mb myminio/test-bucket
-	fi
-}
-
-function docker_exist {
-	if ! command -v docker >/dev/null; then
-		echo "docker not installed"
-	fi
-}
-
-function start_azurite {
-	docker_exist
-	# find running azurite.
-	RUNNING_AZURITE_CONTAINER=$(docker ps -q -f ancestor=quay.io/vdice/azurite:git-9236ba3)
-
-	# if azurite isn't running, start it.
-	if [ -z "$RUNNING_AZURITE_CONTAINER" ]; then
-		docker run -d -t -p 10000:10000 quay.io/vdice/azurite:git-9236ba3
-	fi
-}
-
 function unit_pass {
-	start_minio
-	start_azurite
 	# coverage.txt is the combined coverage report consumed by codecov
 	echo "mode: atomic" > coverage.txt
 	TEST_PKGS=$(listPkgs | grep -v e2e)
