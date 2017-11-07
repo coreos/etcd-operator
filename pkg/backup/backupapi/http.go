@@ -15,37 +15,9 @@
 package backupapi
 
 import (
-	"fmt"
 	"net/url"
 	"path"
 )
-
-const (
-	HTTPQueryVersionKey  = "etcdVersion"
-	HTTPQueryRevisionKey = "etcdRevision"
-)
-
-// NewBackupURL creates a URL struct for retrieving an existing backup.
-func NewBackupURL(scheme, host, version string, revision int64) *url.URL {
-	return backupURLForCluster(scheme, host, "", version, revision)
-}
-
-// backupURLForCluster creates a URL struct for retrieving an existing backup of given cluster.
-func backupURLForCluster(scheme, host, clusterName, version string, revision int64) *url.URL {
-	u := &url.URL{
-		Scheme: scheme,
-		Host:   host,
-		Path:   path.Join(APIV1, "backup", clusterName),
-	}
-	uv := url.Values{}
-	uv.Set(HTTPQueryVersionKey, version)
-	if revision >= 0 {
-		uv.Set(HTTPQueryRevisionKey, fmt.Sprintf("%d", revision))
-	}
-	u.RawQuery = uv.Encode()
-
-	return u
-}
 
 // BackupURLForRestore creates a URL struct for retrieving an existing backup specified by a restore CR
 func BackupURLForRestore(scheme, host, restoreName string) *url.URL {

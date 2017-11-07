@@ -23,35 +23,6 @@ const (
 	S3V1 = "v1"
 )
 
-type ServiceStatus struct {
-	// RecentBackup is status of the most recent backup created by
-	// the backup service
-	RecentBackup *BackupStatus `json:"recentBackup,omitempty"`
-
-	// Backups is the totoal number of existing backups.
-	Backups int `json:"backups"`
-
-	// BackupSize is the total size of existing backups in MB.
-	BackupSize float64 `json:"backupSize"`
-}
-
-type BackupStatus struct {
-	// Creation time of the backup.
-	CreationTime string `json:"creationTime"`
-
-	// Size is the size of the backup in MB.
-	Size float64 `json:"size"`
-
-	// Revision is the revision of the backup.
-	Revision int64 `json:"revision"`
-
-	// Version is the version of the backup cluster.
-	Version string `json:"version"`
-
-	// TimeTookInSecond is the total time took to create the backup.
-	TimeTookInSecond int `json:"timeTookInSecond"`
-}
-
 // ToS3Prefix concatenates s3Prefix, S3V1, namespace, clusterName to a single s3 prefix.
 // the concatenated prefix determines the location of S3 backup files.
 func ToS3Prefix(s3Prefix, namespace, clusterName string) string {
