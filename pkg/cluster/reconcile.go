@@ -29,6 +29,9 @@ import (
 	"k8s.io/api/core/v1"
 )
 
+// ErrLostQuorum indicates that the etcd cluster lost its quorum.
+var ErrLostQuorum = errors.New("lost quorum")
+
 // reconcile reconciles cluster current state to desired state specified by spec.
 // - it tries to reconcile the cluster to desired size.
 // - if the cluster needs for upgrade, it tries to upgrade old member one by one.
@@ -68,7 +71,7 @@ func (c *Cluster) reconcile(pods []*v1.Pod) error {
 // 1. Remove all pods from running set that does not belong to member set.
 // 2. L consist of remaining pods of runnings
 // 3. If L = members, the current state matches the membership state. END.
-// 4. If len(L) < len(members)/2 + 1, quorum lost. Go to recovery process.
+// 4. If len(L) < len(members)/2 + 1, return quorum lost error.
 // 5. Add one missing member. END.
 func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 	c.logger.Infof("running members: %s", running)
@@ -90,8 +93,8 @@ func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 	}
 
 	if L.Size() < c.members.Size()/2+1 {
-		c.logger.Infof("Disaster recovery")
-		return c.disasterRecovery(L)
+		c.logger.Infof("lost quorum")
+		return ErrLostQuorum
 	}
 
 	c.logger.Infof("removing one dead member")
@@ -139,7 +142,7 @@ func (c *Cluster) addOneMember() error {
 	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)
 
-	if err := c.createPod(c.members, newMember, "existing", false); err != nil {
+	if err := c.createPod(c.members, newMember, "existing"); err != nil {
 		return fmt.Errorf("fail to create member's pod (%s): %v", newMember.Name, err)
 	}
 	c.memberCounter++
@@ -211,51 +214,6 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 	}
 	c.logger.Infof("removed member (%v) with ID (%d)", toRemove.Name, toRemove.ID)
 	return nil
-}
-
-func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
-	c.status.SetRecoveringCondition()
-
-	if c.cluster.Spec.SelfHosted != nil {
-		return errors.New("self-hosted cluster cannot be recovered from disaster")
-	}
-
-	if c.cluster.Spec.Backup == nil {
-		return newFatalError("fail to do disaster recovery: no backup policy has been defined")
-	}
-
-	backupNow := false
-	if len(left) > 0 {
-		c.logger.Infof("pods are still running (%v). Will try to make a latest backup from one of them.", left)
-		err := c.bm.requestBackup()
-		if err != nil {
-			c.logger.Errorln(err)
-		} else {
-			backupNow = true
-		}
-	}
-	if backupNow {
-		c.logger.Info("made a latest backup")
-	} else {
-		// We don't return error if backupnow failed. Instead, we ask if there is previous backup.
-		// If so, we can still continue. Otherwise, it's fatal error.
-		exist, err := c.bm.checkBackupExist(c.cluster.Spec.Version)
-		if err != nil {
-			c.logger.Errorln(err)
-			return err
-		}
-		if !exist {
-			return newFatalError("no backup exist for disaster recovery")
-		}
-	}
-
-	for _, m := range left {
-		err := c.removePod(m.Name)
-		if err != nil {
-			return err
-		}
-	}
-	return c.recover()
 }
 
 func needUpgrade(pods []*v1.Pod, cs api.ClusterSpec) bool {
