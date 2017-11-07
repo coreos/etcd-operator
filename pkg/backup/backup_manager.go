@@ -236,18 +236,6 @@ func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config) (*etcdutil.Member, int6
 	return member, maxRev
 }
 
-func (b *BackupManager) getLatestBackupRev() int64 {
-	// If there is any error, we just exit backup sidecar because we can't serve the backup any way.
-	name, err := b.be.GetLatest()
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	if len(name) == 0 {
-		return 0
-	}
-	return util.MustParseRevision(name)
-}
-
 func createEtcdClient(url string, tlsConfig *tls.Config) (*clientv3.Client, error) {
 	cfg := clientv3.Config{
 		Endpoints:   []string{url},
