@@ -22,6 +22,7 @@ import (
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
@@ -36,11 +37,24 @@ func TestBackupAndRestore(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
+	if err := verifyAWSEnvVars(); err != nil {
+		t.Fatal(err)
+	}
 	s3Path := testEtcdBackupOperatorForS3Backup(t)
 	if len(s3Path) == 0 {
 		t.Fatal("skipping restore test: S3 path not set despite testEtcdBackupOperatorForS3Backup success")
 	}
 	testEtcdRestoreOperatorForS3Source(t, s3Path)
+}
+
+func verifyAWSEnvVars() error {
+	if len(os.Getenv("TEST_S3_BUCKET")) == 0 {
+		return fmt.Errorf("TEST_S3_BUCKET not set")
+	}
+	if len(os.Getenv("TEST_AWS_SECRET")) == 0 {
+		return fmt.Errorf("TEST_AWS_SECRET not set")
+	}
+	return nil
 }
 
 // testEtcdBackupOperatorForS3Backup tests if etcd backup operator can save etcd backup to S3.
@@ -59,7 +73,7 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
-	eb, err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Create(e2eutil.NewS3Backup(testEtcd.Name))
+	eb, err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Create(e2eutil.NewS3Backup(testEtcd.Name, os.Getenv("TEST_S3_BUCKET"), os.Getenv("TEST_AWS_SECRET")))
 	if err != nil {
 		t.Fatalf("failed to create etcd backup cr: %v", err)
 	}
@@ -73,6 +87,11 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 	// 4 seconds timeout via retry is enough; duration longer than that may indicate internal issues and
 	// is worthy of investigation.
 	s3Path := ""
+	s3cli, err := s3factory.NewClientFromSecret(f.KubeClient, f.Namespace, os.Getenv("TEST_AWS_SECRET"))
+	if err != nil {
+		t.Fatalf("failed create s3 client: %v", err)
+	}
+	defer s3cli.Close()
 	err = retryutil.Retry(time.Second, 4, func() (bool, error) {
 		reb, err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Get(eb.Name, metav1.GetOptions{})
 		if err != nil {
@@ -82,7 +101,7 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 			// bucketAndKey[0] holds s3 bucket name.
 			// bucketAndKey[1] holds the s3 object path without the prefixed bucket name.
 			bucketAndKey := strings.SplitN(reb.Status.S3Path, "/", 2)
-			_, err := f.S3Cli.GetObject(&s3.GetObjectInput{
+			_, err := s3cli.S3.GetObject(&s3.GetObjectInput{
 				Bucket: aws.String(bucketAndKey[0]),
 				Key:    aws.String(bucketAndKey[1]),
 			})

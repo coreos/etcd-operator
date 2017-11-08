@@ -15,8 +15,6 @@
 package e2eutil
 
 import (
-	"os"
-
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,7 +36,7 @@ func NewCluster(genName string, size int) *api.EtcdCluster {
 }
 
 // NewS3Backup creates a EtcdBackup object using clusterName.
-func NewS3Backup(clusterName string) *api.EtcdBackup {
+func NewS3Backup(clusterName, bucket, secret string) *api.EtcdBackup {
 	return &api.EtcdBackup{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       api.EtcdBackupResourceKind,
@@ -52,8 +50,8 @@ func NewS3Backup(clusterName string) *api.EtcdBackup {
 			StorageType: api.BackupStorageTypeS3,
 			BackupStorageSource: api.BackupStorageSource{
 				S3: &api.S3Source{
-					S3Bucket:  os.Getenv("TEST_S3_BUCKET"),
-					AWSSecret: os.Getenv("TEST_AWS_SECRET"),
+					S3Bucket:  bucket,
+					AWSSecret: secret,
 				},
 			},
 		},
