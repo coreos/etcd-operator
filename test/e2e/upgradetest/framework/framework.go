@@ -16,7 +16,6 @@ package framework
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
@@ -25,8 +24,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/probe"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	"k8s.io/api/core/v1"
 	v1beta1storage "k8s.io/api/storage/v1beta1"
@@ -52,8 +49,6 @@ type Framework struct {
 	// global var
 	KubeCli  kubernetes.Interface
 	CRClient versioned.Interface
-	S3Cli    *s3.S3
-	S3Bucket string
 }
 
 func New(fc Config) (*Framework, error) {
@@ -75,8 +70,7 @@ func New(fc Config) (*Framework, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup storage class(%v): %v", f.Config.StorageClassName, err)
 	}
-	err = f.setupAWS()
-	return f, err
+	return f, nil
 }
 
 func (f *Framework) CreateOperator(name string) error {
@@ -178,24 +172,6 @@ func (f *Framework) UpgradeOperator(name string) error {
 	}
 	err = e2eutil.WaitUntilOperatorReady(f.KubeCli, f.KubeNS, name)
 	return err
-}
-
-func (f *Framework) setupAWS() error {
-	if err := os.Setenv("AWS_SHARED_CREDENTIALS_FILE", os.Getenv("AWS_CREDENTIAL")); err != nil {
-		return err
-	}
-	if err := os.Setenv("AWS_CONFIG_FILE", os.Getenv("AWS_CONFIG")); err != nil {
-		return err
-	}
-	sess, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
-	if err != nil {
-		return err
-	}
-	f.S3Cli = s3.New(sess)
-	f.S3Bucket = "jenkins-etcd-operator"
-	return nil
 }
 
 func (f *Framework) setupStorageClass() error {
