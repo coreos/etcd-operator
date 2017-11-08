@@ -28,7 +28,7 @@ TEST_IMAGE=gcr.io/coreos-k8s-scale-testing/etcd-operator-tests \
 TEST_NAMESPACE=e2e \
 OPERATOR_IMAGE=quay.io/coreos/etcd-operator:dev \
 TEST_S3_BUCKET=jenkins-etcd-operator \
-TEST_AWS_SECRET=aws-secret
+TEST_AWS_SECRET=aws-secret \
 test/pod/run-test-pod
 ```
 

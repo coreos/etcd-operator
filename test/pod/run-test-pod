@@ -19,8 +19,13 @@ E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-""}
 TEST_S3_BUCKET=${TEST_S3_BUCKET:-"jenkins-etcd-operator"}
 TEST_AWS_SECRET=${TEST_AWS_SECRET:-"aws-secret"}
 
+POD_NAME=${POD_NAME:-"eop-testing"}
+
+# TODO: Setup RBAC for the test-pod
+
 # Run the test-pod in the given namespace
-sed -e "s|<TEST_IMAGE>|${TEST_IMAGE}|g" \
+sed -e "s|<POD_NAME>|${POD_NAME}|g" \
+    -e "s|<TEST_IMAGE>|${TEST_IMAGE}|g" \
     -e "s|<PASSES>|${PASSES}|g" \
     -e "s|<OPERATOR_IMAGE>|${OPERATOR_IMAGE}|g" \
     -e "s|<E2E_TEST_SELECTOR>|${E2E_TEST_SELECTOR}|g" \
@@ -28,3 +33,37 @@ sed -e "s|<TEST_IMAGE>|${TEST_IMAGE}|g" \
     -e "s|<TEST_AWS_SECRET>|${TEST_AWS_SECRET}|g" \
     test/pod/test-pod.yaml \
     | kubectl -n ${TEST_NAMESPACE} create -f -
+
+function cleanup {
+	kubectl -n ${TEST_NAMESPACE} delete pod ${POD_NAME}
+}
+trap cleanup EXIT
+
+
+PHASE_RUNNING="Running"
+PHASE_SUCCEEDED="Succeeded"
+RETRY_INTERVAL=5
+
+# Wait until pod is running
+echo "Waiting for test-pod to start runnning"
+POD_PHASE=""
+until [ "${POD_PHASE}" == "${PHASE_RUNNING}" ]
+do
+    sleep ${RETRY_INTERVAL}
+    POD_PHASE=$(kubectl -n ${TEST_NAMESPACE} get pod ${POD_NAME} -o jsonpath='{.status.phase}')
+done
+
+# Print out logs until pod stops running
+echo "test-pod logs"
+echo "=============="
+kubectl -n ${TEST_NAMESPACE} logs -f ${POD_NAME}
+echo "=============="
+
+# Check for pod success or failure
+POD_PHASE=$(kubectl -n ${TEST_NAMESPACE} get pod ${POD_NAME} -o jsonpath='{.status.phase}')
+if [ "${POD_PHASE}" == "${PHASE_SUCCEEDED}" ]; then
+    echo "e2e tests finished successfully"
+else
+    echo "e2e tests failed"
+    exit 1
+fi
