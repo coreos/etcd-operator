@@ -123,11 +123,10 @@ func (f *Framework) setup() error {
 		return fmt.Errorf("failed to setup etcd operator: %v", err)
 	}
 	logrus.Info("etcd operator created successfully")
-	if os.Getenv("AWS_TEST_ENABLED") == "true" {
-		if err := f.setupAWS(); err != nil {
-			return fmt.Errorf("fail to setup aws: %v", err)
-		}
+	if err := f.setupAWS(); err != nil {
+		return fmt.Errorf("fail to setup aws: %v", err)
 	}
+	logrus.Info("setup aws successfully")
 	err := f.SetupEtcdBackupOperator()
 	if err != nil {
 		return fmt.Errorf("failed to create etcd backup operator: %v", err)
