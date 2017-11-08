@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"os"
 	"os/exec"
 	"path"
 	"strconv"
@@ -32,8 +31,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	v1beta1storage "k8s.io/api/storage/v1beta1"
@@ -58,8 +55,6 @@ type Framework struct {
 	KubeClient       kubernetes.Interface
 	CRClient         versioned.Interface
 	Namespace        string
-	S3Cli            *s3.S3
-	S3Bucket         string
 	StorageClassName string
 	Provisioner      string
 }
@@ -86,7 +81,6 @@ func Setup() error {
 		CRClient:         client.MustNew(config),
 		Namespace:        *ns,
 		opImage:          *opImage,
-		S3Bucket:         os.Getenv("TEST_S3_BUCKET"),
 		StorageClassName: "e2e-" + path.Base(*pvProvisioner),
 		Provisioner:      *pvProvisioner,
 	}
@@ -123,10 +117,6 @@ func (f *Framework) setup() error {
 		return fmt.Errorf("failed to setup etcd operator: %v", err)
 	}
 	logrus.Info("etcd operator created successfully")
-	if err := f.setupAWS(); err != nil {
-		return fmt.Errorf("fail to setup aws: %v", err)
-	}
-	logrus.Info("setup aws successfully")
 	err := f.SetupEtcdBackupOperator()
 	if err != nil {
 		return fmt.Errorf("failed to create etcd backup operator: %v", err)
@@ -331,23 +321,6 @@ func (f *Framework) SetupEtcdRestoreOperatorAndService() error {
 
 func (f *Framework) deleteEtcdOperator() error {
 	return f.KubeClient.CoreV1().Pods(f.Namespace).Delete("etcd-operator", metav1.NewDeleteOptions(1))
-}
-
-func (f *Framework) setupAWS() error {
-	if err := os.Setenv("AWS_SHARED_CREDENTIALS_FILE", os.Getenv("AWS_CREDENTIAL")); err != nil {
-		return err
-	}
-	if err := os.Setenv("AWS_CONFIG_FILE", os.Getenv("AWS_CONFIG")); err != nil {
-		return err
-	}
-	sess, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
-	if err != nil {
-		return err
-	}
-	f.S3Cli = s3.New(sess)
-	return nil
 }
 
 func (f *Framework) setupStorageClass() error {
