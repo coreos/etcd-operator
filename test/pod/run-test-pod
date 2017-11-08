@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+# This script runs the test-pod with the specified TEST_IMAGE and necessary envs for e2e tests
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+: ${TEST_IMAGE:?"Need to set TEST_IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator-tests"}
+: ${TEST_NAMESPACE:?"Need to set TEST_NAMESPACE"}
+
+PASSES=${PASSES:-"e2e e2eslow"}
+OPERATOR_IMAGE=${OPERATOR_IMAGE:-"quay.io/coreos/etcd-operator:dev"}
+
+# Leave blank to run all tests
+# To run a particular test set to test name e.g: E2E_TEST_SELECTOR="CreateCluster"
+E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-""}
+
+TEST_S3_BUCKET=${TEST_S3_BUCKET:-"jenkins-etcd-operator"}
+TEST_AWS_SECRET=${TEST_AWS_SECRET:-"aws-secret"}
+
+# Run the test-pod in the given namespace
+sed -e "s|<TEST_IMAGE>|${TEST_IMAGE}|g" \
+    -e "s|<PASSES>|${PASSES}|g" \
+    -e "s|<OPERATOR_IMAGE>|${OPERATOR_IMAGE}|g" \
+    -e "s|<E2E_TEST_SELECTOR>|${E2E_TEST_SELECTOR}|g" \
+    -e "s|<TEST_S3_BUCKET>|${TEST_S3_BUCKET}|g" \
+    -e "s|<TEST_AWS_SECRET>|${TEST_AWS_SECRET}|g" \
+    test/pod/test-pod.yaml \
+    | kubectl -n ${TEST_NAMESPACE} create -f -
