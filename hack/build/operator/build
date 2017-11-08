@@ -18,8 +18,6 @@ if ! which docker > /dev/null; then
 	exit 1
 fi
 
-: ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator"}
-
 GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
 
 bin_dir="$(pwd)/_output/bin"
@@ -32,7 +30,3 @@ gitHash="github.com/coreos/etcd-operator/version.GitSHA=${GIT_SHA}"
 go_ldflags="-X ${ldKVPairs} -X ${gitHash}"
 
 GO_BUILD_FLAGS="$@" go_build operator
-
-docker build --tag "${IMAGE}" -f hack/build/operator/Dockerfile . 1>/dev/null
-# For gcr users, do "gcloud docker -a" to have access.
-docker push "${IMAGE}" 1>/dev/null
