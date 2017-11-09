@@ -64,17 +64,6 @@ func (c *EtcdCluster) AsOwner() metav1.OwnerReference {
 	}
 }
 
-type PVSource struct {
-	// VolumeSizeInMB specifies the required volume size.
-	VolumeSizeInMB int `json:"volumeSizeInMB"`
-
-	// StorageClass indicates what Kubernetes storage class will be used.
-	// This enables the user to have fine-grained control over how persistent
-	// volumes are created since it uses the existing StorageClass mechanism in
-	// Kubernetes.
-	StorageClass string `json:"storageClass"`
-}
-
 type ClusterSpec struct {
 	// Size is the expected size of the etcd cluster.
 	// The etcd-operator will eventually make the size of the running
@@ -106,17 +95,6 @@ type ClusterSpec struct {
 	// Updating Pod does not take effect on any existing etcd pods.
 	Pod *PodPolicy `json:"pod,omitempty"`
 
-	// Backup defines the policy to backup data of etcd cluster if not nil.
-	// If backup policy is set but restore policy not, and if a previous backup exists,
-	// this cluster would face conflict and fail to start.
-	Backup *BackupPolicy `json:"backup,omitempty"`
-
-	// Restore defines the policy to restore cluster form existing backup if not nil.
-	// It's not allowed if restore policy is set and backup policy not.
-	//
-	// Restore is a cluster initialization configuration. It cannot be updated.
-	Restore *RestorePolicy `json:"restore,omitempty"`
-
 	// SelfHosted determines if the etcd cluster is used for a self-hosted
 	// Kubernetes cluster.
 	//
@@ -125,16 +103,6 @@ type ClusterSpec struct {
 
 	// etcd cluster TLS configuration
 	TLS *TLSPolicy `json:"TLS,omitempty"`
-}
-
-// RestorePolicy defines the policy to restore cluster form existing backup if not nil.
-type RestorePolicy struct {
-	// BackupClusterName is the cluster name of the backup to recover from.
-	BackupClusterName string `json:"backupClusterName"`
-
-	// StorageType specifies the type of storage device to store backup files.
-	// If not set, the default is "PersistentVolume".
-	StorageType BackupStorageType `json:"storageType"`
 }
 
 // PodPolicy defines the policy to create pod for the etcd container.
@@ -168,30 +136,12 @@ type PodPolicy struct {
 	// This field cannot be updated.
 	EtcdEnv []v1.EnvVar `json:"etcdEnv,omitempty"`
 
-	// PV represents a Persistent Volume resource.
-	// If defined new pods will use a persistent volume to store etcd data.
-	// TODO(sgotti) unimplemented
-	PV *PVSource `json:"pv,omitempty"`
-
 	// By default, kubernetes will mount a service account token into the etcd pods.
 	// AutomountServiceAccountToken indicates whether pods running with the service account should have an API token automatically mounted.
 	AutomountServiceAccountToken *bool `json:"automountServiceAccountToken,omitempty"`
 }
 
 func (c *ClusterSpec) Validate() error {
-	if c.Backup == nil && c.Restore != nil {
-		return ErrBackupUnsetRestoreSet
-	}
-	if c.Backup != nil && c.Restore != nil {
-		if c.Backup.StorageType != c.Restore.StorageType {
-			return errors.New("spec: backup and restore storage types are different")
-		}
-	}
-	if c.Backup != nil {
-		if err := c.Backup.Validate(); err != nil {
-			return err
-		}
-	}
 	if c.TLS != nil {
 		if err := c.TLS.Validate(); err != nil {
 			return err
