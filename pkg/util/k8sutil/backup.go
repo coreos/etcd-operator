@@ -15,13 +15,10 @@
 package k8sutil
 
 import (
-	"encoding/json"
 	"fmt"
 	"path"
 	"time"
 
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-	backupenv "github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
@@ -36,8 +33,6 @@ import (
 const (
 	BackupPodSelectorAppField = "etcd_backup_tool"
 	backupPVVolName           = "etcd-backup-storage"
-	awsCredentialDir          = "/root/.aws/"
-	awsSecretVolName          = "secret-aws"
 	fromDirMountDir           = "/mnt/backup/from"
 
 	PVBackupV1 = "v1" // TODO: refactor and combine this with pkg/backup.PVBackupV1
@@ -105,88 +100,6 @@ func PodSpecWithPV(ps *v1.PodSpec, clusterName string) {
 			},
 		},
 	}}
-}
-
-func AttachS3ToPodSpec(ps *v1.PodSpec, ss api.S3Source) {
-	ps.Containers[0].VolumeMounts = append(ps.Containers[0].VolumeMounts, v1.VolumeMount{
-		Name:      awsSecretVolName,
-		MountPath: awsCredentialDir,
-	})
-	ps.Volumes = append(ps.Volumes, v1.Volume{
-		Name: awsSecretVolName,
-		VolumeSource: v1.VolumeSource{
-			Secret: &v1.SecretVolumeSource{
-				SecretName: ss.AWSSecret,
-			},
-		},
-	})
-	ps.Containers[0].Env = append(ps.Containers[0].Env, v1.EnvVar{
-		Name:  backupenv.AWSS3Bucket,
-		Value: ss.S3Bucket,
-	})
-}
-
-// AttachABSToPodSpec attaches ABS credentials to a Pod
-func AttachABSToPodSpec(ps *v1.PodSpec, ws api.ABSSource) {
-	storageAccountSelector := v1.SecretKeySelector{
-		LocalObjectReference: v1.LocalObjectReference{Name: ws.ABSSecret},
-		Key:                  api.ABSStorageAccount,
-	}
-	storageKeySelector := v1.SecretKeySelector{
-		LocalObjectReference: v1.LocalObjectReference{Name: ws.ABSSecret},
-		Key:                  api.ABSStorageKey,
-	}
-
-	ps.Containers[0].Env = append(ps.Containers[0].Env, v1.EnvVar{
-		Name:      backupenv.ABSStorageAccount,
-		ValueFrom: &v1.EnvVarSource{SecretKeyRef: &storageAccountSelector},
-	}, v1.EnvVar{
-		Name:      backupenv.ABSStorageKey,
-		ValueFrom: &v1.EnvVarSource{SecretKeyRef: &storageKeySelector},
-	}, v1.EnvVar{
-		Name:  backupenv.ABSContainer,
-		Value: ws.ABSContainer,
-	})
-}
-
-func NewBackupPodTemplate(clusterName, account string, sp api.ClusterSpec) v1.PodTemplateSpec {
-	b, err := json.Marshal(sp)
-	if err != nil {
-		panic("unexpected json error " + err.Error())
-	}
-
-	ps := v1.PodSpec{
-		ServiceAccountName: account,
-		Containers: []v1.Container{
-			{
-				Name:  "backup",
-				Image: BackupImage,
-				Command: []string{
-					"/usr/local/bin/etcd-backup",
-					"--etcd-cluster=" + clusterName,
-				},
-				Env: []v1.EnvVar{{
-					Name:      constants.EnvOperatorPodNamespace,
-					ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
-				}, {
-					Name:  backupenv.ClusterSpec,
-					Value: string(b),
-				}},
-			},
-		},
-	}
-
-	pl := v1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   clusterName,
-			Labels: BackupSidecarLabels(clusterName),
-		},
-		Spec: ps,
-	}
-
-	applyPodPolicyToPodTemplateSpec(clusterName, &pl, sp.Backup.Pod)
-
-	return pl
 }
 
 func NewBackupDeploymentManifest(name string, dplSel map[string]string, pl v1.PodTemplateSpec, owner metav1.OwnerReference) *appsv1beta1.Deployment {

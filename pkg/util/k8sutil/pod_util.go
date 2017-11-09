@@ -140,27 +140,6 @@ func applyPodPolicy(clusterName string, pod *v1.Pod, policy *api.PodPolicy) {
 	}
 }
 
-// only used for backup pod.
-func applyPodPolicyToPodTemplateSpec(clusterName string, pod *v1.PodTemplateSpec, policy *api.PodPolicy) {
-	if policy == nil {
-		return
-	}
-
-	// TODO: anti-affinity for backup pod?
-
-	if len(policy.NodeSelector) != 0 {
-		pod.Spec.NodeSelector = policy.NodeSelector
-	}
-	if len(policy.Tolerations) != 0 {
-		pod.Spec.Tolerations = policy.Tolerations
-	}
-	if policy.AutomountServiceAccountToken != nil {
-		pod.Spec.AutomountServiceAccountToken = policy.AutomountServiceAccountToken
-	}
-
-	mergeLabels(pod.Labels, policy.Labels)
-}
-
 // IsPodReady returns false if the Pod Status is nil
 func IsPodReady(pod *v1.Pod) bool {
 	condition := getPodReadyCondition(&pod.Status)
