@@ -7,3 +7,5 @@ RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.8.2/bi
     && mv ./kubectl /usr/local/bin/kubectl
 
 ADD ./ /go/src/github.com/coreos/etcd-operator
+
+WORKDIR /go/src/github.com/coreos/etcd-operator

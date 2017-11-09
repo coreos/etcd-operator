@@ -1,15 +1,14 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: eop-tests
+  name: <POD_NAME>
 spec:
   restartPolicy: Never
   containers:
-  - name: eop-tests
+  - name: <POD_NAME>
     image: <TEST_IMAGE>
     imagePullPolicy: Always
-    command: ["/bin/bash"]
-    args: ["-c", "cd /go/src/github.com/coreos/etcd-operator && test/pod/test"]
+    command: ["test/pod/test"]
     env:
       - name: TEST_NAMESPACE
         valueFrom:

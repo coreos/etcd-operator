@@ -18,4 +18,4 @@ docker build --tag "${TEST_IMAGE}" -f test/pod/Dockerfile . 1>/dev/null
 
 # For gcr users, do "gcloud docker -a" to have access.
 echo "pushing container..."
-docker push "${TEST_IMAGE}" 1>/dev/null
+docker push "${TEST_IMAGE}"
