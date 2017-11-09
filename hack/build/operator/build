@@ -24,9 +24,8 @@ bin_dir="$(pwd)/_output/bin"
 mkdir -p ${bin_dir} || true
 
 
-ldKVPairs="github.com/coreos/etcd-operator/pkg/util/k8sutil.BackupImage=${IMAGE}"
 gitHash="github.com/coreos/etcd-operator/version.GitSHA=${GIT_SHA}"
 
-go_ldflags="-X ${ldKVPairs} -X ${gitHash}"
+go_ldflags="-X ${gitHash}"
 
 GO_BUILD_FLAGS="$@" go_build operator
