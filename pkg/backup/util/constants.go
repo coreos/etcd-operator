@@ -15,7 +15,5 @@
 package util
 
 const (
-	BackupTmpDir         = "tmp"
-	BackupFilePerm       = 0600
 	BackupFilenameSuffix = "etcd.backup"
 )
