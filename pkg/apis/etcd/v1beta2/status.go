@@ -65,11 +65,6 @@ type ClusterStatus struct {
 	// TargetVersion is the version the cluster upgrading to.
 	// If the cluster is not upgrading, TargetVersion is empty.
 	TargetVersion string `json:"targetVersion"`
-
-	// BackupServiceStatus is the status of the backup service.
-	// BackupServiceStatus only exists when backup is enabled in the
-	// cluster spec.
-	BackupServiceStatus *BackupServiceStatus `json:"backupServiceStatus,omitempty"`
 }
 
 // ClusterCondition represents one current condition of an etcd cluster.
