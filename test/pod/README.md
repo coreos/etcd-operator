@@ -16,9 +16,9 @@ TEST_IMAGE=gcr.io/coreos-k8s-scale-testing/etcd-operator-tests test/pod/build
 ```
 
 ## Run the test-pod
-The `run-test-pod` script sets the image and necessary environment variables for the test-pod before running it:
+The `run-test-pod` script sets up RBAC for the namespace, and necessary environment variables for the test-pod before running it:
 
-- `TEST_NAMESPACE` is the namespace where the test-pod and e2e tests will run. The default serviceaccount must be given sufficient RBAC permissions for the test-pod and e2e tests to run, e.g clusterrolebinding with admin clusterrole.
+- `TEST_NAMESPACE` is the namespace where the test-pod and e2e tests will run.
 - `OPERATOR_IMAGE` is the etcd-operator image used for testing
 - `TEST_S3_BUCKET` is the S3 bucket name used for testing
 - `TEST_AWS_SECRET` is the secret name containing the aws credentials/config files.
@@ -27,7 +27,7 @@ The `run-test-pod` script sets the image and necessary environment variables for
 TEST_IMAGE=gcr.io/coreos-k8s-scale-testing/etcd-operator-tests \
 TEST_NAMESPACE=e2e \
 OPERATOR_IMAGE=quay.io/coreos/etcd-operator:dev \
-TEST_S3_BUCKET=jenkins-etcd-operator \
+TEST_S3_BUCKET=my-bucket \
 TEST_AWS_SECRET=aws-secret \
 test/pod/run-test-pod
 ```
