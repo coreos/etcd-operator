@@ -17,7 +17,6 @@ package upgradetest
 import (
 	"flag"
 	"os"
-	"path"
 	"testing"
 
 	"github.com/coreos/etcd-operator/test/e2e/upgradetest/framework"
@@ -32,16 +31,13 @@ func TestMain(m *testing.M) {
 	kubeNS := flag.String("kube-ns", "default", "upgrade test namespace")
 	oldImage := flag.String("old-image", "", "")
 	newImage := flag.String("new-image", "", "")
-	pvProvisioner := flag.String("pv-provisioner", "kubernetes.io/gce-pd", "persistent volume provisioner type: the default is kubernetes.io/gce-pd. This should be set according to where the tests are running")
 	flag.Parse()
 
 	cfg := framework.Config{
-		KubeConfig:       *kubeconfig,
-		KubeNS:           *kubeNS,
-		OldImage:         *oldImage,
-		NewImage:         *newImage,
-		StorageClassName: "e2e-" + path.Base(*pvProvisioner),
-		Provisioner:      *pvProvisioner,
+		KubeConfig: *kubeconfig,
+		KubeNS:     *kubeNS,
+		OldImage:   *oldImage,
+		NewImage:   *newImage,
 	}
 	var err error
 	testF, err = framework.New(cfg)

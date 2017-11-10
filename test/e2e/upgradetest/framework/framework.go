@@ -26,7 +26,6 @@ import (
 
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	"k8s.io/api/core/v1"
-	v1beta1storage "k8s.io/api/storage/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -36,12 +35,10 @@ import (
 
 type Config struct {
 	// program flags
-	KubeConfig       string
-	KubeNS           string
-	OldImage         string
-	NewImage         string
-	StorageClassName string
-	Provisioner      string
+	KubeConfig string
+	KubeNS     string
+	OldImage   string
+	NewImage   string
 }
 
 type Framework struct {
@@ -65,10 +62,6 @@ func New(fc Config) (*Framework, error) {
 		Config:   fc,
 		KubeCli:  kubecli,
 		CRClient: client.MustNew(kc),
-	}
-	err = f.setupStorageClass()
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup storage class(%v): %v", f.Config.StorageClassName, err)
 	}
 	return f, nil
 }
@@ -172,20 +165,6 @@ func (f *Framework) UpgradeOperator(name string) error {
 	}
 	err = e2eutil.WaitUntilOperatorReady(f.KubeCli, f.KubeNS, name)
 	return err
-}
-
-func (f *Framework) setupStorageClass() error {
-	class := &v1beta1storage.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: f.StorageClassName,
-		},
-		Provisioner: f.Provisioner,
-	}
-	_, err := f.KubeCli.StorageV1beta1().StorageClasses().Create(class)
-	if err != nil && !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-		return fmt.Errorf("fail to create storage class: %v", err)
-	}
-	return nil
 }
 
 func operatorLabelSelector(name string) map[string]string {
