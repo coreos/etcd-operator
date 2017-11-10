@@ -19,7 +19,6 @@ import (
 	"flag"
 	"fmt"
 	"os/exec"
-	"path"
 	"strconv"
 	"time"
 
@@ -33,7 +32,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
-	v1beta1storage "k8s.io/api/storage/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -51,19 +49,16 @@ const (
 )
 
 type Framework struct {
-	opImage          string
-	KubeClient       kubernetes.Interface
-	CRClient         versioned.Interface
-	Namespace        string
-	StorageClassName string
-	Provisioner      string
+	opImage    string
+	KubeClient kubernetes.Interface
+	CRClient   versioned.Interface
+	Namespace  string
 }
 
 // Setup setups a test framework and points "Global" to it.
 func Setup() error {
 	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
 	opImage := flag.String("operator-image", "", "operator image, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator")
-	pvProvisioner := flag.String("pv-provisioner", "kubernetes.io/gce-pd", "persistent volume provisioner type: the default is kubernetes.io/gce-pd. This should be set according to where the tests are running")
 	ns := flag.String("namespace", "default", "e2e test namespace")
 	flag.Parse()
 
@@ -77,12 +72,10 @@ func Setup() error {
 	}
 
 	Global = &Framework{
-		KubeClient:       cli,
-		CRClient:         client.MustNew(config),
-		Namespace:        *ns,
-		opImage:          *opImage,
-		StorageClassName: "e2e-" + path.Base(*pvProvisioner),
-		Provisioner:      *pvProvisioner,
+		KubeClient: cli,
+		CRClient:   client.MustNew(config),
+		Namespace:  *ns,
+		opImage:    *opImage,
 	}
 	return Global.setup()
 }
@@ -110,9 +103,6 @@ func Teardown() error {
 }
 
 func (f *Framework) setup() error {
-	if err := f.setupStorageClass(); err != nil {
-		return fmt.Errorf("failed to setup storageclass(%v): %v", f.StorageClassName, err)
-	}
 	if err := f.SetupEtcdOperator(); err != nil {
 		return fmt.Errorf("failed to setup etcd operator: %v", err)
 	}
@@ -321,18 +311,4 @@ func (f *Framework) SetupEtcdRestoreOperatorAndService() error {
 
 func (f *Framework) deleteEtcdOperator() error {
 	return f.KubeClient.CoreV1().Pods(f.Namespace).Delete("etcd-operator", metav1.NewDeleteOptions(1))
-}
-
-func (f *Framework) setupStorageClass() error {
-	class := &v1beta1storage.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: f.StorageClassName,
-		},
-		Provisioner: f.Provisioner,
-	}
-	_, err := f.KubeClient.StorageV1beta1().StorageClasses().Create(class)
-	if err != nil && !k8sutil.IsKubernetesResourceAlreadyExistError(err) {
-		return fmt.Errorf("fail to create storage class: %v", err)
-	}
-	return nil
 }
