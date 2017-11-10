@@ -8,6 +8,7 @@ set -o pipefail
 
 : ${TEST_IMAGE:?"Need to set TEST_IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator-tests"}
 : ${TEST_NAMESPACE:?"Need to set TEST_NAMESPACE"}
+: ${TEST_S3_BUCKET:?"Need to set TEST_S3_BUCKET"}
 
 PASSES=${PASSES:-"e2e e2eslow"}
 OPERATOR_IMAGE=${OPERATOR_IMAGE:-"quay.io/coreos/etcd-operator:dev"}
@@ -16,7 +17,6 @@ OPERATOR_IMAGE=${OPERATOR_IMAGE:-"quay.io/coreos/etcd-operator:dev"}
 # To run a particular test set to test name e.g: E2E_TEST_SELECTOR="CreateCluster"
 E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-""}
 
-TEST_S3_BUCKET=${TEST_S3_BUCKET:-"jenkins-etcd-operator"}
 TEST_AWS_SECRET=${TEST_AWS_SECRET:-"aws-secret"}
 
 POD_NAME=${POD_NAME:-"eop-testing"}

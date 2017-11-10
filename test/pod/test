@@ -8,12 +8,12 @@ set -o pipefail
 
 : ${TEST_NAMESPACE:?"Need to set TEST_NAMESPACE"}
 : ${OPERATOR_IMAGE:?"Need to set OPERATOR_IMAGE"}
+: ${TEST_S3_BUCKET:?"Need to set TEST_S3_BUCKET"}
 
 export PARALLEL_TEST="true"
 
 # The bucket name and aws secret can be set through the pod envs
 export TEST_AWS_SECRET=${TEST_AWS_SECRET:-"aws-secret"}
-export TEST_S3_BUCKET=${TEST_S3_BUCKET:-"jenkins-etcd-operator"}
 
 # Try to create TEST_AWS_SECRET if not already present in the namespace
 if kubectl -n $TEST_NAMESPACE get secret ${TEST_AWS_SECRET} > /dev/null 2>&1;

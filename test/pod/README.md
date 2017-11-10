@@ -21,7 +21,7 @@ The `run-test-pod` script sets the image and necessary environment variables for
 - `TEST_NAMESPACE` is the namespace where the test-pod and e2e tests will run. The default serviceaccount must be given sufficient RBAC permissions for the test-pod and e2e tests to run, e.g clusterrolebinding with admin clusterrole.
 - `OPERATOR_IMAGE` is the etcd-operator image used for testing
 - `TEST_S3_BUCKET` is the S3 bucket name used for testing
-- `TEST_AWS_SECRET` is the secret name containing that has the aws credentials/config files.
+- `TEST_AWS_SECRET` is the secret name containing the aws credentials/config files.
 
 ```sh
 TEST_IMAGE=gcr.io/coreos-k8s-scale-testing/etcd-operator-tests \
