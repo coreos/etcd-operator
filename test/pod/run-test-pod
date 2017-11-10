@@ -21,7 +21,20 @@ TEST_AWS_SECRET=${TEST_AWS_SECRET:-"aws-secret"}
 
 POD_NAME=${POD_NAME:-"eop-testing"}
 
-# TODO: Setup RBAC for the test-pod
+# Setup RBAC for the e2e tests
+source hack/ci/rbac_utils.sh
+function cleanup {
+    rbac_cleanup
+    kubectl -n ${TEST_NAMESPACE} delete pod ${POD_NAME}
+}
+trap cleanup EXIT
+
+if rbac_setup ; then
+    echo "RBAC setup success! ==="
+else
+    echo "RBAC setup fail! ==="
+    exit 1
+fi
 
 # Run the test-pod in the given namespace
 sed -e "s|<POD_NAME>|${POD_NAME}|g" \
@@ -33,11 +46,6 @@ sed -e "s|<POD_NAME>|${POD_NAME}|g" \
     -e "s|<TEST_AWS_SECRET>|${TEST_AWS_SECRET}|g" \
     test/pod/test-pod.yaml \
     | kubectl -n ${TEST_NAMESPACE} create -f -
-
-function cleanup {
-	kubectl -n ${TEST_NAMESPACE} delete pod ${POD_NAME}
-}
-trap cleanup EXIT
 
 
 PHASE_RUNNING="Running"
