@@ -22,6 +22,8 @@ The etcd operator manages etcd clusters deployed to [Kubernetes][k8s-home] and a
 - [Resize](#resize-an-etcd-cluster)
 - [Failover](#failover)
 - [Rolling upgrade](#upgrade-an-etcd-cluster)
+- [Backup](#backup-an-etcd-cluster)
+- [Restore](#restore-an-etcd-cluster-from-backup)
 
 There are [more spec examples](./doc/user/spec_examples.md) on setting up clusters with different configurations
 
@@ -266,6 +268,14 @@ $ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
 ```
 
 Check the other two pods and you should see the same result.
+
+## Backup an etcd cluster
+
+Follow the [etcd backup operator walkthrough](./doc/user/walkthrough/backup-operator.md) to backup an etcd cluster.
+
+## Restore an etcd cluster from backup
+
+Follow the [etcd restore operator walkthrough](./doc/user/walkthrough/restore-operator.md) to restore an etcd cluster on Kubernetes from backup.
 
 ## Limitations
 
