@@ -1,26 +1,28 @@
 # Upgrade Guide
 
-This document shows how to safely upgrade the operator to a desired version while preserving the cluster's state and data whenever possible. It is assumed that the preexisting cluster is configured to create and store backups to persistent storage. See the [backup config guide](../backup_config.md) for details.
+This document shows how to safely upgrade the operator to a desired version while preserving the cluster's state and data whenever possible. 
 
 ### Backup safety precaution:
-First create a backup of your current cluster before starting the upgrade process. See the [backup service guide](../backup_service.md) on how to create a backup.
+**Note:** Only applies to when upgrading from an etcd operator with version < v0.7.0.
 
-In the case of an upgrade failure you can restore your cluster to the previous state from the previous backup. See the [spec examples](https://github.com/coreos/etcd-operator/blob/master/doc/user/spec_examples.md#three-members-cluster-that-restores-from-previous-pv-backup) on how to do that.
+First create a backup of your current cluster before starting the upgrade process. See the [backup service guide](https://github.com/coreos/etcd-operator/blob/v0.6.1/doc/user/backup_service.md) on how to create a backup.
 
+In the case of an upgrade failure you can restore your cluster to the previous state from the previous backup. See the [spec examples](https://github.com/coreos/etcd-operator/blob/v0.6.1/doc/user/spec_examples.md) on how to do that.
 
-### Upgrade operator deployment
-An [in-place update](https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/#in-place-updates-of-resources) can be performed when the upgrade is compatible, i.e we can upgrade the operator without affecting the cluster.
+## v0.6.1 -> v0.7.0
+**Note:** if your cluster specifies either the backup policy or restore policy, then follow the  [migrate CR](./migrate_cr_070.md) guide to update the cluster spec before upgrading the etcd-operator deployment.
 
-To upgrade an operator deployment the image field `spec.template.spec.containers.image` needs to be changed via an in-place update.
+Update the etcd-operator deployment:
+- Edit the existing etcd-operator deployment: `kubectl edit deployment/<your-operator>`.
+- Modify `image` to `quay.io/coreos/etcd-operator:v0.7.0`.
+- If `command` field doesn't exist, add a new `command` field to run `etcd-operator`:
 
-Change the image field to `quay.io/coreos/etcd-operator:vX.Y.Z`  where `vX.Y.Z` is the desired version.
-```bash
-$ kubectl edit deployment/etcd-operator
-# make the image change in your editor then save and close the file
-```
-
-### Incompatible upgrade
-In the case of an incompatible upgrade, the process requires restoring a new cluster from backup. See the [incompatible upgrade guide](incompatible_upgrade.md) for more information.
+  ```
+  command:
+  - etcd-operator
+  ```
+- If `command` field exists and `pv-provisioner` flag is used, you must remove `pv-provisioner` flag.
+- Save.
 
 ## v0.6.0 -> v0.6.1
 
