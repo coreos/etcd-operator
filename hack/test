@@ -95,7 +95,7 @@ function build_restore_operator  {
 }
 
 function build_pass {
-	IMAGE=$OPERATOR_IMAGE hack/build/operator/build
+	hack/build/operator/build
 	build_backup_operator
 	build_restore_operator
 	IMAGE=$OPERATOR_IMAGE hack/build/docker_push
