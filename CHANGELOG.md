@@ -1,12 +1,23 @@
 ## [Unreleased]
 
+Existing backup and restore features in EtcdCluster API won’t be supported after 0.7.0 release. 
+See [Decoupling Backup and Restore Logic from Etcd Operator](https://github.com/coreos/etcd-operator/issues/1626) for more detail.
+
+If applicable then see the [upgrade guide](./doc/user/upgrade/upgrade_guide.md) on how to upgrade from `v0.6.1` to `v0.7.0` .
+
 ### Added
 
 - Add `ServiceName` and `ClientPort` into ClusterStatus.
+- Add etcd backup operator for backing up an etcd cluster.
+- Add etcd restore operator for restoring an etcd cluster.
 
 ### Changed
 
 ### Removed
+
+- Remove `pv-provisioner` flag from etcd operator.
+- Remove etcd cluster Backup feature from etcd operator.
+- Remove etcd cluster Restore from etcd operator.
 
 ### Fixed
 
