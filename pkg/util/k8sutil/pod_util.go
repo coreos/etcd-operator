@@ -53,6 +53,16 @@ func etcdContainer(commands, baseImage, version string) v1.Container {
 			},
 		},
 		VolumeMounts: etcdVolumeMounts(),
+		Env: []v1.EnvVar{
+			{
+				Name: "POD_IP",
+				ValueFrom: &v1.EnvVarSource{
+					FieldRef: &v1.ObjectFieldSelector{
+						FieldPath: "status.podIP",
+					},
+				},
+			},
+		},
 	}
 
 	return c

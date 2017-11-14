@@ -31,6 +31,10 @@ type Member struct {
 	// We know the ID of a member when we get the member information from etcd,
 	// but not from Kubernetes pod list.
 	ID uint64
+	// Indicates whether this member is part of a self-hosted cluster.
+	SelfHosted bool
+	// The IPv4 address of the pod which the member belongs to.
+	PodIP string
 
 	SecurePeer   bool
 	SecureClient bool
@@ -67,7 +71,15 @@ func (m *Member) ListenPeerURL() string {
 }
 
 func (m *Member) PeerURL() string {
-	return fmt.Sprintf("%s://%s:2380", m.peerScheme(), m.Addr())
+	host := m.Addr()
+	if m.SelfHosted {
+		host = m.PodIP
+	}
+	return m.CustomPeerURL(host)
+}
+
+func (m *Member) CustomPeerURL(host string) string {
+	return fmt.Sprintf("%s://%s:2380", m.peerScheme(), host)
 }
 
 type MemberSet map[string]*Member
