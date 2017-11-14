@@ -14,7 +14,7 @@ Currently user facing etcd cluster objects are created as [Kubernetes Custom Res
 
 We expect to consider the etcd operator stable soon; backwards incompatible changes will not be made once the project reaches stability.
 
-## Overview
+### Overview
 
 The etcd operator manages etcd clusters deployed to [Kubernetes][k8s-home] and automates tasks related to operating an etcd cluster.
 
@@ -22,8 +22,7 @@ The etcd operator manages etcd clusters deployed to [Kubernetes][k8s-home] and a
 - [Resize](#resize-an-etcd-cluster)
 - [Failover](#failover)
 - [Rolling upgrade](#upgrade-an-etcd-cluster)
-- [Backup](#backup-an-etcd-cluster)
-- [Restore](#restore-an-etcd-cluster-from-backup)
+- [Backup and Restore](#backup-and-restore-an-etcd-cluster)
 
 There are [more spec examples](./doc/user/spec_examples.md) on setting up clusters with different configurations
 
@@ -42,13 +41,15 @@ See the [Resources and Labels](./doc/user/resource_labels.md) doc for an overvie
 
 ## Demo
 
+## Getting started
+
 ![etcd Operator demo](https://raw.githubusercontent.com/coreos/etcd-operator/master/doc/gif/demo.gif)
 
-## Deploy etcd operator
+### Deploy etcd operator
 
 See [instructions on how to install/uninstall etcd operator](doc/user/install_guide.md) .
 
-## Create and destroy an etcd cluster
+### Create and destroy an etcd cluster
 
 ```bash
 $ kubectl create -f example/example-etcd-cluster.yaml
@@ -81,7 +82,7 @@ Destroy etcd cluster:
 $ kubectl delete -f example/example-etcd-cluster.yaml
 ```
 
-## Resize an etcd cluster
+### Resize an etcd cluster
 
 Create an etcd cluster:
 
@@ -144,7 +145,7 @@ example-etcd-cluster-0003       1/1       Running   0          1m
 example-etcd-cluster-0004       1/1       Running   0          1m
 ```
 
-## Failover
+### Failover
 
 If the minority of etcd members crash, the etcd operator will automatically recover the failure.
 Let's walk through in the following steps.
@@ -176,7 +177,7 @@ Destroy etcd cluster:
 $ kubectl delete -f example/example-etcd-cluster.yaml
 ```
 
-## etcd operator recovery
+### etcd operator recovery
 
 If the etcd operator restarts, it can recover its previous state.
 Let's walk through in the following steps.
@@ -208,7 +209,7 @@ example-etcd-cluster-0002       1/1       Running   0          1m
 example-etcd-cluster-0003       1/1       Running   0          1m
 ```
 
-## Upgrade an etcd cluster
+### Upgrade an etcd cluster
 
 Have the following yaml file ready:
 
@@ -269,15 +270,15 @@ $ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
 
 Check the other two pods and you should see the same result.
 
-## Backup an etcd cluster
+
+### Backup and Restore an etcd cluster
+> Note: The provided etcd backup/restore operators are example implementations.
 
 Follow the [etcd backup operator walkthrough](./doc/user/walkthrough/backup-operator.md) to backup an etcd cluster.
 
-## Restore an etcd cluster from backup
-
 Follow the [etcd restore operator walkthrough](./doc/user/walkthrough/restore-operator.md) to restore an etcd cluster on Kubernetes from backup.
 
-## Limitations
+### Limitations
 
 - The etcd operator only manages the etcd cluster created in the same namespace. Users need to create multiple operators in different namespaces to manage etcd clusters in different namespaces.
 
