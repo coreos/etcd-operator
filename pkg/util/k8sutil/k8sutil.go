@@ -57,8 +57,6 @@ const (
 	operatorEtcdTLSVolume    = "etcd-client-tls"
 )
 
-const TolerateUnreadyEndpointsAnnotation = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
-
 func GetEtcdVersion(pod *v1.Pod) string {
 	return pod.Annotations[etcdVersionAnnotationKey]
 }
@@ -196,14 +194,12 @@ func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.S
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   svcName,
 			Labels: labels,
-			Annotations: map[string]string{
-				TolerateUnreadyEndpointsAnnotation: "true",
-			},
 		},
 		Spec: v1.ServiceSpec{
-			Ports:     ports,
-			Selector:  labels,
-			ClusterIP: clusterIP,
+			Ports:                    ports,
+			Selector:                 labels,
+			ClusterIP:                clusterIP,
+			PublishNotReadyAddresses: true,
 		},
 	}
 	return svc
