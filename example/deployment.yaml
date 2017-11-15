@@ -12,6 +12,7 @@ spec:
       containers:
       - name: etcd-operator
         image: quay.io/coreos/etcd-operator:v0.6.1
+        command: ["etcd-operator"]
         env:
         - name: MY_POD_NAMESPACE
           valueFrom:
@@ -21,3 +22,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+      - name: auto-csr-approver
+        image: quay.io/coreos/etcd-operator:latest
+        command: ["etcd-auto-approve-csr"]

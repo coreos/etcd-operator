@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+# Note: add `-i` to` enable build with caching. e.g ./hack/operator/build -i
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+source hack/lib/build.sh
+
+if ! which go > /dev/null; then
+	echo "golang needs to be installed"
+	exit 1
+fi
+
+if ! which docker > /dev/null; then
+	echo "docker needs to be installed"
+	exit 1
+fi
+
+GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
+
+bin_dir="$(pwd)/_output/bin"
+mkdir -p ${bin_dir} || true
+
+
+gitHash="github.com/coreos/etcd-operator/version.GitSHA=${GIT_SHA}"
+
+go_ldflags="-X ${gitHash}"
+
+GO_BUILD_FLAGS="$@" go_build auto-approve-csr
