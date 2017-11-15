@@ -43,7 +43,7 @@ Follow the prompts.
 - After build, push image:
 
 ```bash
-$ IMAGE=quay.io/coreos/etcd-operator:$VERSION hack/build/operator/build
+$ IMAGE=quay.io/coreos/etcd-operator:$VERSION hack/build/docker_push
 ```
 
 - Retag "latest":
