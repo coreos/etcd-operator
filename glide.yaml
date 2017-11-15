@@ -1,5 +1,7 @@
 package: github.com/coreos/etcd-operator
 import:
+- package: k8s.io/kubernetes
+  version: v1.8.2
 - package: k8s.io/client-go
   version: kubernetes-1.8.2
 - package: k8s.io/api
