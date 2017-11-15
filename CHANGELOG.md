@@ -1,5 +1,20 @@
 ## [Unreleased]
 
+### Added
+
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
+## [Release 0.7.0]
+
 Existing backup and restore features in EtcdCluster API won’t be supported after 0.7.0 release. 
 See [Decoupling Backup and Restore Logic from Etcd Operator](https://github.com/coreos/etcd-operator/issues/1626) for more detail.
 
@@ -11,19 +26,11 @@ If applicable then see the [upgrade guide](./doc/user/upgrade/upgrade_guide.md) 
 - Add etcd backup operator for backing up an etcd cluster.
 - Add etcd restore operator for restoring an etcd cluster.
 
-### Changed
-
 ### Removed
 
 - Remove `pv-provisioner` flag from etcd operator.
 - Remove etcd cluster Backup feature from etcd operator.
 - Remove etcd cluster Restore from etcd operator.
-
-### Fixed
-
-### Deprecated
-
-### Security
 
 
 ## [Release 0.6.1]
@@ -43,8 +50,6 @@ is specified, backup binary changes to serve http backup requests only mode.
 
 - An EtcdCluster CR with an invalid spec will not be marked as failed. Any changes that result in an invalid spec will be ignored and logged by the operator.
 
-### Removed
-
 ### Fixed
 
 - Fix the problem that operator might keep failing on version conflict updating CR status.
@@ -52,8 +57,6 @@ is specified, backup binary changes to serve http backup requests only mode.
 ### Deprecated
 
 - The operator flag `--pv-provisioner` is depercated. We recommend to use per cluster storageClass.
-
-### Security
 
 
 ## [Release 0.6.0]
@@ -72,12 +75,6 @@ is specified, backup binary changes to serve http backup requests only mode.
 
 - Remove operator level S3 flag.
 - Remove analytics flag. Disable Google analytics.
-
-### Fixed
-
-### Deprecated
-
-### Security
 
 
 ## [Release 0.5.2]
