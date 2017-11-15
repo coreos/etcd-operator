@@ -12,14 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2eslow
+package framework
 
 import (
+	"os"
 	"testing"
 
-	"github.com/coreos/etcd-operator/test/e2e/framework"
+	"github.com/sirupsen/logrus"
 )
 
-func TestMain(m *testing.M) {
-	framework.MainEntry(m)
+func MainEntry(m *testing.M) {
+	if err := setup(); err != nil {
+		logrus.Errorf("fail to setup framework: %v", err)
+		os.Exit(1)
+	}
+
+	code := m.Run()
+
+	if err := teardown(); err != nil {
+		logrus.Errorf("fail to teardown framework: %v", err)
+		os.Exit(1)
+	}
+	os.Exit(code)
 }

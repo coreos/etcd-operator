@@ -15,9 +15,71 @@
 package e2eslow
 
 import (
+	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"os"
 	"testing"
+
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
+	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
 
 func TestTLS(t *testing.T) {
-	TLSTestCommon(t, false)
+	f := framework.Global
+	suffix := fmt.Sprintf("-%d", rand.Uint64())
+	clusterName := "tls-test" + suffix
+	memberPeerTLSSecret := "etcd-peer-tls" + suffix
+	memberClientTLSSecret := "etcd-server-tls" + suffix
+	operatorClientTLSSecret := "etcd-client-tls" + suffix
+
+	err := e2eutil.PreparePeerTLSSecret(clusterName, f.Namespace, memberPeerTLSSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certsDir, err := ioutil.TempDir("", "etcd-operator-tls-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(certsDir)
+	err = e2eutil.PrepareClientTLSSecret(certsDir, clusterName, f.Namespace, memberClientTLSSecret, operatorClientTLSSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		err := e2eutil.DeleteSecrets(f.KubeClient, f.Namespace, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	c := e2eutil.NewCluster("", 3)
+	c.Name = clusterName
+	c.Spec.TLS = &api.TLSPolicy{
+		Static: &api.StaticTLS{
+			Member: &api.MemberSecret{
+				PeerSecret:   memberPeerTLSSecret,
+				ServerSecret: memberClientTLSSecret,
+			},
+			OperatorSecret: operatorClientTLSSecret,
+		},
+	}
+	c, err = e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, c); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	_, err = e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, c)
+	if err != nil {
+		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
+	}
+	// TODO: use client key/certs to talk to secure etcd cluster.
 }

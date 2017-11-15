@@ -9,7 +9,7 @@ if [ -z "${PASSES-}" ]; then
 fi
 
 function listPkgs() {
-	go list ./client/... ./cmd/... ./pkg/... ./test/... | grep -v generated
+	go list ./cmd/... ./pkg/... ./test/... | grep -v generated
 }
 
 function listFiles() {
@@ -120,19 +120,42 @@ function e2e_pass {
 
 	# Run all the tests by default
 	E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-.*}
-	go test "./test/e2e/" -run "$E2E_TEST_SELECTOR" -timeout 30m --race --kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
+
+	build_flags=("-i") # cache package compilation data for faster repeated builds
+	for i in {1..2}; do
+		go test "./test/e2e/" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
+			--kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
+		build_flags=("")
+	done
 }
 
 function e2eslow_pass {
 	E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-.*}
-	go test "./test/e2e/e2eslow" -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
-		--kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
+	build_flags=("-i") # cache package compilation data for faster repeated builds
+	for i in {1..2}; do
+		go test "./test/e2e/e2eslow" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
+			--kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
+		build_flags=("")
+	done
+}
+
+# Note: Due to issue https://github.com/coreos/etcd-operator/issues/1252,
+#   we will run only one jenkins job at a time.
+function e2esh_pass {
+	E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-.*}
+	build_flags=("-i") # cache package compilation data for faster repeated builds
+	for i in {1..2}; do
+		go test "./test/e2e/e2esh" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
+			--kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
+		build_flags=("")
+	done
 }
 
 function upgrade_pass {
 	# Run all the tests by default
 	UPGRADE_TEST_SELECTOR=${UPGRADE_TEST_SELECTOR:-.*}
-	go test ./test/e2e/upgradetest/ -run "$UPGRADE_TEST_SELECTOR" -timeout 30m --kubeconfig=$KUBECONFIG --kube-ns=$TEST_NAMESPACE \
+	go test ./test/e2e/upgradetest/ -run "$UPGRADE_TEST_SELECTOR" --race -timeout 30m \
+		--kubeconfig=$KUBECONFIG --kube-ns=$TEST_NAMESPACE \
 		--old-image=$UPGRADE_FROM \
 		--new-image=$UPGRADE_TO
 }
@@ -143,8 +166,13 @@ function unit_pass {
 	TEST_PKGS=$(listPkgs | grep -v e2e)
 	for pkg in $TEST_PKGS
 	do
-		go test -i -race -covermode=atomic -coverprofile=profile.out $pkg # cache duplicate builds
-		go test -race -covermode=atomic -coverprofile=profile.out $pkg
+		build_flags=("-i") # cache package compilation data for faster repeated builds
+		for i in {1..2}; do
+			go test ${build_flags[@]} -race -covermode=atomic -coverprofile=profile.out $pkg
+			# Expand empty array would cause "unbound variable".
+			# Expand one empty string array is equal to nothing.
+			build_flags=("")
+		done
 		if [ -f profile.out ]; then
 			tail -n +2 profile.out >> coverage.txt
 			rm profile.out

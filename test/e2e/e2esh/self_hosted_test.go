@@ -22,7 +22,6 @@ import (
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
-	"github.com/coreos/etcd-operator/test/e2e/e2eslow"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
@@ -32,30 +31,8 @@ import (
 )
 
 func TestSelfHosted(t *testing.T) {
-	t.Run("create self hosted cluster from scratch", testCreateSelfHostedCluster)
 	t.Run("migrate boot member to self hosted cluster", testCreateSelfHostedClusterWithBootMember)
-	t.Run("TLS for self hosted cluster", func(t *testing.T) { e2eslow.TLSTestCommon(t, true) })
 	cleanupSelfHostedHostpath()
-}
-
-func testCreateSelfHostedCluster(t *testing.T) {
-	f := framework.Global
-	c := e2eutil.NewCluster("test-etcd-", 3)
-	c = e2eutil.ClusterWithSelfHosted(c, &api.SelfHostedPolicy{})
-	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 24, testEtcd); err != nil {
-		t.Fatalf("failed to create 3 members self-hosted etcd cluster: %v", err)
-	}
 }
 
 func testCreateSelfHostedClusterWithBootMember(t *testing.T) {
