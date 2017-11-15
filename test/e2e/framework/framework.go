@@ -56,7 +56,7 @@ type Framework struct {
 }
 
 // Setup setups a test framework and points "Global" to it.
-func Setup() error {
+func setup() error {
 	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
 	opImage := flag.String("operator-image", "", "operator image, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator")
 	ns := flag.String("namespace", "default", "e2e test namespace")
@@ -80,23 +80,23 @@ func Setup() error {
 	return Global.setup()
 }
 
-func Teardown() error {
-	if err := Global.deleteEtcdOperator(); err != nil {
+func teardown() error {
+	err := Global.deleteOperatorCompletely("etcd-operator")
+	if err != nil {
 		return err
 	}
-	err := Global.KubeClient.CoreV1().Pods(Global.Namespace).Delete(etcdBackupOperatorName, metav1.NewDeleteOptions(1))
+	err = Global.deleteOperatorCompletely(etcdBackupOperatorName)
 	if err != nil {
-		return fmt.Errorf("failed to delete etcd backup operator: %v", err)
+		return err
 	}
-	err = Global.KubeClient.CoreV1().Pods(Global.Namespace).Delete(etcdRestoreOperatorName, metav1.NewDeleteOptions(1))
+	err = Global.deleteOperatorCompletely(etcdRestoreOperatorName)
 	if err != nil {
-		return fmt.Errorf("failed to delete etcd restore operator pod: %v", err)
+		return err
 	}
 	err = Global.KubeClient.CoreV1().Services(Global.Namespace).Delete(etcdRestoreOperatorServiceName, metav1.NewDeleteOptions(1))
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete etcd restore operator service: %v", err)
 	}
-	// TODO: check all deleted and wait
 	Global = nil
 	logrus.Info("e2e teardown successfully")
 	return nil
@@ -185,14 +185,18 @@ func describePod(ns, name string) {
 }
 
 func (f *Framework) DeleteEtcdOperatorCompletely() error {
-	err := f.deleteEtcdOperator()
+	return f.deleteOperatorCompletely("etcd-operator")
+}
+
+func (f *Framework) deleteOperatorCompletely(name string) error {
+	err := f.KubeClient.CoreV1().Pods(f.Namespace).Delete(name, metav1.NewDeleteOptions(1))
 	if err != nil {
 		return err
 	}
-	// On k8s 1.6.1, grace period isn't accurate. It took ~10s for operator pod to completely disappear.
+	// Grace period isn't exactly accurate. It took ~10s for operator pod to completely disappear.
 	// We work around by increasing the wait time. Revisit this later.
 	err = retryutil.Retry(5*time.Second, 6, func() (bool, error) {
-		_, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get("etcd-operator", metav1.GetOptions{})
+		_, err := f.KubeClient.CoreV1().Pods(f.Namespace).Get(name, metav1.GetOptions{})
 		if err == nil {
 			return false, nil
 		}
@@ -202,7 +206,7 @@ func (f *Framework) DeleteEtcdOperatorCompletely() error {
 		return false, err
 	})
 	if err != nil {
-		return fmt.Errorf("fail to wait etcd operator pod gone from API: %v", err)
+		return fmt.Errorf("fail to wait operator (%s) pod gone from API: %v", name, err)
 	}
 	return nil
 }
@@ -307,8 +311,4 @@ func (f *Framework) SetupEtcdRestoreOperatorAndService() error {
 		return fmt.Errorf("create restore-operator service failed: %v", err)
 	}
 	return nil
-}
-
-func (f *Framework) deleteEtcdOperator() error {
-	return f.KubeClient.CoreV1().Pods(f.Namespace).Delete("etcd-operator", metav1.NewDeleteOptions(1))
 }
