@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
+	"github.com/coreos/etcd-operator/pkg/util"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -292,7 +293,7 @@ func (c *Cluster) run() {
 				c.logger.Errorf("failed to reconcile: %v", rerr)
 				break
 			}
-			c.updateMemberStatus(c.members)
+			c.updateMemberStatus(c.members, k8sutil.GetPodNames(running))
 			if err := c.updateCRStatus(); err != nil {
 				c.logger.Warningf("periodic update CR status failed: %v", err)
 			}
@@ -443,21 +444,14 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 	return running, pending, nil
 }
 
-func (c *Cluster) updateMemberStatus(members etcdutil.MemberSet) {
-	var ready, unready []string
+func (c *Cluster) updateMemberStatus(members etcdutil.MemberSet, running []string) {
+	var unready []string
 	for _, m := range members {
-		url := m.ClientURL()
-		healthy, err := etcdutil.CheckHealth(url, c.tlsConfig)
-		if err != nil {
-			c.logger.Warningf("health check of etcd member (%s) failed: %v", url, err)
-		}
-		if healthy {
-			ready = append(ready, m.Name)
-		} else {
+		if !util.PresentIn(m.Name, running) {
 			unready = append(unready, m.Name)
 		}
 	}
-	c.status.Members.Ready = ready
+	c.status.Members.Ready = running
 	c.status.Members.Unready = unready
 }
 

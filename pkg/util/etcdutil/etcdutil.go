@@ -58,23 +58,3 @@ func RemoveMember(clientURLs []string, tc *tls.Config, id uint64) error {
 	cancel()
 	return err
 }
-
-func CheckHealth(url string, tc *tls.Config) (bool, error) {
-	cfg := clientv3.Config{
-		Endpoints:   []string{url},
-		DialTimeout: constants.DefaultDialTimeout,
-		TLS:         tc,
-	}
-	etcdcli, err := clientv3.New(cfg)
-	if err != nil {
-		return false, fmt.Errorf("failed to create etcd client for %s: %v", url, err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	_, err = etcdcli.Get(ctx, "/", clientv3.WithSerializable())
-	cancel()
-	etcdcli.Close()
-	if err != nil {
-		return false, fmt.Errorf("etcd health probing failed for %s: %v", url, err)
-	}
-	return true, nil
-}
