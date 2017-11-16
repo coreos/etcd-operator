@@ -23,6 +23,7 @@ import (
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
+	"github.com/coreos/etcd-operator/pkg/util"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
@@ -153,7 +154,7 @@ func WaitUntilMembersWithNamesDeleted(t *testing.T, crClient versioned.Interface
 		readyMembers := currCluster.Status.Members.Ready
 		remaining = nil
 		for _, name := range targetNames {
-			if presentIn(name, readyMembers) {
+			if util.PresentIn(name, readyMembers) {
 				remaining = append(remaining, name)
 			}
 		}
@@ -168,15 +169,6 @@ func WaitUntilMembersWithNamesDeleted(t *testing.T, crClient versioned.Interface
 		return nil, err
 	}
 	return remaining, nil
-}
-
-func presentIn(a string, list []string) bool {
-	for _, l := range list {
-		if a == l {
-			return true
-		}
-	}
-	return false
 }
 
 func waitResourcesDeleted(t *testing.T, kubeClient kubernetes.Interface, cl *api.EtcdCluster) error {
