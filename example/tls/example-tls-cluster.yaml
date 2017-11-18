@@ -4,14 +4,6 @@ metadata:
   name: "example"
 spec:
   size: 3
-  backup:
-    # short snapshot interval for testing, do not use this in production!
-    backupIntervalInSecond: 30
-    maxBackups: 5
-    storageType: "PersistentVolume"
-    pv:
-      volumeSizeInMB: 512
-    autoDelete: true
   TLS:
     static:
       member:

@@ -107,7 +107,8 @@ func TestEtcdUpgrade(t *testing.T) {
 	}
 	f := framework.Global
 	origEtcd := e2eutil.NewCluster("test-etcd-", 3)
-	origEtcd = e2eutil.ClusterWithVersion(origEtcd, "3.0.16")
+	origEtcd = e2eutil.ClusterWithVersion(origEtcd, "3.1.10")
+	origEtcd.Spec.BaseImage = "quay.io/coreos/etcd"
 	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, origEtcd)
 	if err != nil {
 		t.Fatal(err)
@@ -119,13 +120,14 @@ func TestEtcdUpgrade(t *testing.T) {
 		}
 	}()
 
-	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, "3.0.16", 3, 6, testEtcd)
+	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, "3.1.10", 3, 6, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
+	targetVersion := "3.2.10"
 	updateFunc := func(cl *api.EtcdCluster) {
-		cl = e2eutil.ClusterWithVersion(cl, "3.1.8")
+		cl = e2eutil.ClusterWithVersion(cl, targetVersion)
 	}
 	_, err = e2eutil.UpdateCluster(f.CRClient, testEtcd, 10, updateFunc)
 	if err != nil {
@@ -133,7 +135,7 @@ func TestEtcdUpgrade(t *testing.T) {
 	}
 
 	// We have seen in k8s 1.7.1 env it took 35s for the pod to restart with the new image.
-	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, "3.1.8", 3, 10, testEtcd)
+	err = e2eutil.WaitSizeAndVersionReached(t, f.KubeClient, targetVersion, 3, 10, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to wait new version etcd cluster: %v", err)
 	}

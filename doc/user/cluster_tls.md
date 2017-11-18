@@ -35,8 +35,8 @@ The example cluster YAML manifest and example certs can be found in [example/tls
 
 The peer TLS assets should have the following:
 - **peer.crt**: peer communication cert.
-  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc`.
-  In this case, it is `*.example.default.svc`.
+  The certificate should allow wildcard domain `*.${clusterName}.${namespace}.svc` and `*.${clusterName}.${namespace}.svc.${cluster_domain}`.
+  In our case, it is `*.example.default.svc` and `*.example.default.svc.cluster.local`.
 - **peer.key**: peer communication key.
 - **peer-ca.crt**: CA cert for this peer key-cert pair.
 
