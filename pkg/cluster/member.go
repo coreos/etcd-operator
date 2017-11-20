@@ -16,6 +16,7 @@ package cluster
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
@@ -24,26 +25,12 @@ import (
 	"github.com/pkg/errors"
 
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	resp, err := etcdutil.ListMembers(known.ClientURLs(), c.tlsConfig)
 	if err != nil {
 		return err
-	}
-
-	peerPodIPs := map[string]string{}
-	if c.cluster.Spec.SelfHosted != nil {
-		pods, err := c.config.KubeCli.CoreV1().Pods(c.cluster.Namespace).List(metav1.ListOptions{})
-		if err != nil {
-			return err
-		}
-		for _, p := range pods.Items {
-			if p.Labels["etcd_cluster"] == c.cluster.Name {
-				peerPodIPs[p.Labels["etcd_node"]] = p.Status.PodIP
-			}
-		}
 	}
 
 	members := etcdutil.MemberSet{}
@@ -69,9 +56,9 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 		}
 
 		if c.cluster.Spec.SelfHosted != nil {
-			podIP, ok := peerPodIPs[m.Name]
-			if !ok {
-				return newFatalError(fmt.Sprintf("could not get podIP for %s member (ID %d)", m.Name, m.ID))
+			podIP, err := getPodIP(m.PeerURLs[0])
+			if err != nil {
+				panic(fmt.Sprintf("error parsing peer URL (%v) for %s: %v", m.PeerURLs[0], m.Name, err))
 			}
 			member.PodIP = podIP
 			member.SelfHosted = true
@@ -92,6 +79,14 @@ func (c *Cluster) newMember(id int) *etcdutil.Member {
 		SecureClient: c.isSecureClient(),
 		SelfHosted:   c.cluster.Spec.SelfHosted != nil,
 	}
+}
+
+func getPodIP(rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+	return u.Hostname(), nil
 }
 
 func podsToMemberSet(pods []*v1.Pod, sc bool) etcdutil.MemberSet {

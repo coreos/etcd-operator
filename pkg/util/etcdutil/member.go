@@ -78,6 +78,7 @@ func (m *Member) PeerURL() string {
 	return m.CustomPeerURL(host)
 }
 
+// CustomPeerURL will return a formatted peer URL based on a host
 func (m *Member) CustomPeerURL(host string) string {
 	return fmt.Sprintf("%s://%s:2380", m.peerScheme(), host)
 }
