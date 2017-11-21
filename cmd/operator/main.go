@@ -28,7 +28,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/controller"
 	"github.com/coreos/etcd-operator/pkg/debug"
-	"github.com/coreos/etcd-operator/pkg/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
@@ -145,8 +144,6 @@ func main() {
 func run(stop <-chan struct{}) {
 	cfg := newControllerConfig()
 
-	go periodicFullGC(cfg.KubeCli, cfg.Namespace, gcInterval)
-
 	startChaos(context.Background(), cfg.KubeCli, cfg.Namespace, chaosLevel)
 
 	c := controller.New(cfg)
@@ -186,19 +183,6 @@ func getMyPodServiceAccount(kubecli kubernetes.Interface) (string, error) {
 		return true, nil
 	})
 	return sa, err
-}
-
-func periodicFullGC(kubecli kubernetes.Interface, ns string, d time.Duration) {
-	gc := garbagecollection.New(kubecli, ns)
-	timer := time.NewTicker(d)
-	defer timer.Stop()
-	for {
-		<-timer.C
-		err := gc.FullyCollect()
-		if err != nil {
-			logrus.Warningf("failed to cleanup resources: %v", err)
-		}
-	}
 }
 
 func startChaos(ctx context.Context, kubecli kubernetes.Interface, ns string, chaosLevel int) {
