@@ -249,17 +249,9 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		"etcd_cluster": clusterName,
 	}
 
-	// In etcd 3.2, TLS listener will do a reverse-DNS lookup for pod IP -> hostname.
-	// If DNS entry is not warmed up, it will return empty result and peer connection will be rejected.
-	ft := `
-	while ( ! nslookup %s )
-	do
-		sleep 2
-	done
-	%s
-	`
-	commands = fmt.Sprintf(ft, m.Addr(), commands)
-	container := containerWithLivenessProbe(etcdContainer(commands, cs.BaseImage, cs.Version), etcdLivenessProbe(cs.TLS.IsSecureClient()))
+	container := containerWithLivenessProbe(
+		etcdContainer(strings.Split(commands, " "), cs.BaseImage, cs.Version),
+		etcdLivenessProbe(cs.TLS.IsSecureClient()))
 
 	if cs.Pod != nil {
 		container = containerWithRequirements(container, cs.Pod.Resources)
@@ -300,6 +292,17 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			Annotations: map[string]string{},
 		},
 		Spec: v1.PodSpec{
+			InitContainers: []v1.Container{{
+				Image: "busybox",
+				Name:  "check-dns",
+				// In etcd 3.2, TLS listener will do a reverse-DNS lookup for pod IP -> hostname.
+				// If DNS entry is not warmed up, it will return empty result and peer connection will be rejected.
+				Command: []string{"/bin/sh", "-c", fmt.Sprintf(`
+					while ( ! nslookup %s )
+					do
+						sleep 2
+					done`, m.Addr())},
+			}},
 			Containers:    []v1.Container{container},
 			RestartPolicy: v1.RestartPolicyNever,
 			Volumes:       volumes,
