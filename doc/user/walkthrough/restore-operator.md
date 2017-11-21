@@ -15,6 +15,7 @@ The overall workflow is:
 Note that currently the etcd-restore-operator only supports restoring from backups saved on S3.
 
 **Prerequisite**
+- Setup RBAC and deploy an etcd operator. See [Install Guide][install_guide]
 - Have an etcd backup saved on S3. See the [etcd-backup-operator README][backup-operator-README] as one way to save a backup to S3.
 
 >Note: This demo uses the `default` namespace.
@@ -130,3 +131,4 @@ kubect delete -f example/etcd-restore-operator/deployment.yaml
 
 
 [backup-operator-README]:./backup-operator.md
+[install_guide]:../install_guide.md
