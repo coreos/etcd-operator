@@ -25,7 +25,6 @@ POD_NAME=${POD_NAME:-"eop-testing"}
 source hack/ci/rbac_utils.sh
 function cleanup {
     rbac_cleanup
-    kubectl -n ${TEST_NAMESPACE} delete pod ${POD_NAME}
 }
 trap cleanup EXIT
 
@@ -76,12 +75,3 @@ echo "test-pod logs"
 echo "=============="
 kubectl -n ${TEST_NAMESPACE} logs -f ${POD_NAME}
 echo "=============="
-
-# Check for pod success or failure
-POD_PHASE=$(kubectl -n ${TEST_NAMESPACE} get pod ${POD_NAME} -o jsonpath='{.status.phase}')
-if [ "${POD_PHASE}" == "${PHASE_SUCCEEDED}" ]; then
-    echo "e2e tests finished successfully"
-else
-    echo "e2e tests failed"
-    exit 1
-fi

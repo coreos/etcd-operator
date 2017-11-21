@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+# This script runs the each test pass(e2e, e2eslow, upgrade) in separate pods each in its own namespace.
+# It essentially sets up the namespace and calls the run-test-pod script for each pass.
+# The logs for each pass are stored at $(pwd)/_output/test-logs/
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# The ROOT_NAMESPACE should contain the TEST_AWS_SECRET
+# The ROOT_NAMESPACE is appended as a suffix to the namespace for each pass
+: ${ROOT_NAMESPACE:?"Need to set ROOT_NAMESPACE"}
+: ${TEST_AWS_SECRET:?"Need to set TEST_AWS_SECRET"}
+: ${TEST_S3_BUCKET:?"Need to set TEST_S3_BUCKET"}
+: ${TEST_IMAGE:?"Need to set TEST_IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator-tests"}
+
+PASSES=${PASSES:-"e2e e2eslow"}
+OPERATOR_IMAGE=${OPERATOR_IMAGE:-"quay.io/coreos/etcd-operator:dev"}
+
+# Make the output directory for the log files
+LOG_DIR="$(pwd)/_output/test-logs/${ROOT_NAMESPACE}"
+mkdir -p ${LOG_DIR} || true
+
+
+# Cleanup for the per pass namespace
+function cleanup_namespaces {
+    for p in ${PASSES}; do
+        PASS_NAMESPACE=${p}-${ROOT_NAMESPACE}
+        kubectl delete ns ${PASS_NAMESPACE} || true
+    done
+}
+trap cleanup_namespaces EXIT
+
+for p in $PASSES; do
+    echo "${p} pass"
+
+    # Create the pass namespace
+    PASS_NAMESPACE=${p}-${ROOT_NAMESPACE}
+    kubectl create ns ${PASS_NAMESPACE}
+
+    # Copy the aws secret into pass namespace
+    kubectl -n ${ROOT_NAMESPACE} get secrets ${TEST_AWS_SECRET} -o yaml | sed "s|${ROOT_NAMESPACE}|${PASS_NAMESPACE}|g" | kubectl create -f -
+
+    # Run the run-test-pod script for this pass in the pass namespace and save the logs
+    POD_NAME=${p}-test-pod
+	echo "Running test-pod (${POD_NAME}) in namespace (${PASS_NAMESPACE})"
+	PASSES=${p} \
+    POD_NAME=${POD_NAME} \
+    TEST_NAMESPACE=${PASS_NAMESPACE} \
+    TEST_IMAGE=${TEST_IMAGE} \
+    TEST_S3_BUCKET=${TEST_S3_BUCKET} \
+    TEST_AWS_SECRET=${TEST_AWS_SECRET} \
+    OPERATOR_IMAGE=${OPERATOR_IMAGE} \
+    test/pod/run-test-pod > ${LOG_DIR}/${p}_pass.log 2>&1 &
+    echo ""
+done
+
+echo "Waiting for all passes to complete..."
+wait
+echo "Logs stored at ${LOG_DIR}"
+
+# Check if any of the passes failed to complete and print out logs for it
+ALL_PASS=true
+PHASE_SUCCEEDED="Succeeded"
+for p in $PASSES; do
+    # Check for pod success or failure
+    POD_NAME=${p}-test-pod
+    PASS_NAMESPACE=${p}-${ROOT_NAMESPACE}
+    POD_PHASE=$(kubectl -n ${PASS_NAMESPACE} get pod ${POD_NAME} -o jsonpath='{.status.phase}')
+    if [ "${POD_PHASE}" == "${PHASE_SUCCEEDED}" ]; then
+        echo "${p} pass finished successfully"
+    else
+        echo "${p} pass failed."
+        ALL_PASS=false
+        echo "${p} pass logs:"
+        echo ""
+        cat ${LOG_DIR}/${p}_pass.log
+        echo ""
+    fi
+done
+
+if [ "${ALL_PASS}" ==  true ]; then
+    echo "All passes finished successfully"
+else
+    echo "All passes failed to finish successfully"
+    exit 1
+fi
