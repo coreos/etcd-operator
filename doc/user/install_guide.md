@@ -1,12 +1,14 @@
 # Operation Guide
 
-## Install etcd operator
+## Setup RBAC
 
 Set up basic [RBAC rules](./rbac.md) for etcd operator:
 
 ```bash
 $ example/rbac/create_role.sh
 ```
+
+## Install etcd operator
 
 Create a deployment for etcd operator:
 
