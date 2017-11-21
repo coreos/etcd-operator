@@ -32,4 +32,21 @@ TEST_AWS_SECRET=aws-secret \
 test/pod/run-test-pod
 ```
 
+## Run each test pass as a separate pod
+
+To run each test pass(e2e, e2eslow etc) as a separate pod use the `run-test-passes` script. This script creates a namespace for each pass and then runs a test-pod that only tests that pass.
+
+The script needs the env `ROOT_NAMESPACE` which is the namespace where the aws secret must already be present.
+
+```sh
+TEST_IMAGE=gcr.io/coreos-k8s-scale-testing/etcd-operator-tests \
+TEST_AWS_SECRET=aws-secret \
+TEST_S3_BUCKET=my-bucket \
+OPERATOR_IMAGE=quay.io/coreos/etcd-operator:dev \
+ROOT_NAMESPACE=testing \
+PASSES="e2e e2eslow" \
+test/pod/run-test-passes
+```
+
+
 [setup-aws-secret]:../../doc/user/walkthrough/backup-operator.md#setup-aws-secret
