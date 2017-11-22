@@ -17,7 +17,7 @@ OPERATOR_IMAGE=${OPERATOR_IMAGE:-"quay.io/coreos/etcd-operator:dev"}
 # To run a particular test set to test name e.g: E2E_TEST_SELECTOR="CreateCluster"
 E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-""}
 
-TEST_AWS_SECRET=${TEST_AWS_SECRET:-"aws-secret"}
+TEST_AWS_SECRET=${TEST_AWS_SECRET:-"aws"}
 
 POD_NAME=${POD_NAME:-"eop-testing"}
 
@@ -72,10 +72,10 @@ do
 done
 
 # Print out and save logs to a file until the pod stops running
-echo "test-pod logs"
-echo "=============="
-kubectl -n ${TEST_NAMESPACE} logs -f ${POD_NAME} 2>&1 | tee test-pod.log
-echo "=============="
+echo "collecting logs =========="
+mkdir -p _output/logs/
+go run ./test/logcollector/main.go --kubeconfig=$KUBECONFIG --e2e-podname=${POD_NAME} \
+    --namespace=${TEST_NAMESPACE} --logs-dir="_output/logs/"
 
 # Check for pod success or failure
 POD_PHASE=$(kubectl -n ${TEST_NAMESPACE} get pod ${POD_NAME} -o jsonpath='{.status.phase}')
