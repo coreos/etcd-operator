@@ -16,6 +16,7 @@ package cluster
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
@@ -31,6 +32,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	if err != nil {
 		return err
 	}
+
 	members := etcdutil.MemberSet{}
 	for _, m := range resp.Members {
 		name, err := getMemberName(m, c.cluster.GetName(), c.cluster.Spec.SelfHosted)
@@ -45,13 +47,24 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 			c.memberCounter = ct + 1
 		}
 
-		members[name] = &etcdutil.Member{
+		member := &etcdutil.Member{
 			Name:         name,
 			Namespace:    c.cluster.Namespace,
 			ID:           m.ID,
 			SecurePeer:   c.isSecurePeer(),
 			SecureClient: c.isSecureClient(),
 		}
+
+		if c.cluster.Spec.SelfHosted != nil {
+			podIP, err := getPodIP(m.PeerURLs[0])
+			if err != nil {
+				panic(fmt.Sprintf("error parsing peer URL (%v) for %s: %v", m.PeerURLs[0], m.Name, err))
+			}
+			member.PodIP = podIP
+			member.SelfHosted = true
+		}
+
+		members[name] = member
 	}
 	c.members = members
 	return nil
@@ -64,13 +77,27 @@ func (c *Cluster) newMember(id int) *etcdutil.Member {
 		Namespace:    c.cluster.Namespace,
 		SecurePeer:   c.isSecurePeer(),
 		SecureClient: c.isSecureClient(),
+		SelfHosted:   c.cluster.Spec.SelfHosted != nil,
 	}
+}
+
+func getPodIP(rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+	return u.Hostname(), nil
 }
 
 func podsToMemberSet(pods []*v1.Pod, sc bool) etcdutil.MemberSet {
 	members := etcdutil.MemberSet{}
 	for _, pod := range pods {
-		m := &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace, SecureClient: sc}
+		m := &etcdutil.Member{
+			Name:         pod.Name,
+			Namespace:    pod.Namespace,
+			SecureClient: sc,
+			PodIP:        pod.Status.PodIP,
+		}
 		members.Add(m)
 	}
 	return members

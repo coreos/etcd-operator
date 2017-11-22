@@ -39,10 +39,17 @@ func selfHostedDataDir(ns, name string) string {
 
 func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string, clusterName, state, token string, cs api.ClusterSpec, owner metav1.OwnerReference) *v1.Pod {
 	hostDataDir := selfHostedDataDir(m.Namespace, m.Name)
-	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
-		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
-		"--initial-cluster=%s --initial-cluster-state=%s",
-		hostDataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ListenClientURL(), m.ClientURL(), strings.Join(initialCluster, ","), state)
+
+	peerURL := m.CustomPeerURL("$(POD_IP)")
+
+	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s ", hostDataDir)
+	commands += fmt.Sprintf(" --name=%s", m.Name)
+	commands += fmt.Sprintf(" --initial-advertise-peer-urls=%s", peerURL)
+	commands += fmt.Sprintf(" --listen-peer-urls=%s", m.ListenPeerURL())
+	commands += fmt.Sprintf(" --advertise-client-urls=%s", m.ClientURL())
+	commands += fmt.Sprintf(" --listen-client-urls=%s", m.ListenClientURL())
+	commands += fmt.Sprintf(" --initial-cluster=%s", strings.Join(initialCluster, ","))
+	commands += fmt.Sprintf(" --initial-cluster-state=%s", state)
 	if m.SecurePeer {
 		commands += fmt.Sprintf(" --peer-client-cert-auth=true --peer-trusted-ca-file=%[1]s/peer-ca.crt --peer-cert-file=%[1]s/peer.crt --peer-key-file=%[1]s/peer.key", peerTLSDir)
 	}
@@ -60,7 +67,7 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 	}
 
 	if len(endpoints) > 0 {
-		addMemberCmd := fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), m.Name, m.PeerURL())
+		addMemberCmd := fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), m.Name, peerURL)
 		if m.SecureClient {
 			addMemberCmd += fmt.Sprintf(" --cert=%[1]s/%[2]s --key=%[1]s/%[3]s --cacert=%[1]s/%[4]s",
 				operatorEtcdTLSDir, etcdutil.CliCertFile, etcdutil.CliKeyFile, etcdutil.CliCAFile)
@@ -68,18 +75,6 @@ func NewSelfHostedEtcdPod(m *etcdutil.Member, initialCluster, endpoints []string
 		commands = fmt.Sprintf("([ -d %s ] || %s); %s", hostDataDir, addMemberCmd, commands)
 	}
 
-	// When scaling from 1 -> 2 members, if DNS entry is not populated yet, the k8s control plane will go down
-	// and the etcd pod will not have any chance to talk to each other again. We need to make sure DNS entry ready.
-	// TODO: nslookup should timeout if blocked for a while (10s).
-	ft := `
-while ( ! nslookup %s )
-do
-	sleep 3
-done
-%s
-`
-	commands = fmt.Sprintf(ft, m.Addr(), commands)
-	commands = fmt.Sprintf("%s; %s", appendHostsCommands(), commands)
 	commands = fmt.Sprintf("flock %s -c \"%s\"", etcdLockPath, commands)
 	c := etcdContainer([]string{"/bin/sh", "-ec", commands}, cs.BaseImage, cs.Version)
 	// On node reboot, there will be two copies of etcd pod: scheduled and checkpointed one.
@@ -158,13 +153,6 @@ done
 	pod = selfHostedPodWithAntiAffinity(pod)
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
-}
-
-func appendHostsCommands() string {
-	etcdHostsFile := path.Join(etcdVolumeMountDir, "etcd-hosts.checkpoint")
-	// If hosts checkpoint exists, we will append it to /etc/hosts.
-	// TODO: remove this when host alias works for hostNetwork Pod.
-	return fmt.Sprintf("([ -f %[1]s ] && (cat %[1]s >> /etc/hosts) || true)", etcdHostsFile)
 }
 
 func selfHostedPodWithAntiAffinity(pod *v1.Pod) *v1.Pod {
