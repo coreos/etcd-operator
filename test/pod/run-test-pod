@@ -9,6 +9,9 @@ set -o pipefail
 : ${TEST_IMAGE:?"Need to set TEST_IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator-tests"}
 : ${TEST_NAMESPACE:?"Need to set TEST_NAMESPACE"}
 : ${TEST_S3_BUCKET:?"Need to set TEST_S3_BUCKET"}
+: ${TEST_AWS_SECRET:?"Need to set TEST_AWS_SECRET"}
+: ${KUBECONFIG:?"Need to set KUBECONFIG"}
+
 
 PASSES=${PASSES:-"e2e e2eslow"}
 OPERATOR_IMAGE=${OPERATOR_IMAGE:-"quay.io/coreos/etcd-operator:dev"}
@@ -17,9 +20,7 @@ OPERATOR_IMAGE=${OPERATOR_IMAGE:-"quay.io/coreos/etcd-operator:dev"}
 # To run a particular test set to test name e.g: E2E_TEST_SELECTOR="CreateCluster"
 E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-""}
 
-TEST_AWS_SECRET=${TEST_AWS_SECRET:-"aws"}
-
-POD_NAME=${POD_NAME:-"eop-testing"}
+POD_NAME=${POD_NAME:-"e2e-testing"}
 
 # Setup RBAC for the e2e tests
 source hack/ci/rbac_utils.sh
@@ -73,8 +74,16 @@ done
 
 # Print out and save logs to a file until the pod stops running
 echo "collecting logs =========="
+
+DOCKER_REPO_ROOT="/go/src/github.com/coreos/etcd-operator"
 mkdir -p _output/logs/
-go run ./test/logcollector/main.go --kubeconfig=$KUBECONFIG --e2e-podname=${POD_NAME} \
+cp $KUBECONFIG ./kubeconfig
+
+docker run --rm \
+    -v "$PWD":"$DOCKER_REPO_ROOT" \
+    -w "$DOCKER_REPO_ROOT" \
+    golang:1.9-alpine \
+    go run ./test/logcollector/main.go --kubeconfig=${DOCKER_REPO_ROOT}/kubeconfig --e2e-podname=${POD_NAME} \
     --namespace=${TEST_NAMESPACE} --logs-dir="_output/logs/"
 
 # Check for pod success or failure

@@ -8,7 +8,7 @@ spec:
   - name: <POD_NAME>
     image: <TEST_IMAGE>
     imagePullPolicy: Always
-    command: ["test/pod/test"]
+    command: ["hack/test"]
     env:
       - name: TEST_NAMESPACE
         valueFrom:
