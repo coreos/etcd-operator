@@ -131,7 +131,8 @@ func (c *Cluster) addOneSelfHostedMember() error {
 
 	newMember := c.newMember(c.memberCounter)
 	c.memberCounter++
-	initialCluster := append(c.members.PeerURLPairs(), newMember.Name+"="+newMember.CustomPeerURL("$(POD_IP)"))
+	peerURL := newMember.PeerURL()
+	initialCluster := append(c.members.PeerURLPairs(), newMember.Name+"="+peerURL)
 
 	ns := c.cluster.Namespace
 	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, c.members.ClientURLs(), c.cluster.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
@@ -160,7 +161,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 func (c *Cluster) newSelfHostedSeedMember() error {
 	newMember := c.newMember(c.memberCounter)
 	c.memberCounter++
-	initialCluster := []string{newMember.Name + "=" + newMember.CustomPeerURL("$(POD_IP)")}
+	initialCluster := []string{newMember.Name + "=" + newMember.PeerURL()}
 
 	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, nil, c.cluster.Name, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
 	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Namespace, pod, 3*60*time.Second)
@@ -198,7 +199,8 @@ func (c *Cluster) migrateBootMember() error {
 	newMember := c.newMember(c.memberCounter)
 	c.memberCounter++
 
-	initialCluster = append(initialCluster, newMember.Name+"="+newMember.CustomPeerURL("$(POD_IP)"))
+	peerURL := newMember.PeerURL()
+	initialCluster = append(initialCluster, newMember.Name+"="+peerURL)
 
 	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, []string{endpoint}, c.cluster.Name, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
 	ns := c.cluster.Namespace
