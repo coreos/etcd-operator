@@ -71,10 +71,10 @@ do
     POD_PHASE=$(kubectl -n ${TEST_NAMESPACE} get pod ${POD_NAME} -o jsonpath='{.status.phase}')
 done
 
-# Print out logs until pod stops running
+# Print out and save logs to a file until the pod stops running
 echo "test-pod logs"
 echo "=============="
-kubectl -n ${TEST_NAMESPACE} logs -f ${POD_NAME}
+kubectl -n ${TEST_NAMESPACE} logs -f ${POD_NAME} 2>&1 | tee test-pod.log
 echo "=============="
 
 # Check for pod success or failure
