@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"io"
 	"os"
@@ -23,7 +24,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -53,10 +56,19 @@ func main() {
 	podListWatcher := cache.NewListWatchFromClient(kubecli.CoreV1().RESTClient(), "pods", *ns, fields.Everything())
 	_, informer := cache.NewIndexerInformer(podListWatcher, &v1.Pod{}, 0, cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			pod := obj.(*v1.Pod)
-			go func(namespace, logsDir string) {
-				// TODO: wait until pod is running
-				time.Sleep(5 * time.Second)
+			go func(pod *v1.Pod, namespace, logsDir string) {
+				watcher, err := kubecli.CoreV1().Pods(namespace).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: pod.Name}))
+				if err != nil {
+					logrus.Errorf("failed to watch for pod (%s): %v", pod.Name, err)
+					return
+				}
+				// We need to wait Pod Running before collecting its log
+				ev, err := watch.Until(100*time.Second, watcher, podRunning)
+				if err != nil {
+					logrus.Errorf("failed to reach Running for pod (%s): %v", pod.Name, err)
+					return
+				}
+				pod = ev.Object.(*v1.Pod)
 
 				req := kubecli.CoreV1().Pods(namespace).GetLogs(pod.Name, &v1.PodLogOptions{Follow: true})
 				readCloser, err := req.Stream()
@@ -75,13 +87,14 @@ func main() {
 				if err != nil {
 					logrus.Errorf("failed to write log for pod (%s): %v", pod.Name, err)
 				}
-			}(*ns, *logsDir)
+			}(obj.(*v1.Pod), *ns, *logsDir)
 		},
 		UpdateFunc: func(old, new interface{}) {
 			pod := new.(*v1.Pod)
 			if pod.Name != *e2ePodName {
 				return
 			}
+			// If e2e test pod runs to completion, then stops this program.
 			if pod.Status.Phase == v1.PodSucceeded || pod.Status.Phase == v1.PodFailed {
 				close(stopCh)
 			}
@@ -92,4 +105,24 @@ func main() {
 	logrus.Info("start collecting logs...")
 	informer.Run(stopCh)
 	logrus.Info("start collecting logs...")
+}
+
+// **NOTE**: Copy from kubernetes.
+// podRunning returns true if the pod is running, false if the pod has not yet reached running state,
+// returns ErrPodCompleted if the pod has run to completion, or an error in any other case.
+func podRunning(event watch.Event) (bool, error) {
+	switch event.Type {
+	case watch.Deleted:
+		return false, errors.New("pod deleted")
+	}
+	switch t := event.Object.(type) {
+	case *v1.Pod:
+		switch t.Status.Phase {
+		case v1.PodRunning:
+			return true, nil
+		case v1.PodFailed, v1.PodSucceeded:
+			return false, errors.New("pod ran to completion")
+		}
+	}
+	return false, nil
 }
