@@ -254,13 +254,6 @@ func (c *Cluster) run() {
 				continue
 			}
 
-			pvcs, err := c.pollPVCs()
-			if err != nil {
-				c.logger.Errorf("failed to poll pvcs: %v", err)
-				reconcileFailed.WithLabelValues("failed to poll vcs").Inc()
-				continue
-			}
-
 			if len(pending) > 0 {
 				// Pod startup might take long, e.g. pulling image. It would deterministically become running or succeeded/failed later.
 				c.logger.Infof("skip reconciliation: running (%v), pending (%v)", k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
@@ -281,7 +274,7 @@ func (c *Cluster) run() {
 					break
 				}
 			}
-			rerr = c.reconcile(running, pvcs)
+			rerr = c.reconcile(running)
 			if rerr != nil {
 				c.logger.Errorf("failed to reconcile: %v", rerr)
 				break
@@ -361,10 +354,6 @@ func (c *Cluster) isSecureClient() bool {
 	return c.cluster.Spec.TLS.IsSecureClient()
 }
 
-func (c *Cluster) IsPodPVEnabled() bool {
-	return c.cluster.Spec.Pod != nil && c.cluster.Spec.Pod.PV != nil
-}
-
 // bootstrap creates the seed etcd member for a new cluster.
 func (c *Cluster) bootstrap() error {
 	return c.startSeedMember()
@@ -386,9 +375,26 @@ func (c *Cluster) setupServices() error {
 	return k8sutil.CreatePeerService(c.config.KubeCli, c.cluster.Name, c.cluster.Namespace, c.cluster.AsOwner())
 }
 
+func (c *Cluster) IsPodPVEnabled() bool {
+	if podPolicy := c.cluster.Spec.Pod; podPolicy != nil {
+		return podPolicy.PersistentVolumeClaimSpec != nil
+	}
+	return false
+}
+
 func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, state string) error {
 	pod := k8sutil.NewEtcdPod(m, members.PeerURLPairs(), c.cluster.Name, state, uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
-	_, err := c.config.KubeCli.Core().Pods(c.cluster.Namespace).Create(pod)
+	if c.IsPodPVEnabled() {
+		pvc := k8sutil.NewEtcdPodPVC(m, *c.cluster.Spec.Pod.PersistentVolumeClaimSpec, c.cluster.Name, c.cluster.Namespace, c.cluster.AsOwner())
+		_, err := c.config.KubeCli.CoreV1().PersistentVolumeClaims(c.cluster.Namespace).Create(pvc)
+		if err != nil {
+			return fmt.Errorf("failed to create PVC for member (%s): %v", m.Name, err)
+		}
+		k8sutil.AddEtcdVolumeToPod(pod, pvc)
+	} else {
+		k8sutil.AddEtcdVolumeToPod(pod, nil)
+	}
+	_, err := c.config.KubeCli.CoreV1().Pods(c.cluster.Namespace).Create(pod)
 	return err
 }
 
@@ -406,21 +412,6 @@ func (c *Cluster) removePod(name string) error {
 	}
 	if c.isDebugLoggerEnabled() {
 		c.debugLogger.LogPodDeletion(name)
-	}
-
-	return nil
-}
-
-func (c *Cluster) removePVC(name string) error {
-	ns := c.cluster.Namespace
-	err := c.config.KubeCli.Core().PersistentVolumeClaims(ns).Delete(name, nil)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-		if c.isDebugLoggerEnabled() {
-			c.debugLogger.LogMessage(fmt.Sprintf("pvc (%s) not found while trying to delete it", name))
-		}
 	}
 	return nil
 }
