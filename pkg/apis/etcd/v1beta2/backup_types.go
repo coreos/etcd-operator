@@ -44,6 +44,13 @@ type BackupSpec struct {
 	StorageType string `json:"storageType"`
 	// BackupStorageSource is the backup storage source.
 	BackupStorageSource `json:",inline"`
+	// ClientTLSSecret is the secret containing the etcd TLS client certs and
+	// must contain the following data items:
+	// data:
+	//    "etcd-client.crt": <pem-encoded-cert>
+	//    "etcd-client.key": <pem-encoded-key>
+	//    "etcd-client-ca.crt": <pem-encoded-ca-cert>
+	ClientTLSSecret string `json:"clientTLSSecret,omitempty"`
 }
 
 // BackupStorageSource contains the supported backup sources.

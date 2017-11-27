@@ -25,6 +25,20 @@ import (
 	"time"
 )
 
+// PrepareTLS creates all the required tls certs for a given clusterName.
+func PrepareTLS(clusterName, namespace, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret string) error {
+	err := PreparePeerTLSSecret(clusterName, namespace, memberPeerTLSSecret)
+	if err != nil {
+		return err
+	}
+	certsDir, err := ioutil.TempDir("", "etcd-operator-tls-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(certsDir)
+	return PrepareClientTLSSecret(certsDir, clusterName, namespace, memberClientTLSSecret, operatorClientTLSSecret)
+}
+
 func PreparePeerTLSSecret(clusterName, ns, secretName string) error {
 	dir, err := ioutil.TempDir("", "etcd-operator-tls-")
 	if err != nil {

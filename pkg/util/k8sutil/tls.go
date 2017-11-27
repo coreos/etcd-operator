@@ -27,6 +27,7 @@ type TLSData struct {
 	CAData   []byte
 }
 
+// GetTLSDataFromSecret retrives the kubernete secret that contain etcd tls certs and put them into TLSData.
 func GetTLSDataFromSecret(kubecli kubernetes.Interface, ns, se string) (*TLSData, error) {
 	secret, err := kubecli.CoreV1().Secrets(ns).Get(se, metav1.GetOptions{})
 	if err != nil {
