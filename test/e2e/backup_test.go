@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
@@ -61,10 +62,22 @@ func verifyAWSEnvVars() error {
 // It returns the full S3 path where the backup is saved.
 func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 	f := framework.Global
-	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, e2eutil.NewCluster("test-etcd-", 3))
+	suffix := fmt.Sprintf("-%d", rand.Uint64())
+	clusterName := "tls-test" + suffix
+	memberPeerTLSSecret := "etcd-peer-tls" + suffix
+	memberClientTLSSecret := "etcd-server-tls" + suffix
+	operatorClientTLSSecret := "etcd-client-tls" + suffix
+
+	err := e2eutil.PrepareTLS(clusterName, f.Namespace, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	c := e2eutil.NewCluster("", 3)
+	c.Name = clusterName
+	e2eutil.ClusterCRWithTLS(c, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
+	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
+
 	defer func() {
 		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
 			t.Fatal(err)
@@ -73,7 +86,8 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
-	eb, err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Create(e2eutil.NewS3Backup(testEtcd.Name, os.Getenv("TEST_S3_BUCKET"), os.Getenv("TEST_AWS_SECRET")))
+	backCR := e2eutil.NewS3Backup(testEtcd.Name, os.Getenv("TEST_S3_BUCKET"), os.Getenv("TEST_AWS_SECRET"), operatorClientTLSSecret)
+	eb, err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Create(backCR)
 	if err != nil {
 		t.Fatalf("failed to create etcd backup cr: %v", err)
 	}
