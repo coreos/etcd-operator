@@ -45,12 +45,12 @@ type BackupManager struct {
 }
 
 // NewBackupManagerFromWriter creates a BackupManager with backup writer.
-func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, tls *tls.Config, clusterName, namespace string) *BackupManager {
+func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, tc *tls.Config, clusterName, namespace string) *BackupManager {
 	return &BackupManager{
 		kubecli:       kubecli,
 		clusterName:   clusterName,
 		namespace:     namespace,
-		etcdTLSConfig: tls,
+		etcdTLSConfig: tc,
 		bw:            bw,
 	}
 }

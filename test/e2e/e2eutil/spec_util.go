@@ -36,7 +36,7 @@ func NewCluster(genName string, size int) *api.EtcdCluster {
 }
 
 // NewS3Backup creates a EtcdBackup object using clusterName.
-func NewS3Backup(clusterName, bucket, secret string) *api.EtcdBackup {
+func NewS3Backup(clusterName, bucket, secret, PrepareTLS string) *api.EtcdBackup {
 	return &api.EtcdBackup{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       api.EtcdBackupResourceKind,
@@ -46,8 +46,9 @@ func NewS3Backup(clusterName, bucket, secret string) *api.EtcdBackup {
 			GenerateName: clusterName,
 		},
 		Spec: api.BackupSpec{
-			ClusterName: clusterName,
-			StorageType: api.BackupStorageTypeS3,
+			ClusterName:     clusterName,
+			StorageType:     api.BackupStorageTypeS3,
+			ClientTLSSecret: clientTLSSecret,
 			BackupStorageSource: api.BackupStorageSource{
 				S3: &api.S3Source{
 					S3Bucket:  bucket,
@@ -83,6 +84,19 @@ func NewEtcdRestore(restoreName, version string, size int, restoreSource api.Res
 				Version:   version,
 			},
 			RestoreSource: restoreSource,
+		},
+	}
+}
+
+// ClusterCRWithTLS adds TLSPolicy to the passing in cluster CR.
+func ClusterCRWithTLS(cl *api.EtcdCluster, memberPeerTLSSecret, memberServerTLSSecret, operatorClientTLSSecret string) {
+	cl.Spec.TLS = &api.TLSPolicy{
+		Static: &api.StaticTLS{
+			Member: &api.MemberSecret{
+				PeerSecret:   memberPeerTLSSecret,
+				ServerSecret: memberServerTLSSecret,
+			},
+			OperatorSecret: operatorClientTLSSecret,
 		},
 	}
 }
