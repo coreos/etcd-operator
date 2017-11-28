@@ -33,6 +33,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
+
 // TestBackupAndRestore runs the backup test first, and only runs the restore test after if the backup test succeeds and sets the S3 path
 func TestBackupAndRestore(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
@@ -63,7 +67,7 @@ func verifyAWSEnvVars() error {
 func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 	f := framework.Global
 	suffix := fmt.Sprintf("-%d", rand.Uint64())
-	clusterName := "tls-test" + suffix
+	clusterName := "test-etcd-backup-" + suffix
 	memberPeerTLSSecret := "etcd-peer-tls" + suffix
 	memberClientTLSSecret := "etcd-server-tls" + suffix
 	operatorClientTLSSecret := "etcd-client-tls" + suffix
@@ -72,6 +76,12 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		err := e2eutil.DeleteSecrets(f.KubeClient, f.Namespace, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	c := e2eutil.NewCluster("", 3)
 	c.Name = clusterName
