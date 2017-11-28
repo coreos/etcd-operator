@@ -16,12 +16,9 @@ package e2eslow
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math/rand"
-	"os"
 	"testing"
 
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 )
@@ -34,16 +31,7 @@ func TestTLS(t *testing.T) {
 	memberClientTLSSecret := "etcd-server-tls" + suffix
 	operatorClientTLSSecret := "etcd-client-tls" + suffix
 
-	err := e2eutil.PreparePeerTLSSecret(clusterName, f.Namespace, memberPeerTLSSecret)
-	if err != nil {
-		t.Fatal(err)
-	}
-	certsDir, err := ioutil.TempDir("", "etcd-operator-tls-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(certsDir)
-	err = e2eutil.PrepareClientTLSSecret(certsDir, clusterName, f.Namespace, memberClientTLSSecret, operatorClientTLSSecret)
+	err := e2eutil.PrepareTLS(clusterName, f.Namespace, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,15 +45,7 @@ func TestTLS(t *testing.T) {
 
 	c := e2eutil.NewCluster("", 3)
 	c.Name = clusterName
-	c.Spec.TLS = &api.TLSPolicy{
-		Static: &api.StaticTLS{
-			Member: &api.MemberSecret{
-				PeerSecret:   memberPeerTLSSecret,
-				ServerSecret: memberClientTLSSecret,
-			},
-			OperatorSecret: operatorClientTLSSecret,
-		},
-	}
+	e2eutil.ClusterCRWithTLS(c, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
 	c, err = e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
 	if err != nil {
 		t.Fatal(err)
