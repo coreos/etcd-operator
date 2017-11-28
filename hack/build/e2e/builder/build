@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# This script builds and pushes the builder image
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+if ! which docker > /dev/null; then
+	echo "docker needs to be installed"
+	exit 1
+fi
+
+: ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator-builder"}
+
+echo "building container..."
+docker build --tag "${IMAGE}" -f hack/build/e2e/builder/Dockerfile . 1>/dev/null
+
+# For gcr users, do "gcloud docker -a" to have access.
+echo "pushing container..."
+docker push "${IMAGE}"

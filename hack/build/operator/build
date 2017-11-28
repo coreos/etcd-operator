@@ -13,11 +13,6 @@ if ! which go > /dev/null; then
 	exit 1
 fi
 
-if ! which docker > /dev/null; then
-	echo "docker needs to be installed"
-	exit 1
-fi
-
 GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
 
 bin_dir="$(pwd)/_output/bin"
