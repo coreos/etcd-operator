@@ -408,6 +408,11 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 
 	for i := range podList.Items {
 		pod := &podList.Items[i]
+		// Avoid polling deleted pods. k8s issue where deleted pods would sometimes show the status Pending
+		// See https://github.com/coreos/etcd-operator/issues/1693
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
 		if len(pod.OwnerReferences) < 1 {
 			c.logger.Warningf("pollPods: ignore pod %v: no owner", pod.Name)
 			continue
