@@ -1,16 +1,16 @@
-# Setting up RBAC for etcd-operator
+# Setting up RBAC for etcd operator
 
-If RBAC is in place, users must create RBAC rules for etcd-operator. This doc serves a tutorial for it.
+If RBAC is in place, users must create RBAC rules for etcd operator. This doc serves a tutorial for it.
 
 ## Production setup
 
-In production, allow access only to the resources etcd-operator needs, and create a specific role for the operator.
+In production, allow access only to the resources etcd operator needs, and create a specific role for the operator.
 
-The following example binds a role to the `default` service account in the namespace in which the etcd-operator is running. To bind to a different service account, modify the `subjects.name` field in the [rolebinding templates][rbac-templates] as needed.
+The following example binds a role to the `default` service account in the namespace in which the etcd operator is running. To bind to a different service account, modify the `subjects.name` field in the [rolebinding templates][rbac-templates] as needed.
 
 ### Role vs ClusterRole
 
-The permission model required for the etcd-operator depends on the value of its `--create-crd` flag:
+The permission model required for the etcd operator depends on the value of its `--create-crd` flag:
 - `--create-crd=true`: Creates a CRD if one does not yet exist. This the default behavior.
   - In this mode the operator requires a ClusterRole with the permission to create a CRD.
 - `--create-crd=false` Creates a CR without first creating a CRD.
