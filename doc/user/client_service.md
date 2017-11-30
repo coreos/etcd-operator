@@ -1,6 +1,6 @@
 # etcd client service
 
-For every etcd cluster created, the etcd-operator will create an etcd client service in the same namespace with the name `<cluster-name>-client`.
+For every etcd cluster created, the etcd operator will create an etcd client service in the same namespace with the name `<cluster-name>-client`.
 
 ```
 $ kubectl create -f example/example-etcd-cluster.yaml
