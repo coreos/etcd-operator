@@ -99,4 +99,8 @@ type S3BackupSource struct {
 	//
 	// AWSSecret overwrites the default etcd operator wide AWS credential and config.
 	AWSSecret string `json:"awsSecret"`
+
+	// Endpoint if blank points to aws. If specified, can point to s3 compatible object
+	// stores.
+	Endpoint string `json:"endpoint,omitempty"`
 }
