@@ -84,7 +84,7 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 			return errors.New("invalid s3 restore source field (spec.s3), must specify all required subfields")
 		}
 
-		s3Cli, err := s3factory.NewClientFromSecret(r.kubecli, r.namespace, s3RestoreSource.AWSSecret)
+		s3Cli, err := s3factory.NewClientFromSecret(r.kubecli, r.namespace, s3RestoreSource.AWSEndpoint, s3RestoreSource.AWSSecret)
 		if err != nil {
 			return fmt.Errorf("failed to create S3 client: %v", err)
 		}

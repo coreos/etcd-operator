@@ -65,6 +65,8 @@ type S3RestoreSource struct {
 	//
 	// AWSSecret overwrites the default etcd operator wide AWS credential and config.
 	AWSSecret string `json:"awsSecret"`
+
+	AWSEndpoint string `json:"awsEndpoint"`
 }
 
 // RestoreStatus reports the status of this restore operation.

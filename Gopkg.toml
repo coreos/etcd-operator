@@ -40,3 +40,6 @@
 
 [[constraint]]
   name = "golang.org/x/time"
+
+[[constraint]]
+  name = "gopkg.in/ini.v1"
