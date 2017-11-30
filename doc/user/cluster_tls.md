@@ -1,6 +1,6 @@
 # Cluster TLS policy
 
-Cluster TLS policy is configured on a per-cluster basis through the CR spec provided to etcd-operator.
+Cluster TLS policy is configured on a per-cluster basis through the CR spec provided to etcd operator.
 
 For etcd's TLS support and requirements, see the [etcd security model][etcd-security].
 To learn about generating self-signed TLS certs, see [Generate self-signed certificates][self-signed].
@@ -44,7 +44,7 @@ Create a secret using the `peer.key`, `peer.crt`, and `peer-ca.crt`:
 $ kubectl create secret generic etcd-peer-tls --from-file=peer-ca.crt --from-file=peer.crt --from-file=peer.key
 ```
 
-Once passed, etcd-operator will mount this secret at `/etc/etcdtls/member/peer-tls/` for each etcd member pod in the cluster.
+Once passed, etcd operator will mount this secret at `/etc/etcdtls/member/peer-tls/` for each etcd member pod in the cluster.
 
 ### member.serverSecret
 
@@ -65,7 +65,7 @@ Create a secret using `server.key`, `server.crt`, and `server-ca.crt`:
 $ kubectl create secret generic etcd-server-tls --from-file=server-ca.crt --from-file=server.crt --from-file=server.key
 ```
 
-etcd-operator will mount this secret at `/etc/etcdtls/member/server-tls/` for each etcd member pod in the cluster.
+etcd operator will mount this secret at `/etc/etcdtls/member/server-tls/` for each etcd member pod in the cluster.
 
 ### operatorSecret
 
