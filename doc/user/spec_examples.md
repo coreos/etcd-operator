@@ -47,4 +47,4 @@ spec:
 For more information on working with TLS, see [Cluster TLS policy][cluster-tls].
 
 
-[cluster-tls]: cluster_tls.html
+[cluster-tls]: cluster_tls.md

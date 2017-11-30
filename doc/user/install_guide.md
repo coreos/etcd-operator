@@ -1,4 +1,4 @@
-# Getting started guide
+# Installation guide
 
 ## Set up RBAC
 
@@ -48,5 +48,5 @@ kubectl delete clusterrolebinding etcd-operator
 etcd-operator is available as a [Helm chart][etcd-helm]. Follow the instructions on the chart to install etcd-operator on clusters.
 
 
-[rbac-rules]: rbac.html
+[rbac-rules]: rbac.md
 [etcd-helm]: https://github.com/kubernetes/charts/tree/master/stable/etcd-operator/

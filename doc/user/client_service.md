@@ -1,4 +1,4 @@
-# Etcd client service
+# etcd client service
 
 For every etcd cluster created, the etcd-operator will create an etcd client service in the same namespace with the name `<cluster-name>-client`.
 
@@ -10,9 +10,9 @@ example-etcd-cluster          None           <none>        2380/TCP   1m
 example-etcd-cluster-client   10.0.222.115   <none>        2379/TCP   1m
 ```
 
-The client service is of type `ClusterIP` and accessible only from within the Kubernetes cluster's network.
+The client service is of type `ClusterIP` and accessible only from within the Kubernetes overlay network.
 
-For example, access the service from a pod in in the cluster:
+For example, access the service from a pod in the cluster:
 
 ```
 $ kubectl run --rm -i --tty fun --image quay.io/coreos/etcd --restart=Never -- /bin/sh

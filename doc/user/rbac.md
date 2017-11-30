@@ -68,4 +68,4 @@ export NAMESPACE=<namespace>
       | kubectl create -f -
     ```
 
-[rbac-templates]: https://github.com/coreos/etcd-operator/tree/master/example/rbac/
+[rbac-templates]: ../../example/rbac/
