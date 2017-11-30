@@ -1,4 +1,5 @@
-## Resource Labels
+# Resource Labels
+
 The etcd-operator creates the following Kubernetes resources for each etcd cluster:
 - Pods for the etcd nodes
 - Services for the etcd client and peer
