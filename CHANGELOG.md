@@ -2,17 +2,26 @@
 
 ### Added
 
+- TLS etcd cluster feature for EtcdBackup
+- Log collector program for collecting logs in e2e test.
+
 ### Changed
 
 - Default base image is changed to `gcr.io/etcd-development/etcd`, default etcd version is `3.2.10`.
+- Migrate dependency management tooling from glide to dep.
+- Containerize e2e test in a pod instead of running on raw jenkin slave.
 
 ### Removed
 
 ### Fixed
 
+- Ignore Terminating pods when polling etcd pods.
+
 ### Deprecated
 
 ### Security
+
+- All operator images by default uses user `etcd-operator` instead of root.
 
 
 ## [Release 0.7.0]
