@@ -4,6 +4,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+source "hack/lib/test_lib.sh"
 
 # KUBECONFIG can be an empty string and so needs to be explicitly declared to avoid an unbound variable error
 KUBECONFIG=${KUBECONFIG:-""}
@@ -11,15 +12,6 @@ KUBECONFIG=${KUBECONFIG:-""}
 if [ -z "${PASSES-}" ]; then
 	PASSES="fmt build e2e e2eslow unit"
 fi
-
-function listPkgs() {
-	go list ./cmd/... ./pkg/... ./test/... | grep -v generated
-}
-
-function listFiles() {
-	# pipeline is much faster than for loop
-	listPkgs | xargs -I {} find "${GOPATH}/src/{}" -name '*.go' | grep -v generated
-}
 
 function fmt_pass {
 	if ! "./hack/k8s/codegen/verify-generated.sh"; then
@@ -152,25 +144,13 @@ function upgrade_pass {
 }
 
 function unit_pass {
-	# coverage.txt is the combined coverage report consumed by codecov
-	echo "mode: atomic" > coverage.txt
-	TEST_PKGS=$(listPkgs | grep -v e2e)
-	for pkg in $TEST_PKGS
-	do
-		build_flags=("-i") # cache package compilation data for faster repeated builds
-		for i in {1..2}; do
-			go test ${build_flags[@]} -race -covermode=atomic -coverprofile=profile.out $pkg
-			# Expand empty array would cause "unbound variable".
-			# Expand one empty string array is equal to nothing.
-			build_flags=("")
-		done
-		if [ -f profile.out ]; then
-			tail -n +2 profile.out >> coverage.txt
-			rm profile.out
-		fi
-	done
-	# Send reports to codecov, CODECOV_TOKEN env must be present in Jenkins
-	(curl -s https://codecov.io/bash | bash) || true
+	DOCKER_REPO_ROOT="/go/src/github.com/coreos/etcd-operator"
+	docker run --rm \
+		-v "${PWD}":"${DOCKER_REPO_ROOT}" \
+		-w "${DOCKER_REPO_ROOT}" \
+		-e "CODECOV_TOKEN" \
+		golang:1.9 \
+		"./hack/unit_test"
 }
 
 for p in $PASSES
