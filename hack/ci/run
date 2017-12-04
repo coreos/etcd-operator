@@ -28,7 +28,6 @@ cleanup() {
 
 trap cleanup EXIT
 
-
 ./hack/update_vendor.sh 1>/dev/null
 
 GIT_VERSION=$(git rev-parse HEAD)

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+source "hack/lib/test_lib.sh"
+
+# coverage.txt is the combined coverage report consumed by codecov
+echo "mode: atomic" > coverage.txt
+
+TEST_PKGS=$(listPkgs | grep -v e2e)
+for pkg in $TEST_PKGS
+do
+  build_flags=("-i") # cache package compilation data for faster repeated builds
+  for i in {1..2}; do
+    go test ${build_flags[@]} -race -covermode=atomic -coverprofile=profile.out $pkg
+    # Expand empty array would cause "unbound variable".
+    # Expand one empty string array is equal to nothing.
+    build_flags=("")
+  done
+  if [ -f profile.out ]; then
+    tail -n +2 profile.out >> coverage.txt
+    rm profile.out
+  fi
+done
+
+# Send reports to codecov, CODECOV_TOKEN env must be present in Jenkins
+(curl -s https://codecov.io/bash | bash) || true
