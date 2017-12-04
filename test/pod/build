@@ -13,9 +13,9 @@ fi
 
 : ${TEST_IMAGE:?"Need to set TEST_IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator-tests"}
 
-echo "building container..."
+echo "building test-pod container..."
 docker build --tag "${TEST_IMAGE}" -f test/pod/Dockerfile . 1>/dev/null
 
 # For gcr users, do "gcloud docker -a" to have access.
-echo "pushing container..."
+echo "pushing test-pod container..."
 docker push "${TEST_IMAGE}"
