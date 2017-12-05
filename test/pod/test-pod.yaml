@@ -9,6 +9,9 @@ spec:
     image: <TEST_IMAGE>
     imagePullPolicy: Always
     command: ["hack/test"]
+    resources:
+      requests:
+        cpu: 2
     env:
       - name: TEST_NAMESPACE
         valueFrom:
@@ -24,3 +27,5 @@ spec:
         value: <TEST_S3_BUCKET>
       - name: TEST_AWS_SECRET
         value: <TEST_AWS_SECRET>
+      - name: PARALLEL_TEST
+        value: "true"

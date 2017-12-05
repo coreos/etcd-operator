@@ -106,7 +106,7 @@ function e2e_pass {
 
 	build_flags=("-i") # cache package compilation data for faster repeated builds
 	for i in {1..2}; do
-		go test "./test/e2e/" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
+		go test -parallel=4 "./test/e2e/" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
 			--kubeconfig=$KUBECONFIG --operator-image=$OPERATOR_IMAGE --namespace=${TEST_NAMESPACE}
 		build_flags=("")
 	done

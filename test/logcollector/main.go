@@ -99,12 +99,11 @@ func main() {
 				close(stopCh)
 			}
 		},
-		DeleteFunc: nil,
 	}, cache.Indexers{})
 
 	logrus.Info("start collecting logs...")
 	informer.Run(stopCh)
-	logrus.Info("start collecting logs...")
+	logrus.Info("stop collecting logs...")
 }
 
 // **NOTE**: Copy from kubernetes.
