@@ -69,23 +69,27 @@ func main() {
 					return
 				}
 				pod = ev.Object.(*v1.Pod)
+				for i := range pod.Spec.Containers {
+					go func(c v1.Container) {
+						logOption := &v1.PodLogOptions{Follow: true, Container: c.Name}
+						req := kubecli.CoreV1().Pods(namespace).GetLogs(pod.Name, logOption)
+						readCloser, err := req.Stream()
+						if err != nil {
+							logrus.Errorf("failed to open stream for pod (%s): %v", pod.Name, err)
+							return
+						}
+						defer readCloser.Close()
 
-				req := kubecli.CoreV1().Pods(namespace).GetLogs(pod.Name, &v1.PodLogOptions{Follow: true})
-				readCloser, err := req.Stream()
-				if err != nil {
-					logrus.Errorf("failed to open stream for pod (%s): %v", pod.Name, err)
-					return
-				}
-				defer readCloser.Close()
-
-				f, err := os.OpenFile(filepath.Join(logsDir, pod.Name+".log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-				if err != nil {
-					logrus.Errorf("failed to open log file for pod (%s): %v", pod.Name, err)
-					return
-				}
-				_, err = io.Copy(f, readCloser)
-				if err != nil {
-					logrus.Errorf("failed to write log for pod (%s): %v", pod.Name, err)
+						f, err := os.OpenFile(filepath.Join(logsDir, pod.Name+"."+c.Name+".log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+						if err != nil {
+							logrus.Errorf("failed to open log file for pod (%s/%s): %v", pod.Name, c.Name, err)
+							return
+						}
+						_, err = io.Copy(f, readCloser)
+						if err != nil {
+							logrus.Errorf("failed to write log for pod (%s/%s): %v", pod.Name, c.Name, err)
+						}
+					}(pod.Spec.Containers[i])
 				}
 			}(obj.(*v1.Pod), *ns, *logsDir)
 		},
