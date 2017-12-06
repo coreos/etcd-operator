@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+: ${TEST_IMAGE:?"Need to set TEST_IMAGE"}
+: ${OPERATOR_IMAGE:?"Need to set OPERATOR_IMAGE"}
+
+if ! which docker > /dev/null; then
+	echo "docker needs to be installed"
+	exit 1
+fi
+
+IMAGE=${OPERATOR_IMAGE} hack/build/docker_push
+TEST_IMAGE=${TEST_IMAGE} test/pod/docker_push

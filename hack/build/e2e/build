@@ -6,33 +6,16 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-if ! which docker > /dev/null; then
-	echo "docker needs to be installed"
-	exit 1
-fi
-
 mkdir -p _output
 
 DOCKER_REPO_ROOT="/go/src/github.com/coreos/etcd-operator"
 
-function build_binaries {
-	docker run --rm \
-		-v "$PWD":"$DOCKER_REPO_ROOT" \
-		-w "$DOCKER_REPO_ROOT" \
-		gcr.io/coreos-k8s-scale-testing/etcd-operator-builder \
-		/bin/bash -c "hack/update_vendor.sh && \
-			hack/build/operator/build -i && \
-			hack/build/backup-operator/build -i && \
-			hack/build/restore-operator/build -i && \
-			go build -i -o ${DOCKER_REPO_ROOT}/_output/bin/logcollector test/logcollector/main.go"
-}
-
-function build_and_push_images {
-	: ${TEST_IMAGE:?"Need to set TEST_IMAGE"}
-	: ${OPERATOR_IMAGE:?"Need to set OPERATOR_IMAGE"}
-	IMAGE=${OPERATOR_IMAGE} hack/build/docker_push
-	TEST_IMAGE=${TEST_IMAGE} test/pod/build
-}
-
-build_binaries
-build_and_push_images
+docker run --rm \
+	-v "$PWD":"$DOCKER_REPO_ROOT" \
+	-w "$DOCKER_REPO_ROOT" \
+	gcr.io/coreos-k8s-scale-testing/etcd-operator-builder \
+	/bin/bash -c "hack/update_vendor.sh && \
+		hack/build/operator/build -i && \
+		hack/build/backup-operator/build -i && \
+		hack/build/restore-operator/build -i && \
+		go build -i -o ${DOCKER_REPO_ROOT}/_output/bin/logcollector test/logcollector/main.go"
