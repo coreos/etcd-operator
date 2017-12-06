@@ -7,7 +7,7 @@ spec:
   clusterSpec:
     size: 3
     version: 3.2.10
-    baseImage: "gcr.io/etcd-development/etcd"
+    repository: "gcr.io/etcd-development/etcd"
   s3:
     # The format of "path" must be: "<s3-bucket-name>/<path-to-backup-file>"
     # e.g: "etcd-snapshot-bucket/v1/default/example-etcd-cluster/3.2.10_0000000000000001_etcd.backup"

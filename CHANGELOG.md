@@ -10,6 +10,7 @@
 - Default base image is changed to `gcr.io/etcd-development/etcd`, default etcd version is `3.2.10`.
 - Migrate dependency management tooling from glide to dep.
 - Containerize e2e test in a pod instead of running on raw jenkin slave.
+- ClusterSpec: `BaseImage` is renamed to `Repository`.
 
 ### Removed
 
@@ -18,6 +19,8 @@
 - Ignore Terminating pods when polling etcd pods.
 
 ### Deprecated
+
+- ClusterSpec: `BaseImage` is deprecated. It will be automatically converted to `Repository` in this release.
 
 ### Security
 

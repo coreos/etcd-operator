@@ -79,9 +79,9 @@ func NewEtcdRestore(restoreName, version string, size int, restoreSource api.Res
 		},
 		Spec: api.RestoreSpec{
 			ClusterSpec: api.ClusterSpec{
-				BaseImage: "gcr.io/etcd-development/etcd",
-				Size:      size,
-				Version:   version,
+				Repository: "gcr.io/etcd-development/etcd",
+				Size:       size,
+				Version:    version,
 			},
 			RestoreSource: restoreSource,
 		},

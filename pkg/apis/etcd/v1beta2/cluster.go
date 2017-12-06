@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	defaultBaseImage = "gcr.io/etcd-development/etcd"
-	defaultVersion   = "3.2.10"
+	defaultRepository = "gcr.io/etcd-development/etcd"
+	defaultVersion    = "3.2.10"
 )
 
 var (
@@ -70,11 +70,16 @@ type ClusterSpec struct {
 	// cluster equal to the expected size.
 	// The vaild range of the size is from 1 to 7.
 	Size int `json:"size"`
-
-	// BaseImage is the base etcd image name that will be used to launch
-	// etcd clusters. This is useful for private registries, etc.
+	// Repository is the name of the repository that hosts
+	// etcd container images. It should be direct clone of the repository in official
+	// release:
+	//   https://github.com/coreos/etcd/releases
+	// That means, it should have exact same tags and the same meaning for the tags.
 	//
-	// If image is not set, default is gcr.io/etcd-development/etcd
+	// By default, it is `gcr.io/etcd-development/etcd`.
+	Repository string `json:"repository"`
+	// **DEPRECATED**. Use Repository instead.
+	// TODO: remove this field in v0.7.2 .
 	BaseImage string `json:"baseImage"`
 
 	// Version is the expected version of the etcd cluster.
@@ -161,8 +166,12 @@ func (c *ClusterSpec) Validate() error {
 // Cleanup cleans up user passed spec, e.g. defaulting, transforming fields.
 // TODO: move this to admission controller
 func (c *ClusterSpec) Cleanup() {
-	if len(c.BaseImage) == 0 {
-		c.BaseImage = defaultBaseImage
+	if len(c.Repository) == 0 {
+		if len(c.BaseImage) != 0 {
+			c.Repository = c.BaseImage
+		} else {
+			c.Repository = defaultRepository
+		}
 	}
 
 	if len(c.Version) == 0 {
