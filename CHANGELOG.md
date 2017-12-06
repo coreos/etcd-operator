@@ -15,6 +15,9 @@
 
 ### Removed
 
+- ClusterSpec: Remove `PodPolicy.AutomountServiceAccountToken` field.
+  No etcd pod will have service account token mounted.
+
 ### Fixed
 
 - Ignore Terminating pods when polling etcd pods.

@@ -309,8 +309,9 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			// DNS A record: `[m.Name].[clusterName].Namespace.svc`
 			// For example, etcd-0000 in default namesapce will have DNS name
 			// `etcd-0000.etcd.default.svc`.
-			Hostname:  m.Name,
-			Subdomain: clusterName,
+			Hostname:                     m.Name,
+			Subdomain:                    clusterName,
+			AutomountServiceAccountToken: func(b bool) *bool { return &b }(false),
 		},
 	}
 

@@ -102,9 +102,6 @@ func applyPodPolicy(clusterName string, pod *v1.Pod, policy *api.PodPolicy) {
 	if len(policy.Tolerations) != 0 {
 		pod.Spec.Tolerations = policy.Tolerations
 	}
-	if policy.AutomountServiceAccountToken != nil {
-		pod.Spec.AutomountServiceAccountToken = policy.AutomountServiceAccountToken
-	}
 
 	mergeLabels(pod.Labels, policy.Labels)
 
