@@ -2,6 +2,21 @@
 
 ### Added
 
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
+## [Release 0.7.1]
+
+### Added
+
 - TLS etcd cluster feature for EtcdBackup
 - Log collector program for collecting logs in e2e test.
 - ClusterSpec: In PodPolicy, add generic `Affinity` field to substitute bool `AntiAffinity` field.

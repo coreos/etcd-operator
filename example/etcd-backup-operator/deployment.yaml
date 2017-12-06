@@ -11,8 +11,7 @@ spec:
     spec:
       containers:
       - name: etcd-backup-operator
-        image: quay.io/coreos/etcd-operator:v0.7.0
-        imagePullPolicy: Always
+        image: quay.io/coreos/etcd-operator:v0.7.1
         command:
         - etcd-backup-operator
         env:
