@@ -17,5 +17,4 @@ docker run --rm \
 	/bin/bash -c "hack/update_vendor.sh && \
 		hack/build/operator/build -i && \
 		hack/build/backup-operator/build -i && \
-		hack/build/restore-operator/build -i && \
-		go build -i -o ${DOCKER_REPO_ROOT}/_output/bin/logcollector test/logcollector/main.go"
+		hack/build/restore-operator/build -i"

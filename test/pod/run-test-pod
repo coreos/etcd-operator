@@ -82,8 +82,8 @@ cp $KUBECONFIG ./kubeconfig
 docker run --rm \
     -v "$PWD":"$DOCKER_REPO_ROOT" \
     -w "$DOCKER_REPO_ROOT" \
-    golang:1.9 \
-    _output/bin/logcollector --kubeconfig=${DOCKER_REPO_ROOT}/kubeconfig --e2e-podname=${POD_NAME} \
+    gcr.io/coreos-k8s-scale-testing/logcollector \
+    logcollector --kubeconfig=${DOCKER_REPO_ROOT}/kubeconfig --e2e-podname=${POD_NAME} \
     --namespace=${TEST_NAMESPACE} --logs-dir="_output/logs/"
 
 # Check for pod success or failure
