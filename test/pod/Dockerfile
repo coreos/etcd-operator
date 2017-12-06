@@ -9,3 +9,5 @@ RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.8.2/bi
 ADD ./ /go/src/github.com/coreos/etcd-operator
 
 WORKDIR /go/src/github.com/coreos/etcd-operator
+
+RUN rm -rf _output _test .git .gitignore
