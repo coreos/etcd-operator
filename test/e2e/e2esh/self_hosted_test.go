@@ -85,7 +85,7 @@ func startEtcd(f *framework.Framework) (*v1.Pod, error) {
 			Containers: []v1.Container{{
 				Command: []string{"/bin/sh", "-ec", etcdCmd},
 				Name:    "etcd",
-				Image:   "gcr.io/etcd-development/etcd:v3.2.10",
+				Image:   "gcr.io/etcd-development/etcd:v3.2.11",
 				Env: []v1.EnvVar{{
 					Name:      "POD_NAME",
 					ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
