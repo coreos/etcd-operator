@@ -17,7 +17,9 @@ spec:
   version: "3.2.10"
 ```
 
-## Three member cluster with node selector and anti-affinity
+## Three member cluster with node selector and anti-affinity across nodes
+
+> Note: change $cluster_name to the EtcdCluster's name.
 
 ```yaml
 spec:
@@ -25,8 +27,18 @@ spec:
   pod:
     nodeSelector:
       diskType: ssd
-    antiAffinity: true
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: etcd_cluster
+              operator: In
+              values: ["$cluster_name"]
+          topologyKey: kubernetes.io/hostname
 ```
+
+For other topology keys, see https://kubernetes.io/docs/concepts/configuration/assign-pod-node/ .
 
 ## Three member cluster with resource requirement
 

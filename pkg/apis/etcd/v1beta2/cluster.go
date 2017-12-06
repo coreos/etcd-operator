@@ -123,8 +123,9 @@ type PodPolicy struct {
 	// labels.
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// AntiAffinity determines if the etcd-operator tries to avoid putting
-	// the etcd members in the same cluster onto the same node.
+	// The scheduling constraints on etcd pods.
+	Affinity *v1.Affinity `json:"affinity,omitempty"`
+	// **DEPRECATED**. Use Affinity instead.
 	AntiAffinity bool `json:"antiAffinity,omitempty"`
 
 	// Resources is the resource requirements for the etcd container.
@@ -163,9 +164,10 @@ func (c *ClusterSpec) Validate() error {
 	return nil
 }
 
-// Cleanup cleans up user passed spec, e.g. defaulting, transforming fields.
+// SetDefaults cleans up user passed spec, e.g. defaulting, transforming fields.
 // TODO: move this to admission controller
-func (c *ClusterSpec) Cleanup() {
+func (e *EtcdCluster) SetDefaults() {
+	c := &e.Spec
 	if len(c.Repository) == 0 {
 		if len(c.BaseImage) != 0 {
 			c.Repository = c.BaseImage
@@ -179,4 +181,22 @@ func (c *ClusterSpec) Cleanup() {
 	}
 
 	c.Version = strings.TrimLeft(c.Version, "v")
+
+	// convert PodPolicy.AntiAffinity to Pod.Affinity.PodAntiAffinity
+	// TODO: Remove this once PodPolicy.AntiAffinity is removed
+	if c.Pod != nil && c.Pod.AntiAffinity && c.Pod.Affinity == nil {
+		c.Pod.Affinity = &v1.Affinity{
+			PodAntiAffinity: &v1.PodAntiAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+					{
+						// set anti-affinity to the etcd pods that belongs to the same cluster
+						LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{
+							"etcd_cluster": e.Name,
+						}},
+						TopologyKey: "kubernetes.io/hostname",
+					},
+				},
+			},
+		}
+	}
 }

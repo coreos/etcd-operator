@@ -22,7 +22,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -88,37 +87,13 @@ func etcdLivenessProbe(isSecure bool) *v1.Probe {
 	}
 }
 
-func PodWithAntiAffinity(pod *v1.Pod, clusterName string) *v1.Pod {
-	// set pod anti-affinity with the pods that belongs to the same etcd cluster
-	ls := &metav1.LabelSelector{MatchLabels: map[string]string{
-		"etcd_cluster": clusterName,
-	}}
-	return podWithAntiAffinity(pod, ls)
-}
-
-func podWithAntiAffinity(pod *v1.Pod, ls *metav1.LabelSelector) *v1.Pod {
-	affinity := &v1.Affinity{
-		PodAntiAffinity: &v1.PodAntiAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
-				{
-					LabelSelector: ls,
-					TopologyKey:   "kubernetes.io/hostname",
-				},
-			},
-		},
-	}
-
-	pod.Spec.Affinity = affinity
-	return pod
-}
-
 func applyPodPolicy(clusterName string, pod *v1.Pod, policy *api.PodPolicy) {
 	if policy == nil {
 		return
 	}
 
-	if policy.AntiAffinity {
-		pod = PodWithAntiAffinity(pod, clusterName)
+	if policy.Affinity != nil {
+		pod.Spec.Affinity = policy.Affinity
 	}
 
 	if len(policy.NodeSelector) != 0 {
