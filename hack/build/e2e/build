@@ -2,6 +2,10 @@
 
 # This script builds and pushes the images and binaries needed for e2e testing: the operators, test-pod and logcollector
 
+set -o errexit
+set -o nounset
+set -o pipefail
+
 if ! which docker > /dev/null; then
 	echo "docker needs to be installed"
 	exit 1
