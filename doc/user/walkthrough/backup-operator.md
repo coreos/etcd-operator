@@ -79,7 +79,7 @@ apiVersion: etcd.database.coreos.com/v1beta2
 kind: EtcdBackup
 ...
 status:
-  s3Path: mybucket/v1/default/example-etcd-cluster/3.2.10_0000000000000001_etcd.backup
+  s3Path: mybucket/v1/default/example-etcd-cluster/3.2.11_0000000000000001_etcd.backup
   succeeded: true
 ```
 

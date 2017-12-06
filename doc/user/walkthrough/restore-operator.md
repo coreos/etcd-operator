@@ -77,10 +77,10 @@ Create a Kubernetes secret that contains AWS credentials and config. This is use
 
 Create the `EtcdRestore` CR:
 
->Note: This example uses k8s secret "aws" and S3 path "mybucket/v1/default/example-etcd-cluster/3.2.10_0000000000000001_etcd.backup"
+>Note: This example uses k8s secret "aws" and S3 path "mybucket/v1/default/example-etcd-cluster/3.2.11_0000000000000001_etcd.backup"
 
 ```sh
-sed -e 's|<full-s3-path>|mybucket/v1/default/example-etcd-cluster/3.2.10_0000000000000001_etcd.backup|g' \
+sed -e 's|<full-s3-path>|mybucket/v1/default/example-etcd-cluster/3.2.11_0000000000000001_etcd.backup|g' \
     -e 's|<aws-secret>|aws|g' \
     example/etcd-restore-operator/restore_cr.yaml \
     | kubectl create -f -

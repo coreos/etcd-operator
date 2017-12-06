@@ -6,10 +6,10 @@ metadata:
 spec:
   clusterSpec:
     size: 3
-    version: 3.2.10
+    version: 3.2.11
     repository: "gcr.io/etcd-development/etcd"
   s3:
     # The format of "path" must be: "<s3-bucket-name>/<path-to-backup-file>"
-    # e.g: "etcd-snapshot-bucket/v1/default/example-etcd-cluster/3.2.10_0000000000000001_etcd.backup"
+    # e.g: "etcd-snapshot-bucket/v1/default/example-etcd-cluster/3.2.11_0000000000000001_etcd.backup"
     path: <full-s3-path>
     awsSecret: <aws-secret>
