@@ -538,15 +538,6 @@ func (in *PodPolicy) DeepCopyInto(out *PodPolicy) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.AutomountServiceAccountToken != nil {
-		in, out := &in.AutomountServiceAccountToken, &out.AutomountServiceAccountToken
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(bool)
-			**out = **in
-		}
-	}
 	return
 }
 
