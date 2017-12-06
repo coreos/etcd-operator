@@ -108,7 +108,7 @@ func TestEtcdUpgrade(t *testing.T) {
 	f := framework.Global
 	origEtcd := e2eutil.NewCluster("test-etcd-", 3)
 	origEtcd = e2eutil.ClusterWithVersion(origEtcd, "3.1.10")
-	origEtcd.Spec.BaseImage = "quay.io/coreos/etcd"
+	origEtcd.Spec.Repository = "quay.io/coreos/etcd"
 	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, origEtcd)
 	if err != nil {
 		t.Fatal(err)

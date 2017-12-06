@@ -222,7 +222,7 @@ metadata:
 spec:
   size: 3
   version: "3.1.10"
-  baseImage: "quay.io/coreos/etcd"
+  repository: "quay.io/coreos/etcd"
 ```
 
 Create an etcd cluster with the version specified (3.1.10) in the yaml file:

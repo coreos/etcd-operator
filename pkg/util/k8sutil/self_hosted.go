@@ -81,7 +81,7 @@ done
 	commands = fmt.Sprintf(ft, m.Addr(), commands)
 	commands = fmt.Sprintf("%s; %s", appendHostsCommands(), commands)
 	commands = fmt.Sprintf("flock %s -c \"%s\"", etcdLockPath, commands)
-	c := etcdContainer([]string{"/bin/sh", "-ec", commands}, cs.BaseImage, cs.Version)
+	c := etcdContainer([]string{"/bin/sh", "-ec", commands}, cs.Repository, cs.Version)
 	// On node reboot, there will be two copies of etcd pod: scheduled and checkpointed one.
 	// Checkpointed one will start first. But then the scheduler will detect host port conflict,
 	// and set the pod (in APIServer) failed. This further affects etcd service by removing the endpoints.
