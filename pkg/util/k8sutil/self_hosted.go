@@ -155,7 +155,7 @@ done
 
 	applyPodPolicy(clusterName, pod, cs.Pod)
 	// overwrites the antiAffinity setting for self hosted cluster.
-	pod = selfHostedPodWithAntiAffinity(pod)
+	applyAntiAffinityOnNodes(pod)
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
 }
@@ -167,10 +167,22 @@ func appendHostsCommands() string {
 	return fmt.Sprintf("([ -f %[1]s ] && (cat %[1]s >> /etc/hosts) || true)", etcdHostsFile)
 }
 
-func selfHostedPodWithAntiAffinity(pod *v1.Pod) *v1.Pod {
+func applyAntiAffinityOnNodes(pod *v1.Pod) {
 	// self hosted pods should sit on different nodes even if they are from different cluster.
 	ls := &metav1.LabelSelector{MatchLabels: map[string]string{
 		"app": "etcd",
 	}}
-	return podWithAntiAffinity(pod, ls)
+
+	if pod.Spec.Affinity == nil {
+		pod.Spec.Affinity = &v1.Affinity{}
+	}
+
+	pod.Spec.Affinity.PodAntiAffinity = &v1.PodAntiAffinity{
+		RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+			{
+				LabelSelector: ls,
+				TopologyKey:   "kubernetes.io/hostname",
+			},
+		},
+	}
 }

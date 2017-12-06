@@ -4,13 +4,14 @@
 
 - TLS etcd cluster feature for EtcdBackup
 - Log collector program for collecting logs in e2e test.
+- ClusterSpec: In PodPolicy, add generic `Affinity` field to substitute bool `AntiAffinity` field.
+- ClusterSpec: Add `Repository` field to substitute `BaseImage` field.
 
 ### Changed
 
 - Default base image is changed to `gcr.io/etcd-development/etcd`, default etcd version is `3.2.10`.
 - Migrate dependency management tooling from glide to dep.
 - Containerize e2e test in a pod instead of running on raw jenkin slave.
-- ClusterSpec: `BaseImage` is renamed to `Repository`.
 
 ### Removed
 
@@ -21,6 +22,8 @@
 ### Deprecated
 
 - ClusterSpec: `BaseImage` is deprecated. It will be automatically converted to `Repository` in this release.
+- ClusterSpec: In PodPolicy, `AntiAffinity` is deprecated. It will be automatically converted to `Affinity.PodAntiAffinity`
+  terms with label selector on given cluster name and topology key on node in this release.
 
 ### Security
 

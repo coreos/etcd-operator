@@ -151,7 +151,7 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 		return err
 	}
 
-	r.createSeedMember(cs, r.mySvcAddr, clusterName, ec.AsOwner())
+	r.createSeedMember(ec, r.mySvcAddr, clusterName, ec.AsOwner())
 
 	// Retry updating the etcdcluster CR spec.paused=false. The etcd-operator will update the CR once so there needs to be a single retry in case of conflict
 	err = retryutil.Retry(2, 1, func() (bool, error) {
@@ -175,7 +175,7 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 	return nil
 }
 
-func (r *Restore) createSeedMember(cs api.ClusterSpec, svcAddr, clusterName string, owner metav1.OwnerReference) error {
+func (r *Restore) createSeedMember(ec *api.EtcdCluster, svcAddr, clusterName string, owner metav1.OwnerReference) error {
 	m := &etcdutil.Member{
 		Name:      etcdutil.CreateMemberName(clusterName, 0),
 		Namespace: r.namespace,
@@ -185,8 +185,8 @@ func (r *Restore) createSeedMember(cs api.ClusterSpec, svcAddr, clusterName stri
 	}
 	ms := etcdutil.NewMemberSet(m)
 	backupURL := backupapi.BackupURLForRestore("http", svcAddr, clusterName)
-	cs.Cleanup()
-	pod := k8sutil.NewSeedMemberPod(clusterName, ms, m, cs, owner, backupURL)
+	ec.SetDefaults()
+	pod := k8sutil.NewSeedMemberPod(clusterName, ms, m, ec.Spec, owner, backupURL)
 	_, err := r.kubecli.Core().Pods(r.namespace).Create(pod)
 	return err
 }
