@@ -38,7 +38,7 @@ Follow the prompts.
 
 - git checkout tag (created above)
 
-- Please read [developer_guide.md](./developer_guide.md) .
+- Follow [developer_guide.md](./developer_guide.md) for build instructions.
 
 - After build, push image:
 
