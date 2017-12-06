@@ -77,10 +77,10 @@ type ClusterSpec struct {
 	// That means, it should have exact same tags and the same meaning for the tags.
 	//
 	// By default, it is `gcr.io/etcd-development/etcd`.
-	Repository string `json:"repository"`
+	Repository string `json:"repository,omitempty"`
 	// **DEPRECATED**. Use Repository instead.
 	// TODO: remove this field in v0.7.2 .
-	BaseImage string `json:"baseImage"`
+	BaseImage string `json:"baseImage,omitempty"`
 
 	// Version is the expected version of the etcd cluster.
 	// The etcd-operator will eventually make the etcd cluster version
