@@ -12,6 +12,12 @@
 
 ### Security
 
+## [Release 0.7.2]
+
+> Note: This is a bug fix release.
+
+When we bump the etcd version to 3.2, the images were only available on gcr.io . But now it is added on quay.io .
+We'd better use quay.io and keep it compatible to work for 3.1 versions of etcd.
 
 ## [Release 0.7.1]
 
