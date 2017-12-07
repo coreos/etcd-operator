@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	defaultRepository = "gcr.io/etcd-development/etcd"
+	defaultRepository = "quay.io/coreos/etcd"
 	defaultVersion    = "3.2.11"
 )
 
@@ -76,7 +76,7 @@ type ClusterSpec struct {
 	//   https://github.com/coreos/etcd/releases
 	// That means, it should have exact same tags and the same meaning for the tags.
 	//
-	// By default, it is `gcr.io/etcd-development/etcd`.
+	// By default, it is `quay.io/coreos/etcd`.
 	Repository string `json:"repository,omitempty"`
 	// **DEPRECATED**. Use Repository instead.
 	// TODO: remove this field in v0.7.2 .

@@ -79,7 +79,7 @@ func NewEtcdRestore(restoreName, version string, size int, restoreSource api.Res
 		},
 		Spec: api.RestoreSpec{
 			ClusterSpec: api.ClusterSpec{
-				Repository: "gcr.io/etcd-development/etcd",
+				Repository: "quay.io/coreos/etcd",
 				Size:       size,
 				Version:    version,
 			},
