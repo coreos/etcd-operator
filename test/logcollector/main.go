@@ -99,7 +99,7 @@ func main() {
 				return
 			}
 			// If e2e test pod runs to completion, then stops this program.
-			if pod.Status.Phase == v1.PodSucceeded || pod.Status.Phase == v1.PodFailed {
+			if pod.Status.Phase == v1.PodSucceeded || pod.Status.Phase == v1.PodFailed || pod.DeletionTimestamp != nil {
 				close(stopCh)
 			}
 		},
