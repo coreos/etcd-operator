@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+export GOROOT="/usr/local/go"
+export PATH=$GOROOT/bin:$PATH
+
+go version
+kubectl version
+
+# Set envs for build
+GIT_VERSION=$(git rev-parse HEAD)
+export OPERATOR_IMAGE="gcr.io/coreos-k8s-scale-testing/etcd-operator:${GIT_VERSION}"
+export TEST_IMAGE=gcr.io/coreos-k8s-scale-testing/etcd-operator-e2e:${GIT_VERSION}
+
+echo "TEST_NAMESPACE: ${TEST_NAMESPACE}"
+echo "OPERATOR_IMAGE: ${OPERATOR_IMAGE}"
+echo "TEST_IMAGE: ${TEST_IMAGE}"
+
+hack/ci/get_dep
+
+BUILD_IMAGE=${BUILD_IMAGE:-false}
+if [[ ${BUILD_IMAGE} == "true" ]]; then
+  hack/build/build
+fi
+
+BUILD_E2E=${BUILD_E2E:-false}
+if [[ ${BUILD_E2E} == "true" ]]; then
+  gcloud docker -a
+  hack/build/e2e/docker_push
+fi
+
+# Run test-pod
+PASSES=${PASSES} \
+	TEST_S3_BUCKET=${TEST_S3_BUCKET} \
+	TEST_AWS_SECRET=${TEST_AWS_SECRET} \
+	test/pod/run-test-pod

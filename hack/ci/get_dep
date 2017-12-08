@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -o errexit
+
+DOCKER_REPO_ROOT="/go/src/github.com/coreos/etcd-operator"
+
+docker run --rm \
+	-v "$PWD":"$DOCKER_REPO_ROOT" \
+	-w "$DOCKER_REPO_ROOT" \
+	gcr.io/coreos-k8s-scale-testing/etcd-operator-builder \
+	hack/update_vendor.sh

@@ -12,5 +12,8 @@ if ! which docker > /dev/null; then
 	exit 1
 fi
 
+# Push operator images
 IMAGE=${OPERATOR_IMAGE} hack/build/docker_push
+
+# Push e2e images
 TEST_IMAGE=${TEST_IMAGE} test/pod/docker_push

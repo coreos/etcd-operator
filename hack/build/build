@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script builds and pushes the images and binaries needed for e2e testing: the operators, test-pod and logcollector
+# This script builds the operators' binaries
 
 set -o errexit
 set -o nounset
@@ -14,7 +14,6 @@ docker run --rm \
 	-v "$PWD":"$DOCKER_REPO_ROOT" \
 	-w "$DOCKER_REPO_ROOT" \
 	gcr.io/coreos-k8s-scale-testing/etcd-operator-builder \
-	/bin/bash -c "hack/update_vendor.sh && \
-		hack/build/operator/build -i && \
+	/bin/bash -c "hack/build/operator/build -i && \
 		hack/build/backup-operator/build -i && \
 		hack/build/restore-operator/build -i"
