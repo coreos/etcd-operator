@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+source "hack/lib/test_lib.sh"
+
+allfiles=$(listFiles)
+
+echo "Checking gofmt..."
+for file in $allfiles; do
+  checkRes=$(gofmt -l -s -d $file)
+  if [ -n "${checkRes}" ]; then
+    echo -e "gofmt checking failed:\n${checkRes}"
+    exit 255
+  fi
+done
+
+echo "Checking govet..."
+for file in $allfiles; do
+  checkRes=$(go vet $file)
+  if [ -n "${checkRes}" ]; then
+    echo -e "go vet checking failed:\n${checkRes}"
+    exit 255
+  fi
+done
+
+if which gosimple >/dev/null; then
+  echo "Checking gosimple..."
+  # Generated deepcopy code failed checking... Ignore it at the moment
+  checkRes=$(gosimple `listPkgs | grep -v apis/etcd/v1beta2`) || true
+  if [ -n "${checkRes}" ]; then
+    echo -e "gosimple checking failed:\n${checkRes}"
+    exit 255
+  fi
+else
+  echo "Skipping gosimple: failed to install"
+fi
+
+if which unused >/dev/null; then
+  echo "Checking unused..."
+  checkRes=$(unused `listPkgs`) || true
+  if [ -n "${checkRes}" ]; then
+      echo -e "unused checking failed:\n${checkRes}"
+      exit 255
+  fi
+else
+  echo "Skipping unused: failed to install"
+fi
+
+echo "Checking for license header..."
+licRes=""
+for file in $allfiles; do
+  if ! head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" ; then
+    licRes="${licRes}"$(echo -e "  ${file}")
+  fi
+done
+if [ -n "${licRes}" ]; then
+  echo -e "license header checking failed:\n${licRes}"
+  exit 255
+fi
