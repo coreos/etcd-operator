@@ -4,7 +4,7 @@
 
 The primary goals etcd-operator cluster TLS:
  * Encrypt etcd client/peer communication
- * Cryptographically attestable identites for following components:
+ * Cryptographically attestable identities for following components:
     * etcd operator
     * etcd cluster TPR objects
     * backup sidecar pods
@@ -114,7 +114,7 @@ Here is the overview for etcd-operator TLS flow, which should set us up well for
   * observe new signed certificate in annotation on `pod/etcd-cluster-xxxx`  (peer and client)
   * bring up etcd application with private key, peer cert, client cert, and `cluster CA` certificate
 
-### Signging Mechanisms
+### Signing Mechanisms
 
 #### Direct Sign (intra-component)
 
@@ -143,7 +143,7 @@ In the case that the _signer_ and _signee_ are within the same component, we hav
 ```
 
 
-This is a symbol for a _signee_ submitting a CSR to a _signer_, and recieving back a signed certificate back.
+This is a symbol for a _signee_ submitting a CSR to a _signer_, and receiving back a signed certificate back.
 
 In the case of etcd-operator, this will be coordinated via the Kubernetes API server.
 
@@ -176,12 +176,12 @@ _note: steps 2-9 can be repeated to implement a primitive cert refresh mechanism
 
 Here's a table showing how this process is currently used in the etcd operator TLS infrastructure:
 
-| _signer_      | signing CA     |  _singee_  | signed indenties  | identity type |
+| _signer_      | signing CA     |  _singee_  | signed identities  | identity type |
 | ------------- | -------------- | ---------- | ----------------- | ------------- |
-| external pki  | external CA    | operator | <ul><li>operator peer ca</li><li>operator client ca</li></ul> | CERTIFICATE AUTHORITY |
-| operator      | clusterA peer ca | etcd-xxxx | etcd-xxxx-peer-interface | SERVER CERTIFICATE |
-| operator      | clusterA client ca | etcd-xxxx | etcd-xxxx, client-interface | SERVER CERTIFICATE  |
-| operator      | clusterA client ca | clusterA-backup-sidecar | clusterA-backup-sidecar, client ce | CLIENT CERTIFICATE |
+| external PKI  | external CA    | operator | <ul><li>operator peer CA</li><li>operator client CA</li></ul> | CERTIFICATE AUTHORITY |
+| operator      | clusterA peer CA | etcd-xxxx | etcd-xxxx-peer-interface | SERVER CERTIFICATE |
+| operator      | clusterA client CA | etcd-xxxx | etcd-xxxx, client-interface | SERVER CERTIFICATE  |
+| operator      | clusterA client CA | clusterA-backup-sidecar | clusterA-backup-sidecar, client CA | CLIENT CERTIFICATE |
 
 ## Things to note:
 * **Private Keys Stay Put:** If a private key is needed, is its generated on and never leaves the component that uses it. The business of shuffling around private key material across networks is a dangerous business.
@@ -201,7 +201,7 @@ Here's a table showing how this process is currently used in the etcd operator T
   In theory, Kubernetes-provided isolation mechanisms alone should allow a _signer_ to:
    * create a _signee_ pod
    * observe an `kubeEtcdCSR` annotation on that _signee_ pod
-   * be gauranteed that the _signee_ pod itelf annotated that CSR.
+   * be guaranteed that the _signee_ pod itself annotated that CSR.
 
 
 
