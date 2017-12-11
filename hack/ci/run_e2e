@@ -15,19 +15,13 @@ kubectl version
 : ${TEST_S3_BUCKET:?"Need to set TEST_S3_BUCKET"}
 : ${TEST_AWS_SECRET:?"Need to set TEST_AWS_SECRET"}
 
-# Set envs for build
 GIT_VERSION=$(git rev-parse HEAD)
-export OPERATOR_IMAGE=${OPERATOR_IMAGE:-"gcr.io/coreos-k8s-scale-testing/etcd-operator:${GIT_VERSION}"}
-export TEST_IMAGE=${TEST_IMAGE:-"gcr.io/coreos-k8s-scale-testing/etcd-operator-e2e:${GIT_VERSION}"}
-
-echo "TEST_NAMESPACE: ${TEST_NAMESPACE}"
-echo "OPERATOR_IMAGE: ${OPERATOR_IMAGE}"
-echo "TEST_IMAGE: ${TEST_IMAGE}"
 
 hack/ci/get_dep
 
 BUILD_IMAGE=${BUILD_IMAGE:-true}
 if [[ ${BUILD_IMAGE} == "true" ]]; then
+  OPERATOR_IMAGE=${OPERATOR_IMAGE:-"gcr.io/coreos-k8s-scale-testing/etcd-operator:${GIT_VERSION}"}
   gcloud docker -a
   hack/build/build
   IMAGE=${OPERATOR_IMAGE} hack/build/docker_push
@@ -35,10 +29,14 @@ fi
 
 BUILD_E2E=${BUILD_E2E:-true}
 if [[ ${BUILD_E2E} == "true" ]]; then
+  TEST_IMAGE=${TEST_IMAGE:-"gcr.io/coreos-k8s-scale-testing/etcd-operator-e2e:${GIT_VERSION}"}
   gcloud docker -a
-  hack/build/e2e/docker_push
+  TEST_IMAGE=${TEST_IMAGE} hack/build/e2e/docker_push
 fi
 
+echo "TEST_NAMESPACE: ${TEST_NAMESPACE}"
+echo "OPERATOR_IMAGE: ${OPERATOR_IMAGE}"
+echo "TEST_IMAGE: ${TEST_IMAGE}"
 
 # Generate test-pod spec
 export TEST_POD_SPEC=${PWD}/test/pod/test-pod-spec.yaml
@@ -46,16 +44,13 @@ export POD_NAME=${POD_NAME:-"e2e-testing"}
 export E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-""}
 
 sed -e "s|<POD_NAME>|${POD_NAME}|g" \
-    -e "s|<TEST_IMAGE>|${TEST_IMAGE}|g" \
+  -e "s|<TEST_IMAGE>|${TEST_IMAGE}|g" \
     -e "s|<PASSES>|${PASSES}|g" \
     -e "s|<OPERATOR_IMAGE>|${OPERATOR_IMAGE}|g" \
     -e "s|<E2E_TEST_SELECTOR>|${E2E_TEST_SELECTOR}|g" \
     -e "s|<TEST_S3_BUCKET>|${TEST_S3_BUCKET}|g" \
     -e "s|<TEST_AWS_SECRET>|${TEST_AWS_SECRET}|g" \
-    test/pod/test-pod.yaml > ${TEST_POD_SPEC}
+    test/pod/test-pod-templ.yaml > ${TEST_POD_SPEC}
 
 # Run test-pod
-PASSES=${PASSES} \
-	TEST_S3_BUCKET=${TEST_S3_BUCKET} \
-	TEST_AWS_SECRET=${TEST_AWS_SECRET} \
-	test/pod/run-test-pod
+test/pod/run-test-pod

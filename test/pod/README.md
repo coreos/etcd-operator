@@ -1,6 +1,6 @@
 # Running Containarized Tests
 
-The scripts at `test/pod` can be used to package and run the e2e tests inside a [test-pod](./test-pod.yaml) on a k8s cluster.
+The scripts at `test/pod` can be used to package and run the e2e tests inside a test-pod on a k8s cluster.
 
 ## Create the AWS secret
 
@@ -11,24 +11,42 @@ The e2e tests need access to an S3 bucket for testing. Create a secret containin
 The following should build and push the test-pod image to some specified repository:
 
 ```sh
-TEST_IMAGE=gcr.io/coreos-k8s-scale-testing/etcd-operator-e2e test/pod/build
+TEST_IMAGE=gcr.io/coreos-k8s-scale-testing/etcd-operator-e2e test/pod/docker_push
 ```
 
-## Run the test-pod
-The `run-test-pod` script sets up RBAC for the namespace, and necessary environment variables for the test-pod before running it:
+## Generate the test-pod spec file
 
-- `TEST_NAMESPACE` is the namespace where the test-pod and e2e tests will run.
+The [test-pod-tmpl.yaml](./test-pod-tmpl.yaml) can be used to define the test-pod spec with the necessary values for the following environment variables:
+
 - `OPERATOR_IMAGE` is the etcd-operator image used for testing
 - `TEST_S3_BUCKET` is the S3 bucket name used for testing
 - `TEST_AWS_SECRET` is the secret name containing the aws credentials/config files.
+- `E2E_TEST_SELECTOR` is used to select which tests to run. Leave empty to run all tests.
+- `PASSES` are the test passes to run (e2e, e2eslow, e2esh). See [hack/test](../../hack/test)
 
 ```sh
-TEST_IMAGE=gcr.io/coreos-k8s-scale-testing/etcd-operator-e2e \
-  TEST_NAMESPACE=e2e \
-  OPERATOR_IMAGE=quay.io/coreos/etcd-operator:dev \
-  TEST_S3_BUCKET=my-bucket \
-  TEST_AWS_SECRET=aws-secret \
-  test/pod/run-test-pod
+sed -e "s|<POD_NAME>|e2e-testing|g" \
+    -e "s|<TEST_IMAGE>|gcr.io/coreos-k8s-scale-testing/etcd-operator-e2e|g" \
+    -e "s|<PASSES>|e2eslow|g" \
+    -e "s|<OPERATOR_IMAGE>|quay.io/coreos/etcd-operator:dev|g" \
+    -e "s|<E2E_TEST_SELECTOR>|CreateCluster|g" \
+    -e "s|<TEST_S3_BUCKET>|my-bucket|g" \
+    -e "s|<TEST_AWS_SECRET>|aws-secret|g" \
+    test/pod/test-pod-templ.yaml > test-pod-spec.yaml
 ```
+
+## Run the test-pod
+
+The `run-test-pod` script sets up RBAC for the namespace, runs the logcollector and then the test-pod. The script waits until the test-pod has run to completion.
+
+```sh
+  TEST_NAMESPACE=e2e \
+    POD_NAME=testing-e2e \
+    TEST_POD_SPEC=${PWD}/test-pod-spec.yaml \
+    KUBECONFIG=/path/to/kubeconfig \
+    test/pod/run-test-pod
+```
+
+The logfiles for all the pods in the test namespace will be saved at `${CWD}/_output/logs`.
 
 [setup-aws-secret]:../../doc/user/walkthrough/backup-operator.md#setup-aws-secret
