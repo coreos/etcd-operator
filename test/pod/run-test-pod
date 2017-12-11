@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# This script runs the test-pod with the specified TEST_IMAGE and necessary envs for e2e tests
-
 set -o errexit
 set -o nounset
 set -o pipefail

@@ -5,7 +5,6 @@ set -o nounset
 set -o pipefail
 
 : ${TEST_IMAGE:?"Need to set TEST_IMAGE"}
-: ${OPERATOR_IMAGE:?"Need to set OPERATOR_IMAGE"}
 
 if ! which docker > /dev/null; then
 	echo "docker needs to be installed"
