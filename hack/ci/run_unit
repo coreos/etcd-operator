@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#
+# This script is used for fmt_pass and unit_pass
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+export GOROOT="/usr/local/go"
+export PATH=$GOROOT/bin:$PATH
+export CODECOV_TOKEN=$(cat $CODECOV_TOKEN_FILE)
+
+go version
+
+hack/ci/get_dep
+hack/test
