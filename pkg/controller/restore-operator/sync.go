@@ -134,14 +134,11 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 			err = fmt.Errorf("prepare seed failed: %v", err)
 		}
 	}()
-
-	cs := er.Spec.ClusterSpec
 	// Use the restore CR's name as the name of the etcd cluster being restored
 	clusterName := er.Name
-
 	ec := &api.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: clusterName},
-		Spec:       cs,
+		Spec:       er.Spec.ClusterSpec,
 	}
 
 	ec.Spec.Paused = true
@@ -177,11 +174,10 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 
 func (r *Restore) createSeedMember(ec *api.EtcdCluster, svcAddr, clusterName string, owner metav1.OwnerReference) error {
 	m := &etcdutil.Member{
-		Name:      etcdutil.CreateMemberName(clusterName, 0),
-		Namespace: r.namespace,
-		// TODO: support TLS
-		SecurePeer:   false,
-		SecureClient: false,
+		Name:         etcdutil.CreateMemberName(clusterName, 0),
+		Namespace:    r.namespace,
+		SecurePeer:   ec.Spec.TLS.IsSecurePeer(),
+		SecureClient: ec.Spec.TLS.IsSecureClient(),
 	}
 	ms := etcdutil.NewMemberSet(m)
 	backupURL := backupapi.BackupURLForRestore("http", svcAddr, clusterName)

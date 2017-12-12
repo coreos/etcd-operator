@@ -88,6 +88,22 @@ func NewEtcdRestore(restoreName, version string, size int, restoreSource api.Res
 	}
 }
 
+// RestoreCRWithTLS attaches StaticTLS to its ClusterSpec.
+func RestoreCRWithTLS(er *api.EtcdRestore, memberPeerTLSSecret, memberServerTLSSecret, operatorClientTLSSecret string) {
+	if er == nil {
+		return
+	}
+	er.Spec.ClusterSpec.TLS = &api.TLSPolicy{
+		Static: &api.StaticTLS{
+			Member: &api.MemberSecret{
+				PeerSecret:   memberPeerTLSSecret,
+				ServerSecret: memberServerTLSSecret,
+			},
+			OperatorSecret: operatorClientTLSSecret,
+		},
+	}
+}
+
 // ClusterCRWithTLS adds TLSPolicy to the passing in cluster CR.
 func ClusterCRWithTLS(cl *api.EtcdCluster, memberPeerTLSSecret, memberServerTLSSecret, operatorClientTLSSecret string) {
 	cl.Spec.TLS = &api.TLSPolicy{

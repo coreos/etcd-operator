@@ -148,10 +148,27 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 // testEtcdRestoreOperatorForS3Source tests if the restore-operator can restore an etcd cluster from an S3 restore source
 func testEtcdRestoreOperatorForS3Source(t *testing.T, s3Path string) {
 	f := framework.Global
+	suffix := fmt.Sprintf("-%d", rand.Uint64())
+	clusterName := "restore-tls-test" + suffix
+	memberPeerTLSSecret := "restore-etcd-peer-tls" + suffix
+	memberClientTLSSecret := "restore-etcd-server-tls" + suffix
+	operatorClientTLSSecret := "restore-etcd-client-tls" + suffix
+	err := e2eutil.PrepareTLS(clusterName, f.Namespace, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err := e2eutil.DeleteSecrets(f.KubeClient, f.Namespace, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	restoreSource := api.RestoreSource{S3: e2eutil.NewS3RestoreSource(s3Path, os.Getenv("TEST_AWS_SECRET"))}
-	er := e2eutil.NewEtcdRestore("test-etcd-restore-", "3.2.11", 3, restoreSource)
-	er, err := f.CRClient.EtcdV1beta2().EtcdRestores(f.Namespace).Create(er)
+	er := e2eutil.NewEtcdRestore("", "3.2.11", 3, restoreSource)
+	er.Name = clusterName
+	e2eutil.RestoreCRWithTLS(er, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
+	er, err = f.CRClient.EtcdV1beta2().EtcdRestores(f.Namespace).Create(er)
 	if err != nil {
 		t.Fatalf("failed to create etcd restore cr: %v", err)
 	}
@@ -162,7 +179,7 @@ func testEtcdRestoreOperatorForS3Source(t *testing.T, s3Path string) {
 	}()
 
 	// Verify the EtcdRestore CR status "succeeded=true". In practice the time taken to update is 1 second.
-	err = retryutil.Retry(time.Second, 5, func() (bool, error) {
+	err = retryutil.Retry(time.Second, 6, func() (bool, error) {
 		er, err := f.CRClient.EtcdV1beta2().EtcdRestores(f.Namespace).Get(er.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, fmt.Errorf("failed to retrieve restore CR: %v", err)
