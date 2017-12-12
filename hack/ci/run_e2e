@@ -15,13 +15,19 @@ kubectl version
 : ${TEST_S3_BUCKET:?"Need to set TEST_S3_BUCKET"}
 : ${TEST_AWS_SECRET:?"Need to set TEST_AWS_SECRET"}
 
+# Default values for e2e and upgrade test envs
 GIT_VERSION=$(git rev-parse HEAD)
+OPERATOR_IMAGE=${OPERATOR_IMAGE:-"gcr.io/coreos-k8s-scale-testing/etcd-operator:${GIT_VERSION}"}
+E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-""}
+
+UPGRADE_TEST_SELECTOR=${UPGRADE_TEST_SELECTOR:-""}
+UPGRADE_FROM=${UPGRADE_FROM:-"quay.io/coreos/etcd-operator:latest"}
+UPGRADE_TO=${UPGRADE_TO:-"quay.io/coreos/etcd-operator:dev"}
 
 hack/ci/get_dep
 
 BUILD_IMAGE=${BUILD_IMAGE:-true}
 if [[ ${BUILD_IMAGE} == "true" ]]; then
-  OPERATOR_IMAGE=${OPERATOR_IMAGE:-"gcr.io/coreos-k8s-scale-testing/etcd-operator:${GIT_VERSION}"}
   gcloud docker -a
   hack/build/build
   IMAGE=${OPERATOR_IMAGE} hack/build/docker_push
@@ -41,14 +47,9 @@ echo "TEST_IMAGE: ${TEST_IMAGE}"
 # Generate test-pod spec
 export TEST_POD_SPEC=${PWD}/test/pod/test-pod-spec.yaml
 export POD_NAME=${POD_NAME:-"e2e-testing"}
-export E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-""}
-
-export UPGRADE_TEST_SELECTOR=${UPGRADE_TEST_SELECTOR:-""}
-export UPGRADE_FROM=${UPGRADE_FROM:-"quay.io/coreos/etcd-operator:latest"}
-export UPGRADE_TO=${UPGRADE_TO:-"quay.io/coreos/etcd-operator:dev"}
 
 sed -e "s|<POD_NAME>|${POD_NAME}|g" \
-  -e "s|<TEST_IMAGE>|${TEST_IMAGE}|g" \
+    -e "s|<TEST_IMAGE>|${TEST_IMAGE}|g" \
     -e "s|<PASSES>|${PASSES}|g" \
     -e "s|<OPERATOR_IMAGE>|${OPERATOR_IMAGE}|g" \
     -e "s|<E2E_TEST_SELECTOR>|${E2E_TEST_SELECTOR}|g" \
