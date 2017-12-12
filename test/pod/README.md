@@ -35,6 +35,8 @@ sed -e "s|<POD_NAME>|e2e-testing|g" \
     test/pod/test-pod-templ.yaml > test-pod-spec.yaml
 ```
 
+// TODO: Update for upgrade test env variables
+
 ## Run the test-pod
 
 The `run-test-pod` script sets up RBAC for the namespace, runs the logcollector and then the test-pod. The script waits until the test-pod has run to completion.

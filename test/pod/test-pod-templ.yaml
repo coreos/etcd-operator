@@ -29,3 +29,9 @@ spec:
         value: <TEST_AWS_SECRET>
       - name: PARALLEL_TEST
         value: "true"
+      - name: UPGRADE_TEST_SELECTOR
+        value: <UPGRADE_TEST_SELECTOR>
+      - name: UPGRADE_FROM
+        value: <UPGRADE_FROM>
+      - name: UPGRADE_TO
+        value: <UPGRADE_TO>
