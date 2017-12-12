@@ -43,6 +43,10 @@ export TEST_POD_SPEC=${PWD}/test/pod/test-pod-spec.yaml
 export POD_NAME=${POD_NAME:-"e2e-testing"}
 export E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-""}
 
+export UPGRADE_TEST_SELECTOR=${UPGRADE_TEST_SELECTOR:-""}
+export UPGRADE_FROM=${UPGRADE_FROM:-"quay.io/coreos/etcd-operator:latest"}
+export UPGRADE_TO=${UPGRADE_TO:-"quay.io/coreos/etcd-operator:dev"}
+
 sed -e "s|<POD_NAME>|${POD_NAME}|g" \
   -e "s|<TEST_IMAGE>|${TEST_IMAGE}|g" \
     -e "s|<PASSES>|${PASSES}|g" \
@@ -50,6 +54,9 @@ sed -e "s|<POD_NAME>|${POD_NAME}|g" \
     -e "s|<E2E_TEST_SELECTOR>|${E2E_TEST_SELECTOR}|g" \
     -e "s|<TEST_S3_BUCKET>|${TEST_S3_BUCKET}|g" \
     -e "s|<TEST_AWS_SECRET>|${TEST_AWS_SECRET}|g" \
+    -e "s|<UPGRADE_TEST_SELECTOR>|${UPGRADE_TEST_SELECTOR}|g" \
+    -e "s|<UPGRADE_FROM>|${UPGRADE_FROM}|g" \
+    -e "s|<UPGRADE_TO>|${UPGRADE_TO}|g" \
     test/pod/test-pod-templ.yaml > ${TEST_POD_SPEC}
 
 # Run test-pod
