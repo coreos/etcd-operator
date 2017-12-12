@@ -26,27 +26,6 @@ function fmt_pass {
 		"./hack/fmt_pass"
 }
 
-function build_backup_operator  {
-	if ! "hack/build/backup-operator/build" ; then
-		echo "fail to build backup-operator"
-		exit 255
-	fi
-}
-
-function build_restore_operator  {
-	if ! "hack/build/restore-operator/build" ; then
-		echo "fail to build restore operator"
-		exit 255
-	fi
-}
-
-function build_pass {
-	hack/build/operator/build
-	build_backup_operator
-	build_restore_operator
-	IMAGE=$OPERATOR_IMAGE hack/build/docker_push
-}
-
 function e2e_pass {
 	: ${TEST_S3_BUCKET:?"Need to set TEST_S3_BUCKET"}
 	: ${TEST_AWS_SECRET:?"Need to set TEST_AWS_SECRET"}
