@@ -165,7 +165,7 @@ func testEtcdRestoreOperatorForS3Source(t *testing.T, s3Path string) {
 	}()
 
 	restoreSource := api.RestoreSource{S3: e2eutil.NewS3RestoreSource(s3Path, os.Getenv("TEST_AWS_SECRET"))}
-	er := e2eutil.NewEtcdRestore("", "3.2.11", 3, restoreSource)
+	er := e2eutil.NewEtcdRestore("", 3, restoreSource)
 	er.Name = clusterName
 	e2eutil.RestoreCRWithTLS(er, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
 	er, err = f.CRClient.EtcdV1beta2().EtcdRestores(f.Namespace).Create(er)
