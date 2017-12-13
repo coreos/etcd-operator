@@ -134,11 +134,15 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 			err = fmt.Errorf("prepare seed failed: %v", err)
 		}
 	}()
+	cs := er.Spec.ClusterSpec
+	if err := cs.Validate(); err != nil {
+		return fmt.Errorf("invalid cluster spec: %v", err)
+	}
 	// Use the restore CR's name as the name of the etcd cluster being restored
 	clusterName := er.Name
 	ec := &api.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: clusterName},
-		Spec:       er.Spec.ClusterSpec,
+		Spec:       cs,
 	}
 
 	ec.Spec.Paused = true
