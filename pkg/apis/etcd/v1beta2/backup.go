@@ -42,4 +42,7 @@ type S3Source struct {
 	//
 	// AWSSecret overwrites the default etcd operator wide AWS credential and config.
 	AWSSecret string `json:"awsSecret,omitempty"`
+
+	// AWSEndpoint
+	AWSEndpoint string `json:"awsEndpoint,omitempty"`
 }
