@@ -1,6 +1,6 @@
 # Cluster Spec Examples
 
-### Three members cluster
+## Three members cluster
 
 ```yaml
 spec:
@@ -9,7 +9,7 @@ spec:
 
 This will use default version that etcd operator chooses.
 
-### Three members cluster with version specified
+## Three members cluster with version specified
 
 ```yaml
 spec:
@@ -17,7 +17,7 @@ spec:
   version: "3.2.10"
 ```
 
-### Three members cluster with node selector and anti-affinity
+## Three members cluster with node selector and anti-affinity
 
 ```yaml
 spec:
@@ -28,7 +28,7 @@ spec:
     antiAffinity: true
 ```
 
-### Three members cluster with resource requirement
+## Three members cluster with resource requirement
 
 ```yaml
 spec:
@@ -42,6 +42,6 @@ spec:
         cpu: 200m
         memory: 100Mi
 ```
-### TLS
+## TLS
 
 See [cluster TLS docs](./cluster_tls.md).
