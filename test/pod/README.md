@@ -21,21 +21,25 @@ The [test-pod-tmpl.yaml](./test-pod-tmpl.yaml) can be used to define the test-po
 - `OPERATOR_IMAGE` is the etcd-operator image used for testing
 - `TEST_S3_BUCKET` is the S3 bucket name used for testing
 - `TEST_AWS_SECRET` is the secret name containing the aws credentials/config files.
-- `E2E_TEST_SELECTOR` is used to select which tests to run. Leave empty to run all tests.
+- `E2E_TEST_SELECTOR` selects which e2e tests to run. Leave empty to run all tests.
+- `UPGRADE_TEST_SELECTOR` selects which upgrade tests to run. Leave empty to run all tests.
 - `PASSES` are the test passes to run (e2e, e2eslow, e2esh). See [hack/test](../../hack/test)
+- `UPGRADE_FROM` is the starting image used in the upgrade tests
+- `UPGRADE_TO` is the final image used in the upgrade tests
 
 ```sh
 sed -e "s|<POD_NAME>|e2e-testing|g" \
     -e "s|<TEST_IMAGE>|gcr.io/coreos-k8s-scale-testing/etcd-operator-e2e|g" \
     -e "s|<PASSES>|e2eslow|g" \
     -e "s|<OPERATOR_IMAGE>|quay.io/coreos/etcd-operator:dev|g" \
-    -e "s|<E2E_TEST_SELECTOR>|CreateCluster|g" \
+    -e "s|<E2E_TEST_SELECTOR>||g" \
     -e "s|<TEST_S3_BUCKET>|my-bucket|g" \
     -e "s|<TEST_AWS_SECRET>|aws-secret|g" \
+    -e "s|<UPGRADE_TEST_SELECTOR>||g" \
+    -e "s|<UPGRADE_FROM>|quay.io/coreos/etcd-operator:latest|g" \
+    -e "s|<UPGRADE_TO>|quay.io/coreos/etcd-operator:dev|g" \
     test/pod/test-pod-templ.yaml > test-pod-spec.yaml
 ```
-
-// TODO: Update for upgrade test env variables
 
 ## Run the test-pod
 
