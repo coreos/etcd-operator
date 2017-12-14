@@ -278,9 +278,11 @@ Follow the [etcd backup operator walkthrough](./doc/user/walkthrough/backup-oper
 
 Follow the [etcd restore operator walkthrough](./doc/user/walkthrough/restore-operator.md) to restore an etcd cluster on Kubernetes from backup.
 
-### Limitations
+### Manage etcd clusters in all namespaces
 
-- The etcd operator only manages the etcd cluster created in the same namespace. Users need to create multiple operators in different namespaces to manage etcd clusters in different namespaces.
+See [instructions on clusterwide feature](doc/user/clusterwide.md).
+
+### Limitations
 
 
 [k8s-home]: http://kubernetes.io

@@ -18,11 +18,10 @@ import (
 	"strings"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/watch"
-
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/cluster"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 )
 
 func TestHandleClusterEventUpdateFailedCluster(t *testing.T) {
@@ -71,5 +70,68 @@ func TestHandleClusterEventDeleteFailedCluster(t *testing.T) {
 
 	if c.clusters[name] != nil {
 		t.Errorf("failed cluster not cleaned up after delete event, cluster struct: %v", c.clusters[name])
+	}
+}
+
+func TestHandleClusterEventClusterwide(t *testing.T) {
+	c := New(Config{ClusterWide: true})
+
+	clus := &api.EtcdCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+			Annotations: map[string]string{
+				"etcd.database.coreos.com/scope": "clusterwide",
+			},
+		},
+	}
+	e := &Event{
+		Type:   watch.Modified,
+		Object: clus,
+	}
+	err := c.handleClusterEvent(e)
+	suffix := "isn't managed"
+	if strings.HasSuffix(err.Error(), suffix) {
+		t.Errorf("expect err='%s...', get=%v", suffix, err)
+	}
+}
+
+func TestHandleClusterEventClusterwideIgnored(t *testing.T) {
+	c := New(Config{ClusterWide: true})
+
+	clus := &api.EtcdCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+		},
+	}
+	e := &Event{
+		Type:   watch.Modified,
+		Object: clus,
+	}
+	err := c.handleClusterEvent(e)
+	suffix := "isn't managed"
+	if !strings.HasSuffix(err.Error(), suffix) {
+		t.Errorf("expect err='%s...', get=%v", suffix, err)
+	}
+}
+
+func TestHandleClusterEventNamespacedIgnored(t *testing.T) {
+	c := New(Config{})
+
+	clus := &api.EtcdCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+			Annotations: map[string]string{
+				"etcd.database.coreos.com/scope": "clusterwide",
+			},
+		},
+	}
+	e := &Event{
+		Type:   watch.Modified,
+		Object: clus,
+	}
+	err := c.handleClusterEvent(e)
+	suffix := "isn't managed"
+	if !strings.HasSuffix(err.Error(), suffix) {
+		t.Errorf("expect err='%s...', get=%v", suffix, err)
 	}
 }
