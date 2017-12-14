@@ -22,12 +22,9 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
-	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -35,7 +32,7 @@ import (
 type BackupManager struct {
 	kubecli kubernetes.Interface
 
-	clusterName   string
+	endpoints     []string
 	namespace     string
 	etcdTLSConfig *tls.Config
 
@@ -43,10 +40,10 @@ type BackupManager struct {
 }
 
 // NewBackupManagerFromWriter creates a BackupManager with backup writer.
-func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, tc *tls.Config, clusterName, namespace string) *BackupManager {
+func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, tc *tls.Config, endpoints []string, namespace string) *BackupManager {
 	return &BackupManager{
 		kubecli:       kubecli,
-		clusterName:   clusterName,
+		endpoints:     endpoints,
 		namespace:     namespace,
 		etcdTLSConfig: tc,
 		bw:            bw,
@@ -76,54 +73,33 @@ func (bm *BackupManager) SaveSnap(s3Path string) error {
 	return nil
 }
 
-// etcdClientWithMaxRevision gets the etcd member with the maximum kv store revision
+// etcdClientWithMaxRevision gets the etcd endpoint with the maximum kv store revision
 // and returns the etcd client and the rev of that member.
 func (bm *BackupManager) etcdClientWithMaxRevision() (*clientv3.Client, int64, error) {
-	podList, err := bm.kubecli.Core().Pods(bm.namespace).List(k8sutil.ClusterListOpt(bm.clusterName))
-	if err != nil {
-		return nil, 0, err
+	client, rev := getEndpointWithMaxRev(bm.endpoints, bm.etcdTLSConfig)
+	if len(client) == 0 {
+		return nil, 0, errors.New("non-reachable endpoints")
 	}
 
-	var pods []*v1.Pod
-	for i := range podList.Items {
-		pod := &podList.Items[i]
-		if pod.Status.Phase == v1.PodRunning {
-			pods = append(pods, pod)
-		}
-	}
-
-	if len(pods) == 0 {
-		return nil, 0, errors.New("no running etcd pods found")
-	}
-	member, rev := getMemberWithMaxRev(pods, bm.etcdTLSConfig)
-	if member == nil {
-		return nil, 0, errors.New("no reachable member")
-	}
-
-	etcdcli, err := createEtcdClient(member.ClientURL(), bm.etcdTLSConfig)
+	etcdcli, err := createEtcdClient(client, bm.etcdTLSConfig)
 	if err != nil {
 		return nil, 0, fmt.Errorf("create etcd client failed: %v", err)
 	}
 	return etcdcli, rev, nil
 }
 
-func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config) (*etcdutil.Member, int64) {
-	var member *etcdutil.Member
+func getEndpointWithMaxRev(endpoints []string, tc *tls.Config) (string, int64) {
+	var maxEndpoint string
 	maxRev := int64(0)
-	for _, pod := range pods {
-		m := &etcdutil.Member{
-			Name:         pod.Name,
-			Namespace:    pod.Namespace,
-			SecureClient: tc != nil,
-		}
+	for _, endpoint := range endpoints {
 		cfg := clientv3.Config{
-			Endpoints:   []string{m.ClientURL()},
+			Endpoints:   []string{endpoint},
 			DialTimeout: constants.DefaultDialTimeout,
 			TLS:         tc,
 		}
 		etcdcli, err := clientv3.New(cfg)
 		if err != nil {
-			logrus.Warningf("failed to create etcd client for pod (%v): %v", pod.Name, err)
+			logrus.Warningf("failed to create etcd client for endpoint (%v): %v", err)
 			continue
 		}
 		defer etcdcli.Close()
@@ -132,17 +108,17 @@ func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config) (*etcdutil.Member, int6
 		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
 		cancel()
 		if err != nil {
-			logrus.Warningf("getMaxRev: failed to get revision from member %s (%s)", m.Name, m.ClientURL())
+			logrus.Warningf("getMaxRev: failed to get revision from endpoint (%s)", endpoint)
 			continue
 		}
 
-		logrus.Infof("getMaxRev: member %s revision (%d)", m.Name, resp.Header.Revision)
+		logrus.Infof("getMaxRev: endpoint %s revision (%d)", endpoint, resp.Header.Revision)
 		if resp.Header.Revision > maxRev {
 			maxRev = resp.Header.Revision
-			member = m
+			maxEndpoint = endpoint
 		}
 	}
-	return member, maxRev
+	return maxEndpoint, maxRev
 }
 
 func createEtcdClient(url string, tlsConfig *tls.Config) (*clientv3.Client, error) {
