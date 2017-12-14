@@ -36,7 +36,7 @@ func NewCluster(genName string, size int) *api.EtcdCluster {
 }
 
 // NewS3Backup creates a EtcdBackup object using clusterName.
-func NewS3Backup(clusterName, path, secret, clientTLSSecret string) *api.EtcdBackup {
+func NewS3Backup(endpoints []string, clusterName, path, secret, clientTLSSecret string) *api.EtcdBackup {
 	return &api.EtcdBackup{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       api.EtcdBackupResourceKind,
@@ -46,7 +46,7 @@ func NewS3Backup(clusterName, path, secret, clientTLSSecret string) *api.EtcdBac
 			GenerateName: clusterName,
 		},
 		Spec: api.BackupSpec{
-			ClusterName:     clusterName,
+			EtcdEndpoints:   endpoints,
 			StorageType:     api.BackupStorageTypeS3,
 			ClientTLSSecret: clientTLSSecret,
 			BackupSource: api.BackupSource{

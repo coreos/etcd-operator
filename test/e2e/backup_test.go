@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -24,11 +25,15 @@ import (
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
+	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 func init() {
@@ -58,6 +63,36 @@ func verifyAWSEnvVars() error {
 		return fmt.Errorf("TEST_AWS_SECRET not set")
 	}
 	return nil
+}
+
+func getEndpoints(kubeClient kubernetes.Interface, secureClient bool, namespace, clusterName string) ([]string, error) {
+	podList, err := kubeClient.Core().Pods(namespace).List(k8sutil.ClusterListOpt(clusterName))
+	if err != nil {
+		return nil, err
+	}
+
+	var pods []*v1.Pod
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if pod.Status.Phase == v1.PodRunning {
+			pods = append(pods, pod)
+		}
+	}
+
+	if len(pods) == 0 {
+		return nil, errors.New("no running etcd pods found")
+	}
+
+	endpoints := make([]string, len(pods))
+	for i, pod := range pods {
+		m := &etcdutil.Member{
+			Name:         pod.Name,
+			Namespace:    pod.Namespace,
+			SecureClient: secureClient,
+		}
+		endpoints[i] = m.ClientURL()
+	}
+	return endpoints, nil
 }
 
 // testEtcdBackupOperatorForS3Backup tests if etcd backup operator can save etcd backup to S3.
@@ -95,8 +130,12 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
+	endpoints, err := getEndpoints(f.KubeClient, true, f.Namespace, clusterName)
+	if err != nil {
+		t.Fatalf("failed to get endpoints: %v", err)
+	}
 	s3Path := path.Join(os.Getenv("TEST_S3_BUCKET"), "jenkins", suffix, time.Now().Format(time.RFC3339), "etcd.backup")
-	backupCR := e2eutil.NewS3Backup(testEtcd.Name, s3Path, os.Getenv("TEST_AWS_SECRET"), operatorClientTLSSecret)
+	backupCR := e2eutil.NewS3Backup(endpoints, testEtcd.Name, s3Path, os.Getenv("TEST_AWS_SECRET"), operatorClientTLSSecret)
 	eb, err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Create(backupCR)
 	if err != nil {
 		t.Fatalf("failed to create etcd backup cr: %v", err)
