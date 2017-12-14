@@ -30,7 +30,7 @@ import (
 
 // TODO: replace this with generic backend interface for other options (PV, Azure)
 // handleS3 saves etcd cluster's backup to specificed S3 path.
-func handleS3(kubecli kubernetes.Interface, s *api.S3BackupSource, clientTLSSecret, namespace, clusterName string) error {
+func handleS3(kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []string, clientTLSSecret, namespace string) error {
 	cli, err := s3factory.NewClientFromSecret(kubecli, namespace, s.AWSSecret)
 	if err != nil {
 		return err
@@ -49,7 +49,7 @@ func handleS3(kubecli kubernetes.Interface, s *api.S3BackupSource, clientTLSSecr
 		}
 	}
 
-	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewS3Writer(cli.S3), tlsConfig, clusterName, namespace)
+	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewS3Writer(cli.S3), tlsConfig, endpoints, namespace)
 	err = bm.SaveSnap(s.Path)
 	if err != nil {
 		return fmt.Errorf("failed to save snapshot (%v)", err)
