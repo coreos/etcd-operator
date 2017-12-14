@@ -63,7 +63,7 @@ Create EtcdBackup CR:
 >Note: this example uses S3 Bucket "mybucket" and k8s secret "aws"
 
 ```sh
-sed -e 's/<s3-bucket-name>/mybucket/g' \
+sed -e 's|<full-s3-path>|mybucket/etcd.backup|g' \
     -e 's/<aws-secret>/aws/g' \
     example/etcd-backup-operator/backup_cr.yaml \
     | kubectl create -f -
@@ -79,11 +79,8 @@ apiVersion: etcd.database.coreos.com/v1beta2
 kind: EtcdBackup
 ...
 status:
-  s3Path: mybucket/v1/default/example-etcd-cluster/3.2.11_0000000000000001_etcd.backup
   succeeded: true
 ```
-
-* `s3Path` is the full S3 object path to the stored etcd backup. 
 
 This demonstrates etcd backup operator's basic one time backup functionality.
 

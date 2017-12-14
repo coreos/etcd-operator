@@ -6,5 +6,5 @@ spec:
   clusterName: example-etcd-cluster
   storageType: S3
   s3:
-    s3Bucket: <s3-bucket-name>
+    path: <full-s3-path>
     awsSecret: <aws-secret>
