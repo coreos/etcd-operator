@@ -41,6 +41,8 @@ type BackupSpec struct {
 	// ClusterName is the etcd cluster name.
 	ClusterName string `json:"clusterName,omitempty"`
 	// StorageType is the etcd backup storage type.
+	// We need this field because CRD doesn't support validation against invalid fields
+	// and we cannot verify invalid backup storage source.
 	StorageType string `json:"storageType"`
 	// BackupStorageSource is the backup storage source.
 	BackupStorageSource `json:",inline"`
