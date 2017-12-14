@@ -16,6 +16,7 @@ package controller
 
 import (
 	"fmt"
+	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
@@ -76,6 +77,14 @@ func (r *Restore) handleCR(er *api.EtcdRestore, key string) error {
 	if er.Status.Succeeded || len(er.Status.Reason) != 0 {
 		return nil
 	}
+	// NOTE: Since the restore EtcdCluster is created with the same name as the EtcdClusterRef,
+	// the seed member will send a request of the form /backup/<cluster-name> to the backup server.
+	// The EtcdRestore CR name must be the same as the EtcdCluster name in order for the backup server
+	// to successfully lookup the EtcdRestore CR associated with this <cluster-name>.
+	if er.Name != er.Spec.EtcdCluster.Name {
+		return fmt.Errorf("failed to handle restore CR: EtcdRestore CR name(%v) must be the same as EtcdCluster name(%v)", er.Name, er.Spec.EtcdCluster.Name)
+	}
+
 	err := r.prepareSeed(er)
 	r.reportStatus(err, er)
 	return err
@@ -118,8 +127,10 @@ func (r *Restore) handleErr(err error, key interface{}) {
 	r.logger.Infof("dropping restore request (%v) out of the queue: %v", key, err)
 }
 
-// prepareSeed creates:
-// - create EtcdCluster CR but spec.paused=true and status.phase="Running"
+// prepareSeed does the following:
+// - fetches and deletes the reference EtcdCluster CR
+// - creates new EtcdCluster CR with same metadata and spec as the reference CR
+// - and spec.paused=true and status.phase="Running"
 //  - spec.paused=true: keep operator from touching membership
 // 	- status.phase=Running:
 //  	1. expect operator to setup the services
@@ -134,25 +145,52 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 			err = fmt.Errorf("prepare seed failed: %v", err)
 		}
 	}()
-	cs := er.Spec.ClusterSpec
-	if err := cs.Validate(); err != nil {
+
+	// Fetch the reference EtcdCluster
+	ecRef := er.Spec.EtcdCluster
+	// Default to using restore-operator namespace
+	if len(ecRef.Namespace) == 0 {
+		ecRef.Namespace = r.namespace
+	}
+	ec, err := r.etcdCRCli.EtcdV1beta2().EtcdClusters(ecRef.Namespace).Get(ecRef.Name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get reference EtcdCluster(%s/%s): %v", ecRef.Namespace, ecRef.Name, err)
+	}
+	if err := ec.Spec.Validate(); err != nil {
 		return fmt.Errorf("invalid cluster spec: %v", err)
 	}
-	// Use the restore CR's name as the name of the etcd cluster being restored
-	clusterName := er.Name
-	ec := &api.EtcdCluster{
-		ObjectMeta: metav1.ObjectMeta{Name: clusterName},
-		Spec:       cs,
+
+	// Delete reference EtcdCluster
+	err = r.etcdCRCli.EtcdV1beta2().EtcdClusters(ecRef.Namespace).Delete(ecRef.Name, &metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete reference EtcdCluster (%s/%s): %v", ecRef.Namespace, ecRef.Name, err)
+	}
+	// TODO: Find a better way to ensure all pods and services from reference EtcdCluster are completely deleted
+	time.Sleep(10 * time.Second)
+
+	// Create the restored EtcdCluster with the same metadata and spec as reference EtcdCluster
+	clusterName := ecRef.Name
+	ec = &api.EtcdCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            clusterName,
+			Labels:          ec.ObjectMeta.Labels,
+			Annotations:     ec.ObjectMeta.Annotations,
+			OwnerReferences: ec.ObjectMeta.OwnerReferences,
+		},
+		Spec: ec.Spec,
 	}
 
 	ec.Spec.Paused = true
 	ec.Status.Phase = api.ClusterPhaseRunning
 	ec, err = r.etcdCRCli.EtcdV1beta2().EtcdClusters(r.namespace).Create(ec)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create restored EtcdCluster (%s/%s): %v", r.namespace, clusterName, err)
 	}
 
-	r.createSeedMember(ec, r.mySvcAddr, clusterName, ec.AsOwner())
+	err = r.createSeedMember(ec, r.mySvcAddr, clusterName, ec.AsOwner())
+	if err != nil {
+		return fmt.Errorf("failed to create seed member for cluster (%s): %v", clusterName, err)
+	}
 
 	// Retry updating the etcdcluster CR spec.paused=false. The etcd-operator will update the CR once so there needs to be a single retry in case of conflict
 	err = retryutil.Retry(2, 1, func() (bool, error) {
