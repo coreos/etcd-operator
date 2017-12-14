@@ -64,11 +64,11 @@ func verifyAWSEnvVars() error {
 // It returns the full S3 path where the backup is saved.
 func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 	f := framework.Global
-	suffix := fmt.Sprintf("-%d", rand.Uint64())
+	suffix := fmt.Sprintf("%d", rand.Uint64())
 	clusterName := "test-etcd-backup-" + suffix
-	memberPeerTLSSecret := "etcd-peer-tls" + suffix
-	memberClientTLSSecret := "etcd-server-tls" + suffix
-	operatorClientTLSSecret := "etcd-client-tls" + suffix
+	memberPeerTLSSecret := "etcd-peer-tls-" + suffix
+	memberClientTLSSecret := "etcd-server-tls-" + suffix
+	operatorClientTLSSecret := "etcd-client-tls-" + suffix
 
 	err := e2eutil.PrepareTLS(clusterName, f.Namespace, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
 	if err != nil {
@@ -95,7 +95,7 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
 
-	s3Path := path.Join(os.Getenv("TEST_S3_BUCKET"), "jenkins-testing", time.Now().Format(time.RFC3339), "etcd.backup")
+	s3Path := path.Join(os.Getenv("TEST_S3_BUCKET"), "jenkins", suffix, time.Now().Format(time.RFC3339), "etcd.backup")
 	backupCR := e2eutil.NewS3Backup(testEtcd.Name, s3Path, os.Getenv("TEST_AWS_SECRET"), operatorClientTLSSecret)
 	eb, err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Create(backupCR)
 	if err != nil {
