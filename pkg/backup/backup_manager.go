@@ -19,9 +19,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"path"
 
-	"github.com/coreos/etcd-operator/pkg/backup/util"
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -55,16 +53,11 @@ func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, 
 	}
 }
 
-// SaveSnapWithPrefix uses backup writer to save latest snapshot to a path prepended with the given prefix
-// and returns file size and full path.
-// the full path has the format of prefix/<etcd_version>_<snapshot_reversion>_etcd.backup
-// e.g prefix = etcd-backups/v1/default/example-etcd-cluster and
-// backup object name = 3.2.11_0000000000000001_etcd.backup
-// full path is "etcd-backups/v1/default/example-etcd-cluster/3.2.11_0000000000000001_etcd.backup".
-func (bm *BackupManager) SaveSnapWithPrefix(prefix string) (string, error) {
-	etcdcli, rev, err := bm.etcdClientWithMaxRevision()
+// SaveSnap uses backup writer to save etcd snapshot to a specified S3 path.
+func (bm *BackupManager) SaveSnap(s3Path string) error {
+	etcdcli, _, err := bm.etcdClientWithMaxRevision()
 	if err != nil {
-		return "", fmt.Errorf("create etcd client failed: %v", err)
+		return fmt.Errorf("create etcd client failed: %v", err)
 	}
 	defer etcdcli.Close()
 
@@ -72,30 +65,15 @@ func (bm *BackupManager) SaveSnapWithPrefix(prefix string) (string, error) {
 	defer cancel() // Can't cancel() after Snapshot() because that will close the reader.
 	rc, err := etcdcli.Snapshot(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to receive snapshot (%v)", err)
+		return fmt.Errorf("failed to receive snapshot (%v)", err)
 	}
 	defer rc.Close()
 
-	version, err := getEtcdVersion(etcdcli.Maintenance, etcdcli.Endpoints()[0])
+	_, err = bm.bw.Write(s3Path, rc)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("failed to write snapshot (%v)", err)
 	}
-	fullPath := path.Join(prefix, util.MakeBackupName(version, rev))
-	_, err = bm.bw.Write(fullPath, rc)
-	if err != nil {
-		return "", fmt.Errorf("failed to write snapshot (%v)", err)
-	}
-	return fullPath, nil
-}
-
-func getEtcdVersion(mcli clientv3.Maintenance, endpoint string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
-	resp, err := mcli.Status(ctx, endpoint)
-	cancel()
-	if err != nil {
-		return "", fmt.Errorf("failed to receive etcd version (%v)", err)
-	}
-	return resp.Version, nil
+	return nil
 }
 
 // etcdClientWithMaxRevision gets the etcd member with the maximum kv store revision

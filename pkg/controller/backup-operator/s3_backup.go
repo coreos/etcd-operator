@@ -17,11 +17,9 @@ package controller
 import (
 	"crypto/tls"
 	"fmt"
-	"path"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup"
-	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -31,11 +29,11 @@ import (
 )
 
 // TODO: replace this with generic backend interface for other options (PV, Azure)
-// handleS3 backups up etcd cluster to s3 and return s3 path for the backup file.
-func handleS3(kubecli kubernetes.Interface, s3 *api.S3Source, clientTLSSecret, namespace, clusterName string) (string, error) {
-	cli, err := s3factory.NewClientFromSecret(kubecli, namespace, s3.AWSSecret)
+// handleS3 saves etcd cluster's backup to specificed S3 path.
+func handleS3(kubecli kubernetes.Interface, s *api.S3BackupSource, clientTLSSecret, namespace, clusterName string) error {
+	cli, err := s3factory.NewClientFromSecret(kubecli, namespace, s.AWSSecret)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer cli.Close()
 
@@ -43,19 +41,18 @@ func handleS3(kubecli kubernetes.Interface, s3 *api.S3Source, clientTLSSecret, n
 	if len(clientTLSSecret) != 0 {
 		d, err := k8sutil.GetTLSDataFromSecret(kubecli, namespace, clientTLSSecret)
 		if err != nil {
-			return "", fmt.Errorf("failed to get TLS data from secret (%v): %v", clientTLSSecret, err)
+			return fmt.Errorf("failed to get TLS data from secret (%v): %v", clientTLSSecret, err)
 		}
 		tlsConfig, err = etcdutil.NewTLSConfig(d.CertData, d.KeyData, d.CAData)
 		if err != nil {
-			return "", fmt.Errorf("failed to constructs tls config: %v", err)
+			return fmt.Errorf("failed to constructs tls config: %v", err)
 		}
 	}
 
 	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewS3Writer(cli.S3), tlsConfig, clusterName, namespace)
-	s3Prefix := backupapi.ToS3Prefix(s3.Prefix, namespace, clusterName)
-	fullPath, err := bm.SaveSnapWithPrefix(path.Join(s3.S3Bucket, s3Prefix))
+	err = bm.SaveSnap(s.Path)
 	if err != nil {
-		return "", fmt.Errorf("failed to save snapshot (%v)", err)
+		return fmt.Errorf("failed to save snapshot (%v)", err)
 	}
-	return fullPath, nil
+	return nil
 }
