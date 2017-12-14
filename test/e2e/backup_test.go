@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"strings"
+	"path"
 	"testing"
 	"time"
 
@@ -28,8 +28,6 @@ import (
 	"github.com/coreos/etcd-operator/test/e2e/e2eutil"
 	"github.com/coreos/etcd-operator/test/e2e/framework"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -96,8 +94,10 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
-	backCR := e2eutil.NewS3Backup(testEtcd.Name, os.Getenv("TEST_S3_BUCKET"), os.Getenv("TEST_AWS_SECRET"), operatorClientTLSSecret)
-	eb, err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Create(backCR)
+
+	s3Path := path.Join(os.Getenv("TEST_S3_BUCKET"), "jenkins-testing", time.Now().Format(time.RFC3339), "etcd.backup")
+	backupCR := e2eutil.NewS3Backup(testEtcd.Name, s3Path, os.Getenv("TEST_AWS_SECRET"), operatorClientTLSSecret)
+	eb, err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Create(backupCR)
 	if err != nil {
 		t.Fatalf("failed to create etcd backup cr: %v", err)
 	}
@@ -110,7 +110,6 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 	// local testing shows that it takes around 1 - 2 seconds from creating backup cr to verifying the backup from s3.
 	// 4 seconds timeout via retry is enough; duration longer than that may indicate internal issues and
 	// is worthy of investigation.
-	s3Path := ""
 	s3cli, err := s3factory.NewClientFromSecret(f.KubeClient, f.Namespace, os.Getenv("TEST_AWS_SECRET"))
 	if err != nil {
 		t.Fatalf("failed create s3 client: %v", err)
@@ -122,19 +121,9 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T) string {
 			return false, fmt.Errorf("failed to retrieve backup CR: %v", err)
 		}
 		if reb.Status.Succeeded {
-			// bucketAndKey[0] holds s3 bucket name.
-			// bucketAndKey[1] holds the s3 object path without the prefixed bucket name.
-			bucketAndKey := strings.SplitN(reb.Status.S3Path, "/", 2)
-			_, err := s3cli.S3.GetObject(&s3.GetObjectInput{
-				Bucket: aws.String(bucketAndKey[0]),
-				Key:    aws.String(bucketAndKey[1]),
-			})
-			if err != nil {
-				return false, fmt.Errorf("failed to get backup %v from s3 : %v", reb.Status.S3Path, err)
-			}
-			s3Path = reb.Status.S3Path
 			return true, nil
-		} else if len(reb.Status.Reason) != 0 {
+		}
+		if len(reb.Status.Reason) != 0 {
 			return false, fmt.Errorf("backup failed with reason: %v ", reb.Status.Reason)
 		}
 		return false, nil

@@ -16,6 +16,15 @@ package v1beta2
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+const (
+	BackupStorageTypeS3 BackupStorageType = "S3"
+
+	AWSSecretCredentialsFileName = "credentials"
+	AWSSecretConfigFileName      = "config"
+)
+
+type BackupStorageType string
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // EtcdBackupList is a list of EtcdBackup.
@@ -43,9 +52,9 @@ type BackupSpec struct {
 	// StorageType is the etcd backup storage type.
 	// We need this field because CRD doesn't support validation against invalid fields
 	// and we cannot verify invalid backup storage source.
-	StorageType string `json:"storageType"`
-	// BackupStorageSource is the backup storage source.
-	BackupStorageSource `json:",inline"`
+	StorageType BackupStorageType `json:"storageType"`
+	// BackupSource is the backup storage source.
+	BackupSource `json:",inline"`
 	// ClientTLSSecret is the secret containing the etcd TLS client certs and
 	// must contain the following data items:
 	// data:
@@ -55,9 +64,10 @@ type BackupSpec struct {
 	ClientTLSSecret string `json:"clientTLSSecret,omitempty"`
 }
 
-// BackupStorageSource contains the supported backup sources.
-type BackupStorageSource struct {
-	S3 *S3Source `json:"s3,omitempty"`
+// BackupSource contains the supported backup sources.
+type BackupSource struct {
+	// S3 defines the S3 backup source spec.
+	S3 *S3BackupSource `json:"s3,omitempty"`
 }
 
 // BackupCRStatus represents the status of the EtcdBackup Custom Resource.
@@ -66,7 +76,20 @@ type BackupCRStatus struct {
 	Succeeded bool `json:"succeeded"`
 	// Reason indicates the reason for any backup related failures.
 	Reason string `json:"Reason,omitempty"`
-	// If S3Source is used to store the backup, this field reports the
-	// S3 path where the backup is saved.
-	S3Path string `json:"s3Path,omitempty"`
+}
+
+// S3BackupSource provides the spec how to store backups on S3.
+type S3BackupSource struct {
+	// Path is the full s3 path where the backup is saved.
+	// The format of the path must be: "<s3-bucket-name>/<path-to-backup-file>"
+	// e.g: "etcd-backups-bucket/testing-cluster/2017-12-13T23:59:19Z/etcd.backup"
+	Path string `json:"path"`
+
+	// The name of the secret object that stores the AWS credential and config files.
+	// The file name of the credential MUST be 'credentials'.
+	// The file name of the config MUST be 'config'.
+	// The profile to use in both files will be 'default'.
+	//
+	// AWSSecret overwrites the default etcd operator wide AWS credential and config.
+	AWSSecret string `json:"awsSecret"`
 }

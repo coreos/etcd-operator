@@ -78,7 +78,6 @@ func (b *Backup) reportBackupStatus(bs *api.BackupCRStatus, berr error, eb *api.
 		eb.Status.Reason = berr.Error()
 	} else {
 		eb.Status.Succeeded = true
-		eb.Status.S3Path = bs.S3Path
 	}
 	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(eb)
 	if err != nil {
@@ -113,11 +112,11 @@ func (b *Backup) handleErr(err error, key interface{}) {
 func (b *Backup) handleBackup(spec *api.BackupSpec) (*api.BackupCRStatus, error) {
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
-		s3path, err := handleS3(b.kubecli, spec.S3, spec.ClientTLSSecret, b.namespace, spec.ClusterName)
+		err := handleS3(b.kubecli, spec.S3, spec.ClientTLSSecret, b.namespace, spec.ClusterName)
 		if err != nil {
 			return nil, err
 		}
-		return &api.BackupCRStatus{S3Path: s3path}, nil
+		return &api.BackupCRStatus{}, nil
 	default:
 		logrus.Fatalf("unknown StorageType: %v", spec.StorageType)
 	}
