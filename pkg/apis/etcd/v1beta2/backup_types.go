@@ -47,8 +47,11 @@ type EtcdBackup struct {
 
 // BackupSpec contains a backup specification for an etcd cluster.
 type BackupSpec struct {
-	// ClusterName is the etcd cluster name.
-	ClusterName string `json:"clusterName,omitempty"`
+	// EtcdEndpoints specifies the endpoints of an etcd cluster.
+	// When multiple endpoints are given, the backup operator retrieves
+	// the backup from the endpoint that has the most up-to-date state.
+	// The given endpoints must belong to the same etcd cluster.
+	EtcdEndpoints []string `json:"etcdEndpoints,omitempty"`
 	// StorageType is the etcd backup storage type.
 	// We need this field because CRD doesn't support validation against invalid fields
 	// and we cannot verify invalid backup storage source.
