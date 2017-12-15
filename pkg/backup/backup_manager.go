@@ -17,7 +17,6 @@ package backup
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
@@ -52,7 +51,7 @@ func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, 
 
 // SaveSnap uses backup writer to save etcd snapshot to a specified S3 path.
 func (bm *BackupManager) SaveSnap(s3Path string) error {
-	etcdcli, _, err := bm.etcdClientWithMaxRevision()
+	etcdcli, err := bm.etcdClientWithMaxRevision()
 	if err != nil {
 		return fmt.Errorf("create etcd client failed: %v", err)
 	}
@@ -74,22 +73,18 @@ func (bm *BackupManager) SaveSnap(s3Path string) error {
 }
 
 // etcdClientWithMaxRevision gets the etcd endpoint with the maximum kv store revision
-// and returns the etcd client and the rev of that member.
-func (bm *BackupManager) etcdClientWithMaxRevision() (*clientv3.Client, int64, error) {
-	client, rev := getEndpointWithMaxRev(bm.endpoints, bm.etcdTLSConfig)
-	if len(client) == 0 {
-		return nil, 0, errors.New("non-reachable endpoints")
+// and returns the etcd client of that member.
+func (bm *BackupManager) etcdClientWithMaxRevision() (*clientv3.Client, error) {
+	etcdcli := getClientWithMaxRev(bm.endpoints, bm.etcdTLSConfig)
+	if etcdcli == nil {
+		return nil, fmt.Errorf("failed to get etcd client with maximum kv store revision")
 	}
-
-	etcdcli, err := createEtcdClient(client, bm.etcdTLSConfig)
-	if err != nil {
-		return nil, 0, fmt.Errorf("create etcd client failed: %v", err)
-	}
-	return etcdcli, rev, nil
+	return etcdcli, nil
 }
 
-func getEndpointWithMaxRev(endpoints []string, tc *tls.Config) (string, int64) {
-	var maxEndpoint string
+func getClientWithMaxRev(endpoints []string, tc *tls.Config) *clientv3.Client {
+	mapEps := make(map[string]*clientv3.Client)
+	var maxClient *clientv3.Client
 	maxRev := int64(0)
 	for _, endpoint := range endpoints {
 		cfg := clientv3.Config{
@@ -102,7 +97,7 @@ func getEndpointWithMaxRev(endpoints []string, tc *tls.Config) (string, int64) {
 			logrus.Warningf("failed to create etcd client for endpoint (%v): %v", err)
 			continue
 		}
-		defer etcdcli.Close()
+		mapEps[endpoint] = etcdcli
 
 		ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
@@ -115,17 +110,17 @@ func getEndpointWithMaxRev(endpoints []string, tc *tls.Config) (string, int64) {
 		logrus.Infof("getMaxRev: endpoint %s revision (%d)", endpoint, resp.Header.Revision)
 		if resp.Header.Revision > maxRev {
 			maxRev = resp.Header.Revision
-			maxEndpoint = endpoint
+			maxClient = etcdcli
 		}
 	}
-	return maxEndpoint, maxRev
-}
 
-func createEtcdClient(url string, tlsConfig *tls.Config) (*clientv3.Client, error) {
-	cfg := clientv3.Config{
-		Endpoints:   []string{url},
-		DialTimeout: constants.DefaultDialTimeout,
-		TLS:         tlsConfig,
+	// close all open clients that are not maxClient.
+	for _, cli := range mapEps {
+		if cli == maxClient {
+			continue
+		}
+		cli.Close()
 	}
-	return clientv3.New(cfg)
+
+	return maxClient
 }
