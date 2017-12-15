@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"runtime"
 	"time"
@@ -40,7 +41,13 @@ var (
 	// This is the address of k8s service to restore operator itself for accessing
 	// backup HTTP endpoints. For example, "restore-operator:19999"
 	serviceAddrForSelf string
+	createCRD          bool
 )
+
+func init() {
+	flag.BoolVar(&createCRD, "create-crd", true, "The restore operator will not create the EtcdRestore CRD when this flag is set to false.")
+	flag.Parse()
+}
 
 func main() {
 	namespace = os.Getenv(constants.EnvOperatorPodNamespace)
@@ -102,7 +109,7 @@ func createRecorder(kubecli kubernetes.Interface, name, namespace string) record
 }
 
 func run(stop <-chan struct{}) {
-	c := controller.New(namespace, serviceAddrForSelf)
+	c := controller.New(createCRD, namespace, serviceAddrForSelf)
 	err := c.Start(context.TODO())
 	if err != nil {
 		logrus.Fatalf("etcd restore operator stopped with error: %v", err)

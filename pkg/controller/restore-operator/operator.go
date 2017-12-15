@@ -43,10 +43,12 @@ type Restore struct {
 	kubecli    kubernetes.Interface
 	etcdCRCli  versioned.Interface
 	kubeExtCli apiextensionsclient.Interface
+
+	createCRD bool
 }
 
 // New creates a restore operator.
-func New(namespace, mySvcAddr string) *Restore {
+func New(createCRD bool, namespace, mySvcAddr string) *Restore {
 	return &Restore{
 		logger:     logrus.WithField("pkg", "controller"),
 		namespace:  namespace,
@@ -54,14 +56,18 @@ func New(namespace, mySvcAddr string) *Restore {
 		kubecli:    k8sutil.MustNewKubeClient(),
 		etcdCRCli:  client.MustNewInCluster(),
 		kubeExtCli: k8sutil.MustNewKubeExtClient(),
+		createCRD:  createCRD,
 	}
 }
 
 // Start starts the restore operator.
 func (r *Restore) Start(ctx context.Context) error {
-	if err := r.initCRD(); err != nil {
-		return err
+	if r.createCRD {
+		if err := r.initCRD(); err != nil {
+			return err
+		}
 	}
+
 	go r.run(ctx)
 	go r.startHTTP()
 	<-ctx.Done()
