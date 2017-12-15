@@ -3,7 +3,7 @@ kind: "EtcdBackup"
 metadata:
   name: example-etcd-cluster-backup
 spec:
-  clusterName: example-etcd-cluster
+  etcdEndpoints: <etcd-cluster-endpoints>
   storageType: S3
   s3:
     path: <full-s3-path>
