@@ -44,24 +44,30 @@ type Backup struct {
 	kubecli     kubernetes.Interface
 	backupCRCli versioned.Interface
 	kubeExtCli  apiextensionsclient.Interface
+
+	createCRD bool
 }
 
 // New creates a backup operator.
-func New() *Backup {
+func New(createCRD bool) *Backup {
 	return &Backup{
 		logger:      logrus.WithField("pkg", "controller"),
 		namespace:   os.Getenv(constants.EnvOperatorPodNamespace),
 		kubecli:     k8sutil.MustNewKubeClient(),
 		backupCRCli: client.MustNewInCluster(),
 		kubeExtCli:  k8sutil.MustNewKubeExtClient(),
+		createCRD:   createCRD,
 	}
 }
 
 // Start starts the Backup operator.
 func (b *Backup) Start(ctx context.Context) error {
-	if err := b.initCRD(); err != nil {
-		return err
+	if b.createCRD {
+		if err := b.initCRD(); err != nil {
+			return err
+		}
 	}
+
 	go b.run(ctx)
 	<-ctx.Done()
 	return ctx.Err()

@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"runtime"
 	"time"
@@ -34,6 +35,14 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
 )
+
+var (
+	createCRD bool
+)
+
+func init() {
+	flag.BoolVar(&createCRD, "create-crd", true, "The backup operator will not create the EtcdBackup CRD when this flag is set to false.")
+}
 
 func main() {
 	namespace := os.Getenv(constants.EnvOperatorPodNamespace)
@@ -91,7 +100,7 @@ func createRecorder(kubecli kubernetes.Interface, name, namespace string) record
 }
 
 func run(stop <-chan struct{}) {
-	c := controller.New()
+	c := controller.New(createCRD)
 	err := c.Start(context.TODO())
 	if err != nil {
 		logrus.Fatalf("operator stopped with error: %v", err)
