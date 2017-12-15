@@ -39,11 +39,6 @@ type EtcdRestore struct {
 
 // RestoreSpec defines how to restore an etcd cluster from existing backup.
 type RestoreSpec struct {
-	// ClusterSpec defines the same spec that etcd operator will run later.
-	// using this spec, restore operator will prepare the seed that
-	// etcd operator will pick up later.
-	ClusterSpec ClusterSpec `json:"clusterSpec"`
-
 	// BackupStorageType is the type of the backup storage which is used as RestoreSource.
 	// TODO: implement me.
 	BackupStorageType string `json:"backupStorageType"`
@@ -51,7 +46,6 @@ type RestoreSpec struct {
 	RestoreSource `json:",inline"`
 	// EtcdCluster references an EtcdCluster resource which should have "Failed" status.phase
 	// and to be restored.
-	// TODO: implement me.
 	EtcdCluster EtcdClusterRef `json:"etcdCluster"`
 }
 

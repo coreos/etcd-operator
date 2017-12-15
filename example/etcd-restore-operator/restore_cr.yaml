@@ -1,13 +1,13 @@
 apiVersion: "etcd.database.coreos.com/v1beta2"
 kind: "EtcdRestore"
 metadata:
-  # An EtcdCluster with the same name will be created
-  name: restored-etcd-cluster
+  # The restore CR name must be the same as spec.etcdCluster.name
+  name: example-etcd-cluster
 spec:
-  clusterSpec:
-    size: 3
-    version: 3.2.11
-    repository: "gcr.io/etcd-development/etcd"
+  etcdCluster:
+    name: example-etcd-cluster
+    # Optional, defaults to the restore-operator namespace
+    namespace: <namespace>
   s3:
     # The format of "path" must be: "<s3-bucket-name>/<path-to-backup-file>"
     # e.g: "etcd-snapshot-bucket/v1/default/example-etcd-cluster/3.2.11_0000000000000001_etcd.backup"
