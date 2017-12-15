@@ -42,6 +42,7 @@ var (
 
 func init() {
 	flag.BoolVar(&createCRD, "create-crd", true, "The backup operator will not create the EtcdBackup CRD when this flag is set to false.")
+	flag.Parse()
 }
 
 func main() {
