@@ -82,9 +82,6 @@ func TestBackupAndRestore(t *testing.T) {
 	s3Path := path.Join(os.Getenv("TEST_S3_BUCKET"), "jenkins", suffix, time.Now().Format(time.RFC3339), "etcd.backup")
 
 	testEtcdBackupOperatorForS3Backup(t, clusterName, operatorClientTLSSecret, s3Path)
-	// Delete the cluster pods so that the restore-operator can create a seed member with the same name
-	// The services need to be deleted as well to avoid relying on GC to delete them in time
-	deleteClusterPodsAndService(t, clusterName)
 	testEtcdRestoreOperatorForS3Source(t, clusterName, s3Path)
 }
 
@@ -179,8 +176,7 @@ func testEtcdRestoreOperatorForS3Source(t *testing.T, clusterName, s3Path string
 	f := framework.Global
 
 	restoreSource := api.RestoreSource{S3: e2eutil.NewS3RestoreSource(s3Path, os.Getenv("TEST_AWS_SECRET"))}
-	er := e2eutil.NewEtcdRestore(clusterName, f.Namespace, 3, restoreSource)
-	er.Name = clusterName
+	er := e2eutil.NewEtcdRestore(clusterName, 3, restoreSource)
 	er, err := f.CRClient.EtcdV1beta2().EtcdRestores(f.Namespace).Create(er)
 	if err != nil {
 		t.Fatalf("failed to create etcd restore cr: %v", err)
@@ -192,8 +188,8 @@ func testEtcdRestoreOperatorForS3Source(t *testing.T, clusterName, s3Path string
 	}()
 
 	// Verify the EtcdRestore CR status "succeeded=true". In practice the time taken to update is 1 second.
-	// Note: The restore-operator currently waits 10 seconds after deleting the EtcdClusterRef so the timeout should account for that
-	err = retryutil.Retry(10*time.Second, 3, func() (bool, error) {
+	// Note: The restore-operator currently waits 60 seconds after deleting the EtcdClusterRef so the timeout should account for that
+	err = retryutil.Retry(10*time.Second, 7, func() (bool, error) {
 		er, err := f.CRClient.EtcdV1beta2().EtcdRestores(f.Namespace).Get(er.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, fmt.Errorf("failed to retrieve restore CR: %v", err)
@@ -221,39 +217,5 @@ func testEtcdRestoreOperatorForS3Source(t *testing.T, clusterName, s3Path string
 	}
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, restoredCluster); err != nil {
 		t.Fatalf("failed to see restored etcd cluster(%v) reach 3 members: %v", restoredCluster.Name, err)
-	}
-}
-
-func deleteClusterPodsAndService(t *testing.T, clusterName string) {
-	f := framework.Global
-
-	// Delete etcd pods
-	err := f.KubeClient.Core().Pods(f.Namespace).DeleteCollection(metav1.NewDeleteOptions(1), k8sutil.ClusterListOpt(clusterName))
-	if err != nil {
-		t.Fatalf("failed to delete cluster pods: %v", err)
-	}
-
-	// Delete services
-	srvs, err := f.KubeClient.Core().Services(f.Namespace).List(k8sutil.ClusterListOpt(clusterName))
-	if err != nil {
-		t.Fatalf("failed to list cluster services: %v", err)
-	}
-	for _, srv := range srvs.Items {
-		err = f.KubeClient.Core().Services(f.Namespace).Delete(srv.GetName(), nil)
-		if err != nil {
-			t.Fatalf("failed to delete cluster service(%v): %v", srv.GetName(), err)
-		}
-	}
-
-	// Wait until pods are completely removed
-	err = retryutil.Retry(10*time.Second, 6, func() (bool, error) {
-		podList, err := f.KubeClient.Core().Pods(f.Namespace).List(k8sutil.ClusterListOpt(clusterName))
-		if err != nil {
-			return false, fmt.Errorf("failed to list running pods: %v", err)
-		}
-		return len(podList.Items) == 0, nil
-	})
-	if err != nil {
-		t.Fatalf("failed to see all etcd pods deleted for cluster(%v): %v", clusterName, err)
 	}
 }

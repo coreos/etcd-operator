@@ -148,28 +148,24 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 
 	// Fetch the reference EtcdCluster
 	ecRef := er.Spec.EtcdCluster
-	// Default to using restore-operator namespace
-	if len(ecRef.Namespace) == 0 {
-		ecRef.Namespace = r.namespace
-	}
-	ec, err := r.etcdCRCli.EtcdV1beta2().EtcdClusters(ecRef.Namespace).Get(ecRef.Name, metav1.GetOptions{})
+	clusterName := ecRef.Name
+	ec, err := r.etcdCRCli.EtcdV1beta2().EtcdClusters(r.namespace).Get(ecRef.Name, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to get reference EtcdCluster(%s/%s): %v", ecRef.Namespace, ecRef.Name, err)
+		return fmt.Errorf("failed to get reference EtcdCluster(%s/%s): %v", r.namespace, ecRef.Name, err)
 	}
 	if err := ec.Spec.Validate(); err != nil {
 		return fmt.Errorf("invalid cluster spec: %v", err)
 	}
 
 	// Delete reference EtcdCluster
-	err = r.etcdCRCli.EtcdV1beta2().EtcdClusters(ecRef.Namespace).Delete(ecRef.Name, &metav1.DeleteOptions{})
+	err = r.etcdCRCli.EtcdV1beta2().EtcdClusters(r.namespace).Delete(ecRef.Name, &metav1.DeleteOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to delete reference EtcdCluster (%s/%s): %v", ecRef.Namespace, ecRef.Name, err)
+		return fmt.Errorf("failed to delete reference EtcdCluster (%s/%s): %v", r.namespace, ecRef.Name, err)
 	}
-	// TODO: Find a better way to ensure all pods and services from reference EtcdCluster are completely deleted
-	time.Sleep(10 * time.Second)
+	// Delete and wait until the cluster pods and services are garbage collected
+	r.deleteClusterResourcesCompletely(clusterName)
 
 	// Create the restored EtcdCluster with the same metadata and spec as reference EtcdCluster
-	clusterName := ecRef.Name
 	ec = &api.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            clusterName,
@@ -227,4 +223,48 @@ func (r *Restore) createSeedMember(ec *api.EtcdCluster, svcAddr, clusterName str
 	pod := k8sutil.NewSeedMemberPod(clusterName, ms, m, ec.Spec, owner, backupURL)
 	_, err := r.kubecli.Core().Pods(r.namespace).Create(pod)
 	return err
+}
+
+func (r *Restore) deleteClusterResourcesCompletely(clusterName string) error {
+	// Delete etcd pods
+	err := r.kubecli.Core().Pods(r.namespace).DeleteCollection(metav1.NewDeleteOptions(1), k8sutil.ClusterListOpt(clusterName))
+	if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
+		return fmt.Errorf("failed to delete cluster pods: %v", err)
+	}
+
+	// Delete services
+	srvs, err := r.kubecli.Core().Services(r.namespace).List(k8sutil.ClusterListOpt(clusterName))
+	if err != nil {
+		return fmt.Errorf("failed to list cluster services: %v", err)
+	}
+	for _, srv := range srvs.Items {
+		err = r.kubecli.Core().Services(r.namespace).Delete(srv.GetName(), metav1.NewDeleteOptions(1))
+		if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
+			return fmt.Errorf("failed to delete cluster service(%v): %v", srv.GetName(), err)
+		}
+	}
+
+	// Wait until pods and services are removed completely
+	err = retryutil.Retry(10*time.Second, 6, func() (bool, error) {
+		podList, err := r.kubecli.Core().Pods(r.namespace).List(k8sutil.ClusterListOpt(clusterName))
+		if err != nil {
+			return false, fmt.Errorf("failed to list running pods: %v", err)
+		}
+		if len(podList.Items) != 0 {
+			return false, nil
+		}
+
+		svcList, err := r.kubecli.Core().Services(r.namespace).List(k8sutil.ClusterListOpt(clusterName))
+		if err != nil {
+			return false, fmt.Errorf("failed to list cluster services: %v", err)
+		}
+		if len(svcList.Items) != 0 {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to see etcd pods and services for cluster(%v) get deleted: %v", clusterName, err)
+	}
+	return nil
 }

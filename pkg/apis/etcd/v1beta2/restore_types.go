@@ -53,10 +53,8 @@ type RestoreSpec struct {
 // and to be restored.
 type EtcdClusterRef struct {
 	// Name is the EtcdCluster resource name.
+	// This reference EtcdCluster must be present in the same namespace as the restore-operator
 	Name string `json:"name"`
-	// Namespace is the EtcdCluster resource namespace.
-	// If not set, it defaults to the same namespace as the EtcdRestore resource.
-	Namespace string `json:"namespace,omitempty"`
 }
 
 type RestoreSource struct {

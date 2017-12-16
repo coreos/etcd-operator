@@ -6,8 +6,7 @@ metadata:
 spec:
   etcdCluster:
     name: example-etcd-cluster
-    # Optional, defaults to the restore-operator namespace
-    namespace: <namespace>
+    # The namespace will be the same as the restore-operator namespace
   s3:
     # The format of "path" must be: "<s3-bucket-name>/<path-to-backup-file>"
     # e.g: "etcd-snapshot-bucket/v1/default/example-etcd-cluster/3.2.11_0000000000000001_etcd.backup"
