@@ -148,22 +148,18 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 
 	// Fetch the reference EtcdCluster
 	ecRef := er.Spec.EtcdCluster
-	// Default to using restore-operator namespace
-	if len(ecRef.Namespace) == 0 {
-		ecRef.Namespace = r.namespace
-	}
-	ec, err := r.etcdCRCli.EtcdV1beta2().EtcdClusters(ecRef.Namespace).Get(ecRef.Name, metav1.GetOptions{})
+	ec, err := r.etcdCRCli.EtcdV1beta2().EtcdClusters(r.namespace).Get(ecRef.Name, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to get reference EtcdCluster(%s/%s): %v", ecRef.Namespace, ecRef.Name, err)
+		return fmt.Errorf("failed to get reference EtcdCluster(%s/%s): %v", r.namespace, ecRef.Name, err)
 	}
 	if err := ec.Spec.Validate(); err != nil {
 		return fmt.Errorf("invalid cluster spec: %v", err)
 	}
 
 	// Delete reference EtcdCluster
-	err = r.etcdCRCli.EtcdV1beta2().EtcdClusters(ecRef.Namespace).Delete(ecRef.Name, &metav1.DeleteOptions{})
+	err = r.etcdCRCli.EtcdV1beta2().EtcdClusters(r.namespace).Delete(ecRef.Name, &metav1.DeleteOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to delete reference EtcdCluster (%s/%s): %v", ecRef.Namespace, ecRef.Name, err)
+		return fmt.Errorf("failed to delete reference EtcdCluster (%s/%s): %v", r.namespace, ecRef.Name, err)
 	}
 	// TODO: Find a better way to ensure all pods and services from reference EtcdCluster are completely deleted
 	time.Sleep(10 * time.Second)

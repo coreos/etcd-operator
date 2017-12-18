@@ -179,8 +179,7 @@ func testEtcdRestoreOperatorForS3Source(t *testing.T, clusterName, s3Path string
 	f := framework.Global
 
 	restoreSource := api.RestoreSource{S3: e2eutil.NewS3RestoreSource(s3Path, os.Getenv("TEST_AWS_SECRET"))}
-	er := e2eutil.NewEtcdRestore(clusterName, f.Namespace, 3, restoreSource)
-	er.Name = clusterName
+	er := e2eutil.NewEtcdRestore(clusterName, 3, restoreSource)
 	er, err := f.CRClient.EtcdV1beta2().EtcdRestores(f.Namespace).Create(er)
 	if err != nil {
 		t.Fatalf("failed to create etcd restore cr: %v", err)
