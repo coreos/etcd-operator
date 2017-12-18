@@ -44,13 +44,17 @@ type RestoreSpec struct {
 	BackupStorageType string `json:"backupStorageType"`
 	// RestoreSource tells the where to get the backup and restore from.
 	RestoreSource `json:",inline"`
-	// EtcdCluster references an EtcdCluster resource which should have "Failed" status.phase
-	// and to be restored.
+	// EtcdCluster references an EtcdCluster resource whose metadata and spec
+	// will be used to create the new restored EtcdCluster CR.
+	// This reference EtcdCluster CR and all its resources will be deleted before the
+	// restored EtcdCluster CR is created.
 	EtcdCluster EtcdClusterRef `json:"etcdCluster"`
 }
 
-// EtcdClusterRef references the EtcdCluster which should have "Failed" status.phase
-// and to be restored.
+// EtcdCluster references an EtcdCluster resource whose metadata and spec
+// will be used to create the new restored EtcdCluster CR.
+// This reference EtcdCluster CR and all its resources will be deleted before the
+// restored EtcdCluster CR is created.
 type EtcdClusterRef struct {
 	// Name is the EtcdCluster resource name.
 	// This reference EtcdCluster must be present in the same namespace as the restore-operator
