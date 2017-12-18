@@ -49,40 +49,48 @@ func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, 
 	}
 }
 
-// SaveSnap uses backup writer to save etcd snapshot to a specified S3 path.
-func (bm *BackupManager) SaveSnap(s3Path string) error {
-	etcdcli, err := bm.etcdClientWithMaxRevision()
+// SaveSnap uses backup writer to save etcd snapshot to a specified S3 path
+// and returns backup etcd server's kv store revision and its version.
+func (bm *BackupManager) SaveSnap(s3Path string) (int64, string, error) {
+	etcdcli, rev, err := bm.etcdClientWithMaxRevision()
 	if err != nil {
-		return fmt.Errorf("create etcd client failed: %v", err)
+		return 0, "", fmt.Errorf("create etcd client failed: %v", err)
 	}
 	defer etcdcli.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	resp, err := etcdcli.Status(ctx, etcdcli.Endpoints()[0])
+	cancel()
+	if err != nil {
+		return 0, "", fmt.Errorf("failed to retrieve etcd version from the status call: %v", err)
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), constants.DefaultSnapshotTimeout)
 	defer cancel() // Can't cancel() after Snapshot() because that will close the reader.
 	rc, err := etcdcli.Snapshot(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to receive snapshot (%v)", err)
+		return 0, "", fmt.Errorf("failed to receive snapshot (%v)", err)
 	}
 	defer rc.Close()
 
 	_, err = bm.bw.Write(s3Path, rc)
 	if err != nil {
-		return fmt.Errorf("failed to write snapshot (%v)", err)
+		return 0, "", fmt.Errorf("failed to write snapshot (%v)", err)
 	}
-	return nil
+	return rev, resp.Version, nil
 }
 
 // etcdClientWithMaxRevision gets the etcd endpoint with the maximum kv store revision
 // and returns the etcd client of that member.
-func (bm *BackupManager) etcdClientWithMaxRevision() (*clientv3.Client, error) {
-	etcdcli := getClientWithMaxRev(bm.endpoints, bm.etcdTLSConfig)
+func (bm *BackupManager) etcdClientWithMaxRevision() (*clientv3.Client, int64, error) {
+	etcdcli, rev := getClientWithMaxRev(bm.endpoints, bm.etcdTLSConfig)
 	if etcdcli == nil {
-		return nil, fmt.Errorf("failed to get etcd client with maximum kv store revision")
+		return nil, 0, fmt.Errorf("failed to get etcd client with maximum kv store revision")
 	}
-	return etcdcli, nil
+	return etcdcli, rev, nil
 }
 
-func getClientWithMaxRev(endpoints []string, tc *tls.Config) *clientv3.Client {
+func getClientWithMaxRev(endpoints []string, tc *tls.Config) (*clientv3.Client, int64) {
 	mapEps := make(map[string]*clientv3.Client)
 	var maxClient *clientv3.Client
 	maxRev := int64(0)
@@ -122,5 +130,5 @@ func getClientWithMaxRev(endpoints []string, tc *tls.Config) *clientv3.Client {
 		cli.Close()
 	}
 
-	return maxClient
+	return maxClient, maxRev
 }
