@@ -41,8 +41,8 @@ type EtcdBackupList struct {
 type EtcdBackup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
-	Spec              BackupSpec     `json:"spec"`
-	Status            BackupCRStatus `json:"status,omitempty"`
+	Spec              BackupSpec   `json:"spec"`
+	Status            BackupStatus `json:"status,omitempty"`
 }
 
 // BackupSpec contains a backup specification for an etcd cluster.
@@ -73,8 +73,8 @@ type BackupSource struct {
 	S3 *S3BackupSource `json:"s3,omitempty"`
 }
 
-// BackupCRStatus represents the status of the EtcdBackup Custom Resource.
-type BackupCRStatus struct {
+// BackupStatus represents the status of the EtcdBackup Custom Resource.
+type BackupStatus struct {
 	// Succeeded indicates if the backup has Succeeded.
 	Succeeded bool `json:"succeeded"`
 	// Reason indicates the reason for any backup related failures.
