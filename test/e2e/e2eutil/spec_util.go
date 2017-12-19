@@ -68,7 +68,7 @@ func NewS3RestoreSource(path, awsSecret string) *api.S3RestoreSource {
 }
 
 // NewEtcdRestore returns an EtcdRestore CR with the specified RestoreSource
-func NewEtcdRestore(clusterName string, size int, restoreSource api.RestoreSource) *api.EtcdRestore {
+func NewEtcdRestore(clusterName string, size int, restoreSource api.RestoreSource, backupStorageType api.BackupStorageType) *api.EtcdRestore {
 	return &api.EtcdRestore{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       api.EtcdRestoreResourceKind,
@@ -82,7 +82,8 @@ func NewEtcdRestore(clusterName string, size int, restoreSource api.RestoreSourc
 			EtcdCluster: api.EtcdClusterRef{
 				Name: clusterName,
 			},
-			RestoreSource: restoreSource,
+			BackupStorageType: backupStorageType,
+			RestoreSource:     restoreSource,
 		},
 	}
 }
