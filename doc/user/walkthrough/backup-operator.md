@@ -80,6 +80,8 @@ apiVersion: etcd.database.coreos.com/v1beta2
 kind: EtcdBackup
 ...
 status:
+  etcdRevision: 1
+  etcdVersion: 3.2.11
   succeeded: true
 ```
 
