@@ -73,12 +73,18 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 
 	logrus.Infof("serving backup for restore CR %v", restoreName)
 	cr := v.(*api.EtcdRestore)
-	restoreSource := cr.Spec.RestoreSource
-	var backupReader reader.Reader
-	var path string
 
-	switch {
-	case restoreSource.S3 != nil:
+	var (
+		backupReader reader.Reader
+		path         string
+	)
+
+	switch cr.Spec.BackupStorageType {
+	case api.BackupStorageTypeS3:
+		restoreSource := cr.Spec.RestoreSource
+		if restoreSource.S3 == nil {
+			return errors.New("empty s3 restore source")
+		}
 		s3RestoreSource := restoreSource.S3
 		if len(s3RestoreSource.AWSSecret) == 0 || len(s3RestoreSource.Path) == 0 {
 			return errors.New("invalid s3 restore source field (spec.s3), must specify all required subfields")
@@ -93,7 +99,7 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 		backupReader = reader.NewS3Reader(s3Cli.S3)
 		path = s3RestoreSource.Path
 	default:
-		return errors.New("restore CR must have a restore source specified")
+		return fmt.Errorf("unknown backup storage type (%s) for restore CR (%v)", cr.Spec.BackupStorageType, restoreName)
 	}
 
 	rc, err := backupReader.Open(path)
