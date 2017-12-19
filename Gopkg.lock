@@ -7,6 +7,18 @@
   revision = "3b1ae45394a234c385be014e9a488f2bb6eef821"
 
 [[projects]]
+  name = "github.com/Azure/azure-sdk-for-go"
+  packages = ["storage"]
+  revision = "2d1d76c9013c4feb6695a2346f0e66ea0ef77aa6"
+  version = "v11.3.0-beta"
+
+[[projects]]
+  name = "github.com/Azure/go-autorest"
+  packages = ["autorest","autorest/adal","autorest/azure","autorest/date"]
+  revision = "809ed2ef5c4c9a60c3c2f3aa9cc11f3a7c2ce59d"
+  version = "v9.6.0"
+
+[[projects]]
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
   revision = "8a290539e2e8629dbc4e6bad948158f790ec31f4"
@@ -49,6 +61,12 @@
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "782f4967f2dc4564575ca782fe2d04090b5faca8"
+
+[[projects]]
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  revision = "dbeaa9332f19a944acb5736b4456cfcc02140e29"
+  version = "v3.1.0"
 
 [[projects]]
   name = "github.com/emicklei/go-restful"
@@ -232,6 +250,12 @@
   revision = "65c1f6f8f0fc1e2185eb9863a3bc751496404259"
 
 [[projects]]
+  name = "github.com/satori/uuid"
+  packages = ["."]
+  revision = "879c5887cd475cd7864858769793b2ceb0d44feb"
+  version = "v1.1.0"
+
+[[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   revision = "202f25545ea4cf9b191ff7f846df5d87c9382c2b"
@@ -328,6 +352,10 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
+<<<<<<< HEAD
   inputs-digest = "bc96c486c694ef6b8f178f9290a6e5aa4f41003968a3b9e62e289d67408b9b46"
+=======
+  inputs-digest = "47a6cbc8ce90909306c936a49542b1be71a5da99af67986a04a1bc1bedb149c2"
+>>>>>>> add ABS support for backup and restore
   solver-name = "gps-cdcl"
   solver-version = 1

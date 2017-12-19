@@ -19,6 +19,10 @@ import (
 	"path"
 )
 
+const (
+	APIV1 = "/v1"
+)
+
 // BackupURLForRestore creates a URL struct for retrieving an existing backup specified by a restore CR
 func BackupURLForRestore(scheme, host, restoreName string) *url.URL {
 	return &url.URL{
