@@ -82,7 +82,7 @@ type BackupStatus struct {
 	// EtcdVersion is the version of the backup etcd server.
 	EtcdVersion string `json:"etcdVersion,omitempty"`
 	// EtcdRevision is the revision of etcd's KV store where the backup is performed on.
-	EtcdRevision string `json:"etcdRevision,omitempty"`
+	EtcdRevision int64 `json:"etcdRevision,omitempty"`
 }
 
 // S3BackupSource provides the spec how to store backups on S3.

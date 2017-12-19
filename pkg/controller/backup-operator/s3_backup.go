@@ -30,10 +30,10 @@ import (
 
 // TODO: replace this with generic backend interface for other options (PV, Azure)
 // handleS3 saves etcd cluster's backup to specificed S3 path.
-func handleS3(kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []string, clientTLSSecret, namespace string) error {
+func handleS3(kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []string, clientTLSSecret, namespace string) (*api.BackupStatus, error) {
 	cli, err := s3factory.NewClientFromSecret(kubecli, namespace, s.AWSSecret)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer cli.Close()
 
@@ -41,18 +41,18 @@ func handleS3(kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []s
 	if len(clientTLSSecret) != 0 {
 		d, err := k8sutil.GetTLSDataFromSecret(kubecli, namespace, clientTLSSecret)
 		if err != nil {
-			return fmt.Errorf("failed to get TLS data from secret (%v): %v", clientTLSSecret, err)
+			return nil, fmt.Errorf("failed to get TLS data from secret (%v): %v", clientTLSSecret, err)
 		}
 		tlsConfig, err = etcdutil.NewTLSConfig(d.CertData, d.KeyData, d.CAData)
 		if err != nil {
-			return fmt.Errorf("failed to constructs tls config: %v", err)
+			return nil, fmt.Errorf("failed to constructs tls config: %v", err)
 		}
 	}
 
 	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewS3Writer(cli.S3), tlsConfig, endpoints, namespace)
-	err = bm.SaveSnap(s.Path)
+	rev, etcdVersion, err := bm.SaveSnap(s.Path)
 	if err != nil {
-		return fmt.Errorf("failed to save snapshot (%v)", err)
+		return nil, fmt.Errorf("failed to save snapshot (%v)", err)
 	}
-	return nil
+	return &api.BackupStatus{EtcdVersion: etcdVersion, EtcdRevision: rev}, nil
 }
