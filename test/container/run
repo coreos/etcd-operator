@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o pipefail
+
+: ${KUBECONFIG:?"Need to set KUBECONFIG"}
+
+export OPERATOR_IMAGE="quay.io/coreos/etcd-operator:dev"
+
+# Create test namespace
+export TEST_NAMESPACE=$(cat <<EOF | kubectl create -f - | awk '{print $2}' | tr -d '"'
+apiVersion: v1
+kind: Namespace
+metadata:
+  generateName: etcd-operator-test-
+EOF
+)
+
+echo "TEST_NAMESPACE: ${TEST_NAMESPACE}"
+echo "OPERATOR_IMAGE: ${OPERATOR_IMAGE}"
+
+export TEST_AWS_SECRET="aws"
+AWS_DIR=${AWS_DIR:-"/aws"}
+
+source hack/ci/rbac_utils.sh
+# Cleanup namespace and rbac
+function finish {
+	kubectl delete namespace $TEST_NAMESPACE || :
+	rbac_cleanup || :
+}
+trap finish EXIT
+
+# Setup rbac
+if rbac_setup ; then
+    echo "RBAC setup success! ==="
+else
+    echo "RBAC setup fail! ==="
+    exit 1
+fi
+
+# Create aws secret
+kubectl -n $TEST_NAMESPACE create secret generic $TEST_AWS_SECRET --from-file=$AWS_DIR/credentials --from-file=$AWS_DIR/config
+
+# Run e2e tests
+export PASSES="e2e e2eslow"
+export TEST_S3_BUCKET="jenkins-testing-operator"
+
+# TODO: stdout not being redirected to file
+# hack/test >/out/e2e-testing.log 2>&1
+hack/test

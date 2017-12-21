@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# This script builds and pushes the test-container image
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+if ! which docker > /dev/null; then
+	echo "docker needs to be installed"
+	exit 1
+fi
+
+: ${TEST_IMAGE:?"Need to set TEST_IMAGE"}
+
+echo "building test-container image..."
+docker build --tag "${TEST_IMAGE}" -f test/container/Dockerfile . 1>/dev/null
+
+# For gcr users, do "gcloud docker -a" to have access.
+echo "pushing test-container image..."
+docker push "${TEST_IMAGE}" 1>/dev/null
