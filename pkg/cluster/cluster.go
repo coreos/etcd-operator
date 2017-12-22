@@ -26,7 +26,6 @@ import (
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
-	"github.com/coreos/etcd-operator/pkg/util"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -280,7 +279,7 @@ func (c *Cluster) run() {
 				c.logger.Errorf("failed to reconcile: %v", rerr)
 				break
 			}
-			c.updateMemberStatus(c.members, k8sutil.GetPodNames(running))
+			c.updateMemberStatus(running)
 			if err := c.updateCRStatus(); err != nil {
 				c.logger.Warningf("periodic update CR status failed: %v", err)
 			}
@@ -433,14 +432,18 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 	return running, pending, nil
 }
 
-func (c *Cluster) updateMemberStatus(members etcdutil.MemberSet, running []string) {
+func (c *Cluster) updateMemberStatus(running []*v1.Pod) {
 	var unready []string
-	for _, m := range members {
-		if !util.PresentIn(m.Name, running) {
-			unready = append(unready, m.Name)
+	var ready []string
+	for _, pod := range running {
+		if k8sutil.IsPodReady(pod) {
+			ready = append(ready, pod.Name)
+			continue
 		}
+		unready = append(unready, pod.Name)
 	}
-	c.status.Members.Ready = running
+
+	c.status.Members.Ready = ready
 	c.status.Members.Unready = unready
 }
 
