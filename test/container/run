@@ -3,7 +3,7 @@
 set -o errexit
 set -o pipefail
 
-: ${KUBECONFIG:?"Need to set KUBECONFIG"}
+KUBECONFIG=${KUBECONFIG:-"/kubeconfig"}
 
 export OPERATOR_IMAGE="quay.io/coreos/etcd-operator:dev"
 
