@@ -22,8 +22,14 @@ import (
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -36,6 +42,11 @@ const (
 type S3Client struct {
 	S3        *s3.S3
 	configDir string
+}
+
+var awsEndpointsDefaults = map[string]interface{}{
+	"s3.endpoint":    "",
+	"s3.disable_ssl": false,
 }
 
 // NewClientFromSecret returns a S3 client based on given k8s secret containing aws credentials.
@@ -95,6 +106,53 @@ func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, configDir string) 
 			return nil, fmt.Errorf("setup AWS config failed: write config file failed: %v", err)
 		}
 		options.SharedConfigFiles = append(options.SharedConfigFiles, configFile)
+	}
+
+	endpointsCfg := se.Data[api.AWSSecretEndpointFileName]
+	if len(endpointsCfg) != 0 {
+		log.Infoln("loading aws endpoints config")
+		endpointsFile := path.Join(configDir, "endpoints")
+		err = ioutil.WriteFile(endpointsFile, endpointsCfg, 0600)
+		if err != nil {
+			return nil, fmt.Errorf("setup AWS config failed: write endpoints file failed: %v", err)
+		}
+
+		viper.SetConfigFile(endpointsFile)
+		viper.SetConfigType("toml")
+
+		for key, val := range awsEndpointsDefaults {
+			viper.SetDefault(key, val)
+		}
+
+		err := viper.ReadInConfig()
+		if err != nil {
+			return nil, fmt.Errorf("setup AWS config failed: Cannot parse endpoints TOML config: %v", err)
+		}
+
+		awsConfig := aws.NewConfig()
+
+		s3URL := viper.GetString("s3.endpoint")
+		log.Infof("overwrite S3 endpoint URL: %s", s3URL)
+
+		if s3URL != "" {
+			awsConfig := awsConfig.WithEndpointResolver(
+				endpoints.ResolverFunc(func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
+					if service == endpoints.S3ServiceID {
+						return endpoints.ResolvedEndpoint{
+							URL: s3URL,
+						}, nil
+					}
+
+					return endpoints.DefaultResolver().EndpointFor(service, region, optFns...)
+				}),
+			)
+			awsConfig = awsConfig.WithS3ForcePathStyle(true)
+		}
+
+		disableSSL := viper.GetBool("s3.disable_ssl")
+		awsConfig = awsConfig.WithDisableSSL(disableSSL)
+
+		options.Config.MergeIn(awsConfig)
 	}
 
 	return options, nil
