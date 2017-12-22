@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2e
+package e2eslow
 
 import (
 	"errors"
@@ -42,9 +42,6 @@ func init() {
 
 // TestBackupAndRestore runs the backup test first, and only runs the restore test after if the backup test succeeds and sets the S3 path
 func TestBackupAndRestore(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
 	if err := verifyAWSEnvVars(); err != nil {
 		t.Fatal(err)
 	}

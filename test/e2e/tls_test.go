@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2eslow
+package e2e
 
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -29,6 +30,9 @@ func init() {
 }
 
 func TestTLS(t *testing.T) {
+	if os.Getenv(envParallelTest) == envParallelTestTrue {
+		t.Parallel()
+	}
 	f := framework.Global
 	suffix := fmt.Sprintf("-%d", rand.Uint64())
 	clusterName := "tls-test" + suffix
