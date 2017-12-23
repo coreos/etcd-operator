@@ -102,7 +102,7 @@ func getClientWithMaxRev(endpoints []string, tc *tls.Config) (*clientv3.Client, 
 		}
 		etcdcli, err := clientv3.New(cfg)
 		if err != nil {
-			logrus.Warningf("failed to create etcd client for endpoint (%v): %v", err)
+			logrus.Warningf("failed to create etcd client for endpoint (%v): %v", endpoint, err)
 			continue
 		}
 		mapEps[endpoint] = etcdcli
