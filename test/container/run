@@ -40,6 +40,7 @@ fi
 
 # Create aws secret
 kubectl -n $TEST_NAMESPACE create secret generic $TEST_AWS_SECRET --from-file=$AWS_DIR/credentials --from-file=$AWS_DIR/config
+kubectl get nodes
 
 # Run e2e tests
 export PASSES="e2e e2eslow"
