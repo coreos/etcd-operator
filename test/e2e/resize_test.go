@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -43,7 +42,7 @@ func TestResizeCluster3to5(t *testing.T) {
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
-	fmt.Println("reached to 3 members cluster")
+	t.Log("reached to 3 members cluster")
 
 	updateFunc := func(cl *api.EtcdCluster) {
 		cl.Spec.Size = 5
@@ -76,7 +75,7 @@ func TestResizeCluster5to3(t *testing.T) {
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 5, 9, testEtcd); err != nil {
 		t.Fatalf("failed to create 5 members etcd cluster: %v", err)
 	}
-	fmt.Println("reached to 5 members cluster")
+	t.Log("reached to 5 members cluster")
 
 	updateFunc := func(cl *api.EtcdCluster) {
 		cl.Spec.Size = 3
