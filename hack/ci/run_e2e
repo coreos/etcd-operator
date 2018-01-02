@@ -10,7 +10,6 @@ export PATH=$GOROOT/bin:$PATH
 go version
 kubectl version
 
-: ${PASSES:?"Need to set PASSES"}
 : ${TEST_NAMESPACE:?"Need to set TEST_NAMESPACE"}
 : ${TEST_S3_BUCKET:?"Need to set TEST_S3_BUCKET"}
 : ${TEST_AWS_SECRET:?"Need to set TEST_AWS_SECRET"}
@@ -38,6 +37,11 @@ if [[ ${BUILD_E2E} == "true" ]]; then
   TEST_IMAGE=${TEST_IMAGE:-"gcr.io/coreos-k8s-scale-testing/etcd-operator-e2e:${GIT_VERSION}"}
   gcloud docker -a
   TEST_IMAGE=${TEST_IMAGE} hack/build/e2e/docker_push
+fi
+
+if [ -z "${PASSES-}" ]; then
+  echo "No PASSES specified. Skipping tests"
+  exit 0
 fi
 
 echo "TEST_NAMESPACE: ${TEST_NAMESPACE}"
