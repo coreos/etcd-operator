@@ -10,7 +10,7 @@ source "hack/lib/test_lib.sh"
 KUBECONFIG=${KUBECONFIG:-""}
 
 if [ -z "${PASSES-}" ]; then
-	PASSES="fmt build e2e e2eslow unit"
+	PASSES="fmt e2e e2eslow unit"
 fi
 
 function fmt_pass {
