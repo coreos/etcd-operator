@@ -83,17 +83,18 @@ func (bm *BackupManager) SaveSnap(s3Path string) (int64, string, error) {
 // etcdClientWithMaxRevision gets the etcd endpoint with the maximum kv store revision
 // and returns the etcd client of that member.
 func (bm *BackupManager) etcdClientWithMaxRevision() (*clientv3.Client, int64, error) {
-	etcdcli, rev := getClientWithMaxRev(bm.endpoints, bm.etcdTLSConfig)
-	if etcdcli == nil {
-		return nil, 0, fmt.Errorf("failed to get etcd client with maximum kv store revision")
+	etcdcli, rev, err := getClientWithMaxRev(bm.endpoints, bm.etcdTLSConfig)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get etcd client with maximum kv store revision: %v", err)
 	}
 	return etcdcli, rev, nil
 }
 
-func getClientWithMaxRev(endpoints []string, tc *tls.Config) (*clientv3.Client, int64) {
+func getClientWithMaxRev(endpoints []string, tc *tls.Config) (*clientv3.Client, int64, error) {
 	mapEps := make(map[string]*clientv3.Client)
 	var maxClient *clientv3.Client
 	maxRev := int64(0)
+	errors := make([]string, 0)
 	for _, endpoint := range endpoints {
 		cfg := clientv3.Config{
 			Endpoints:   []string{endpoint},
@@ -102,7 +103,7 @@ func getClientWithMaxRev(endpoints []string, tc *tls.Config) (*clientv3.Client, 
 		}
 		etcdcli, err := clientv3.New(cfg)
 		if err != nil {
-			logrus.Warningf("failed to create etcd client for endpoint (%v): %v", endpoint, err)
+			errors = append(errors, fmt.Sprintf("failed to create etcd client for endpoint (%v): %v", endpoint, err))
 			continue
 		}
 		mapEps[endpoint] = etcdcli
@@ -111,7 +112,7 @@ func getClientWithMaxRev(endpoints []string, tc *tls.Config) (*clientv3.Client, 
 		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
 		cancel()
 		if err != nil {
-			logrus.Warningf("getMaxRev: failed to get revision from endpoint (%s)", endpoint)
+			errors = append(errors, fmt.Sprintf("failed to get revision from endpoint (%s)", endpoint))
 			continue
 		}
 
@@ -130,5 +131,14 @@ func getClientWithMaxRev(endpoints []string, tc *tls.Config) (*clientv3.Client, 
 		cli.Close()
 	}
 
-	return maxClient, maxRev
+	var err error
+	if len(errors) > 0 {
+		errorStr := ""
+		for _, errStr := range errors {
+			errorStr += errStr + "\n"
+		}
+		err = fmt.Errorf(errorStr)
+	}
+
+	return maxClient, maxRev, err
 }
