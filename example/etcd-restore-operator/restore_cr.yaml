@@ -5,10 +5,11 @@ metadata:
   name: example-etcd-cluster
 spec:
   etcdCluster:
+    # The namespace is the same as this EtcdRestore CR
     name: example-etcd-cluster
-    # The namespace will be the same as the restore-operator namespace
+  backupStorageType: S3
   s3:
     # The format of "path" must be: "<s3-bucket-name>/<path-to-backup-file>"
-    # e.g: "etcd-snapshot-bucket/v1/default/example-etcd-cluster/3.2.11_0000000000000001_etcd.backup"
+    # e.g: "mybucket/etcd.backup"
     path: <full-s3-path>
     awsSecret: <aws-secret>
