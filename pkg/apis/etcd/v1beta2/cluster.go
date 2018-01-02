@@ -86,7 +86,7 @@ type ClusterSpec struct {
 	// The etcd-operator will eventually make the etcd cluster version
 	// equal to the expected version.
 	//
-	// The version must follow the [semver]( http://semver.org) format, for example "3.2.11".
+	// The version must follow the [semver]( http://semver.org) format, for example "3.2.13".
 	// Only etcd released versions are supported: https://github.com/coreos/etcd/releases
 	//
 	// If version is not set, default is "3.2.13".
