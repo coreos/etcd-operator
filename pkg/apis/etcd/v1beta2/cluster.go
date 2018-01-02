@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	defaultRepository = "quay.io/coreos/etcd"
-	defaultVersion    = "3.2.11"
+	defaultRepository  = "quay.io/coreos/etcd"
+	DefaultEtcdVersion = "3.2.13"
 )
 
 var (
@@ -89,7 +89,7 @@ type ClusterSpec struct {
 	// The version must follow the [semver]( http://semver.org) format, for example "3.2.11".
 	// Only etcd released versions are supported: https://github.com/coreos/etcd/releases
 	//
-	// If version is not set, default is "3.2.11".
+	// If version is not set, default is "3.2.13".
 	Version string `json:"version,omitempty"`
 
 	// Paused is to pause the control of the operator for the etcd cluster.
@@ -173,7 +173,7 @@ func (e *EtcdCluster) SetDefaults() {
 	}
 
 	if len(c.Version) == 0 {
-		c.Version = defaultVersion
+		c.Version = DefaultEtcdVersion
 	}
 
 	c.Version = strings.TrimLeft(c.Version, "v")
