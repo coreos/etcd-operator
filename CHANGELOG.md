@@ -2,6 +2,8 @@
 
 ### Added
 
+- Add readiness probe to etcd pod. The readiness state will be reflected on `status.members.ready/unready`.
+
 ### Changed
 
 ### Removed
