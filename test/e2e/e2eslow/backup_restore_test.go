@@ -169,6 +169,7 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T, clusterName, operatorClient
 	if err != nil {
 		t.Fatalf("failed to verify backup: %v", err)
 	}
+	t.Logf("backup for cluster (%s) has been saved", clusterName)
 }
 
 // testEtcdRestoreOperatorForS3Source tests if the restore-operator can restore an etcd cluster from an S3 restore source
