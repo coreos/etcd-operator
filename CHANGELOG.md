@@ -1,5 +1,20 @@
 ## [Unreleased]
 
+### Added
+
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+
+## [Release 0.8.0]
+
 **Important Changes** 
 
 Both etcd backup operator and etcd restore operator have changed their CR definition.
@@ -22,18 +37,13 @@ Please follow the latest backup/restore CR definition for future backup and rest
 - Rename BackupCRStatus to BackupStatus.
 - EtcdBackup: BackupSpec passes in S3BackupSource.Path as the S3 path to save the backup.
 - EtcdBackup: BackupSpec spec uses etcd endpoints to retrieve snapshot.
-- Default base image is changed to `gcr.io/etcd-development/etcd`, default etcd version is `3.2.13`.
+- Change default etcd version to `3.2.13`.
 
 ### Removed
 
 - EtcdBackup: BackupSpec removed ClusterName field in favor of etcd endpoints.
 - EtcdCluster: ClusterSpec removed deprecated BaseImage field.
 
-### Fixed
-
-### Deprecated
-
-### Security
 
 ## [Release 0.7.2]
 
