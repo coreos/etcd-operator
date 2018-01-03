@@ -81,7 +81,7 @@ kind: EtcdBackup
 ...
 status:
   etcdRevision: 1
-  etcdVersion: 3.2.11
+  etcdVersion: 3.2.13
   succeeded: true
 ```
 

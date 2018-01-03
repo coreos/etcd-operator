@@ -156,10 +156,10 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T, clusterName, operatorClient
 			return false, fmt.Errorf("failed to retrieve backup CR: %v", err)
 		}
 		if reb.Status.Succeeded {
-			if reb.Status.EtcdVersion == "3.2.11" && reb.Status.EtcdRevision == 1 {
+			if reb.Status.EtcdVersion == api.DefaultEtcdVersion && reb.Status.EtcdRevision == 1 {
 				return true, nil
 			}
-			return false, fmt.Errorf("expect EtcdVersion==3.2.11 and EtcdRevision==1, but got EtcdVersion==%v and EtcdRevision==%v", reb.Status.EtcdVersion, reb.Status.EtcdRevision)
+			return false, fmt.Errorf("expect EtcdVersion==%v and EtcdRevision==1, but got EtcdVersion==%v and EtcdRevision==%v", api.DefaultEtcdVersion, reb.Status.EtcdVersion, reb.Status.EtcdRevision)
 		}
 		if len(reb.Status.Reason) != 0 {
 			return false, fmt.Errorf("backup failed with reason: %v ", reb.Status.Reason)

@@ -6,6 +6,8 @@
 
 ### Changed
 
+- Default base image is changed to `gcr.io/etcd-development/etcd`, default etcd version is `3.2.13`.
+
 ### Removed
 
 ### Fixed

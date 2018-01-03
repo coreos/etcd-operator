@@ -37,7 +37,7 @@ See the [Resources and Labels](./doc/user/resource_labels.md) doc for an overvie
 ## Requirements
 
 - Kubernetes 1.8+
-- etcd 3.2.11+
+- etcd 3.2.13+
 
 ## Demo
 
@@ -101,7 +101,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 5
-  version: "3.2.11"
+  version: "3.2.13"
 ```
 
 Apply the size change to the cluster CR:
@@ -129,7 +129,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 3
-  version: "3.2.11"
+  version: "3.2.13"
 ```
 ```
 $ kubectl apply -f example/example-etcd-cluster.yaml
@@ -243,7 +243,7 @@ $ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
     image: quay.io/coreos/etcd:v3.1.10
 ```
 
-Now modify the file `upgrade-example` and change the `version` from 3.1.10 to 3.2.11:
+Now modify the file `upgrade-example` and change the `version` from 3.1.10 to 3.2.13:
 
 ```
 $ cat upgrade-example
@@ -253,7 +253,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 3
-  version: "3.2.11"
+  version: "3.2.13"
 ```
 
 Apply the version change to the cluster CR:
@@ -262,11 +262,11 @@ Apply the version change to the cluster CR:
 $ kubectl apply -f upgrade-example
 ```
 
-Wait ~30 seconds. The container image version should be updated to v3.2.11:
+Wait ~30 seconds. The container image version should be updated to v3.2.13:
 
 ```
 $ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
-    image: gcr.io/etcd-development/etcd:v3.2.11
+    image: gcr.io/etcd-development/etcd:v3.2.13
 ```
 
 Check the other two pods and you should see the same result.
