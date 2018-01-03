@@ -46,6 +46,6 @@ kubectl get nodes
 export PASSES="e2e e2eslow"
 export TEST_S3_BUCKET="jenkins-testing-operator"
 
-# TODO: stdout not being redirected to file
-# hack/test >/out/e2e-testing.log 2>&1
-hack/test
+# Save test logs at /out
+mkdir -p /out
+hack/test 2>&1 | tee /out/e2e-testing.log
