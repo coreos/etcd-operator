@@ -78,9 +78,6 @@ type ClusterSpec struct {
 	//
 	// By default, it is `quay.io/coreos/etcd`.
 	Repository string `json:"repository,omitempty"`
-	// **DEPRECATED**. Use Repository instead.
-	// TODO: remove this field in v0.7.2 .
-	BaseImage string `json:"baseImage,omitempty"`
 
 	// Version is the expected version of the etcd cluster.
 	// The etcd-operator will eventually make the etcd cluster version
@@ -165,11 +162,7 @@ func (c *ClusterSpec) Validate() error {
 func (e *EtcdCluster) SetDefaults() {
 	c := &e.Spec
 	if len(c.Repository) == 0 {
-		if len(c.BaseImage) != 0 {
-			c.Repository = c.BaseImage
-		} else {
-			c.Repository = defaultRepository
-		}
+		c.Repository = defaultRepository
 	}
 
 	if len(c.Version) == 0 {
