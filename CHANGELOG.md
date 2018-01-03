@@ -1,14 +1,31 @@
 ## [Unreleased]
 
+**Important Changes** 
+
+Both etcd backup operator and etcd restore operator have changed their CR definition.
+Please follow the latest backup/restore CR definition for future backup and restore.
+
 ### Added
 
 - Add readiness probe to etcd pod. The readiness state will be reflected on `status.members.ready/unready`.
+- TLS etcd cluster support in backup/restore-operator.
+- Add spec validation in restore operator.
+- Add BackupStorageType to EtcdRestore.RestoreSpec to indicate type of the backup storage which is used as RestoreSource and validation of BackupStorageType in restore operator.
+- Add EtcdClusterRef to EtcdRestore.RestoreSpec to reference an EtcdCluster resource whose metadata and spec will be used to create the new restored EtcdCluster CR.
+- Add create-crd flag to etcd backup operator allowing user to disable automatic backup CRD creation.
+- Add create-crd flag to etcd restore operator allowing user to disable automatic restore CRD creation.
+- Add EtcdVersion and EtcdRevision to EtcdBackup.BackupStatus.
+- BackupStatus: Add detailed error when backup fails.
 
 ### Changed
 
+- Rename BackupCRStatus to BackupStatus.
+- EtcdBackup: BackupSpec passes in S3BackupSource.Path as the S3 path to save the backup.
+- EtcdBackup: BackupSpec spec uses etcd endpoints to retrieve snapshot.
 - Default base image is changed to `gcr.io/etcd-development/etcd`, default etcd version is `3.2.13`.
 
 ### Removed
+- EtcdBackup: BackupSpec removed ClusterName field in favor of etcd endpoints.
 
 ### Fixed
 
