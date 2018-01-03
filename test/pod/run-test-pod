@@ -70,5 +70,6 @@ if [ "${POD_PHASE}" == "${PHASE_SUCCEEDED}" ]; then
     echo "e2e tests finished successfully"
 else
     echo "e2e tests failed"
+    kubectl -n ${TEST_NAMESPACE} describe pod ${POD_NAME}
     exit 1
 fi
