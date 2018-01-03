@@ -25,7 +25,9 @@ Please follow the latest backup/restore CR definition for future backup and rest
 - Default base image is changed to `gcr.io/etcd-development/etcd`, default etcd version is `3.2.13`.
 
 ### Removed
+
 - EtcdBackup: BackupSpec removed ClusterName field in favor of etcd endpoints.
+- EtcdCluster: ClusterSpec removed deprecated BaseImage field.
 
 ### Fixed
 
