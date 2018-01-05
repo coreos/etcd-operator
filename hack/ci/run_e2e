@@ -23,6 +23,11 @@ UPGRADE_TEST_SELECTOR=${UPGRADE_TEST_SELECTOR:-""}
 UPGRADE_FROM=${UPGRADE_FROM:-"quay.io/coreos/etcd-operator:latest"}
 UPGRADE_TO=${UPGRADE_TO:-"quay.io/coreos/etcd-operator:dev"}
 
+function finish {
+  sudo chown -R "$(whoami)" ./
+}
+trap finish EXIT
+
 hack/ci/get_dep
 
 BUILD_IMAGE=${BUILD_IMAGE:-true}
