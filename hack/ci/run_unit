@@ -12,5 +12,10 @@ export CODECOV_TOKEN=$(cat $CODECOV_TOKEN_FILE)
 
 go version
 
+function finish {
+  sudo chown -R "$(whoami)" ./
+}
+trap finish EXIT
+
 hack/ci/get_dep
 hack/test
