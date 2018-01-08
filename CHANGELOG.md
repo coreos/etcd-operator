@@ -4,6 +4,8 @@
 
 ### Changed
 
+- etcd-restore-operator will create a service for itself as the backup storage proxy. Delete the service in deployment yaml.
+
 ### Removed
 
 ### Fixed

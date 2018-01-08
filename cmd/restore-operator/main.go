@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"runtime"
 	"time"
@@ -38,10 +39,12 @@ import (
 
 var (
 	namespace string
-	// This is the address of k8s service to restore operator itself for accessing
-	// backup HTTP endpoints. For example, "restore-operator:19999"
-	serviceAddrForSelf string
-	createCRD          bool
+	createCRD bool
+)
+
+const (
+	serviceNameForMyself = "etcd-restore-operator"
+	servicePortForMyself = 19999
 )
 
 func init() {
@@ -58,10 +61,6 @@ func main() {
 	if len(name) == 0 {
 		logrus.Fatalf("must set env %s", constants.EnvOperatorPodName)
 	}
-	serviceAddrForSelf = os.Getenv(constants.EnvRestoreOperatorServiceName)
-	if len(serviceAddrForSelf) == 0 {
-		logrus.Fatalf("must set env %s", constants.EnvRestoreOperatorServiceName)
-	}
 	id, err := os.Hostname()
 	if err != nil {
 		logrus.Fatalf("failed to get hostname: %v", err)
@@ -73,6 +72,12 @@ func main() {
 	logrus.Infof("Git SHA: %s", version.GitSHA)
 
 	kubecli := k8sutil.MustNewKubeClient()
+
+	err = createServiceForMyself(kubecli, name, namespace)
+	if err != nil {
+		logrus.Fatalf("create service failed: %+v", err)
+	}
+
 	rl, err := resourcelock.New(
 		resourcelock.EndpointsResourceLock,
 		namespace,
@@ -109,7 +114,7 @@ func createRecorder(kubecli kubernetes.Interface, name, namespace string) record
 }
 
 func run(stop <-chan struct{}) {
-	c := controller.New(createCRD, namespace, serviceAddrForSelf)
+	c := controller.New(createCRD, namespace, fmt.Sprintf("%s:%d", serviceNameForMyself, servicePortForMyself))
 	err := c.Start(context.TODO())
 	if err != nil {
 		logrus.Fatalf("etcd restore operator stopped with error: %v", err)

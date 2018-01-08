@@ -27,14 +27,3 @@ spec:
               fieldPath: metadata.name
         - name: SERVICE_ADDR
           value: "etcd-restore-operator:19999"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: etcd-restore-operator
-spec:
-  selector:
-    name: etcd-restore-operator
-  ports:
-  - protocol: TCP
-    port: 19999
