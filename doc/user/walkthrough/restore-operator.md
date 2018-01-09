@@ -48,12 +48,7 @@ Note that currently the etcd-restore-operator only supports restoring from backu
     ```sh
     $ kubectl get pods
     NAME                                     READY     STATUS    RESTARTS   AGE
-    etcd-operator-2486363115-ltc17           1/1       Running   0          1h
     etcd-restore-operator-4203122180-npn3g   1/1       Running   0          7s
-
-    $ kubect get svc
-    NAME                    CLUSTER-IP     EXTERNAL-IP   PORT(S)     AGE
-    etcd-restore-operator   10.3.243.216   <none>        19999/TCP   51s
     ```
 
 3. Verify that the etcd-restore-operator creates the `EtcdRestore` CRD:
@@ -61,7 +56,6 @@ Note that currently the etcd-restore-operator only supports restoring from backu
     ```sh
     $ kubectl get crd
     NAME                                       KIND
-    etcdclusters.etcd.database.coreos.com      CustomResourceDefinition.v1beta1.apiextensions.k8s.io
     etcdrestores.etcd.database.coreos.com      CustomResourceDefinition.v1beta1.apiextensions.k8s.io
     ```
 
