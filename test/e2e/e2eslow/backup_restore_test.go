@@ -216,7 +216,7 @@ func testEtcdRestoreOperatorForS3Source(t *testing.T, clusterName, s3Path string
 			Size: 3,
 		},
 	}
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, restoredCluster); err != nil {
+	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 12, restoredCluster); err != nil {
 		t.Fatalf("failed to see restored etcd cluster(%v) reach 3 members: %v", restoredCluster.Name, err)
 	}
 }
