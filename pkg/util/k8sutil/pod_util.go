@@ -107,9 +107,14 @@ func applyPodPolicy(clusterName string, pod *v1.Pod, policy *api.PodPolicy) {
 	mergeLabels(pod.Labels, policy.Labels)
 
 	for i := range pod.Spec.Containers {
+		pod.Spec.Containers[i] = containerWithRequirements(pod.Spec.Containers[i], policy.Resources)
 		if pod.Spec.Containers[i].Name == "etcd" {
 			pod.Spec.Containers[i].Env = append(pod.Spec.Containers[i].Env, policy.EtcdEnv...)
 		}
+	}
+
+	for i := range pod.Spec.InitContainers {
+		pod.Spec.InitContainers[i] = containerWithRequirements(pod.Spec.InitContainers[i], policy.Resources)
 	}
 }
 

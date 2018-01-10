@@ -261,10 +261,6 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		livenessProbe,
 		readinessProbe)
 
-	if cs.Pod != nil {
-		container = containerWithRequirements(container, cs.Pod.Resources)
-	}
-
 	volumes := []v1.Volume{
 		{Name: "etcd-data", VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}},
 	}
