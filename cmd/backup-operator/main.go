@@ -24,7 +24,7 @@ import (
 	controller "github.com/coreos/etcd-operator/pkg/controller/backup-operator"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-	version "github.com/coreos/etcd-operator/version/backup-operator"
+	version "github.com/coreos/etcd-operator/version"
 
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"

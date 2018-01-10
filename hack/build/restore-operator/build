@@ -15,7 +15,7 @@ fi
 
 GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
 
-gitHash="github.com/coreos/etcd-operator/version/restore-operator.GitSHA=${GIT_SHA}"
+gitHash="github.com/coreos/etcd-operator/version.GitSHA=${GIT_SHA}"
 
 go_ldflags="-X ${gitHash}"
 
