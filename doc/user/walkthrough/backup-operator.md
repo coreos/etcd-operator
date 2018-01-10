@@ -53,8 +53,43 @@ the secret will be used later to save etcd backup into S3.
 
 2. Create secret `aws`:
 
+    ```sh
+    kubectl create secret generic aws \
+        --from-file=$AWS_DIR/credentials \
+        --from-file=$AWS_DIR/config
     ```
-    kubectl create secret generic aws --from-file=$AWS_DIR/credentials --from-file=$AWS_DIR/config
+
+### Setup etcd client Secret [optional]
+
+Create a Kubernetes secret that contains etcd client TLS certs;
+the secret will be used later to save an etcd snapshot.
+
+1. Verify that the local etcd client TLS cert files exist:
+
+    ```sh
+    $ cat $ETCD_DIR/etcd-client.crt
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+
+    $ cat $ETCD_DIR/etcd-client.key
+    -----BEGIN RSA PRIVATE KEY-----
+    ...
+    -----END RSA PRIVATE KEY-----
+
+    $ cat $ETCD_DIR/etcd-client-ca.crt
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+    ```
+
+2. Create secret `etcd-client`:
+
+    ```sh
+    kubectl create secret generic etcd-client \
+        --from-file=$ETCD_DIR/etcd-client.crt \
+        --from-file=$ETCD_DIR/etcd-client.key \
+        --from-file=$ETCD_DIR/etcd-client-ca.crt
     ```
 
 ### Create EtcdBackup CR
@@ -65,6 +100,7 @@ Create EtcdBackup CR:
 ```sh
 sed -e 's|<full-s3-path>|jenkins-testing-operator/etcd.backup|g' \
     -e 's|<aws-secret>|aws|g' \
+    -e 's|<etcd-client-secret>|etcd-client|g' \
     -e 's|<etcd-cluster-endpoints>|"http://example-etcd-cluster-client:2379"|g' \
     example/etcd-backup-operator/backup_cr.yaml \
     | kubectl create -f -
