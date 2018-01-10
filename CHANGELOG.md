@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- Fix etcd-restore-operator wouldn't report error and keep looping if EtcdRestore name is different than EtcdCluster name.
+
 ### Deprecated
 
 ### Security
