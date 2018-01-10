@@ -70,22 +70,23 @@ func (r *Restore) processItem(key string) error {
 }
 
 // handleCR takes in EtcdRestore CR and prepares the seed so that etcd operator can take over it later.
-func (r *Restore) handleCR(er *api.EtcdRestore, key string) error {
+func (r *Restore) handleCR(er *api.EtcdRestore, key string) (err error) {
 	// don't process the CR if it has a status since
 	// having a status means that the restore is either made or failed.
 	if er.Status.Succeeded || len(er.Status.Reason) != 0 {
 		return nil
 	}
+
+	defer r.reportStatus(err, er)
 	// NOTE: Since the restore EtcdCluster is created with the same name as the EtcdClusterRef,
 	// the seed member will send a request of the form /backup/<cluster-name> to the backup server.
 	// The EtcdRestore CR name must be the same as the EtcdCluster name in order for the backup server
 	// to successfully lookup the EtcdRestore CR associated with this <cluster-name>.
 	if er.Name != er.Spec.EtcdCluster.Name {
-		return fmt.Errorf("failed to handle restore CR: EtcdRestore CR name(%v) must be the same as EtcdCluster name(%v)", er.Name, er.Spec.EtcdCluster.Name)
+		err = fmt.Errorf("failed to handle restore CR: EtcdRestore CR name(%v) must be the same as EtcdCluster name(%v)", er.Name, er.Spec.EtcdCluster.Name)
+		return err
 	}
-
-	err := r.prepareSeed(er)
-	r.reportStatus(err, er)
+	err = r.prepareSeed(er)
 	return err
 }
 
