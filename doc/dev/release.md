@@ -6,33 +6,28 @@ Let's say we are releasing $VERSION (e.g. `v1.2.3`) .
 
 ## Create git tag
 
-- In version/version.go, bump it to:
-```go
-	// Version = "0.2.2" (without "v" prefix)
-	Version = "$VERSION" 
-```
+- Bump up version (e.g. 0.8.0 -> 0.8.1):
+  ```bash
+  ./hack/release/bump_version.sh 0.8.0 0.8.1
+  ```
 
-- Bump the version of the operator image in example deployements.
-
-TOOD: release checker should check the version in the deployment.
-
-- Change CHANGELOG.md.
+- Update CHANGELOG.md.
 
 - Send a PR. After it's merged, cut a tag:
 
-``` bash
-$ git tag $VERSION
-$ git push ${upstream_remote} tags/$VERSION
-```
+  ```bash
+  git tag $VERSION
+  git push ${upstream_remote} tags/$VERSION
+  ```
 
 
 ## Push Image to Quay
 
 - Login to quay.io using docker if haven't:
 
-```bash
-$ docker login quay.io
-```
+  ```bash
+  docker login quay.io
+  ```
 
 Follow the prompts.
 

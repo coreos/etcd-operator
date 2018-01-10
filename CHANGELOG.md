@@ -4,17 +4,24 @@
 
 ### Changed
 
-- etcd-restore-operator will create a service for itself as the backup storage proxy. Delete the service in deployment yaml.
-
 ### Removed
 
 ### Fixed
 
-- Fix etcd-restore-operator wouldn't report error and keep looping if EtcdRestore name is different than EtcdCluster name.
-
 ### Deprecated
 
 ### Security
+
+
+## [Release 0.8.1]
+
+### Changed
+
+- etcd-restore-operator will create a service for itself as the backup storage proxy. Delete the service in deployment yaml.
+
+### Fixed
+
+- Fix etcd-restore-operator wouldn't report error and keep looping if EtcdRestore name is different than EtcdCluster name.
 
 
 ## [Release 0.8.0]
