@@ -210,7 +210,8 @@ func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.S
 }
 
 func addRecoveryToPod(pod *v1.Pod, token string, m *etcdutil.Member, cs api.ClusterSpec, backupURL *url.URL) {
-	pod.Spec.InitContainers = makeRestoreInitContainers(backupURL, token, cs.Repository, cs.Version, m)
+	pod.Spec.InitContainers = append(pod.Spec.InitContainers,
+		makeRestoreInitContainers(backupURL, token, cs.Repository, cs.Version, m)...)
 }
 
 func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
@@ -221,14 +222,16 @@ func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
 // It's special that it has new token, and might need recovery init containers
 func NewSeedMemberPod(clusterName string, ms etcdutil.MemberSet, m *etcdutil.Member, cs api.ClusterSpec, owner metav1.OwnerReference, backupURL *url.URL) *v1.Pod {
 	token := uuid.New()
-	pod := NewEtcdPod(m, ms.PeerURLPairs(), clusterName, "new", token, cs, owner)
+	pod := newEtcdPod(m, ms.PeerURLPairs(), clusterName, "new", token, cs)
 	if backupURL != nil {
 		addRecoveryToPod(pod, token, m, cs, backupURL)
 	}
+	applyPodPolicy(clusterName, pod, cs.Pod)
+	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
 }
 
-func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs api.ClusterSpec, owner metav1.OwnerReference) *v1.Pod {
+func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs api.ClusterSpec) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
@@ -318,11 +321,13 @@ func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			AutomountServiceAccountToken: func(b bool) *bool { return &b }(false),
 		},
 	}
-
-	applyPodPolicy(clusterName, pod, cs.Pod)
-
 	SetEtcdVersion(pod, cs.Version)
+	return pod
+}
 
+func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs api.ClusterSpec, owner metav1.OwnerReference) *v1.Pod {
+	pod := newEtcdPod(m, initialCluster, clusterName, state, token, cs)
+	applyPodPolicy(clusterName, pod, cs.Pod)
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
 }
