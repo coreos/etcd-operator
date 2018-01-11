@@ -15,11 +15,14 @@
 package e2eslow
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -47,7 +50,8 @@ func TestBackupAndRestore(t *testing.T) {
 
 	// Create cluster with TLS
 	f := framework.Global
-	suffix := fmt.Sprintf("%d", rand.Uint64())
+	// suffix := fmt.Sprintf("%d", rand.Uint64())
+	suffix := "0"
 	clusterName := "test-etcd-backup-restore-" + suffix
 	memberPeerTLSSecret := "etcd-peer-tls-" + suffix
 	memberClientTLSSecret := "etcd-server-tls-" + suffix
@@ -179,6 +183,22 @@ func testEtcdRestoreOperatorForS3Source(t *testing.T, clusterName, s3Path string
 	defer func() {
 		if err := f.CRClient.EtcdV1beta2().EtcdRestores(f.Namespace).Delete(er.Name, nil); err != nil {
 			t.Fatalf("failed to delete etcd restore cr: %v", err)
+		}
+	}()
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		for i := 0; i < 4; i++ {
+			c := exec.Command("kubectl", "-n", f.Namespace, "describe", "pod", "test-etcd-backup-restore-0-0000")
+			var out bytes.Buffer
+			c.Stdout = &out
+			c.Run()
+			s := out.String()
+			if !strings.Contains(s, "Error") {
+				continue
+			}
+			fmt.Printf("kubectl describe pod: ======\n%s\n", s)
+			time.Sleep(2 * time.Second)
 		}
 	}()
 
