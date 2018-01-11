@@ -4,7 +4,7 @@ This document explains how to setup your dev environment.
 
 ## Fetch dependency
 
-We use [dep](https://github.com/golang/dep to manage dependency.
+We use [dep](https://github.com/golang/dep) to manage dependency.
 Install dependency if you haven't:
 
 ```
