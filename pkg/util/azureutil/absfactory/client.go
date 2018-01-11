@@ -24,10 +24,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const (
-	tmpdir = "/tmp"
-)
-
 // ABSClient is a wrapper of ABS client that provides cleanup functionality.
 type ABSClient struct {
 	ABS *storage.BlobStorageClient
@@ -41,7 +37,6 @@ func NewClientFromSecret(kubecli kubernetes.Interface, namespace, absSecret stri
 		}
 	}()
 
-	w = &ABSClient{}
 	se, err := kubecli.CoreV1().Secrets(namespace).Get(absSecret, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get k8s secret: %v", err)
@@ -58,6 +53,5 @@ func NewClientFromSecret(kubecli kubernetes.Interface, namespace, absSecret stri
 	}
 
 	abs := bc.GetBlobService()
-	w.ABS = &abs
-	return w, nil
+	return &ABSClient{ABS: &abs}, nil
 }

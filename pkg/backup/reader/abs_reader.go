@@ -31,6 +31,7 @@ type absReader struct {
 	abs *storage.BlobStorageClient
 }
 
+// NewABSReader return a Reader implementation to read a file from ABS in the form of absReader
 func NewABSReader(abs *storage.BlobStorageClient) Reader {
 	return &absReader{abs}
 }
@@ -53,6 +54,5 @@ func (absr *absReader) Open(path string) (io.ReadCloser, error) {
 	}
 
 	blob := containerRef.GetBlobReference(key)
-	getBlobOpts := &storage.GetBlobOptions{}
-	return blob.Get(getBlobOpts)
+	return blob.Get(&storage.GetBlobOptions{})
 }

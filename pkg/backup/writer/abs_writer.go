@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/coreos/etcd-operator/pkg/backup/util"
+
+	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/pborman/uuid"
 )
 
@@ -38,7 +39,7 @@ func NewABSWriter(abs *storage.BlobStorageClient) Writer {
 
 const (
 	// AzureBlobBlockChunkLimitInBytes 100MiB is the limit
-	AzureBlobBlockChunkLimitInBytes = 104857600
+	AzureBlobBlockChunkLimitInBytes = 100 * 1024 * 1024
 )
 
 // Write writes the backup file to the given abs path, "<abs-container-name>/<key>".
@@ -59,9 +60,7 @@ func (absw *absWriter) Write(path string, r io.Reader) (int64, error) {
 	}
 
 	blob := containerRef.GetBlobReference(key)
-	putBlobOpts := storage.PutBlobOptions{}
-
-	err = blob.CreateBlockBlob(&putBlobOpts)
+	err = blob.CreateBlockBlob(&storage.PutBlobOptions{})
 	if err != nil {
 		return 0, err
 	}
@@ -92,8 +91,7 @@ func (absw *absWriter) Write(path string, r io.Reader) (int64, error) {
 		return 0, err
 	}
 
-	getBlobOpts := &storage.GetBlobOptions{}
-	_, err = blob.Get(getBlobOpts)
+	_, err = blob.Get(&storage.GetBlobOptions{})
 	if err != nil {
 		return 0, err
 	}

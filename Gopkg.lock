@@ -352,10 +352,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-<<<<<<< HEAD
-  inputs-digest = "bc96c486c694ef6b8f178f9290a6e5aa4f41003968a3b9e62e289d67408b9b46"
-=======
-  inputs-digest = "47a6cbc8ce90909306c936a49542b1be71a5da99af67986a04a1bc1bedb149c2"
->>>>>>> add ABS support for backup and restore
+  inputs-digest = "348ce70c891e3e31857fd45276c70cf2f54e6a63b76b889ee79525d8e8ea86a0"
   solver-name = "gps-cdcl"
   solver-version = 1

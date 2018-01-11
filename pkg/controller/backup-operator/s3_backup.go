@@ -22,8 +22,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup"
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
-	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"k8s.io/client-go/kubernetes"
 )
@@ -38,15 +36,8 @@ func handleS3(kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []s
 	defer cli.Close()
 
 	var tlsConfig *tls.Config
-	if len(clientTLSSecret) != 0 {
-		d, err := k8sutil.GetTLSDataFromSecret(kubecli, namespace, clientTLSSecret)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get TLS data from secret (%v): %v", clientTLSSecret, err)
-		}
-		tlsConfig, err = etcdutil.NewTLSConfig(d.CertData, d.KeyData, d.CAData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to constructs tls config: %v", err)
-		}
+	if tlsConfig, err = generateTLSConfig(kubecli, clientTLSSecret, namespace); err != nil {
+		return nil, err
 	}
 
 	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewS3Writer(cli.S3), tlsConfig, endpoints, namespace)

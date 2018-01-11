@@ -40,3 +40,7 @@
 
 [[constraint]]
   name = "golang.org/x/time"
+
+[[constraint]]
+  name = "github.com/Azure/azure-sdk-for-go"
+  version = "v11.3.0-beta"

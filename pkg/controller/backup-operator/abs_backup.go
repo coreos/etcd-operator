@@ -22,13 +22,10 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup"
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/azureutil/absfactory"
-	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"k8s.io/client-go/kubernetes"
 )
 
-// TODO: replace this with generic backend interface for other options (PV, Azure)
 // handleABS saves etcd cluster's backup to specificed ABS path.
 func handleABS(kubecli kubernetes.Interface, s *api.ABSBackupSource, endpoints []string, clientTLSSecret, namespace string) (*api.BackupStatus, error) {
 	cli, err := absfactory.NewClientFromSecret(kubecli, namespace, s.ABSSecret)
@@ -37,15 +34,8 @@ func handleABS(kubecli kubernetes.Interface, s *api.ABSBackupSource, endpoints [
 	}
 
 	var tlsConfig *tls.Config
-	if len(clientTLSSecret) != 0 {
-		d, err := k8sutil.GetTLSDataFromSecret(kubecli, namespace, clientTLSSecret)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get TLS data from secret (%v): %v", clientTLSSecret, err)
-		}
-		tlsConfig, err = etcdutil.NewTLSConfig(d.CertData, d.KeyData, d.CAData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to constructs tls config: %v", err)
-		}
+	if tlsConfig, err = generateTLSConfig(kubecli, clientTLSSecret, namespace); err != nil {
+		return nil, err
 	}
 
 	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewABSWriter(cli.ABS), tlsConfig, endpoints, namespace)
