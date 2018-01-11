@@ -44,14 +44,14 @@ if [[ ${BUILD_E2E} == "true" ]]; then
   TEST_IMAGE=${TEST_IMAGE} hack/build/e2e/docker_push
 fi
 
+echo "TEST_NAMESPACE: ${TEST_NAMESPACE}"
+echo "OPERATOR_IMAGE: ${OPERATOR_IMAGE}"
+echo "TEST_IMAGE: ${TEST_IMAGE}"
+
 if [ -z "${PASSES-}" ]; then
   echo "No PASSES specified. Skipping tests"
   exit 0
 fi
-
-echo "TEST_NAMESPACE: ${TEST_NAMESPACE}"
-echo "OPERATOR_IMAGE: ${OPERATOR_IMAGE}"
-echo "TEST_IMAGE: ${TEST_IMAGE}"
 
 # Generate test-pod spec
 export TEST_POD_SPEC=${PWD}/test/pod/test-pod-spec.yaml
