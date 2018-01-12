@@ -67,11 +67,11 @@ func TestBackupAndRestore(t *testing.T) {
 	c.Name = clusterName
 	e2eutil.ClusterCRWithTLS(c, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
 	testEtcd, err := e2eutil.CreateCluster(t, f.CRClient, f.Namespace, c)
-	defer func() {
-		if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
-			t.Fatal(err)
-		}
-	}()
+	// defer func() {
+	// 	if err := e2eutil.DeleteCluster(t, f.CRClient, f.KubeClient, testEtcd); err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	// }()
 	if _, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, testEtcd); err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -182,11 +182,11 @@ func testEtcdRestoreOperatorForS3Source(t *testing.T, clusterName, s3Path string
 	if err != nil {
 		t.Fatalf("failed to create etcd restore cr: %v", err)
 	}
-	defer func() {
-		if err := f.CRClient.EtcdV1beta2().EtcdRestores(f.Namespace).Delete(er.Name, nil); err != nil {
-			t.Fatalf("failed to delete etcd restore cr: %v", err)
-		}
-	}()
+	// defer func() {
+	// 	if err := f.CRClient.EtcdV1beta2().EtcdRestores(f.Namespace).Delete(er.Name, nil); err != nil {
+	// 		t.Fatalf("failed to delete etcd restore cr: %v", err)
+	// 	}
+	// }()
 
 	// Verify the EtcdRestore CR status "succeeded=true". In practice the time taken to update is 1 second.
 	// Note: The restore-operator currently waits 60 seconds after deleting the EtcdClusterRef so the timeout should account for that
