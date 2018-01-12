@@ -21,6 +21,7 @@ const (
 
 	AWSSecretCredentialsFileName = "credentials"
 	AWSSecretConfigFileName      = "config"
+	AWSSecretEndpointFileName    = "endpoints"
 )
 
 type BackupStorageType string
