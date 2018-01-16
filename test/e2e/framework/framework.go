@@ -19,7 +19,6 @@ import (
 	"flag"
 	"fmt"
 	"os/exec"
-	"strconv"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/client"
@@ -166,10 +165,6 @@ func (f *Framework) SetupEtcdOperator() error {
 					{
 						Name:      constants.EnvOperatorPodName,
 						ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}},
-					},
-					{
-						Name:  constants.EnvRestoreOperatorServiceName,
-						Value: etcdRestoreOperatorServiceName + ":" + strconv.Itoa(etcdRestoreServicePort),
 					},
 				},
 			}},

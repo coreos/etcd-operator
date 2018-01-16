@@ -25,5 +25,3 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        - name: SERVICE_ADDR
-          value: "etcd-restore-operator:19999"
