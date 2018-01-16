@@ -69,7 +69,8 @@ func main() {
 					return
 				}
 				pod = ev.Object.(*v1.Pod)
-				for i := range pod.Spec.Containers {
+				containers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
+				for i := range containers {
 					go func(c v1.Container) {
 						logOption := &v1.PodLogOptions{Follow: true, Container: c.Name}
 						req := kubecli.CoreV1().Pods(namespace).GetLogs(pod.Name, logOption)
@@ -89,7 +90,7 @@ func main() {
 						if err != nil {
 							logrus.Errorf("failed to write log for pod (%s/%s): %v", pod.Name, c.Name, err)
 						}
-					}(pod.Spec.Containers[i])
+					}(containers[i])
 				}
 			}(obj.(*v1.Pod), *ns, *logsDir)
 		},
