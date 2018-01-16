@@ -27,7 +27,6 @@ const (
 	OperatorRoot   = "/var/tmp/etcd-operator"
 	BackupMountDir = "/var/etcd-backup"
 
-	EnvOperatorPodName            = "MY_POD_NAME"
-	EnvOperatorPodNamespace       = "MY_POD_NAMESPACE"
-	EnvRestoreOperatorServiceName = "SERVICE_ADDR"
+	EnvOperatorPodName      = "MY_POD_NAME"
+	EnvOperatorPodNamespace = "MY_POD_NAMESPACE"
 )
