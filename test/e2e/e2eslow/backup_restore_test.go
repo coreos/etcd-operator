@@ -145,7 +145,7 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T, clusterName, operatorClient
 	// local testing shows that it takes around 1 - 2 seconds from creating backup cr to verifying the backup from s3.
 	// 4 seconds timeout via retry is enough; duration longer than that may indicate internal issues and
 	// is worthy of investigation.
-	s3cli, err := s3factory.NewClientFromSecret(f.KubeClient, f.Namespace, os.Getenv("TEST_AWS_SECRET"))
+	s3cli, err := s3factory.NewClientFromSecret(f.KubeClient, f.Namespace, "", os.Getenv("TEST_AWS_SECRET"))
 	if err != nil {
 		t.Fatalf("failed create s3 client: %v", err)
 	}
