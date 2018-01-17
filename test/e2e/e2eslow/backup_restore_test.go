@@ -24,7 +24,6 @@ import (
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -145,11 +144,6 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T, clusterName, operatorClient
 	// local testing shows that it takes around 1 - 2 seconds from creating backup cr to verifying the backup from s3.
 	// 4 seconds timeout via retry is enough; duration longer than that may indicate internal issues and
 	// is worthy of investigation.
-	s3cli, err := s3factory.NewClientFromSecret(f.KubeClient, f.Namespace, "", os.Getenv("TEST_AWS_SECRET"))
-	if err != nil {
-		t.Fatalf("failed create s3 client: %v", err)
-	}
-	defer s3cli.Close()
 	err = retryutil.Retry(time.Second, 4, func() (bool, error) {
 		reb, err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Get(eb.Name, metav1.GetOptions{})
 		if err != nil {
