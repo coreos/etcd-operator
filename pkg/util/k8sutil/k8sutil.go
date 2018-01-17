@@ -292,6 +292,9 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		}})
 	}
 
+	runAsNonRoot := true
+	podUID := int64(9000)
+	fsGroup := podUID
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        m.Name,
@@ -319,6 +322,11 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			Hostname:                     m.Name,
 			Subdomain:                    clusterName,
 			AutomountServiceAccountToken: func(b bool) *bool { return &b }(false),
+			SecurityContext: &v1.PodSecurityContext{
+				RunAsUser:    &podUID,
+				RunAsNonRoot: &runAsNonRoot,
+				FSGroup:      &fsGroup,
+			},
 		},
 	}
 	SetEtcdVersion(pod, cs.Version)
