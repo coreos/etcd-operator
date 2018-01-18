@@ -21,11 +21,10 @@ limitations under the License.
 package v1beta2
 
 import (
-	reflect "reflect"
-
 	v1 "k8s.io/api/core/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	reflect "reflect"
 )
 
 // GetGeneratedDeepCopyFuncs returns the generated funcs, since we aren't registering them.
@@ -562,6 +561,24 @@ func (in *PodPolicy) DeepCopyInto(out *PodPolicy) {
 		*out = make([]v1.EnvVar, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.PersistentVolumeClaimSpec != nil {
+		in, out := &in.PersistentVolumeClaimSpec, &out.PersistentVolumeClaimSpec
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(v1.PersistentVolumeClaimSpec)
+			(*in).DeepCopyInto(*out)
+		}
+	}
+	if in.AutomountServiceAccountToken != nil {
+		in, out := &in.AutomountServiceAccountToken, &out.AutomountServiceAccountToken
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(bool)
+			**out = **in
 		}
 	}
 	return
