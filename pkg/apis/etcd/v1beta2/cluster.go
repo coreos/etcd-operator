@@ -132,6 +132,9 @@ type PodPolicy struct {
 	// Tolerations specifies the pod's tolerations.
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
 
+	// ServiceAccountName specifies the pod's ServiceAccount.
+	ServiceAccountName string
+
 	// List of environment variables to set in the etcd container.
 	// This is used to configure etcd process. etcd cluster cannot be created, when
 	// bad environement variables are provided. Do not overwrite any flags used to
