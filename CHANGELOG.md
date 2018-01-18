@@ -13,6 +13,17 @@
 ### Security
 
 
+## [Release 0.8.2]
+
+### Added
+
+- Add support for backup and restore from custom S3 endpoint.
+
+### Changed
+
+- All etcd pod containers now run as non-root.
+
+
 ## [Release 0.8.1]
 
 ### Changed
