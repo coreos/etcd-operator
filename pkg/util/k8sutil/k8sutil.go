@@ -78,6 +78,7 @@ func GetPodNames(pods []*v1.Pod) []string {
 	return res
 }
 
+// PVCNameFromMemberName the way we get PVC name from the member name
 func PVCNameFromMemberName(memberName string) string {
 	return memberName
 }
@@ -213,6 +214,7 @@ func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.S
 	return svc
 }
 
+// AddEtcdVolumeToPod abstract the process of appending volume spec to pod spec
 func AddEtcdVolumeToPod(pod *v1.Pod, pvc *v1.PersistentVolumeClaim) {
 	vol := v1.Volume{Name: etcdVolumeName}
 	if pvc != nil {
@@ -249,6 +251,7 @@ func NewSeedMemberPod(clusterName string, ms etcdutil.MemberSet, m *etcdutil.Mem
 	return pod
 }
 
+// NewEtcdPodPVC create PVC object from etcd pod's PVC spec
 func NewEtcdPodPVC(m *etcdutil.Member, pvcSpec v1.PersistentVolumeClaimSpec, clusterName, namespace string, owner metav1.OwnerReference) *v1.PersistentVolumeClaim {
 	pvc := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{

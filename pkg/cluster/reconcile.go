@@ -217,7 +217,7 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) (err error) {
 	if err := c.removePod(toRemove.Name); err != nil {
 		return err
 	}
-	if c.IsPodPVEnabled() {
+	if c.isPodPVEnabled() {
 		err = c.removePVC(k8sutil.PVCNameFromMemberName(toRemove.Name))
 		if err != nil {
 			return err

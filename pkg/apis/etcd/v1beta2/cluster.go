@@ -139,7 +139,8 @@ type PodPolicy struct {
 	// This field cannot be updated.
 	EtcdEnv []v1.EnvVar `json:"etcdEnv,omitempty"`
 
-	// PersistentVolumeClaimSpec ...
+	// PersistentVolumeClaimSpec is the spec to describe PVC for the etcd container
+	// This field is optional. If no PVC spec, etcd container will use emptyDir as volume
 	PersistentVolumeClaimSpec *v1.PersistentVolumeClaimSpec `json:"persistentVolumeClaimSpec,omitempty"`
 }
 
