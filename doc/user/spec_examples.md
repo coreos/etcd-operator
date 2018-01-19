@@ -54,6 +54,20 @@ spec:
         cpu: 200m
         memory: 100Mi
 ```
+
+## Custom etcd configuration
+
+etcd members could be configured via env: https://coreos.com/etcd/docs/latest/op-guide/configuration.html
+
+```yaml
+spec:
+  size: 3
+  pod:
+    etcdEnv:
+    - name: ETCD_AUTO_COMPACTION_RETENTION
+      value: "1"
+```
+
 ## TLS
 
 For more information on working with TLS, see [Cluster TLS policy][cluster-tls].
