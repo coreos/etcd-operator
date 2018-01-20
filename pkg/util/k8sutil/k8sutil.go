@@ -78,8 +78,8 @@ func GetPodNames(pods []*v1.Pod) []string {
 	return res
 }
 
-// PVCNameFromMemberName the way we get PVC name from the member name
-func PVCNameFromMemberName(memberName string) string {
+// PVCNameFromMember the way we get PVC name from the member name
+func PVCNameFromMember(memberName string) string {
 	return memberName
 }
 
@@ -255,7 +255,7 @@ func NewSeedMemberPod(clusterName string, ms etcdutil.MemberSet, m *etcdutil.Mem
 func NewEtcdPodPVC(m *etcdutil.Member, pvcSpec v1.PersistentVolumeClaimSpec, clusterName, namespace string, owner metav1.OwnerReference) *v1.PersistentVolumeClaim {
 	pvc := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      PVCNameFromMemberName(m.Name),
+			Name:      PVCNameFromMember(m.Name),
 			Namespace: namespace,
 			Labels:    LabelsForCluster(clusterName),
 		},

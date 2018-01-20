@@ -141,6 +141,8 @@ type PodPolicy struct {
 
 	// PersistentVolumeClaimSpec is the spec to describe PVC for the etcd container
 	// This field is optional. If no PVC spec, etcd container will use emptyDir as volume
+	// Note. This feature is in alpha stage. It is currently only used as non-stable storage,
+	// not the stable storage. Future work need to make it used as stable storage.
 	PersistentVolumeClaimSpec *v1.PersistentVolumeClaimSpec `json:"persistentVolumeClaimSpec,omitempty"`
 }
 
