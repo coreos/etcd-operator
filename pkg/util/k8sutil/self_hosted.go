@@ -141,13 +141,14 @@ done
 		Spec: v1.PodSpec{
 			// Self-hosted etcd pod need to endure node restart.
 			// If we set it to Never, the pod won't restart. If etcd won't come up, nor does other k8s API components.
-			RestartPolicy: v1.RestartPolicyAlways,
-			Containers:    []v1.Container{c},
-			Volumes:       volumes,
-			HostNetwork:   true,
-			DNSPolicy:     v1.DNSClusterFirstWithHostNet,
-			Hostname:      m.Name,
-			Subdomain:     clusterName,
+			RestartPolicy:                v1.RestartPolicyAlways,
+			Containers:                   []v1.Container{c},
+			Volumes:                      volumes,
+			HostNetwork:                  true,
+			DNSPolicy:                    v1.DNSClusterFirstWithHostNet,
+			Hostname:                     m.Name,
+			Subdomain:                    clusterName,
+			AutomountServiceAccountToken: func(b bool) *bool { return &b }(false),
 		},
 	}
 
