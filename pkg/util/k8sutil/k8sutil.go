@@ -298,10 +298,6 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		livenessProbe,
 		readinessProbe)
 
-	if cs.Pod != nil {
-		container = containerWithRequirements(container, cs.Pod.Resources)
-	}
-
 	volumes := []v1.Volume{}
 
 	if m.SecurePeer {
