@@ -563,6 +563,15 @@ func (in *PodPolicy) DeepCopyInto(out *PodPolicy) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.PersistentVolumeClaimSpec != nil {
+		in, out := &in.PersistentVolumeClaimSpec, &out.PersistentVolumeClaimSpec
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(v1.PersistentVolumeClaimSpec)
+			(*in).DeepCopyInto(*out)
+		}
+	}
 	return
 }
 

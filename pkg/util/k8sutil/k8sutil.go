@@ -78,6 +78,11 @@ func GetPodNames(pods []*v1.Pod) []string {
 	return res
 }
 
+// PVCNameFromMember the way we get PVC name from the member name
+func PVCNameFromMember(memberName string) string {
+	return memberName
+}
+
 func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, m *etcdutil.Member) []v1.Container {
 	return []v1.Container{
 		{
@@ -209,6 +214,19 @@ func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.S
 	return svc
 }
 
+// AddEtcdVolumeToPod abstract the process of appending volume spec to pod spec
+func AddEtcdVolumeToPod(pod *v1.Pod, pvc *v1.PersistentVolumeClaim) {
+	vol := v1.Volume{Name: etcdVolumeName}
+	if pvc != nil {
+		vol.VolumeSource = v1.VolumeSource{
+			PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{ClaimName: pvc.Name},
+		}
+	} else {
+		vol.VolumeSource = v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}
+	}
+	pod.Spec.Volumes = append(pod.Spec.Volumes, vol)
+}
+
 func addRecoveryToPod(pod *v1.Pod, token string, m *etcdutil.Member, cs api.ClusterSpec, backupURL *url.URL) {
 	pod.Spec.InitContainers = append(pod.Spec.InitContainers,
 		makeRestoreInitContainers(backupURL, token, cs.Repository, cs.Version, m)...)
@@ -223,12 +241,28 @@ func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
 func NewSeedMemberPod(clusterName string, ms etcdutil.MemberSet, m *etcdutil.Member, cs api.ClusterSpec, owner metav1.OwnerReference, backupURL *url.URL) *v1.Pod {
 	token := uuid.New()
 	pod := newEtcdPod(m, ms.PeerURLPairs(), clusterName, "new", token, cs)
+	// TODO: PVC datadir support for restore process
+	AddEtcdVolumeToPod(pod, nil)
 	if backupURL != nil {
 		addRecoveryToPod(pod, token, m, cs, backupURL)
 	}
 	applyPodPolicy(clusterName, pod, cs.Pod)
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
+}
+
+// NewEtcdPodPVC create PVC object from etcd pod's PVC spec
+func NewEtcdPodPVC(m *etcdutil.Member, pvcSpec v1.PersistentVolumeClaimSpec, clusterName, namespace string, owner metav1.OwnerReference) *v1.PersistentVolumeClaim {
+	pvc := &v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      PVCNameFromMember(m.Name),
+			Namespace: namespace,
+			Labels:    LabelsForCluster(clusterName),
+		},
+		Spec: pvcSpec,
+	}
+	addOwnerRefToObject(pvc.GetObjectMeta(), owner)
+	return pvc
 }
 
 func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs api.ClusterSpec) *v1.Pod {
@@ -264,9 +298,7 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		livenessProbe,
 		readinessProbe)
 
-	volumes := []v1.Volume{
-		{Name: "etcd-data", VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}},
-	}
+	volumes := []v1.Volume{}
 
 	if m.SecurePeer {
 		container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
