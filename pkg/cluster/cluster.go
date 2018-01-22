@@ -73,8 +73,7 @@ type Cluster struct {
 
 	// in memory state of the cluster
 	// status is the source of truth after Cluster struct is materialized.
-	status        api.ClusterStatus
-	memberCounter int
+	status api.ClusterStatus
 
 	eventCh chan *clusterEvent
 	stopCh  chan struct{}
@@ -326,7 +325,7 @@ func isSpecEqual(s1, s2 api.ClusterSpec) bool {
 
 func (c *Cluster) startSeedMember() error {
 	m := &etcdutil.Member{
-		Name:         etcdutil.CreateMemberName(c.cluster.Name, c.memberCounter),
+		Name:         k8sutil.UniqueMemberName(c.cluster.Name),
 		Namespace:    c.cluster.Namespace,
 		SecurePeer:   c.isSecurePeer(),
 		SecureClient: c.isSecureClient(),
@@ -335,7 +334,6 @@ func (c *Cluster) startSeedMember() error {
 	if err := c.createPod(ms, m, "new"); err != nil {
 		return fmt.Errorf("failed to create seed member (%s): %v", m.Name, err)
 	}
-	c.memberCounter++
 	c.members = ms
 	c.logger.Infof("cluster created with seed member (%s)", m.Name)
 	_, err := c.eventsCli.Create(k8sutil.NewMemberAddEvent(m.Name, c.cluster))

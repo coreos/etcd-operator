@@ -20,6 +20,7 @@ import (
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/pkg/errors"
 
@@ -37,13 +38,6 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 		if err != nil {
 			return errors.Wrap(err, "get member name failed")
 		}
-		ct, err := etcdutil.GetCounterFromMemberName(name)
-		if err != nil {
-			return newFatalError(fmt.Sprintf("get counter from member name (%s) failed: %v", name, err))
-		}
-		if ct+1 > c.memberCounter {
-			c.memberCounter = ct + 1
-		}
 
 		members[name] = &etcdutil.Member{
 			Name:         name,
@@ -57,8 +51,8 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	return nil
 }
 
-func (c *Cluster) newMember(id int) *etcdutil.Member {
-	name := etcdutil.CreateMemberName(c.cluster.Name, id)
+func (c *Cluster) newMember() *etcdutil.Member {
+	name := k8sutil.UniqueMemberName(c.cluster.Name)
 	return &etcdutil.Member{
 		Name:         name,
 		Namespace:    c.cluster.Namespace,
