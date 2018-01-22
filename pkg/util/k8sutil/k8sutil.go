@@ -89,8 +89,15 @@ func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, 
 			Name:  "fetch-backup",
 			Image: "tutum/curl",
 			Command: []string{
-				"/bin/sh", "-ec",
-				fmt.Sprintf("curl -o %s %s", backupFile, backupURL.String()),
+				"/bin/bash", "-ec",
+				fmt.Sprintf(`
+httpcode=$(curl --write-out %%\{http_code\} --silent --output %[1]s %[2]s)
+if [[ "$httpcode" != "200" ]]; then
+	echo "http status code: ${httpcode}" >> /dev/termination-log
+	cat %[1]s >> /dev/termination-log
+	exit 1
+fi
+					`, backupFile, backupURL.String()),
 			},
 			VolumeMounts: etcdVolumeMounts(),
 		},
@@ -104,7 +111,7 @@ func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, 
 					" --initial-cluster %[2]s=%[3]s"+
 					" --initial-cluster-token %[4]s"+
 					" --initial-advertise-peer-urls %[3]s"+
-					" --data-dir %[5]s", backupFile, m.Name, m.PeerURL(), token, dataDir),
+					" --data-dir %[5]s 2>/dev/termination-log", backupFile, m.Name, m.PeerURL(), token, dataDir),
 			},
 			VolumeMounts: etcdVolumeMounts(),
 		},

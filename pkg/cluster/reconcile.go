@@ -93,7 +93,6 @@ func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 	}
 
 	if L.Size() < c.members.Size()/2+1 {
-		c.logger.Infof("lost quorum")
 		return ErrLostQuorum
 	}
 
