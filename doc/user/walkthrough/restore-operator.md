@@ -135,7 +135,7 @@ Delete the etcd-restore-operator deployment and service, and the `EtcdRestore` C
 
 ```sh
 kubectl delete etcdrestore example-etcd-cluster
-kubect delete -f example/etcd-restore-operator/deployment.yaml
+kubectl delete -f example/etcd-restore-operator/deployment.yaml
 ```
 
 
