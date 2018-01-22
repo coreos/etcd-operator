@@ -182,9 +182,7 @@ func testEtcdRestoreOperatorForS3Source(t *testing.T, clusterName, s3Path string
 		}
 	}()
 
-	// Verify the EtcdRestore CR status "succeeded=true". In practice the time taken to update is 1 second.
-	// Note: The restore-operator currently waits 60 seconds after deleting the EtcdClusterRef so the timeout should account for that
-	err = retryutil.Retry(10*time.Second, 7, func() (bool, error) {
+	err = retryutil.Retry(10*time.Second, 1, func() (bool, error) {
 		er, err := f.CRClient.EtcdV1beta2().EtcdRestores(f.Namespace).Get(er.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, fmt.Errorf("failed to retrieve restore CR: %v", err)
