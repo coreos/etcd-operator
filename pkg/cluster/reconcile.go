@@ -131,7 +131,7 @@ func (c *Cluster) addOneMember() error {
 	}
 	defer etcdcli.Close()
 
-	newMember := c.newMember(c.memberCounter)
+	newMember := c.newMember()
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerURL()})
 	cancel()
@@ -144,7 +144,6 @@ func (c *Cluster) addOneMember() error {
 	if err := c.createPod(c.members, newMember, "existing"); err != nil {
 		return fmt.Errorf("fail to create member's pod (%s): %v", newMember.Name, err)
 	}
-	c.memberCounter++
 	c.logger.Infof("added member (%s)", newMember.Name)
 	_, err = c.eventsCli.Create(k8sutil.NewMemberAddEvent(newMember.Name, c.cluster))
 	if err != nil {

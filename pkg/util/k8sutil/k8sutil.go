@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // for gcp auth
@@ -470,4 +471,8 @@ func mergeLabels(l1, l2 map[string]string) {
 		}
 		l1[k] = v
 	}
+}
+
+func UniqueMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-%s", clusterName, utilrand.String(5))
 }

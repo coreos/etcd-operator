@@ -129,8 +129,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 
 	c.status.SetScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
 
-	newMember := c.newMember(c.memberCounter)
-	c.memberCounter++
+	newMember := c.newMember()
 	peerURL := newMember.PeerURL()
 	initialCluster := append(c.members.PeerURLPairs(), newMember.Name+"="+peerURL)
 
@@ -159,8 +158,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 }
 
 func (c *Cluster) newSelfHostedSeedMember() error {
-	newMember := c.newMember(c.memberCounter)
-	c.memberCounter++
+	newMember := c.newMember()
 	initialCluster := []string{newMember.Name + "=" + newMember.PeerURL()}
 
 	pod := k8sutil.NewSelfHostedEtcdPod(newMember, initialCluster, nil, c.cluster.Name, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
@@ -196,8 +194,7 @@ func (c *Cluster) migrateBootMember() error {
 	}
 
 	// create the member inside Kubernetes for migration
-	newMember := c.newMember(c.memberCounter)
-	c.memberCounter++
+	newMember := c.newMember()
 
 	peerURL := newMember.PeerURL()
 	initialCluster = append(initialCluster, newMember.Name+"="+peerURL)

@@ -212,7 +212,7 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 
 func (r *Restore) createSeedMember(ec *api.EtcdCluster, svcAddr, clusterName string, owner metav1.OwnerReference) error {
 	m := &etcdutil.Member{
-		Name:         etcdutil.CreateMemberName(clusterName, 0),
+		Name:         k8sutil.UniqueMemberName(clusterName),
 		Namespace:    r.namespace,
 		SecurePeer:   ec.Spec.TLS.IsSecurePeer(),
 		SecureClient: ec.Spec.TLS.IsSecureClient(),
