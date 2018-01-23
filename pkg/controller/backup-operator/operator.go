@@ -28,18 +28,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 )
 
 type Controller struct {
 	logger *logrus.Entry
 
 	namespace string
-	// k8s workqueue pattern
-	indexer  cache.Indexer
-	informer cache.Controller
-	queue    workqueue.RateLimitingInterface
 
 	backupCRCli versioned.Interface
 	kubeExtCli  apiextensionsclient.Interface
