@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -149,18 +148,6 @@ func (ms MemberSet) ClientURLs() []string {
 	return endpoints
 }
 
-func GetCounterFromMemberName(name string) (int, error) {
-	i := strings.LastIndex(name, "-")
-	if i == -1 || i+1 >= len(name) {
-		return 0, fmt.Errorf("name (%s) does not contain '-' or anything after '-'", name)
-	}
-	c, err := strconv.Atoi(name[i+1:])
-	if err != nil {
-		return 0, fmt.Errorf("could not atoi %s: %v", name[i+1:], err)
-	}
-	return c, nil
-}
-
 var validPeerURL = regexp.MustCompile(`^\w+:\/\/[\w\.\-]+(:\d+)?$`)
 
 func MemberNameFromPeerURL(pu string) (string, error) {
@@ -175,10 +162,6 @@ func MemberNameFromPeerURL(pu string) (string, error) {
 	path := strings.Split(u.Host, ":")[0]
 	name := strings.Split(path, ".")[0]
 	return name, err
-}
-
-func CreateMemberName(clusterName string, member int) string {
-	return fmt.Sprintf("%s-%04d", clusterName, member)
 }
 
 func clusterNameFromMemberName(mn string) string {
