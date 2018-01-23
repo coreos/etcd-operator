@@ -20,6 +20,7 @@ import (
 	"os"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/backup"
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -27,12 +28,11 @@ import (
 
 	"github.com/sirupsen/logrus"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
 
-type Backup struct {
+type Controller struct {
 	logger *logrus.Entry
 
 	namespace string
@@ -41,19 +41,20 @@ type Backup struct {
 	informer cache.Controller
 	queue    workqueue.RateLimitingInterface
 
-	kubecli     kubernetes.Interface
 	backupCRCli versioned.Interface
 	kubeExtCli  apiextensionsclient.Interface
 
 	createCRD bool
+
+	// The key of the backups map would be the key used in the workqueue
+	backups map[string]*backup.Backup
 }
 
 // New creates a backup operator.
-func New(createCRD bool) *Backup {
-	return &Backup{
+func New(createCRD bool) *Controller {
+	return &Controller{
 		logger:      logrus.WithField("pkg", "controller"),
 		namespace:   os.Getenv(constants.EnvOperatorPodNamespace),
-		kubecli:     k8sutil.MustNewKubeClient(),
 		backupCRCli: client.MustNewInCluster(),
 		kubeExtCli:  k8sutil.MustNewKubeExtClient(),
 		createCRD:   createCRD,
@@ -61,7 +62,7 @@ func New(createCRD bool) *Backup {
 }
 
 // Start starts the Backup operator.
-func (b *Backup) Start(ctx context.Context) error {
+func (b *Controller) Start(ctx context.Context) error {
 	if b.createCRD {
 		if err := b.initCRD(); err != nil {
 			return err
@@ -73,7 +74,7 @@ func (b *Backup) Start(ctx context.Context) error {
 	return ctx.Err()
 }
 
-func (b *Backup) initCRD() error {
+func (b *Controller) initCRD() error {
 	err := k8sutil.CreateCRD(b.kubeExtCli, api.EtcdBackupCRDName, api.EtcdBackupResourceKind, api.EtcdBackupResourcePlural, "")
 	if err != nil {
 		return fmt.Errorf("failed to create CRD: %v", err)

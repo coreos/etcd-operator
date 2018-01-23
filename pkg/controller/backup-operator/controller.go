@@ -22,11 +22,19 @@ import (
 
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
+	kwatch "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
 
-func (b *Backup) run(ctx context.Context) {
+// Event define backup Event
+type Event struct {
+	Type   kwatch.EventType
+	Key    string
+	Object *api.EtcdBackup
+}
+
+func (b *Controller) run(ctx context.Context) {
 	source := cache.NewListWatchFromClient(
 		b.backupCRCli.EtcdV1beta2().RESTClient(),
 		api.EtcdBackupResourcePlural,
@@ -59,7 +67,7 @@ func (b *Backup) run(ctx context.Context) {
 	b.logger.Info("stopping backup controller")
 }
 
-func (b *Backup) onAdd(obj interface{}) {
+func (b *Controller) onAdd(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		panic(err)
@@ -67,7 +75,7 @@ func (b *Backup) onAdd(obj interface{}) {
 	b.queue.Add(key)
 }
 
-func (b *Backup) onUpdate(oldObj, newObj interface{}) {
+func (b *Controller) onUpdate(oldObj, newObj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		panic(err)
@@ -75,7 +83,7 @@ func (b *Backup) onUpdate(oldObj, newObj interface{}) {
 	b.queue.Add(key)
 }
 
-func (b *Backup) onDelete(obj interface{}) {
+func (b *Controller) onDelete(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		panic(err)

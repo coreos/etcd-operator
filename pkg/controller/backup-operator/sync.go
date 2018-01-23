@@ -15,9 +15,12 @@
 package controller
 
 import (
-	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"fmt"
 
-	"github.com/sirupsen/logrus"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/backup"
+
+	kwatch "k8s.io/apimachinery/pkg/watch"
 )
 
 const (
@@ -30,12 +33,12 @@ const (
 	maxRetries = 15
 )
 
-func (b *Backup) runWorker() {
+func (b *Controller) runWorker() {
 	for b.processNextItem() {
 	}
 }
 
-func (b *Backup) processNextItem() bool {
+func (b *Controller) processNextItem() bool {
 	// Wait until there is a new item in the working queue
 	key, quit := b.queue.Get()
 	if quit {
@@ -51,43 +54,34 @@ func (b *Backup) processNextItem() bool {
 	return true
 }
 
-func (b *Backup) processItem(key string) error {
+func (b *Controller) processItem(key string) error {
 	obj, exists, err := b.indexer.GetByKey(key)
 	if err != nil {
 		return err
 	}
+	var event *Event
 	if !exists {
-		return nil
-	}
-
-	eb := obj.(*api.EtcdBackup)
-	// don't process the CR if it has a status since
-	// having a status means that the backup is either made or failed.
-	if eb.Status.Succeeded || len(eb.Status.Reason) != 0 {
-		return nil
-	}
-	bs, err := b.handleBackup(&eb.Spec)
-	// Report backup status
-	b.reportBackupStatus(bs, err, eb)
-	return err
-}
-
-func (b *Backup) reportBackupStatus(bs *api.BackupStatus, berr error, eb *api.EtcdBackup) {
-	if berr != nil {
-		eb.Status.Succeeded = false
-		eb.Status.Reason = berr.Error()
+		event = &Event{
+			Type:   kwatch.Deleted,
+			Key:    key,
+			Object: &api.EtcdBackup{},
+		}
 	} else {
-		eb.Status.Succeeded = true
-		eb.Status.EtcdRevision = bs.EtcdRevision
-		eb.Status.EtcdVersion = bs.EtcdVersion
+		if _, ok := b.backups[key]; ok {
+			b.logger.Warningf("Ignore modification on existing backup instance")
+			return nil
+		}
+		event = &Event{
+			Type:   kwatch.Added,
+			Key:    key,
+			Object: obj.(*api.EtcdBackup),
+		}
 	}
-	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(eb)
-	if err != nil {
-		b.logger.Warningf("failed to update status of backup CR %v : (%v)", eb.Name, err)
-	}
+
+	return b.handleBackupEvent(event)
 }
 
-func (b *Backup) handleErr(err error, key interface{}) {
+func (b *Controller) handleErr(err error, key interface{}) {
 	if err == nil {
 		// Forget about the #AddRateLimited history of the key on every successful synchronization.
 		// This ensures that future processing of updates for this key is not delayed because of
@@ -111,16 +105,23 @@ func (b *Backup) handleErr(err error, key interface{}) {
 	b.logger.Infof("Dropping etcd backup (%v) out of the queue: %v", key, err)
 }
 
-func (b *Backup) handleBackup(spec *api.BackupSpec) (*api.BackupStatus, error) {
-	switch spec.StorageType {
-	case api.BackupStorageTypeS3:
-		bs, err := handleS3(b.kubecli, spec.S3, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace)
-		if err != nil {
-			return nil, err
+func (c *Controller) handleBackupEvent(event *Event) error {
+	bkup := event.Object
+
+	switch event.Type {
+	case kwatch.Added:
+		if _, ok := c.backups[event.Key]; ok {
+			return fmt.Errorf("unsafe state. backup (%s) was created before but we received event (%s)", bkup.Name, event.Type)
 		}
-		return bs, nil
-	default:
-		logrus.Fatalf("unknown StorageType: %v", spec.StorageType)
+		bk := backup.New(bkup)
+		c.backups[event.Key] = bk
+
+	case kwatch.Deleted:
+		if _, ok := c.backups[event.Key]; !ok {
+			return fmt.Errorf("unsafe state. backup (%s) was never created but we received event (%s)", event.Key, event.Type)
+		}
+		c.backups[event.Key].Delete()
+		delete(c.backups, event.Key)
 	}
-	return nil, nil
+	return nil
 }
