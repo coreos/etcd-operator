@@ -2,6 +2,20 @@
 
 ### Added
 
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+## [Release 0.8.3]
+
+### Added
+
 - Added the option to use PersistentVolume as non-stable storage for etcd pods. This feature is still alpha and subject to change in future releases [#1861](https://github.com/coreos/etcd-operator/pull/1861)
 
 ### Changed
@@ -22,15 +36,9 @@
     example-etcd-cluster-w5q9sn37fd       1/1       Running   0          1m
     ```
 
-### Removed
-
 ### Fixed
 
 - Fixed a bug where the restore operator would fail to restore the seed member because recreating an etcd pod with the same name as a recently deleted one would conflict as the older pod and its resources, like the DNS name, might still not be deleted. [#1825](https://github.com/coreos/etcd-operator/issues/1825)
-
-### Deprecated
-
-### Security
 
 
 ## [Release 0.8.2]
