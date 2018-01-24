@@ -56,6 +56,10 @@ const (
 	serverTLSVolume          = "member-server-tls"
 	operatorEtcdTLSDir       = "/etc/etcdtls/operator/etcd-tls"
 	operatorEtcdTLSVolume    = "etcd-client-tls"
+
+	randomSuffixLength = 10
+	// k8s object name has a maximum length
+	maxNameLength = 63 - randomSuffixLength - 1
 )
 
 const TolerateUnreadyEndpointsAnnotation = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
@@ -474,5 +478,9 @@ func mergeLabels(l1, l2 map[string]string) {
 }
 
 func UniqueMemberName(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, utilrand.String(5))
+	suffix := utilrand.String(randomSuffixLength)
+	if len(clusterName) > maxNameLength {
+		clusterName = clusterName[:maxNameLength]
+	}
+	return clusterName + "-" + suffix
 }
