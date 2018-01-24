@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package controller
+package backup
 
 import (
 	"crypto/tls"
 	"fmt"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-	"github.com/coreos/etcd-operator/pkg/backup"
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -49,7 +48,7 @@ func handleS3(kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []s
 		}
 	}
 
-	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewS3Writer(cli.S3), tlsConfig, endpoints, namespace)
+	bm := NewBackupManagerFromWriter(kubecli, writer.NewS3Writer(cli.S3), tlsConfig, endpoints, namespace)
 	rev, etcdVersion, err := bm.SaveSnap(s.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save snapshot (%v)", err)
