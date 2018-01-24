@@ -2,11 +2,31 @@
 
 ### Added
 
+- Added the option to use PersistentVolume as non-stable storage for etcd pods. This feature is still alpha and subject to change in future releases [#1861](https://github.com/coreos/etcd-operator/pull/1861)
+
 ### Changed
+
+- Changed etcd pod member names to be unique by having a random suffix instead of a sequence number. This change is backward compatible and should not affect operator upgrade.
+    Previously the etcd pod names would look like:
+    ```
+    NAME                            READY     STATUS    RESTARTS   AGE
+    example-etcd-cluster-0000       1/1       Running   0          1m
+    example-etcd-cluster-0001       1/1       Running   0          1m
+    example-etcd-cluster-0002       1/1       Running   0          1m
+    ```
+    After this change:
+    ```
+    NAME                                  READY     STATUS    RESTARTS   AGE
+    example-etcd-cluster-2885zjw9he       1/1       Running   0          1m
+    example-etcd-cluster-gghrmbeid4       1/1       Running   0          1m
+    example-etcd-cluster-w5q9sn37fd       1/1       Running   0          1m
+    ```
 
 ### Removed
 
 ### Fixed
+
+- Fixed a bug where the restore operator would fail to restore the seed member because recreating an etcd pod with the same name as a recently deleted one would conflict as the older pod and its resources, like the DNS name, might still not be deleted. [#1825](https://github.com/coreos/etcd-operator/issues/1825)
 
 ### Deprecated
 
