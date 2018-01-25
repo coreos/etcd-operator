@@ -123,9 +123,9 @@ sed -e 's|<full-s3-path>|mybucket/etcd.backup|g' \
     NAME                                     READY     STATUS    RESTARTS   AGE
     etcd-operator-2486363115-ltc17           1/1       Running   0          1h
     etcd-restore-operator-4203122180-npn3g   1/1       Running   0          30m
-    example-etcd-cluster-0000                1/1       Running   0          8m
-    example-etcd-cluster-0001                1/1       Running   0          8m
-    example-etcd-cluster-0002                1/1       Running   0          8m
+    example-etcd-cluster-795649v9kq          1/1       Running   1          3m
+    example-etcd-cluster-jtp447ggnq          1/1       Running   1          4m
+    example-etcd-cluster-psw7sf2hhr          1/1       Running   1          4m
     ```
 
 ### Cleanup
