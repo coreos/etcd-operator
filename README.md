@@ -60,9 +60,9 @@ A 3 member etcd cluster will be created.
 ```bash
 $ kubectl get pods
 NAME                            READY     STATUS    RESTARTS   AGE
-example-etcd-cluster-0000       1/1       Running   0          1m
-example-etcd-cluster-0001       1/1       Running   0          1m
-example-etcd-cluster-0002       1/1       Running   0          1m
+example-etcd-cluster-gxkmr9ql7z   1/1       Running   0          1m
+example-etcd-cluster-m6g62x6mwc   1/1       Running   0          1m
+example-etcd-cluster-rqk62l46kw   1/1       Running   0          1m
 ```
 
 See [client service](doc/user/client_service.md) for how to access etcd clusters created by operator.
@@ -112,11 +112,11 @@ The etcd cluster will scale to 5 members (5 pods):
 ```
 $ kubectl get pods
 NAME                            READY     STATUS    RESTARTS   AGE
-example-etcd-cluster-0000       1/1       Running   0          1m
-example-etcd-cluster-0001       1/1       Running   0          1m
-example-etcd-cluster-0002       1/1       Running   0          1m
-example-etcd-cluster-0003       1/1       Running   0          1m
-example-etcd-cluster-0004       1/1       Running   0          1m
+example-etcd-cluster-cl2gpqsmsw   1/1       Running   0          5m
+example-etcd-cluster-cx2t6v8w78   1/1       Running   0          5m
+example-etcd-cluster-gxkmr9ql7z   1/1       Running   0          7m
+example-etcd-cluster-m6g62x6mwc   1/1       Running   0          7m
+example-etcd-cluster-rqk62l46kw   1/1       Running   0          7m
 ```
 
 Similarly we can decrease the size of cluster from 5 back to 3 by changing the size field again and reapplying the change.
@@ -140,9 +140,9 @@ We should see that etcd cluster will eventually reduce to 3 pods:
 ```
 $ kubectl get pods
 NAME                            READY     STATUS    RESTARTS   AGE
-example-etcd-cluster-0002       1/1       Running   0          1m
-example-etcd-cluster-0003       1/1       Running   0          1m
-example-etcd-cluster-0004       1/1       Running   0          1m
+example-etcd-cluster-cl2gpqsmsw   1/1       Running   0          6m
+example-etcd-cluster-gxkmr9ql7z   1/1       Running   0          8m
+example-etcd-cluster-rqk62l46kw   1/1       Running   0          9mp
 ```
 
 ### Failover
@@ -159,17 +159,17 @@ $ kubectl create -f example/example-etcd-cluster.yaml
 Wait until all three members are up. Simulate a member failure by deleting a pod:
 
 ```bash
-$ kubectl delete pod example-etcd-cluster-0000 --now
+$ kubectl delete pod example-etcd-cluster-cl2gpqsmsw --now
 ```
 
-The etcd operator will recover the failure by creating a new pod `example-etcd-cluster-0003`:
+The etcd operator will recover the failure by creating a new pod `example-etcd-cluster-n4h66wtjrg`:
 
 ```bash
 $ kubectl get pods
 NAME                            READY     STATUS    RESTARTS   AGE
-example-etcd-cluster-0001       1/1       Running   0          1m
-example-etcd-cluster-0002       1/1       Running   0          1m
-example-etcd-cluster-0003       1/1       Running   0          1m
+example-etcd-cluster-gxkmr9ql7z   1/1       Running   0          10m
+example-etcd-cluster-n4h66wtjrg   1/1       Running   0          26s
+example-etcd-cluster-rqk62l46kw   1/1       Running   0          10m
 ```
 
 Destroy etcd cluster:
@@ -179,8 +179,7 @@ $ kubectl delete -f example/example-etcd-cluster.yaml
 
 ### etcd operator recovery
 
-If the etcd operator restarts, it can recover its previous state.
-Let's walk through in the following steps.
+deLet's walk through in the following steps.
 
 ```
 $ kubectl create -f example/example-etcd-cluster.yaml
@@ -192,8 +191,8 @@ Wait until all three members are up. Then
 $ kubectl delete -f example/deployment.yaml
 deployment "etcd-operator" deleted
 
-$ kubectl delete pod example-etcd-cluster-0000 --now
-pod "example-etcd-cluster-0000" deleted
+$ kubectl delete pod example-etcd-cluster-8gttjl679c --now
+pod "example-etcd-cluster-8gttjl679c" deleted
 ```
 
 Then restart the etcd operator. It should recover itself and the etcd clusters it manages.
@@ -203,10 +202,10 @@ $ kubectl create -f example/deployment.yaml
 deployment "etcd-operator" created
 
 $ kubectl get pods
-NAME                            READY     STATUS    RESTARTS   AGE
-example-etcd-cluster-0001       1/1       Running   0          1m
-example-etcd-cluster-0002       1/1       Running   0          1m
-example-etcd-cluster-0003       1/1       Running   0          1m
+NAME                              READY     STATUS    RESTARTS   AGE
+example-etcd-cluster-m8gk76l4ns   1/1       Running   0          3m
+example-etcd-cluster-q6mff85hml   1/1       Running   0          3m
+example-etcd-cluster-xnfvm7lg66   1/1       Running   0          11s
 ```
 
 ### Upgrade an etcd cluster
@@ -230,16 +229,16 @@ Create an etcd cluster with the version specified (3.1.10) in the yaml file:
 ```
 $ kubectl apply -f upgrade-example.yaml
 $ kubectl get pods
-NAME                           READY     STATUS    RESTARTS   AGE
-example-etcd-cluster-0000      1/1       Running   0          37s
-example-etcd-cluster-0001      1/1       Running   0          25s
-example-etcd-cluster-0002      1/1       Running   0          14s
+NAME                              READY     STATUS    RESTARTS   AGE
+example-etcd-cluster-795649v9kq   1/1       Running   1          3m
+example-etcd-cluster-jtp447ggnq   1/1       Running   1          4m
+example-etcd-cluster-psw7sf2hhr   1/1       Running   1          4m
 ```
 
 The container image version should be 3.1.10:
 
 ```
-$ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
+$ kubectl get pod example-etcd-cluster-795649v9kq -o yaml | grep "image:" | uniq
     image: quay.io/coreos/etcd:v3.1.10
 ```
 
@@ -265,7 +264,7 @@ $ kubectl apply -f upgrade-example
 Wait ~30 seconds. The container image version should be updated to v3.2.13:
 
 ```
-$ kubectl get pod example-etcd-cluster-0000 -o yaml | grep "image:" | uniq
+$ kubectl get pod example-etcd-cluster-795649v9kq -o yaml | grep "image:" | uniq
     image: gcr.io/etcd-development/etcd:v3.2.13
 ```
 
