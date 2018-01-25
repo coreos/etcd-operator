@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/reader"
 	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
+	"github.com/coreos/etcd-operator/pkg/util/azureutil/absfactory"
 
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -98,6 +99,24 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 
 		backupReader = reader.NewS3Reader(s3Cli.S3)
 		path = s3RestoreSource.Path
+	case api.BackupStorageTypeABS:
+		restoreSource := cr.Spec.RestoreSource
+		if restoreSource.ABS == nil {
+			return errors.New("empty abs restore source")
+		}
+		absRestoreSource := restoreSource.ABS
+		if len(absRestoreSource.ABSSecret) == 0 || len(absRestoreSource.Path) == 0 {
+			return errors.New("invalid abs restore source field (spec.abs), must specify all required subfields")
+		}
+
+		absCli, err := absfactory.NewClientFromSecret(r.kubecli, r.namespace, absRestoreSource.ABSSecret)
+		if err != nil {
+			return fmt.Errorf("failed to create ABS client: %v", err)
+		}
+		// Nothing to Close for absCli yet
+
+		backupReader = reader.NewABSReader(absCli.ABS)
+		path = absRestoreSource.Path
 	default:
 		return fmt.Errorf("unknown backup storage type (%s) for restore CR (%v)", cr.Spec.BackupStorageType, restoreName)
 	}

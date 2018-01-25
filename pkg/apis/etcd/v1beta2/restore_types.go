@@ -63,6 +63,9 @@ type EtcdClusterRef struct {
 type RestoreSource struct {
 	// S3 tells where on S3 the backup is saved and how to fetch the backup.
 	S3 *S3RestoreSource `json:"s3,omitempty"`
+
+	// ABS tells where on ABS the backup is saved and how to fetch the backup.
+	ABS *ABSRestoreSource `json:"abs,omitempty"`
 }
 
 type S3RestoreSource struct {
@@ -82,6 +85,16 @@ type S3RestoreSource struct {
 	// Endpoint if blank points to aws. If specified, can point to s3 compatible object
 	// stores.
 	Endpoint string `json:"endpoint"`
+}
+
+type ABSRestoreSource struct {
+	// Path is the full abs path where the backup is saved.
+	// The format of the path must be: "<abs-container-name>/<path-to-backup-file>"
+	// e.g: "myabscontainer/etcd.backup"
+	Path string `json:"path"`
+
+	// The name of the secret object that stores the Azure Blob Storage credential.
+	ABSSecret string `json:"absSecret"`
 }
 
 // RestoreStatus reports the status of this restore operation.
