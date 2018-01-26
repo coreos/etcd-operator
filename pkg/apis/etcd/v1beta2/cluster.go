@@ -97,12 +97,6 @@ type ClusterSpec struct {
 	// Updating Pod does not take effect on any existing etcd pods.
 	Pod *PodPolicy `json:"pod,omitempty"`
 
-	// SelfHosted determines if the etcd cluster is used for a self-hosted
-	// Kubernetes cluster.
-	//
-	// SelfHosted is a cluster initialization configuration. It cannot be updated.
-	SelfHosted *SelfHostedPolicy `json:"selfHosted,omitempty"`
-
 	// etcd cluster TLS configuration
 	TLS *TLSPolicy `json:"TLS,omitempty"`
 }

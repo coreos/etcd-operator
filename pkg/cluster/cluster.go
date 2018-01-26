@@ -24,7 +24,6 @@ import (
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-	"github.com/coreos/etcd-operator/pkg/debug"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -64,8 +63,6 @@ type Config struct {
 
 type Cluster struct {
 	logger *logrus.Entry
-	// debug logger for self hosted cluster
-	debugLogger *debug.DebugLogger
 
 	config Config
 
@@ -90,20 +87,15 @@ type Cluster struct {
 
 func New(config Config, cl *api.EtcdCluster) *Cluster {
 	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", cl.Name)
-	var debugLogger *debug.DebugLogger
-	if cl.Spec.SelfHosted != nil {
-		debugLogger = debug.New(cl.Name)
-	}
 
 	c := &Cluster{
-		logger:      lg,
-		debugLogger: debugLogger,
-		config:      config,
-		cluster:     cl,
-		eventCh:     make(chan *clusterEvent, 100),
-		stopCh:      make(chan struct{}),
-		status:      *(cl.Status.DeepCopy()),
-		eventsCli:   config.KubeCli.Core().Events(cl.Namespace),
+		logger:    lg,
+		config:    config,
+		cluster:   cl,
+		eventCh:   make(chan *clusterEvent, 100),
+		stopCh:    make(chan struct{}),
+		status:    *(cl.Status.DeepCopy()),
+		eventsCli: config.KubeCli.Core().Events(cl.Namespace),
 	}
 
 	go func() {
@@ -169,16 +161,7 @@ func (c *Cluster) create() error {
 func (c *Cluster) prepareSeedMember() error {
 	c.status.SetScalingUpCondition(0, c.cluster.Spec.Size)
 
-	var err error
-	if sh := c.cluster.Spec.SelfHosted; sh != nil {
-		if len(sh.BootMemberClientEndpoint) == 0 {
-			err = c.newSelfHostedSeedMember()
-		} else {
-			err = c.migrateBootMember()
-		}
-	} else {
-		err = c.bootstrap()
-	}
+	err := c.bootstrap()
 	if err != nil {
 		return err
 	}
@@ -404,12 +387,6 @@ func (c *Cluster) removePod(name string) error {
 		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
 			return err
 		}
-		if c.isDebugLoggerEnabled() {
-			c.debugLogger.LogMessage(fmt.Sprintf("pod (%s) not found while trying to delete it", name))
-		}
-	}
-	if c.isDebugLoggerEnabled() {
-		c.debugLogger.LogPodDeletion(name)
 	}
 	return nil
 }
@@ -550,14 +527,4 @@ func (c *Cluster) logSpecUpdate(oldSpec, newSpec api.ClusterSpec) {
 		c.logger.Info(m)
 	}
 
-	if c.isDebugLoggerEnabled() {
-		c.debugLogger.LogClusterSpecUpdate(string(oldSpecBytes), string(newSpecBytes))
-	}
-}
-
-func (c *Cluster) isDebugLoggerEnabled() bool {
-	if c.cluster.Spec.SelfHosted != nil && c.debugLogger != nil {
-		return true
-	}
-	return false
 }
