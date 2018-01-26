@@ -106,11 +106,6 @@ func ClusterWithVersion(cl *api.EtcdCluster, version string) *api.EtcdCluster {
 	return cl
 }
 
-func ClusterWithSelfHosted(cl *api.EtcdCluster, sh *api.SelfHostedPolicy) *api.EtcdCluster {
-	cl.Spec.SelfHosted = sh
-	return cl
-}
-
 // NameLabelSelector returns a label selector of the form name=<name>
 func NameLabelSelector(name string) map[string]string {
 	return map[string]string{"name": name}

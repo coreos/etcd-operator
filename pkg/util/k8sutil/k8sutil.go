@@ -172,8 +172,7 @@ func createService(kubecli kubernetes.Interface, svcName, clusterName, ns, clust
 	return nil
 }
 
-// CreateAndWaitPod is a workaround for self hosted and util for testing.
-// We should eventually get rid of this in critical code path and move it to test util.
+// CreateAndWaitPod creates a pod and waits until it is running
 func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, timeout time.Duration) (*v1.Pod, error) {
 	_, err := kubecli.CoreV1().Pods(ns).Create(pod)
 	if err != nil {

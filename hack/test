@@ -51,18 +51,6 @@ function e2eslow_pass {
 	done
 }
 
-# Note: Due to issue https://github.com/coreos/etcd-operator/issues/1252,
-#   we will run only one jenkins job at a time.
-function e2esh_pass {
-	E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-.*}
-	build_flags=("-i") # cache package compilation data for faster repeated builds
-	for i in {1..2}; do
-		go test "./test/e2e/e2esh" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
-			--kubeconfig=$KUBECONFIG --operator-image=$OPERATOR_IMAGE --namespace=${TEST_NAMESPACE}
-		build_flags=("")
-	done
-}
-
 function upgrade_pass {
 	# Run all the tests by default
 	UPGRADE_TEST_SELECTOR=${UPGRADE_TEST_SELECTOR:-.*}
