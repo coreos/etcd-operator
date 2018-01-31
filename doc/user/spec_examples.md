@@ -72,5 +72,16 @@ spec:
 
 For more information on working with TLS, see [Cluster TLS policy][cluster-tls].
 
+## Custom pod annotations
+
+```yaml
+spec:
+  size: 3
+  pod:
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "2379"
+```
+
 
 [cluster-tls]: cluster_tls.md
