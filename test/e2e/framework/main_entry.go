@@ -29,9 +29,9 @@ func MainEntry(m *testing.M) {
 
 	code := m.Run()
 
-	if err := teardown(); err != nil {
-		logrus.Errorf("fail to teardown framework: %v", err)
-		os.Exit(1)
-	}
+	// if err := teardown(); err != nil {
+	// 	logrus.Errorf("fail to teardown framework: %v", err)
+	// 	os.Exit(1)
+	// }
 	os.Exit(code)
 }
