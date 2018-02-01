@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/signal"
 	"runtime"
 	"time"
 
@@ -79,13 +78,6 @@ func main() {
 	if len(name) == 0 {
 		logrus.Fatalf("must set env (%s)", constants.EnvOperatorPodName)
 	}
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c)
-	go func() {
-		logrus.Infof("received signal: %v", <-c)
-		os.Exit(1)
-	}()
 
 	if printVersion {
 		fmt.Println("etcd-operator Version:", version.Version)
