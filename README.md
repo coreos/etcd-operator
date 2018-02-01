@@ -282,7 +282,5 @@ Follow the [etcd restore operator walkthrough](./doc/user/walkthrough/restore-op
 
 - The etcd operator only manages the etcd cluster created in the same namespace. Users need to create multiple operators in different namespaces to manage etcd clusters in different namespaces.
 
-- Migration, the process of allowing the etcd operator to manage existing etcd3 clusters, only supports a single-member cluster, with its node running in the same Kubernetes cluster.
-
 
 [k8s-home]: http://kubernetes.io
