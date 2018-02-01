@@ -63,7 +63,7 @@ Create EtcdBackup CR:
 >Note: this example uses S3 Bucket "mybucket" and k8s secret "aws"
 
 ```sh
-sed -e 's|<full-s3-path>|jenkins-testing-operator/etcd.backup|g' \
+sed -e 's|<full-s3-path>|mybucket/etcd.backup|g' \
     -e 's|<aws-secret>|aws|g' \
     -e 's|<etcd-cluster-endpoints>|"http://example-etcd-cluster-client:2379"|g' \
     example/etcd-backup-operator/backup_cr.yaml \

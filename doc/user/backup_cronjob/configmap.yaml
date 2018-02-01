@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-config
+data:
+  backup_cr.yaml: |
+    apiVersion: "etcd.database.coreos.com/v1beta2"
+    kind: "EtcdBackup"
+    metadata:
+      generateName: example-etcd-backup-
+    spec:
+      etcdEndpoints: ["http://example-etcd-cluster-client:2379"]
+      storageType: S3
+      s3:
+        path: mybucket/etcd.backup.<NOW>
+        awsSecret: aws
