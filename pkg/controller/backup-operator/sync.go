@@ -15,6 +15,8 @@
 package controller
 
 import (
+	"errors"
+
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 
 	"github.com/sirupsen/logrus"
@@ -112,6 +114,11 @@ func (b *Backup) handleErr(err error, key interface{}) {
 }
 
 func (b *Backup) handleBackup(spec *api.BackupSpec) (*api.BackupStatus, error) {
+	err := validate(spec)
+	if err != nil {
+		return nil, err
+	}
+
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
 		bs, err := handleS3(b.kubecli, spec.S3, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace)
@@ -129,4 +136,11 @@ func (b *Backup) handleBackup(spec *api.BackupSpec) (*api.BackupStatus, error) {
 		logrus.Fatalf("unknown StorageType: %v", spec.StorageType)
 	}
 	return nil, nil
+}
+
+func validate(spec *api.BackupSpec) error {
+	if len(spec.EtcdEndpoints) == 0 {
+		return errors.New("spec.etcdEndpoints should not be empty")
+	}
+	return nil
 }
