@@ -372,7 +372,6 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			},
 		},
 	}
-	setAnnotations(pod, cs.Pod.Annotations)
 	SetEtcdVersion(pod, cs.Version)
 	return pod
 }
@@ -483,10 +482,4 @@ func UniqueMemberName(clusterName string) string {
 		clusterName = clusterName[:maxNameLength]
 	}
 	return clusterName + "-" + suffix
-}
-
-func setAnnotations(pod *v1.Pod, annotations map[string]string) {
-	for key, value := range annotations {
-		pod.ObjectMeta.Annotations[key] = value
-	}
 }
