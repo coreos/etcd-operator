@@ -114,7 +114,7 @@ func (c *Controller) onDeleteEtcdClus(obj interface{}) {
 	}
 
 	pt.start()
-	err := c.handleClusterEvent(ev)
+	_, err := c.handleClusterEvent(ev)
 	if err != nil {
 		c.logger.Warningf("fail to handle event: %v", err)
 	}
@@ -134,7 +134,7 @@ func (c *Controller) syncEtcdClus(clus *api.EtcdCluster) {
 	}
 
 	pt.start()
-	err := c.handleClusterEvent(ev)
+	_, err := c.handleClusterEvent(ev)
 	if err != nil {
 		c.logger.Warningf("fail to handle event: %v", err)
 	}

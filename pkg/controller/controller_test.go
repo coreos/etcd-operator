@@ -39,7 +39,7 @@ func TestHandleClusterEventUpdateFailedCluster(t *testing.T) {
 		Type:   watch.Modified,
 		Object: clus,
 	}
-	err := c.handleClusterEvent(e)
+	_, err := c.handleClusterEvent(e)
 	prefix := "ignore failed cluster"
 	if !strings.HasPrefix(err.Error(), prefix) {
 		t.Errorf("expect err='%s...', get=%v", prefix, err)
@@ -64,7 +64,7 @@ func TestHandleClusterEventDeleteFailedCluster(t *testing.T) {
 
 	c.clusters[name] = &cluster.Cluster{}
 
-	if err := c.handleClusterEvent(e); err != nil {
+	if _, err := c.handleClusterEvent(e); err != nil {
 		t.Fatal(err)
 	}
 
@@ -88,10 +88,8 @@ func TestHandleClusterEventClusterwide(t *testing.T) {
 		Type:   watch.Modified,
 		Object: clus,
 	}
-	err := c.handleClusterEvent(e)
-	suffix := "isn't managed"
-	if strings.HasSuffix(err.Error(), suffix) {
-		t.Errorf("expect err='%s...', get=%v", suffix, err)
+	if ignored, _ := c.handleClusterEvent(e); ignored {
+		t.Errorf("cluster shouldn't be ignored")
 	}
 }
 
@@ -107,10 +105,8 @@ func TestHandleClusterEventClusterwideIgnored(t *testing.T) {
 		Type:   watch.Modified,
 		Object: clus,
 	}
-	err := c.handleClusterEvent(e)
-	suffix := "isn't managed"
-	if !strings.HasSuffix(err.Error(), suffix) {
-		t.Errorf("expect err='%s...', get=%v", suffix, err)
+	if ignored, _ := c.handleClusterEvent(e); !ignored {
+		t.Errorf("cluster should be ignored")
 	}
 }
 
@@ -129,9 +125,7 @@ func TestHandleClusterEventNamespacedIgnored(t *testing.T) {
 		Type:   watch.Modified,
 		Object: clus,
 	}
-	err := c.handleClusterEvent(e)
-	suffix := "isn't managed"
-	if !strings.HasSuffix(err.Error(), suffix) {
-		t.Errorf("expect err='%s...', get=%v", suffix, err)
+	if ignored, _ := c.handleClusterEvent(e); !ignored {
+		t.Errorf("cluster should be ignored")
 	}
 }
