@@ -15,6 +15,7 @@
 package controller
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 
@@ -28,7 +29,8 @@ import (
 
 // TODO: replace this with generic backend interface for other options (PV, Azure)
 // handleS3 saves etcd cluster's backup to specificed S3 path.
-func handleS3(kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []string, clientTLSSecret, namespace string) (*api.BackupStatus, error) {
+func handleS3(ctx context.Context, kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []string, clientTLSSecret, namespace string) (*api.BackupStatus, error) {
+	// TODO: controls NewClientFromSecret with ctx. This depends on upstream kubernetes to support API calls with ctx.
 	cli, err := s3factory.NewClientFromSecret(kubecli, namespace, s.Endpoint, s.AWSSecret)
 	if err != nil {
 		return nil, err
@@ -41,7 +43,8 @@ func handleS3(kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []s
 	}
 
 	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewS3Writer(cli.S3), tlsConfig, endpoints, namespace)
-	rev, etcdVersion, err := bm.SaveSnap(s.Path)
+
+	rev, etcdVersion, err := bm.SaveSnap(ctx, s.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save snapshot (%v)", err)
 	}

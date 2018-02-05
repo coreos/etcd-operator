@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/sirupsen/logrus"
@@ -91,10 +92,11 @@ func getClientWithMaxRev(ctx context.Context, endpoints []string, tc *tls.Config
 	maxRev := int64(0)
 	errors := make([]string, 0)
 	for _, endpoint := range endpoints {
+		// TODO: update clientv3 to 3.2.x and then use ctx as in clientv3.Config.
 		cfg := clientv3.Config{
-			Endpoints: []string{endpoint},
-			Context:   ctx,
-			TLS:       tc,
+			Endpoints:   []string{endpoint},
+			DialTimeout: constants.DefaultDialTimeout,
+			TLS:         tc,
 		}
 		etcdcli, err := clientv3.New(cfg)
 		if err != nil {
