@@ -61,6 +61,8 @@ type BackupSpec struct {
 	// We need this field because CRD doesn't support validation against invalid fields
 	// and we cannot verify invalid backup storage source.
 	StorageType BackupStorageType `json:"storageType"`
+	// BackupPolicy configures the backup process.
+	BackupPolicy *BackupPolicy `json:"backupPolicy,omitempty"`
 	// BackupSource is the backup storage source.
 	BackupSource `json:",inline"`
 	// ClientTLSSecret is the secret containing the etcd TLS client certs and
@@ -76,9 +78,14 @@ type BackupSpec struct {
 type BackupSource struct {
 	// S3 defines the S3 backup source spec.
 	S3 *S3BackupSource `json:"s3,omitempty"`
-
 	// ABS defines the ABS backup source spec.
 	ABS *ABSBackupSource `json:"abs,omitempty"`
+}
+
+// BackupPolicy defines backup policy.
+type BackupPolicy struct {
+	// timeout is the maximal time of retriving plus saving an etcd backup.
+	Timeout int64 `json:"timeout,omitempty"`
 }
 
 // BackupStatus represents the status of the EtcdBackup Custom Resource.
