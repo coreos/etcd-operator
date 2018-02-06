@@ -138,6 +138,11 @@ type PodPolicy struct {
 	// Note. This feature is in alpha stage. It is currently only used as non-stable storage,
 	// not the stable storage. Future work need to make it used as stable storage.
 	PersistentVolumeClaimSpec *v1.PersistentVolumeClaimSpec `json:"persistentVolumeClaimSpec,omitempty"`
+
+	// Annotations specifies the annotations to attach to pods the operator creates for the
+	// etcd cluster.
+	// The "etcd.version" annotation is reserved for the internal use of the etcd operator.
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 func (c *ClusterSpec) Validate() error {

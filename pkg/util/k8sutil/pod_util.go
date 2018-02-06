@@ -116,6 +116,10 @@ func applyPodPolicy(clusterName string, pod *v1.Pod, policy *api.PodPolicy) {
 	for i := range pod.Spec.InitContainers {
 		pod.Spec.InitContainers[i] = containerWithRequirements(pod.Spec.InitContainers[i], policy.Resources)
 	}
+
+	for key, value := range policy.Annotations {
+		pod.ObjectMeta.Annotations[key] = value
+	}
 }
 
 // IsPodReady returns false if the Pod Status is nil
