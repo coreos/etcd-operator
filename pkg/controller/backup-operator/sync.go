@@ -15,9 +15,12 @@
 package controller
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 
 	"github.com/sirupsen/logrus"
 )
@@ -119,15 +122,23 @@ func (b *Backup) handleBackup(spec *api.BackupSpec) (*api.BackupStatus, error) {
 		return nil, err
 	}
 
+	// When BackupPolicy.Timeout <= 0, use default DefaultBackupTimeout.
+	backupTimeout := time.Duration(constants.DefaultBackupTimeout)
+	if spec.BackupPolicy != nil && spec.BackupPolicy.TimeoutInSecond > 0 {
+		backupTimeout = time.Duration(spec.BackupPolicy.TimeoutInSecond) * time.Second
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), backupTimeout)
+	defer cancel()
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
-		bs, err := handleS3(b.kubecli, spec.S3, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace)
+		bs, err := handleS3(ctx, b.kubecli, spec.S3, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeABS:
-		bs, err := handleABS(b.kubecli, spec.ABS, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace)
+		bs, err := handleABS(ctx, b.kubecli, spec.ABS, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace)
 		if err != nil {
 			return nil, err
 		}

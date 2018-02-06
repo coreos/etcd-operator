@@ -84,8 +84,8 @@ type BackupSource struct {
 
 // BackupPolicy defines backup policy.
 type BackupPolicy struct {
-	// timeout is the maximal time of retriving plus saving an etcd backup.
-	Timeout int64 `json:"timeout,omitempty"`
+	// TimeoutInSecond is the maximal allowed time in second of the entire backup process.
+	TimeoutInSecond int64 `json:"timeoutInSecond,omitempty"`
 }
 
 // BackupStatus represents the status of the EtcdBackup Custom Resource.

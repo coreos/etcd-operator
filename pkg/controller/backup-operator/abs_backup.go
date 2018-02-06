@@ -15,6 +15,7 @@
 package controller
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 
@@ -27,7 +28,8 @@ import (
 )
 
 // handleABS saves etcd cluster's backup to specificed ABS path.
-func handleABS(kubecli kubernetes.Interface, s *api.ABSBackupSource, endpoints []string, clientTLSSecret, namespace string) (*api.BackupStatus, error) {
+func handleABS(ctx context.Context, kubecli kubernetes.Interface, s *api.ABSBackupSource, endpoints []string, clientTLSSecret, namespace string) (*api.BackupStatus, error) {
+	// TODO: controls NewClientFromSecret with ctx. This depends on upstream kubernetes to support API calls with ctx.
 	cli, err := absfactory.NewClientFromSecret(kubecli, namespace, s.ABSSecret)
 	if err != nil {
 		return nil, err
@@ -39,7 +41,8 @@ func handleABS(kubecli kubernetes.Interface, s *api.ABSBackupSource, endpoints [
 	}
 
 	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewABSWriter(cli.ABS), tlsConfig, endpoints, namespace)
-	rev, etcdVersion, err := bm.SaveSnap(s.Path)
+
+	rev, etcdVersion, err := bm.SaveSnap(ctx, s.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save snapshot (%v)", err)
 	}
