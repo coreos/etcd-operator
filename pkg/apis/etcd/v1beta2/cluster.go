@@ -145,6 +145,7 @@ type PodPolicy struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
+// TODO: move this to initializer
 func (c *ClusterSpec) Validate() error {
 	if c.TLS != nil {
 		if err := c.TLS.Validate(); err != nil {
@@ -163,7 +164,7 @@ func (c *ClusterSpec) Validate() error {
 }
 
 // SetDefaults cleans up user passed spec, e.g. defaulting, transforming fields.
-// TODO: move this to admission controller
+// TODO: move this to initializer
 func (e *EtcdCluster) SetDefaults() {
 	c := &e.Spec
 	if len(c.Repository) == 0 {

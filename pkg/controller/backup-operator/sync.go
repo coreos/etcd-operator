@@ -149,6 +149,7 @@ func (b *Backup) handleBackup(spec *api.BackupSpec) (*api.BackupStatus, error) {
 	return nil, nil
 }
 
+// TODO: move this to initializer
 func validate(spec *api.BackupSpec) error {
 	if len(spec.EtcdEndpoints) == 0 {
 		return errors.New("spec.etcdEndpoints should not be empty")
