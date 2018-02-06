@@ -16,6 +16,7 @@ package writer
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -43,7 +44,8 @@ const (
 )
 
 // Write writes the backup file to the given abs path, "<abs-container-name>/<key>".
-func (absw *absWriter) Write(path string, r io.Reader) (int64, error) {
+func (absw *absWriter) Write(ctx context.Context, path string, r io.Reader) (int64, error) {
+	// TODO: support context.
 	container, key, err := util.ParseBucketAndKey(path)
 	if err != nil {
 		return 0, err

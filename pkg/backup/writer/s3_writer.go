@@ -15,6 +15,7 @@
 package writer
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -35,13 +36,13 @@ func NewS3Writer(s3 *s3.S3) Writer {
 }
 
 // Write writes the backup file to the given s3 path, "<s3-bucket-name>/<key>".
-func (s3w *s3Writer) Write(path string, r io.Reader) (int64, error) {
+func (s3w *s3Writer) Write(ctx context.Context, path string, r io.Reader) (int64, error) {
 	bk, key, err := util.ParseBucketAndKey(path)
 	if err != nil {
 		return 0, err
 	}
 
-	_, err = s3manager.NewUploaderWithClient(s3w.s3).Upload(
+	_, err = s3manager.NewUploaderWithClient(s3w.s3).UploadWithContext(ctx,
 		&s3manager.UploadInput{
 			Bucket: aws.String(bk),
 			Key:    aws.String(key),

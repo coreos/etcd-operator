@@ -14,10 +14,13 @@
 
 package writer
 
-import "io"
+import (
+	"context"
+	"io"
+)
 
 // Writer defines the required writer operations.
 type Writer interface {
 	// Write writes a backup file to the given path and returns size of written file.
-	Write(path string, r io.Reader) (int64, error)
+	Write(ctx context.Context, path string, r io.Reader) (int64, error)
 }
