@@ -69,7 +69,7 @@ func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string) (int64, st
 	}
 	defer rc.Close()
 
-	_, err = bm.bw.Write(s3Path, rc)
+	_, err = bm.bw.Write(ctx, s3Path, rc)
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to write snapshot (%v)", err)
 	}
