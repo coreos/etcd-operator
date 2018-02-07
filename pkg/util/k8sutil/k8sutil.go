@@ -60,6 +60,8 @@ const (
 	randomSuffixLength = 10
 	// k8s object name has a maximum length
 	maxNameLength = 63 - randomSuffixLength - 1
+
+	defaultKubeAPIRequestTimeout = 30 * time.Second
 )
 
 const TolerateUnreadyEndpointsAnnotation = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
@@ -404,7 +406,13 @@ func InClusterConfig() (*rest.Config, error) {
 	if len(os.Getenv("KUBERNETES_SERVICE_PORT")) == 0 {
 		os.Setenv("KUBERNETES_SERVICE_PORT", "443")
 	}
-	return rest.InClusterConfig()
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	// Set a reasonable default request timeout
+	cfg.Timeout = defaultKubeAPIRequestTimeout
+	return cfg, nil
 }
 
 func IsKubernetesResourceAlreadyExistError(err error) bool {
