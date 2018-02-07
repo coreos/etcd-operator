@@ -122,7 +122,7 @@ func (b *Backup) handleBackup(spec *api.BackupSpec) (*api.BackupStatus, error) {
 		return nil, err
 	}
 
-	// When BackupPolicy.Timeout <= 0, use default DefaultBackupTimeout.
+	// When BackupPolicy.TimeoutInSecond <= 0, use default DefaultBackupTimeout.
 	backupTimeout := time.Duration(constants.DefaultBackupTimeout)
 	if spec.BackupPolicy != nil && spec.BackupPolicy.TimeoutInSecond > 0 {
 		backupTimeout = time.Duration(spec.BackupPolicy.TimeoutInSecond) * time.Second
