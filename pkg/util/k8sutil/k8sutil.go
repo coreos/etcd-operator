@@ -348,6 +348,8 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		},
 		Spec: v1.PodSpec{
 			InitContainers: []v1.Container{{
+				// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
+				// More info: https://github.com/docker-library/busybox/issues/9
 				Image: "busybox:1.28.0-glibc",
 				Name:  "check-dns",
 				// In etcd 3.2, TLS listener will do a reverse-DNS lookup for pod IP -> hostname.
