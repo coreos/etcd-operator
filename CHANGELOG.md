@@ -2,6 +2,20 @@
 
 ### Added
 
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+## [Release 0.8.4]
+
+### Added
+
 - Added ABS support for backup and restore
 - Added tag to initContainer to enable offline deploys
 - Enabled configurable backup timeout in backup operator 
@@ -9,16 +23,11 @@
 ### Changed
 
 - Set 30s default request timeout for kube client
+- Change check-dns init container image to busybox:1.28.0-glibc to fix nslookup failure in some environment.  
 
 ### Removed
 
 - Removed self-hosted code
-
-### Fixed
-
-### Deprecated
-
-### Security
 
 ## [Release 0.8.3]
 
