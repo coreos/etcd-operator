@@ -12,6 +12,10 @@
 
 ### Security
 
+## [Release 0.9.0]
+
+Same as v0.8.4. The version is bumping to 0.9.0 due to adding a new ABS backup API into etcd-backup-operator.
+
 ## [Release 0.8.4]
 
 ### Added
