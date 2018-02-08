@@ -2,9 +2,17 @@
 
 ### Added
 
+- Added ABS support for backup and restore
+- Added tag to initContainer to enable offline deploys
+- Enabled configurable backup timeout in backup operator 
+
 ### Changed
 
+- Set 30s default request timeout for kube client
+
 ### Removed
+
+- Removed self-hosted code
 
 ### Fixed
 
