@@ -1,3 +1,8 @@
+<br>
+<div class=“alert alert-info” role=“alert”>
+<i class=“fa fa-exclamation-triangle”></i><b> Note:</b> This documentation is for a beta feature.
+</div>
+
 # Status Events and Conditions
 
 To make it easier for users to understand and debug the etcd-operator, the actions of the operator and the state of the cluster are communicated to the user in the standard Kubernetes convention.
