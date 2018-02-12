@@ -62,12 +62,12 @@ func New(cfg Config) *Controller {
 	}
 }
 
+// handleClusterEvent returns ignored true if cluster isn't managed by this instance.
 func (c *Controller) handleClusterEvent(event *Event) (ignored bool, err error) {
 	clus := event.Object
 
 	if !c.managed(clus) {
-		ignored = true
-		return
+		return true, nil
 	}
 	ignored = false
 
