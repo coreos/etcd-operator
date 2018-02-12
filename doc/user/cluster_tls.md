@@ -1,3 +1,8 @@
+<br>
+<div class=“alert alert-info” role=“alert”>
+<i class=“fa fa-exclamation-triangle”></i><b> Note:</b> This documentation is for a beta feature.
+</div>
+
 # Cluster TLS policy
 
 Cluster TLS policy is configured on a per-cluster basis through the CR spec provided to etcd operator.
