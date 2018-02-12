@@ -8,7 +8,7 @@ e2e (upgrade):
 
 ### Project status: beta
 
-Major planned features have been completed and while no breaking API changes are currently planned, we reserve the right to address bugs and API changes in a backwards incompatible way before the project is declared stable. See [upgrade guide](./doc/user/upgrade/upgrade_guide.md) for safe upgrade process.
+Major planned features have been completed, and while no breaking API changes are currently planned, we reserve the right to address bugs and API changes in a backwards incompatible way before the project is declared stable. See [upgrade guide](./doc/user/upgrade/upgrade_guide.md) for a safe upgrade process.
 
 Currently user facing etcd cluster objects are created as [Kubernetes Custom Resources](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/), however, taking advantage of [User Aggregated API Servers](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/api-machinery/aggregated-api-servers.md) to improve reliability, validation and versioning is planned. The use of Aggregated API should be minimally disruptive to existing users but may change what Kubernetes objects are created or how users deploy the etcd operator.
 
@@ -18,7 +18,7 @@ We expect to consider the etcd operator stable soon; backwards incompatible chan
 
 The etcd operator manages etcd clusters deployed to [Kubernetes][k8s-home] and automates tasks related to operating an etcd cluster.
 
-- [Create and destroy](#create-and-destroy-an-etcd-cluster)
+- [Create and Destroy](#create-and-destroy-an-etcd-cluster)
 - [Resize](#resize-an-etcd-cluster)
 - [Failover](#failover)
 - [Rolling upgrade](#upgrade-an-etcd-cluster)
@@ -30,7 +30,7 @@ Read [Best Practices](./doc/best_practices.md) for more information on how to be
 
 Read [RBAC docs](./doc/user/rbac.md) for how to setup RBAC rules for etcd operator if RBAC is in place.
 
-Read [Developer Guide](./doc/dev/developer_guide.md) for setting up development environment if you want to contribute.
+Read [Developer Guide](./doc/dev/developer_guide.md) for setting up a development environment if you want to contribute.
 
 See the [Resources and Labels](./doc/user/resource_labels.md) doc for an overview of the resources created by the etcd-operator.
 
@@ -65,9 +65,9 @@ example-etcd-cluster-m6g62x6mwc   1/1       Running   0          1m
 example-etcd-cluster-rqk62l46kw   1/1       Running   0          1m
 ```
 
-See [client service](doc/user/client_service.md) for how to access etcd clusters created by operator.
+See [client service](doc/user/client_service.md) for how to access etcd clusters created by the operator.
 
-If you are working with [minikube locally](https://github.com/kubernetes/minikube#minikube) create a nodePort service and test out that etcd is responding:
+If you are working with [minikube locally](https://github.com/kubernetes/minikube#minikube), create a nodePort service and test that etcd is responding:
 
 ```bash
 $ kubectl create -f example/example-etcd-cluster-nodeport-service.json
@@ -76,7 +76,7 @@ $ export ETCDCTL_ENDPOINTS=$(minikube service example-etcd-cluster-client-servic
 $ etcdctl put foo bar
 ```
 
-Destroy etcd cluster:
+Destroy the etcd cluster:
 
 ```bash
 $ kubectl delete -f example/example-etcd-cluster.yaml
@@ -119,7 +119,7 @@ example-etcd-cluster-m6g62x6mwc   1/1       Running   0          7m
 example-etcd-cluster-rqk62l46kw   1/1       Running   0          7m
 ```
 
-Similarly we can decrease the size of cluster from 5 back to 3 by changing the size field again and reapplying the change.
+Similarly we can decrease the size of the cluster from 5 back to 3 by changing the size field again and reapplying the change.
 
 ```
 $ cat example/example-etcd-cluster.yaml
@@ -148,7 +148,7 @@ example-etcd-cluster-rqk62l46kw   1/1       Running   0          9mp
 ### Failover
 
 If the minority of etcd members crash, the etcd operator will automatically recover the failure.
-Let's walk through in the following steps.
+Let's walk through this in the following steps.
 
 Create an etcd cluster:
 
@@ -179,13 +179,15 @@ $ kubectl delete -f example/example-etcd-cluster.yaml
 
 ### etcd operator recovery
 
-deLet's walk through in the following steps.
+Let's walk through operator recovery in the following steps.
+
+Create an etcd cluster:
 
 ```
 $ kubectl create -f example/example-etcd-cluster.yaml
 ```
 
-Wait until all three members are up. Then
+Wait until all three members are up. Then stop the etcd operator and delete one of the etcd clusters:
 
 ```bash
 $ kubectl delete -f example/deployment.yaml
@@ -195,7 +197,7 @@ $ kubectl delete pod example-etcd-cluster-8gttjl679c --now
 pod "example-etcd-cluster-8gttjl679c" deleted
 ```
 
-Then restart the etcd operator. It should recover itself and the etcd clusters it manages.
+Next restart the etcd operator. It should recover itself and the etcd clusters it manages.
 
 ```bash
 $ kubectl create -f example/deployment.yaml
@@ -210,7 +212,7 @@ example-etcd-cluster-xnfvm7lg66   1/1       Running   0          11s
 
 ### Upgrade an etcd cluster
 
-Have the following yaml file ready:
+Create and have the following yaml file ready:
 
 ```
 $ cat upgrade-example.yaml
