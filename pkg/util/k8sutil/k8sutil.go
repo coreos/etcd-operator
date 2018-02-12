@@ -62,6 +62,11 @@ const (
 	maxNameLength = 63 - randomSuffixLength - 1
 
 	defaultKubeAPIRequestTimeout = 30 * time.Second
+
+	// AnnotationScope annotation name for defining instance scope. Used for specifing cluster wide clusters.
+	AnnotationScope = "etcd.database.coreos.com/scope"
+	//AnnotationClusterWide annotation value for cluster wide clusters.
+	AnnotationClusterWide = "clusterwide"
 )
 
 const TolerateUnreadyEndpointsAnnotation = "service.alpha.kubernetes.io/tolerate-unready-endpoints"

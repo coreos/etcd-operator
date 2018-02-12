@@ -20,7 +20,7 @@ import (
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -142,9 +142,9 @@ func (c *Controller) syncEtcdClus(clus *api.EtcdCluster) {
 }
 
 func (c *Controller) managed(clus *api.EtcdCluster) bool {
-	if v, ok := clus.Annotations[constants.AnnotationScope]; ok {
+	if v, ok := clus.Annotations[k8sutil.AnnotationScope]; ok {
 		if c.Config.ClusterWide {
-			return v == constants.AnnotationClusterWide
+			return v == k8sutil.AnnotationClusterWide
 		}
 	} else {
 		if !c.Config.ClusterWide {
