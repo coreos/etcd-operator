@@ -1,3 +1,8 @@
+<br>
+<div class=“alert alert-info” role=“alert”>
+<i class=“fa fa-exclamation-triangle”></i><b> Note:</b> This documentation is for a beta feature.
+</div>
+
 # etcd client service
 
 For every etcd cluster created, the etcd operator will create an etcd client service in the same namespace with the name `<cluster-name>-client`.
