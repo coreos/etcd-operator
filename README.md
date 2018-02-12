@@ -187,7 +187,7 @@ Create an etcd cluster:
 $ kubectl create -f example/example-etcd-cluster.yaml
 ```
 
-Wait until all three members are up. Then stop the etcd operator and delete one of the etcd clusters:
+Wait until all three members are up. Then stop the etcd operator and delete one of the etcd pods:
 
 ```bash
 $ kubectl delete -f example/deployment.yaml
