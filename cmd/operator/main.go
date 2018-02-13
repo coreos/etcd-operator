@@ -68,7 +68,7 @@ func init() {
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.BoolVar(&createCRD, "create-crd", true, "The operator will not create the EtcdCluster CRD when this flag is set to false.")
 	flag.DurationVar(&gcInterval, "gc-interval", 10*time.Minute, "GC interval")
-	flag.BoolVar(&clusterWide, "cluster-wide", false, "The operator will watch clusters in all namespaces")
+	flag.BoolVar(&clusterWide, "cluster-wide", false, "Enable operator to watch clusters in all namespaces")
 	flag.Parse()
 }
 
