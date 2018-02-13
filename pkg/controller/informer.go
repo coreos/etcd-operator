@@ -20,8 +20,10 @@ import (
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/probe"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	kwatch "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
@@ -52,10 +54,17 @@ func (c *Controller) Start() error {
 }
 
 func (c *Controller) run() {
+	var ns string
+	if c.Config.ClusterWide {
+		ns = metav1.NamespaceAll
+	} else {
+		ns = c.Config.Namespace
+	}
+
 	source := cache.NewListWatchFromClient(
 		c.Config.EtcdCRCli.EtcdV1beta2().RESTClient(),
 		api.EtcdClusterResourcePlural,
-		c.Config.Namespace,
+		ns,
 		fields.Everything())
 
 	_, informer := cache.NewIndexerInformer(source, &api.EtcdCluster{}, 0, cache.ResourceEventHandlerFuncs{
@@ -105,7 +114,7 @@ func (c *Controller) onDeleteEtcdClus(obj interface{}) {
 	}
 
 	pt.start()
-	err := c.handleClusterEvent(ev)
+	_, err := c.handleClusterEvent(ev)
 	if err != nil {
 		c.logger.Warningf("fail to handle event: %v", err)
 	}
@@ -125,9 +134,22 @@ func (c *Controller) syncEtcdClus(clus *api.EtcdCluster) {
 	}
 
 	pt.start()
-	err := c.handleClusterEvent(ev)
+	_, err := c.handleClusterEvent(ev)
 	if err != nil {
 		c.logger.Warningf("fail to handle event: %v", err)
 	}
 	pt.stop()
+}
+
+func (c *Controller) managed(clus *api.EtcdCluster) bool {
+	if v, ok := clus.Annotations[k8sutil.AnnotationScope]; ok {
+		if c.Config.ClusterWide {
+			return v == k8sutil.AnnotationClusterWide
+		}
+	} else {
+		if !c.Config.ClusterWide {
+			return true
+		}
+	}
+	return false
 }

@@ -18,11 +18,10 @@ import (
 	"strings"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/watch"
-
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/cluster"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 )
 
 func TestHandleClusterEventUpdateFailedCluster(t *testing.T) {
@@ -40,7 +39,7 @@ func TestHandleClusterEventUpdateFailedCluster(t *testing.T) {
 		Type:   watch.Modified,
 		Object: clus,
 	}
-	err := c.handleClusterEvent(e)
+	_, err := c.handleClusterEvent(e)
 	prefix := "ignore failed cluster"
 	if !strings.HasPrefix(err.Error(), prefix) {
 		t.Errorf("expect err='%s...', get=%v", prefix, err)
@@ -65,11 +64,68 @@ func TestHandleClusterEventDeleteFailedCluster(t *testing.T) {
 
 	c.clusters[name] = &cluster.Cluster{}
 
-	if err := c.handleClusterEvent(e); err != nil {
+	if _, err := c.handleClusterEvent(e); err != nil {
 		t.Fatal(err)
 	}
 
 	if c.clusters[name] != nil {
 		t.Errorf("failed cluster not cleaned up after delete event, cluster struct: %v", c.clusters[name])
+	}
+}
+
+func TestHandleClusterEventClusterwide(t *testing.T) {
+	c := New(Config{ClusterWide: true})
+
+	clus := &api.EtcdCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+			Annotations: map[string]string{
+				"etcd.database.coreos.com/scope": "clusterwide",
+			},
+		},
+	}
+	e := &Event{
+		Type:   watch.Modified,
+		Object: clus,
+	}
+	if ignored, _ := c.handleClusterEvent(e); ignored {
+		t.Errorf("cluster shouldn't be ignored")
+	}
+}
+
+func TestHandleClusterEventClusterwideIgnored(t *testing.T) {
+	c := New(Config{ClusterWide: true})
+
+	clus := &api.EtcdCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+		},
+	}
+	e := &Event{
+		Type:   watch.Modified,
+		Object: clus,
+	}
+	if ignored, _ := c.handleClusterEvent(e); !ignored {
+		t.Errorf("cluster should be ignored")
+	}
+}
+
+func TestHandleClusterEventNamespacedIgnored(t *testing.T) {
+	c := New(Config{})
+
+	clus := &api.EtcdCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+			Annotations: map[string]string{
+				"etcd.database.coreos.com/scope": "clusterwide",
+			},
+		},
+	}
+	e := &Event{
+		Type:   watch.Modified,
+		Object: clus,
+	}
+	if ignored, _ := c.handleClusterEvent(e); !ignored {
+		t.Errorf("cluster should be ignored")
 	}
 }

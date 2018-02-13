@@ -14,6 +14,8 @@ spec:
         image: quay.io/coreos/etcd-operator:v0.9.0
         command:
         - etcd-operator
+        # Uncomment to act for resources in all namespaces. More information in doc/clusterwide.md
+        #- -cluster-wide
         env:
         - name: MY_POD_NAMESPACE
           valueFrom:
