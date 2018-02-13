@@ -9,4 +9,4 @@ etcd operator have to run with `-cluster-wide` arg option.
 
 More information in [install guide](doc/user/install_guide.md).
 
-See the example in [example/example-etcd-cluster.yaml](example/example-etcd-cluster.yaml)
+See the example in [example/example-etcd-cluster.yaml](../../example/example-etcd-cluster.yaml)
