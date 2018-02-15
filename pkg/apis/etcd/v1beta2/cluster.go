@@ -25,6 +25,8 @@ import (
 const (
 	defaultRepository  = "quay.io/coreos/etcd"
 	DefaultEtcdVersion = "3.2.13"
+	defaultBusyboxRepository = "busybox"
+	defaultBusyboxVersion = "1.28.0-glibc"
 )
 
 var (
@@ -99,6 +101,15 @@ type ClusterSpec struct {
 
 	// etcd cluster TLS configuration
 	TLS *TLSPolicy `json:"TLS,omitempty"`
+
+	// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
+	// More info: https://github.com/docker-library/busybox/issues/27
+	// busybox init container repository. default is busybox
+	BusyboxRepository string `json:"busyboxRepository,omitempty"`
+
+	// busybox init container version. defaults to 1.28.0-glibc
+	BusyboxVersion string `json:"busyboxVersion,omitempty"`
+
 }
 
 // PodPolicy defines the policy to create pod for the etcd container.
@@ -176,6 +187,15 @@ func (e *EtcdCluster) SetDefaults() {
 	}
 
 	c.Version = strings.TrimLeft(c.Version, "v")
+
+	// set defaults for busybox init container
+	if len(c.BusyboxRepository) == 0 {
+		c.BusyboxRepository = defaultBusyboxRepository
+	}
+
+	if len(c.BusyboxVersion) == 0 {
+		c.BusyboxVersion = defaultBusyboxVersion
+	}
 
 	// convert PodPolicy.AntiAffinity to Pod.Affinity.PodAntiAffinity
 	// TODO: Remove this once PodPolicy.AntiAffinity is removed

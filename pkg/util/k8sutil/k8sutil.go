@@ -134,6 +134,11 @@ func ImageName(repo, version string) string {
 	return fmt.Sprintf("%s:v%v", repo, version)
 }
 
+func ImageNameBusybox(repo, version string) string {
+	return fmt.Sprintf("%s:%v", repo, version)
+}
+
+
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 	p.Spec.NodeSelector = ns
 	return p
@@ -355,7 +360,8 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			InitContainers: []v1.Container{{
 				// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
 				// More info: https://github.com/docker-library/busybox/issues/27
-				Image: "busybox:1.28.0-glibc",
+				//Image default: "busybox:1.28.0-glibc",
+				Image: ImageNameBusybox(cs.BusyboxRepository,cs.BusyboxVersion),
 				Name:  "check-dns",
 				// In etcd 3.2, TLS listener will do a reverse-DNS lookup for pod IP -> hostname.
 				// If DNS entry is not warmed up, it will return empty result and peer connection will be rejected.
