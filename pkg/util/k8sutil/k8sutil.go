@@ -67,6 +67,8 @@ const (
 	AnnotationScope = "etcd.database.coreos.com/scope"
 	//AnnotationClusterWide annotation value for cluster wide clusters.
 	AnnotationClusterWide = "clusterwide"
+	defaultBusyboxRepository = "busybox"
+	defaultBusyboxVersion = "1.28.0-glibc"
 )
 
 const TolerateUnreadyEndpointsAnnotation = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
@@ -134,7 +136,18 @@ func ImageName(repo, version string) string {
 	return fmt.Sprintf("%s:v%v", repo, version)
 }
 
-func ImageNameBusybox(repo, version string) string {
+func ImageNameBusybox(policy *api.PodPolicy) string {
+	// set defaults for busybox init container
+	repo:= defaultBusyboxRepository
+	version:= defaultBusyboxVersion
+
+	if policy != nil && len(policy.BusyboxRepository) > 0 {
+		repo = policy.BusyboxRepository
+	}
+
+	if policy != nil && len(policy.BusyboxVersion) > 0 {
+		version = policy.BusyboxVersion
+	}
 	return fmt.Sprintf("%s:%v", repo, version)
 }
 
@@ -361,7 +374,7 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 				// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
 				// More info: https://github.com/docker-library/busybox/issues/27
 				//Image default: "busybox:1.28.0-glibc",
-				Image: ImageNameBusybox(cs.BusyboxRepository,cs.BusyboxVersion),
+				Image: ImageNameBusybox(cs.Pod),
 				Name:  "check-dns",
 				// In etcd 3.2, TLS listener will do a reverse-DNS lookup for pod IP -> hostname.
 				// If DNS entry is not warmed up, it will return empty result and peer connection will be rejected.
