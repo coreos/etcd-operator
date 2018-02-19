@@ -66,9 +66,9 @@ const (
 	// AnnotationScope annotation name for defining instance scope. Used for specifing cluster wide clusters.
 	AnnotationScope = "etcd.database.coreos.com/scope"
 	//AnnotationClusterWide annotation value for cluster wide clusters.
-	AnnotationClusterWide = "clusterwide"
+	AnnotationClusterWide    = "clusterwide"
 	defaultBusyboxRepository = "busybox"
-	defaultBusyboxVersion = "1.28.0-glibc"
+	defaultBusyboxVersion    = "1.28.0-glibc"
 )
 
 const TolerateUnreadyEndpointsAnnotation = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
@@ -138,8 +138,8 @@ func ImageName(repo, version string) string {
 
 func ImageNameBusybox(policy *api.PodPolicy) string {
 	// set defaults for busybox init container
-	repo:= defaultBusyboxRepository
-	version:= defaultBusyboxVersion
+	repo := defaultBusyboxRepository
+	version := defaultBusyboxVersion
 
 	if policy != nil && len(policy.BusyboxRepository) > 0 {
 		repo = policy.BusyboxRepository
@@ -150,7 +150,6 @@ func ImageNameBusybox(policy *api.PodPolicy) string {
 	}
 	return fmt.Sprintf("%s:%v", repo, version)
 }
-
 
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 	p.Spec.NodeSelector = ns
