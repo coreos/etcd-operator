@@ -144,12 +144,12 @@ type PodPolicy struct {
 	// The "etcd.version" annotation is reserved for the internal use of the etcd operator.
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-	// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
-	// More info: https://github.com/docker-library/busybox/issues/27
 	// busybox init container repository. default is busybox
 	BusyboxRepository string `json:"busyboxRepository,omitempty"`
 
 	// busybox init container version. defaults to 1.28.0-glibc
+	// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
+	// More info: https://github.com/docker-library/busybox/issues/27
 	BusyboxVersion string `json:"busyboxVersion,omitempty"`
 }
 

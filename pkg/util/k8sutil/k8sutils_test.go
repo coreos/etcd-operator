@@ -23,7 +23,7 @@ import (
 
 func TestDefaultBusyboxImageName(t *testing.T) {
 	policy := &api.PodPolicy{}
-	image := ImageNameBusybox(policy)
+	image := imageNameBusybox(policy)
 	expected := fmt.Sprintf("%s:%v", defaultBusyboxRepository, defaultBusyboxVersion)
 	if image != expected {
 		t.Errorf("expect image=%s, get=%s", expected, image)
@@ -31,7 +31,7 @@ func TestDefaultBusyboxImageName(t *testing.T) {
 }
 
 func TestDefaultNilBusyboxImageName(t *testing.T) {
-	image := ImageNameBusybox(nil)
+	image := imageNameBusybox(nil)
 	expected := fmt.Sprintf("%s:%v", defaultBusyboxRepository, defaultBusyboxVersion)
 	if image != expected {
 		t.Errorf("expect image=%s, get=%s", expected, image)
@@ -43,7 +43,7 @@ func TestSetBusyboxImageName(t *testing.T) {
 		BusyboxVersion:    "1.3.2",
 		BusyboxRepository: "myRepo/busybox",
 	}
-	image := ImageNameBusybox(policy)
+	image := imageNameBusybox(policy)
 	expected := fmt.Sprintf("%s:%v", "myRepo/busybox", "1.3.2")
 	if image != expected {
 		t.Errorf("expect image=%s, get=%s", expected, image)
