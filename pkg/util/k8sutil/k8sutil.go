@@ -96,10 +96,14 @@ func PVCNameFromMember(memberName string) string {
 }
 
 func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, m *etcdutil.Member) []v1.Container {
+	curlImage := "tutum/curl"
+	if s := os.Getenv("CURL_IMAGE"); len(s) > 0 {
+		curlImage = s
+	}
 	return []v1.Container{
 		{
 			Name:  "fetch-backup",
-			Image: "tutum/curl",
+			Image: curlImage,
 			Command: []string{
 				"/bin/bash", "-ec",
 				fmt.Sprintf(`
