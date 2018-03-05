@@ -63,8 +63,7 @@ const (
 
 	defaultKubeAPIRequestTimeout = 30 * time.Second
 
-	defaultBusyboxRepository = "busybox"
-	defaultBusyboxVersion    = "1.28.0-glibc"
+	defaultBusyboxImage = "busybox:1.28.0-glibc"
 
 	// AnnotationScope annotation name for defining instance scope. Used for specifing cluster wide clusters.
 	AnnotationScope = "etcd.database.coreos.com/scope"
@@ -139,17 +138,12 @@ func ImageName(repo, version string) string {
 
 func imageNameBusybox(policy *api.PodPolicy) string {
 	// set defaults for busybox init container
-	repo := defaultBusyboxRepository
-	version := defaultBusyboxVersion
+	image := defaultBusyboxImage
 
-	if policy != nil && len(policy.BusyboxRepository) > 0 {
-		repo = policy.BusyboxRepository
+	if policy != nil && len(policy.BusyboxImage) > 0 {
+		image = policy.BusyboxImage
 	}
-
-	if policy != nil && len(policy.BusyboxVersion) > 0 {
-		version = policy.BusyboxVersion
-	}
-	return fmt.Sprintf("%s:%v", repo, version)
+	return image
 }
 
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {

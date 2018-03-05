@@ -15,7 +15,6 @@
 package k8sutil
 
 import (
-	"fmt"
 	"testing"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
@@ -24,7 +23,7 @@ import (
 func TestDefaultBusyboxImageName(t *testing.T) {
 	policy := &api.PodPolicy{}
 	image := imageNameBusybox(policy)
-	expected := fmt.Sprintf("%s:%v", defaultBusyboxRepository, defaultBusyboxVersion)
+	expected := defaultBusyboxImage
 	if image != expected {
 		t.Errorf("expect image=%s, get=%s", expected, image)
 	}
@@ -32,7 +31,7 @@ func TestDefaultBusyboxImageName(t *testing.T) {
 
 func TestDefaultNilBusyboxImageName(t *testing.T) {
 	image := imageNameBusybox(nil)
-	expected := fmt.Sprintf("%s:%v", defaultBusyboxRepository, defaultBusyboxVersion)
+	expected := defaultBusyboxImage
 	if image != expected {
 		t.Errorf("expect image=%s, get=%s", expected, image)
 	}
@@ -40,11 +39,10 @@ func TestDefaultNilBusyboxImageName(t *testing.T) {
 
 func TestSetBusyboxImageName(t *testing.T) {
 	policy := &api.PodPolicy{
-		BusyboxVersion:    "1.3.2",
-		BusyboxRepository: "myRepo/busybox",
+		BusyboxImage: "myRepo/busybox:1.3.2",
 	}
 	image := imageNameBusybox(policy)
-	expected := fmt.Sprintf("%s:%v", "myRepo/busybox", "1.3.2")
+	expected := "myRepo/busybox:1.3.2"
 	if image != expected {
 		t.Errorf("expect image=%s, get=%s", expected, image)
 	}
