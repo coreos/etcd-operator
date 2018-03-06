@@ -2,11 +2,17 @@
 
 ### Added
 
+- Added optional flag `--cluster-wide` to etcd-operator to allow it to manage etcd clusters across all namespaces. [#1777](https://github.com/coreos/etcd-operator/pull/1777)
+- Added support for annotation `etcd.database.coreos.com/scope: clusterwide` in `EtcdCluster` to allow it to be managed by a cluster wide operator. [#1777](https://github.com/coreos/etcd-operator/pull/1777)
+- Added the field `spec.pod.busyboxImage` to the `PodPolicy` of the `EtcdCluster` to allow overriding the default busybox image used for the etcd pod's init container. [#1928](https://github.com/coreos/etcd-operator/pull/1928)
+
 ### Changed
 
 ### Removed
 
 ### Fixed
+
+- Fixed a bug where the informer watch stream would timeout after 30s of not receiving an event. [#1936](https://github.com/coreos/etcd-operator/pull/1936)
 
 ### Deprecated
 
