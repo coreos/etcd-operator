@@ -63,6 +63,8 @@ const (
 
 	defaultKubeAPIRequestTimeout = 30 * time.Second
 
+	defaultBusyboxImage = "busybox:1.28.0-glibc"
+
 	// AnnotationScope annotation name for defining instance scope. Used for specifing cluster wide clusters.
 	AnnotationScope = "etcd.database.coreos.com/scope"
 	//AnnotationClusterWide annotation value for cluster wide clusters.
@@ -132,6 +134,14 @@ fi
 
 func ImageName(repo, version string) string {
 	return fmt.Sprintf("%s:v%v", repo, version)
+}
+
+// imageNameBusybox returns the default image for busybox init container, or the image specified in the PodPolicy
+func imageNameBusybox(policy *api.PodPolicy) string {
+	if policy != nil && len(policy.BusyboxImage) > 0 {
+		return policy.BusyboxImage
+	}
+	return defaultBusyboxImage
 }
 
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
@@ -355,7 +365,8 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			InitContainers: []v1.Container{{
 				// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
 				// More info: https://github.com/docker-library/busybox/issues/27
-				Image: "busybox:1.28.0-glibc",
+				//Image default: "busybox:1.28.0-glibc",
+				Image: imageNameBusybox(cs.Pod),
 				Name:  "check-dns",
 				// In etcd 3.2, TLS listener will do a reverse-DNS lookup for pod IP -> hostname.
 				// If DNS entry is not warmed up, it will return empty result and peer connection will be rejected.

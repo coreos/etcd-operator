@@ -143,6 +143,11 @@ type PodPolicy struct {
 	// etcd cluster.
 	// The "etcd.version" annotation is reserved for the internal use of the etcd operator.
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// busybox init container image. default is busybox:1.28.0-glibc
+	// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
+	// More info: https://github.com/docker-library/busybox/issues/27
+	BusyboxImage string `json:"busyboxImage,omitempty"`
 }
 
 // TODO: move this to initializer
