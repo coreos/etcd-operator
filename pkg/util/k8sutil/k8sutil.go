@@ -136,14 +136,12 @@ func ImageName(repo, version string) string {
 	return fmt.Sprintf("%s:v%v", repo, version)
 }
 
+// imageNameBusybox returns the default image for busybox init container, or the image specified in the PodPolicy
 func imageNameBusybox(policy *api.PodPolicy) string {
-	// set defaults for busybox init container
-	image := defaultBusyboxImage
-
 	if policy != nil && len(policy.BusyboxImage) > 0 {
-		image = policy.BusyboxImage
+		return policy.BusyboxImage
 	}
-	return image
+	return defaultBusyboxImage
 }
 
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
