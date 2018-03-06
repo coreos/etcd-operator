@@ -5,7 +5,7 @@ set -o nounset
 set -o pipefail
 
 DOCKER_REPO_ROOT="/go/src/github.com/coreos/etcd-operator"
-IMAGE=${IMAGE:-"gcr.io/coreos-k8s-scale-testing/codegen"}
+IMAGE=${IMAGE:-"gcr.io/coreos-k8s-scale-testing/codegen:1.10"}
 
 docker run --rm \
   -v "$PWD":"$DOCKER_REPO_ROOT" \
