@@ -61,8 +61,6 @@ const (
 	// k8s object name has a maximum length
 	maxNameLength = 63 - randomSuffixLength - 1
 
-	defaultKubeAPIRequestTimeout = 30 * time.Second
-
 	defaultBusyboxImage = "busybox:1.28.0-glibc"
 
 	// AnnotationScope annotation name for defining instance scope. Used for specifing cluster wide clusters.
@@ -428,8 +426,6 @@ func InClusterConfig() (*rest.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Set a reasonable default request timeout
-	cfg.Timeout = defaultKubeAPIRequestTimeout
 	return cfg, nil
 }
 
