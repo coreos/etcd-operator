@@ -6,11 +6,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-export GOROOT="/usr/local/go"
-export PATH=$GOROOT/bin:$PATH
 export CODECOV_TOKEN=$(cat $CODECOV_TOKEN_FILE)
-
-go version
 
 function finish {
   sudo chown -R "$(whoami)" ./

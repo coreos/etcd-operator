@@ -14,7 +14,7 @@ for pkg in $TEST_PKGS
 do
   build_flags=("-i") # cache package compilation data for faster repeated builds
   for i in {1..2}; do
-    go test ${build_flags[@]} -race -covermode=atomic -coverprofile=profile.out $pkg
+    go test -failfast ${build_flags[@]} -race -covermode=atomic -coverprofile=profile.out $pkg
     # Expand empty array would cause "unbound variable".
     # Expand one empty string array is equal to nothing.
     build_flags=("")

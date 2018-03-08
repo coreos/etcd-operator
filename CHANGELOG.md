@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Update Go version to 1.10
+- Build `gcr.io/coreos-k8s-scale-testing/etcd-operator-builder:0.4.1-2` container
+  with Go 1.10 and dep 0.4.1
+
 ### Removed
 
 ### Fixed
