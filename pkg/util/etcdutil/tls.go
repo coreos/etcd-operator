@@ -17,7 +17,6 @@ package etcdutil
 import (
 	"crypto/tls"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 
 	"github.com/coreos/etcd/pkg/transport"
@@ -30,11 +29,11 @@ const (
 )
 
 func NewTLSConfig(certData, keyData, caData []byte) (*tls.Config, error) {
+	// TODO: Need cleanup these temp dirs
 	dir, err := ioutil.TempDir("", "etcd-operator-cluster-tls")
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(dir)
 
 	certFile, err := writeFile(dir, CliCertFile, certData)
 	if err != nil {
