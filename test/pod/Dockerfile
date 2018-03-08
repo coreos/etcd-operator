@@ -1,6 +1,6 @@
-# golang:1.9-alpine can't be used since it does not support the race detector flag which assumes a glibc based system, whereas alpine linux uses musl libc
+# golang:X-alpine can't be used since it does not support the race detector flag which assumes a glibc based system, whereas alpine linux uses musl libc
 # https://github.com/golang/go/issues/14481
-FROM golang:1.9
+FROM golang:1.10
 
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.8.2/bin/linux/amd64/kubectl \
     && chmod +x ./kubectl \

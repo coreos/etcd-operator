@@ -17,15 +17,6 @@ for file in $allfiles; do
   fi
 done
 
-echo "Checking govet..."
-for file in $allfiles; do
-  checkRes=$(go vet $file)
-  if [ -n "${checkRes}" ]; then
-    echo -e "go vet checking failed:\n${checkRes}"
-    exit 255
-  fi
-done
-
 if which gosimple >/dev/null; then
   echo "Checking gosimple..."
   # Generated deepcopy code failed checking... Ignore it at the moment

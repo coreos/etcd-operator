@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# Note: add `-i` to enable build with caching. e.g ./hack/restore-operator/build -i
-
 set -o errexit
 set -o nounset
 set -o pipefail

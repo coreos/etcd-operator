@@ -22,7 +22,7 @@ function fmt_pass {
 	docker run --rm \
 		-v "${PWD}":"${DOCKER_REPO_ROOT}" \
 		-w "${DOCKER_REPO_ROOT}" \
-		gcr.io/coreos-k8s-scale-testing/etcd-operator-builder:0.4.1 \
+		gcr.io/coreos-k8s-scale-testing/etcd-operator-builder:0.4.1-2 \
 		"./hack/fmt_pass"
 }
 
@@ -35,7 +35,7 @@ function e2e_pass {
 
 	build_flags=("-i") # cache package compilation data for faster repeated builds
 	for i in {1..2}; do
-		go test -parallel=4 "./test/e2e/" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
+		go test -failfast -parallel=4 "./test/e2e/" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
 			--kubeconfig=$KUBECONFIG --operator-image=$OPERATOR_IMAGE --namespace=${TEST_NAMESPACE}
 		build_flags=("")
 	done
@@ -45,7 +45,7 @@ function e2eslow_pass {
 	E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-.*}
 	build_flags=("-i") # cache package compilation data for faster repeated builds
 	for i in {1..2}; do
-		go test "./test/e2e/e2eslow" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
+		go test -failfast "./test/e2e/e2eslow" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
 			--kubeconfig=$KUBECONFIG --operator-image=$OPERATOR_IMAGE --namespace=${TEST_NAMESPACE}
 		build_flags=("")
 	done
@@ -54,7 +54,7 @@ function e2eslow_pass {
 function upgrade_pass {
 	# Run all the tests by default
 	UPGRADE_TEST_SELECTOR=${UPGRADE_TEST_SELECTOR:-.*}
-	go test ./test/e2e/upgradetest/ -run "$UPGRADE_TEST_SELECTOR" --race -timeout 30m \
+	go test -failfast ./test/e2e/upgradetest/ -run "$UPGRADE_TEST_SELECTOR" --race -timeout 30m \
 		--kubeconfig=$KUBECONFIG --kube-ns=$TEST_NAMESPACE \
 		--old-image=$UPGRADE_FROM \
 		--new-image=$UPGRADE_TO
@@ -66,7 +66,7 @@ function unit_pass {
 		-v "${PWD}":"${DOCKER_REPO_ROOT}" \
 		-w "${DOCKER_REPO_ROOT}" \
 		-e "CODECOV_TOKEN" \
-		golang:1.9 \
+		golang:1.10 \
 		"./hack/unit_test"
 }
 

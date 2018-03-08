@@ -14,7 +14,7 @@ Install dependency if you haven't:
 ## How to build
 
 Requirement:
-- Go 1.9+
+- Go 1.10+
 
 Build in project root dir:
 

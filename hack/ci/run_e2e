@@ -4,10 +4,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-export GOROOT="/usr/local/go"
-export PATH=$GOROOT/bin:$PATH
-
-go version
 kubectl version
 
 : ${TEST_NAMESPACE:?"Need to set TEST_NAMESPACE"}
