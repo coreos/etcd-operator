@@ -16,6 +16,8 @@ spec:
         - etcd-operator
         # Uncomment to act for resources in all namespaces. More information in doc/clusterwide.md
         #- -cluster-wide
+        # Uncomment to change the cluster reconcile interval. More information in doc/TODO
+        #- -re-interval=60s
         env:
         - name: MY_POD_NAMESPACE
           valueFrom:

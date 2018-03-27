@@ -59,6 +59,8 @@ var (
 	createCRD bool
 
 	clusterWide bool
+
+	reconcileInterval time.Duration
 )
 
 func init() {
@@ -69,6 +71,7 @@ func init() {
 	flag.BoolVar(&createCRD, "create-crd", true, "The operator will not create the EtcdCluster CRD when this flag is set to false.")
 	flag.DurationVar(&gcInterval, "gc-interval", 10*time.Minute, "GC interval")
 	flag.BoolVar(&clusterWide, "cluster-wide", false, "Enable operator to watch clusters in all namespaces")
+	flag.DurationVar(&reconcileInterval, "re-interval", 8*time.Second, "Cluster reconcile interval")
 	flag.Parse()
 }
 
@@ -153,13 +156,14 @@ func newControllerConfig() controller.Config {
 	}
 
 	cfg := controller.Config{
-		Namespace:      namespace,
-		ClusterWide:    clusterWide,
-		ServiceAccount: serviceAccount,
-		KubeCli:        kubecli,
-		KubeExtCli:     k8sutil.MustNewKubeExtClient(),
-		EtcdCRCli:      client.MustNewInCluster(),
-		CreateCRD:      createCRD,
+		Namespace:         namespace,
+		ClusterWide:       clusterWide,
+		ServiceAccount:    serviceAccount,
+		KubeCli:           kubecli,
+		KubeExtCli:        k8sutil.MustNewKubeExtClient(),
+		EtcdCRCli:         client.MustNewInCluster(),
+		CreateCRD:         createCRD,
+		ReconcileInterval: reconcileInterval,
 	}
 
 	return cfg

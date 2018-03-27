@@ -148,6 +148,14 @@ type PodPolicy struct {
 	// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
 	// More info: https://github.com/docker-library/busybox/issues/27
 	BusyboxImage string `json:"busyboxImage,omitempty"`
+
+	// LivenessProbe specifies the parameters for the probe.
+	// The "livenessprobe.handler" will be set by etcd operator and shouldn't be defined"
+	LivenessProbe *v1.Probe `json:"livenessProbe,omitempty"`
+
+	// ReadinessProbe specifies the parameters for the probe.
+	// The "readinessprobe.handler" will be set by etcd operator and shouldn't be defined"
+	ReadinessProbe *v1.Probe `json:"readinessProbe,omitempty"`
 }
 
 // TODO: move this to initializer

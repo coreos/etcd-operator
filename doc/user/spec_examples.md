@@ -83,5 +83,25 @@ spec:
       prometheus.io/port: "2379"
 ```
 
+## Custom pod probe configuration
+
+```yaml
+spec:
+  size: 3
+  pod:
+    livenessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 300
+      periodSeconds: 60
+      successThreshold: 1
+      timeoutSeconds: 10
+    readinessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 1
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 5
+```
+
 
 [cluster-tls]: cluster_tls.md
