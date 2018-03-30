@@ -39,7 +39,6 @@ import (
 )
 
 var (
-	reconcileInterval         = 8 * time.Second
 	podTerminationGracePeriod = int64(5)
 )
 
@@ -59,6 +58,8 @@ type Config struct {
 
 	KubeCli   kubernetes.Interface
 	EtcdCRCli versioned.Interface
+
+	ReconcileInterval time.Duration
 }
 
 type Cluster struct {
@@ -218,7 +219,7 @@ func (c *Cluster) run() {
 				panic("unknown event type" + event.typ)
 			}
 
-		case <-time.After(reconcileInterval):
+		case <-time.After(c.config.ReconcileInterval):
 			start := time.Now()
 
 			if c.cluster.Spec.Paused {
