@@ -2,14 +2,7 @@
 
 ### Added
 
-- Added the field `spec.pod.securityContext` to `EtcdCluster` that allows setting a specific [PodSecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod) for the etcd pods. [#1949](https://github.com/coreos/etcd-operator/pull/1949)
-
 ### Changed
-
-- Update Go version to 1.10
-- Build `gcr.io/coreos-k8s-scale-testing/etcd-operator-builder:0.4.1-2` container
-  with Go 1.10 and dep 0.4.1
-- etcd pod containers no longer run with a non-root security context by default. This setting can be configured per cluster via the PodPolicy.
 
 ### Removed
 
@@ -18,6 +11,19 @@
 ### Deprecated
 
 ### Security
+
+## [Release 0.9.2]
+
+### Added
+
+- Added the field `spec.pod.securityContext` to `EtcdCluster` that allows setting a specific [PodSecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod) for the etcd pods. [#1949](https://github.com/coreos/etcd-operator/pull/1949)
+
+### Changed
+
+- Update Go version to 1.10
+- Build `gcr.io/coreos-k8s-scale-testing/etcd-operator-builder:0.4.1-2` container
+  with Go 1.10 and dep 0.4.1
+- etcd pod containers no longer run with a non-root security context by default. This setting can be configured per cluster via the PodPolicy.
 
 ## [Release 0.9.1]
 
