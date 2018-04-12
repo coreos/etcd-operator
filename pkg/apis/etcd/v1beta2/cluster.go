@@ -148,6 +148,10 @@ type PodPolicy struct {
 	// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
 	// More info: https://github.com/docker-library/busybox/issues/27
 	BusyboxImage string `json:"busyboxImage,omitempty"`
+
+	// SecurityContext specifies the security context for the entire pod
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context
+	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
 }
 
 // TODO: move this to initializer
