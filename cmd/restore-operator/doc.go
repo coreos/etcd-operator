@@ -14,6 +14,6 @@
 
 // restore-operator is an example implementation of restoring etcd cluster from S3.
 // user must not depend restore-operator for production usage and should
-// follow the design principle of restore-operator to create his/her own restore
+// follow the design principle of restore-operator to create their own restore
 // mechanism.
 package main
