@@ -365,11 +365,20 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 				Name:  "check-dns",
 				// In etcd 3.2, TLS listener will do a reverse-DNS lookup for pod IP -> hostname.
 				// If DNS entry is not warmed up, it will return empty result and peer connection will be rejected.
+				// In some cases the DNS is not created correctly so we need to time out after a given period.
 				Command: []string{"/bin/sh", "-c", fmt.Sprintf(`
+					TIMEOUT_READY=%d
 					while ( ! nslookup %s )
 					do
-						sleep 2
-					done`, m.Addr())},
+						# If TIMEOUT_READY is 0 we should never time out and exit 
+						TIMEOUT_READY=$(( TIMEOUT_READY-1 ))
+                        if [ $TIMEOUT_READY -eq 0 ];
+				        then
+				            echo "Timed out waiting for DNS entry"
+				            exit 1
+				        fi
+						sleep 1
+					done`, cs.Pod.DNSTimeoutInSecond, m.Addr())},
 			}},
 			Containers:    []v1.Container{container},
 			RestartPolicy: v1.RestartPolicyNever,

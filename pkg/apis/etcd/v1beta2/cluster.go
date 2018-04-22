@@ -152,6 +152,11 @@ type PodPolicy struct {
 	// SecurityContext specifies the security context for the entire pod
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
+
+	// DNSTimeoutInSecond is the maximum allowed time for the init container of the etcd pod to
+	// reverse DNS lookup its IP given the hostname.
+	// The default is to wait indefinitely and has a vaule of 0.
+	DNSTimeoutInSecond int64 `json:"DNSTimeoutInSecond,omitempty"`
 }
 
 // TODO: move this to initializer
