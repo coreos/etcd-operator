@@ -2,6 +2,8 @@
 
 ### Added
 
+- Added `spec.pod.DNSTimeoutInSecond` to `EtcdCluster` that allows setting a maximum allowed time for the init container of the etcd pod to reverse DNS lookup its IP given the hostname.
+
 ### Changed
 
 ### Removed
