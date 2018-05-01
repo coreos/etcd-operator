@@ -67,6 +67,10 @@ const (
 	AnnotationScope = "etcd.database.coreos.com/scope"
 	//AnnotationClusterWide annotation value for cluster wide clusters.
 	AnnotationClusterWide = "clusterwide"
+
+	// defaultDNSTimeout is the default maximum allowed time for the init container of the etcd pod
+	// to reverse DNS lookup its IP. The default behavior is to wait forever and has a value of 0.
+	defaultDNSTimeout = int64(0)
 )
 
 const TolerateUnreadyEndpointsAnnotation = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
@@ -350,6 +354,10 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		}})
 	}
 
+	DNSTimeout := defaultDNSTimeout
+	if cs.Pod != nil {
+		DNSTimeout = cs.Pod.DNSTimeoutInSecond
+	}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        m.Name,
@@ -378,7 +386,7 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 				            exit 1
 				        fi
 						sleep 1
-					done`, cs.Pod.DNSTimeoutInSecond, m.Addr())},
+					done`, DNSTimeout, m.Addr())},
 			}},
 			Containers:    []v1.Container{container},
 			RestartPolicy: v1.RestartPolicyNever,
