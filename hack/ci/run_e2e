@@ -4,6 +4,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+echo "Running e2e tests"
+
 kubectl version
 
 : ${TEST_NAMESPACE:?"Need to set TEST_NAMESPACE"}
