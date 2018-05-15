@@ -35,6 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -61,7 +62,14 @@ func setup() error {
 	ns := flag.String("namespace", "default", "e2e test namespace")
 	flag.Parse()
 
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	var config *rest.Config
+	var err error
+	if *kubeconfig == "" {
+		//on-cluster mode
+		config, err = rest.InClusterConfig()
+	} else {
+		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	}
 	if err != nil {
 		return err
 	}
