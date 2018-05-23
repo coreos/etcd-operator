@@ -76,10 +76,21 @@ func setup() error {
 		Namespace:  *ns,
 		opImage:    *opImage,
 	}
+
+	// Skip the etcd-operator deployment setup if the operator image was not specified
+	if len(Global.opImage) == 0 {
+		return nil
+	}
+
 	return Global.setup()
 }
 
 func teardown() error {
+	// Skip the etcd-operator teardown if the operator image was not specified
+	if len(Global.opImage) == 0 {
+		return nil
+	}
+
 	err := Global.deleteOperatorCompletely("etcd-operator")
 	if err != nil {
 		return err
