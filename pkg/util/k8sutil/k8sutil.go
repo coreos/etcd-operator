@@ -67,6 +67,10 @@ const (
 	AnnotationScope = "etcd.database.coreos.com/scope"
 	//AnnotationClusterWide annotation value for cluster wide clusters.
 	AnnotationClusterWide = "clusterwide"
+
+	// defaultDNSTimeout is the default maximum allowed time for the init container of the etcd pod
+	// to reverse DNS lookup its IP. The default behavior is to wait forever and has a value of 0.
+	defaultDNSTimeout = int64(0)
 )
 
 const TolerateUnreadyEndpointsAnnotation = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
@@ -352,9 +356,10 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		}})
 	}
 
-	runAsNonRoot := true
-	podUID := int64(9000)
-	fsGroup := podUID
+	DNSTimeout := defaultDNSTimeout
+	if cs.Pod != nil {
+		DNSTimeout = cs.Pod.DNSTimeoutInSecond
+	}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        m.Name,
@@ -370,11 +375,20 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 				Name:  "check-dns",
 				// In etcd 3.2, TLS listener will do a reverse-DNS lookup for pod IP -> hostname.
 				// If DNS entry is not warmed up, it will return empty result and peer connection will be rejected.
+				// In some cases the DNS is not created correctly so we need to time out after a given period.
 				Command: []string{"/bin/sh", "-c", fmt.Sprintf(`
+					TIMEOUT_READY=%d
 					while ( ! nslookup %s )
 					do
-						sleep 2
-					done`, m.Addr())},
+						# If TIMEOUT_READY is 0 we should never time out and exit 
+						TIMEOUT_READY=$(( TIMEOUT_READY-1 ))
+                        if [ $TIMEOUT_READY -eq 0 ];
+				        then
+				            echo "Timed out waiting for DNS entry"
+				            exit 1
+				        fi
+						sleep 1
+					done`, DNSTimeout, m.Addr())},
 			}},
 			Containers:    []v1.Container{container},
 			RestartPolicy: v1.RestartPolicyNever,
@@ -385,15 +399,18 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			Hostname:                     m.Name,
 			Subdomain:                    clusterName,
 			AutomountServiceAccountToken: func(b bool) *bool { return &b }(false),
-			SecurityContext: &v1.PodSecurityContext{
-				RunAsUser:    &podUID,
-				RunAsNonRoot: &runAsNonRoot,
-				FSGroup:      &fsGroup,
-			},
+			SecurityContext:              podSecurityContext(cs.Pod),
 		},
 	}
 	SetEtcdVersion(pod, cs.Version)
 	return pod
+}
+
+func podSecurityContext(podPolicy *api.PodPolicy) *v1.PodSecurityContext {
+	if podPolicy == nil {
+		return nil
+	}
+	return podPolicy.SecurityContext
 }
 
 func NewEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs api.ClusterSpec, owner metav1.OwnerReference) *v1.Pod {

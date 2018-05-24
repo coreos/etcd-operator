@@ -83,6 +83,21 @@ spec:
       prometheus.io/port: "2379"
 ```
 
+## Custom pod security context
+
+For more information on pod security context see the Kubernetes [docs][pod-security-context].
+
+```yaml
+spec:
+  size: 3
+  pod:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 9000
+      # The FSGroup is needed to let the etcd container access mounted volumes
+      fsGroup: 9000
+```
+
 ## Custom pod probe configuration
 
 ```yaml
@@ -102,6 +117,5 @@ spec:
       successThreshold: 1
       timeoutSeconds: 5
 ```
-
-
 [cluster-tls]: cluster_tls.md
+[pod-security-context]: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
