@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: etcd-operator-e2e-tests
+spec:
+  restartPolicy: Never
+  containers:
+  - name: etcd-operator-e2e-tests
+    image: <TEST_IMAGE>
+    imagePullPolicy: Always
+    env:
+      - name: TEST_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
