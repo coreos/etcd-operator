@@ -47,3 +47,25 @@ func TestSetBusyboxImageName(t *testing.T) {
 		t.Errorf("expect image=%s, get=%s", expected, image)
 	}
 }
+
+func TestDefaultEtcdImageName(t *testing.T) {
+	cs := api.ClusterSpec{Repository: api.DefaultEtcdRepository}
+	image := ImageName(cs, "3.2.13")
+	expected := "quay.io/coreos/etcd:v3.2.13"
+	if image != expected {
+		t.Errorf("expect image=%s, get=%s", expected, image)
+	}
+}
+
+func TestSetEtcdImageName(t *testing.T) {
+	cs := api.ClusterSpec{
+		Pod: &api.PodPolicy{
+			EtcdImage: "private.repository.local/mirror/coreos:etcd-${version}",
+		},
+	}
+	image := ImageName(cs, "3.2.13")
+	expected := "private.repository.local/mirror/coreos:etcd-3.2.13"
+	if image != expected {
+		t.Errorf("expect image=%s, get=%s", expected, image)
+	}
+}

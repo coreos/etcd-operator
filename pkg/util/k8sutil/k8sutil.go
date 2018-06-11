@@ -75,6 +75,8 @@ const (
 
 const TolerateUnreadyEndpointsAnnotation = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
 
+const defaultEtcdImageTemplate = "${repository}:v${version}"
+
 func GetEtcdVersion(pod *v1.Pod) string {
 	return pod.Annotations[etcdVersionAnnotationKey]
 }
@@ -99,7 +101,7 @@ func PVCNameFromMember(memberName string) string {
 	return memberName
 }
 
-func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, m *etcdutil.Member) []v1.Container {
+func makeRestoreInitContainers(backupURL *url.URL, token string, cs api.ClusterSpec, version string, m *etcdutil.Member) []v1.Container {
 	return []v1.Container{
 		{
 			Name:  "fetch-backup",
@@ -119,7 +121,7 @@ fi
 		},
 		{
 			Name:  "restore-datadir",
-			Image: ImageName(repo, version),
+			Image: ImageName(cs, version),
 			Command: []string{
 				"/bin/sh", "-ec",
 				fmt.Sprintf("ETCDCTL_API=3 etcdctl snapshot restore %[1]s"+
@@ -134,8 +136,20 @@ fi
 	}
 }
 
-func ImageName(repo, version string) string {
-	return fmt.Sprintf("%s:v%v", repo, version)
+// ImageName returns the image to use for the version of etcd.
+// It uses the specified version, the Repository from the ClusterSpec,
+// and combines them using the template specified in the Pod.EtcdImage
+// (or defaultEtcdImageTemplate if not set).  This allows use of mirror
+// image registries that may not allow the same structure as quay.io
+// (e.g. it can be convenient on ECR on AWS to have a single repository)
+func ImageName(clusterSpec api.ClusterSpec, version string) string {
+	t := defaultEtcdImageTemplate
+	if clusterSpec.Pod != nil && clusterSpec.Pod.EtcdImage != "" {
+		t = clusterSpec.Pod.EtcdImage
+	}
+	t = strings.Replace(t, "${repository}", clusterSpec.Repository, -1)
+	t = strings.Replace(t, "${version}", version, -1)
+	return t
 }
 
 // imageNameBusybox returns the default image for busybox init container, or the image specified in the PodPolicy
@@ -259,7 +273,7 @@ func AddEtcdVolumeToPod(pod *v1.Pod, pvc *v1.PersistentVolumeClaim) {
 
 func addRecoveryToPod(pod *v1.Pod, token string, m *etcdutil.Member, cs api.ClusterSpec, backupURL *url.URL) {
 	pod.Spec.InitContainers = append(pod.Spec.InitContainers,
-		makeRestoreInitContainers(backupURL, token, cs.Repository, cs.Version, m)...)
+		makeRestoreInitContainers(backupURL, token, cs, cs.Version, m)...)
 }
 
 func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
@@ -324,7 +338,7 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 	readinessProbe.FailureThreshold = 3
 
 	container := containerWithProbes(
-		etcdContainer(strings.Split(commands, " "), cs.Repository, cs.Version),
+		etcdContainer(strings.Split(commands, " "), cs, cs.Version),
 		livenessProbe,
 		readinessProbe)
 
