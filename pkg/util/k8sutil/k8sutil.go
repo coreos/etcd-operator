@@ -45,8 +45,6 @@ import (
 const (
 	// EtcdClientPort is the client port on client service and etcd nodes.
 	EtcdClientPort = 2379
-	// EtcdMetricsPort will be used to expose the metrics
-	EtcdMetricsPort = 2381
 
 	etcdVolumeMountDir       = "/var/etcd"
 	dataDir                  = etcdVolumeMountDir + "/data"
@@ -306,8 +304,8 @@ func NewEtcdPodPVC(m *etcdutil.Member, pvcSpec v1.PersistentVolumeClaimSpec, clu
 func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs api.ClusterSpec) *v1.Pod {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
-		"--initial-cluster=%s --initial-cluster-state=%s "+"--strict-reconfig-check=true "+"--listen-metrics-urls=http://0.0.0.0:%d",
-		dataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ListenClientURL(), m.ClientURL(), strings.Join(initialCluster, ","), state, EtcdMetricsPort)
+		"--initial-cluster=%s --initial-cluster-state=%s",
+		dataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ListenClientURL(), m.ClientURL(), strings.Join(initialCluster, ","), state)
 	if m.SecurePeer {
 		commands += fmt.Sprintf(" --peer-client-cert-auth=true --peer-trusted-ca-file=%[1]s/peer-ca.crt --peer-cert-file=%[1]s/peer.crt --peer-key-file=%[1]s/peer.key", peerTLSDir)
 	}
@@ -324,14 +322,12 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		"etcd_cluster": clusterName,
 	}
 
-	livenessProbe := newEtcdProbe(cs.TLS.IsSecureClient(), cs.Pod.LivenessProbe)
-	readinessProbe := newEtcdProbe(cs.TLS.IsSecureClient(), cs.Pod.ReadinessProbe)
-	if cs.Pod.ReadinessProbe == nil {
-		readinessProbe.InitialDelaySeconds = 1
-		readinessProbe.TimeoutSeconds = 5
-		readinessProbe.PeriodSeconds = 5
-		readinessProbe.FailureThreshold = 3
-	}
+	livenessProbe := newEtcdProbe(cs.TLS.IsSecureClient())
+	readinessProbe := newEtcdProbe(cs.TLS.IsSecureClient())
+	readinessProbe.InitialDelaySeconds = 1
+	readinessProbe.TimeoutSeconds = 5
+	readinessProbe.PeriodSeconds = 5
+	readinessProbe.FailureThreshold = 3
 
 	container := containerWithProbes(
 		etcdContainer(strings.Split(commands, " "), cs.Repository, cs.Version),
