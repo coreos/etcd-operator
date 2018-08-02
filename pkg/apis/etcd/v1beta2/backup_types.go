@@ -26,6 +26,7 @@ const (
 	BackupStorageTypeABS      BackupStorageType = "ABS"
 	AzureSecretStorageAccount                   = "storage-account"
 	AzureSecretStorageKey                       = "storage-key"
+	AzureCloudKey                               = "cloud"
 )
 
 type BackupStorageType string
