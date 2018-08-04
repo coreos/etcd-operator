@@ -26,6 +26,9 @@ const (
 	BackupStorageTypeABS      BackupStorageType = "ABS"
 	AzureSecretStorageAccount                   = "storage-account"
 	AzureSecretStorageKey                       = "storage-key"
+
+	// Google GCS related consts
+	BackupStorageTypeGCS BackupStorageType = "GCS"
 )
 
 type BackupStorageType string
@@ -80,6 +83,8 @@ type BackupSource struct {
 	S3 *S3BackupSource `json:"s3,omitempty"`
 	// ABS defines the ABS backup source spec.
 	ABS *ABSBackupSource `json:"abs,omitempty"`
+	// GCS defines the ABS backup source spec.
+	GCS *GCSBackupSource `json:"gcs,omitempty"`
 }
 
 // BackupPolicy defines backup policy.
@@ -129,4 +134,15 @@ type ABSBackupSource struct {
 
 	// The name of the secret object that stores the Azure storage credential
 	ABSSecret string `json:"absSecret"`
+}
+
+// GCSBackupSource provides the spec how to store backups on GCS.
+type GCSBackupSource struct {
+	// Path is the full abs path where the backup is saved.
+	// The format of the path must be: "<gcs-container-name>/<path-to-backup-file>"
+	// e.g: "mygcscontainer/etcd.backup"
+	Path string `json:"path"`
+
+	// The name of the secret object that stores the Google storage credential
+	GCSSecret string `json:"gcsSecret"`
 }

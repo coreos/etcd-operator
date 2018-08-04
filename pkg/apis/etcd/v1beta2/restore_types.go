@@ -66,6 +66,9 @@ type RestoreSource struct {
 
 	// ABS tells where on ABS the backup is saved and how to fetch the backup.
 	ABS *ABSRestoreSource `json:"abs,omitempty"`
+
+	// GCS tells where on GCS the backup is saved and how to fetch the backup.
+	GCS *GCSRestoreSource `json:"gcs,omitempty"`
 }
 
 type S3RestoreSource struct {
@@ -95,6 +98,16 @@ type ABSRestoreSource struct {
 
 	// The name of the secret object that stores the Azure Blob Storage credential.
 	ABSSecret string `json:"absSecret"`
+}
+
+type GCSRestoreSource struct {
+	// Path is the full gcs path where the backup is saved.
+	// The format of the path must be: "<gcs-container-name>/<path-to-backup-file>"
+	// e.g: "mygcscontainer/etcd.backup"
+	Path string `json:"path"`
+
+	// The name of the secret object that stores the Google Cloud Storage credential.
+	GCSSecret string `json:"gcsSecret"`
 }
 
 // RestoreStatus reports the status of this restore operation.

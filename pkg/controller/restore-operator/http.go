@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
 	"github.com/coreos/etcd-operator/pkg/util/azureutil/absfactory"
 
+	"github.com/coreos/etcd-operator/pkg/util/gcsutil/gcsfactory"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -117,6 +118,23 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 
 		backupReader = reader.NewABSReader(absCli.ABS)
 		path = absRestoreSource.Path
+	case api.BackupStorageTypeGCS:
+		restoreSource := cr.Spec.RestoreSource
+		if restoreSource.GCS == nil {
+			return errors.New("empty gcs restore source")
+		}
+		gcsRestoreSource := restoreSource.GCS
+		if len(gcsRestoreSource.GCSSecret) == 0 || len(gcsRestoreSource.Path) == 0 {
+			return errors.New("invalid gcs restore source field (spec.gcs), must specify all required subfields")
+		}
+
+		gcsCli, err := gcsfactory.NewClientFromSecret(r.kubecli, r.namespace, gcsRestoreSource.GCSSecret)
+		if err != nil {
+			return fmt.Errorf("failed to create GCS client: %v", err)
+		}
+
+		backupReader = reader.NewGCSReader(gcsCli.GCS)
+		path = gcsRestoreSource.Path
 	default:
 		return fmt.Errorf("unknown backup storage type (%s) for restore CR (%v)", cr.Spec.BackupStorageType, restoreName)
 	}

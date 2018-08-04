@@ -20,13 +20,14 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-
+	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 )
 
 func generateTLSConfig(kubecli kubernetes.Interface, clientTLSSecret, namespace string) (*tls.Config, error) {
 	var tlsConfig *tls.Config
 	if len(clientTLSSecret) != 0 {
+		log.Infof("Creating etcd TLS config from secret/%s in namespace %s", clientTLSSecret, namespace)
 		d, err := k8sutil.GetTLSDataFromSecret(kubecli, namespace, clientTLSSecret)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get TLS data from secret (%v): %v", clientTLSSecret, err)
@@ -35,6 +36,8 @@ func generateTLSConfig(kubecli kubernetes.Interface, clientTLSSecret, namespace 
 		if err != nil {
 			return nil, fmt.Errorf("failed to constructs tls config: %v", err)
 		}
+		return tlsConfig, nil
 	}
+	log.Infof("Skipping the etcd TLS config, no secret provided")
 	return tlsConfig, nil
 }

@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"strings"
 
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -129,15 +130,8 @@ func getClientWithMaxRev(ctx context.Context, endpoints []string, tc *tls.Config
 	if maxClient == nil {
 		return nil, 0, fmt.Errorf("could not create an etcd client for the max revision purpose from given endpoints (%v)", endpoints)
 	}
-
-	var err error
 	if len(errors) > 0 {
-		errorStr := ""
-		for _, errStr := range errors {
-			errorStr += errStr + "\n"
-		}
-		err = fmt.Errorf(errorStr)
+		return maxClient, maxRev, fmt.Errorf(strings.Join(errors, "\n"))
 	}
-
-	return maxClient, maxRev, err
+	return maxClient, maxRev, nil
 }

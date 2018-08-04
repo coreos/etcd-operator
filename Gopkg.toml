@@ -1,3 +1,5 @@
+required = ["golang.org/x/oauth2"]
+
 [[constraint]]
   name = "k8s.io/api"
   version = "kubernetes-1.10.0-beta.2"
@@ -44,7 +46,16 @@
 
 [[constraint]]
   name = "golang.org/x/time"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/Azure/azure-sdk-for-go"
   version = "=11.3.0-beta"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/oauth2"
+
+[[constraint]]
+  version = "v0.25.0"
+  name = "cloud.google.com/go"

@@ -3,9 +3,23 @@
 
 [[projects]]
   name = "cloud.google.com/go"
-  packages = ["compute/metadata"]
-  revision = "20d4028b8a750c2aca76bf9fefa8ed2d0109b573"
-  version = "v0.19.0"
+  packages = [
+    "compute/metadata",
+    "iam",
+    "internal",
+    "internal/optional",
+    "internal/trace",
+    "internal/version",
+    "storage"
+  ]
+  revision = "aad3f485ee528456e0768f20397b4d9dd941e755"
+  version = "v0.25.0"
+
+[[projects]]
+  name = "contrib.go.opencensus.io/exporter/stackdriver"
+  packages = ["propagation"]
+  revision = "37aa2801fbf0205003e15636096ebf0373510288"
+  version = "v0.5.0"
 
 [[projects]]
   name = "github.com/Azure/azure-sdk-for-go"
@@ -145,6 +159,12 @@
   revision = "24818f796faf91cd76ec7bddd72458fbced7a6c1"
 
 [[projects]]
+  name = "github.com/googleapis/gax-go"
+  packages = ["."]
+  revision = "317e0006254c44a0ac427cc52a0e083ff0b9622f"
+  version = "v2.0.0"
+
+[[projects]]
   name = "github.com/googleapis/gnostic"
   packages = [
     "OpenAPIv2",
@@ -268,6 +288,25 @@
   version = "v1.0.0"
 
 [[projects]]
+  name = "go.opencensus.io"
+  packages = [
+    ".",
+    "internal",
+    "internal/tagencoding",
+    "plugin/ochttp",
+    "plugin/ochttp/propagation/b3",
+    "stats",
+    "stats/internal",
+    "stats/view",
+    "tag",
+    "trace",
+    "trace/internal",
+    "trace/propagation"
+  ]
+  revision = "e262766cd0d230a1bb7c37281e345e465f19b41b"
+  version = "v0.14.0"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
@@ -298,7 +337,7 @@
     "jws",
     "jwt"
   ]
-  revision = "2f32c3ac0fa4fb807a0fcefb0b6f2468a0d99bd0"
+  revision = "3d292e4d0cdc3a0113e6d207bb137145ef1de42f"
 
 [[projects]]
   branch = "master"
@@ -337,6 +376,23 @@
   revision = "6dc17368e09b0e8634d71cac8168d853e869a0c7"
 
 [[projects]]
+  branch = "master"
+  name = "google.golang.org/api"
+  packages = [
+    "cloudkms/v1",
+    "gensupport",
+    "googleapi",
+    "googleapi/internal/uritemplates",
+    "googleapi/transport",
+    "internal",
+    "iterator",
+    "option",
+    "storage/v1",
+    "transport/http"
+  ]
+  revision = "f6d94689cbd71030af1108ddac733886fcae1d75"
+
+[[projects]]
   name = "google.golang.org/appengine"
   packages = [
     ".",
@@ -358,6 +414,8 @@
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api/annotations",
+    "googleapis/iam/v1",
+    "googleapis/rpc/code",
     "googleapis/rpc/status"
   ]
   revision = "df60624c1e9b9d2973e889c7a1cff73155da81c4"
@@ -602,6 +660,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "39eb18288d85b8046b11837309b8fb215359ca43e163bbb8f88721d1bc42616e"
+  inputs-digest = "e51612faed48eec703227f20471aa576dfd9f5e761758f91f9ad6b1759095097"
   solver-name = "gps-cdcl"
   solver-version = 1
