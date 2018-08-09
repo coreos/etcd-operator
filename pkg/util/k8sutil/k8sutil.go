@@ -227,6 +227,10 @@ func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, time
 
 func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.ServicePort) *v1.Service {
 	labels := LabelsForCluster(clusterName)
+	if svcName == clusterName {
+		// add a specific label to the peer service so we can use it to scrape metrics
+		labels["metrics"] = "true"
+	}
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   svcName,
