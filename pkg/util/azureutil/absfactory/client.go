@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
+	"github.com/Azure/go-autorest/autorest/azure"
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +28,15 @@ import (
 // ABSClient is a wrapper of ABS client that provides cleanup functionality.
 type ABSClient struct {
 	ABS *storage.BlobStorageClient
+}
+
+// parseAzureEnvironment returns azure environment by name
+func parseAzureEnvironment(cloudName string) (azure.Environment, error) {
+	if cloudName == "" {
+		return azure.PublicCloud, nil
+	}
+
+	return azure.EnvironmentFromName(cloudName)
 }
 
 // NewClientFromSecret returns a ABS client based on given k8s secret containing azure credentials.
@@ -44,10 +54,17 @@ func NewClientFromSecret(kubecli kubernetes.Interface, namespace, absSecret stri
 
 	storageAccount := se.Data[api.AzureSecretStorageAccount]
 	storageKey := se.Data[api.AzureSecretStorageKey]
+	cloudName := se.Data[api.AzureCloudKey]
 
-	bc, err := storage.NewBasicClient(
+	cloud, err := parseAzureEnvironment(string(cloudName))
+	if err != nil {
+		return nil, err
+	}
+
+	bc, err := storage.NewBasicClientOnSovereignCloud(
 		string(storageAccount),
-		string(storageKey))
+		string(storageKey),
+		cloud)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Azure storage client: %v", err)
 	}
