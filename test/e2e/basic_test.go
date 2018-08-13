@@ -25,6 +25,7 @@ import (
 )
 
 func TestCreateCluster(t *testing.T) {
+	// Test CI
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
 	}
