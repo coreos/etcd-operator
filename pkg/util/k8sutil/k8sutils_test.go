@@ -15,9 +15,11 @@
 package k8sutil
 
 import (
-	"testing"
-
+	"github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
+	"k8s.io/api/core/v1"
+	"testing"
 )
 
 func TestDefaultBusyboxImageName(t *testing.T) {
@@ -45,5 +47,49 @@ func TestSetBusyboxImageName(t *testing.T) {
 	expected := "myRepo/busybox:1.3.2"
 	if image != expected {
 		t.Errorf("expect image=%s, get=%s", expected, image)
+	}
+}
+
+func TestNewEtcdPod(t *testing.T) {
+	m := &etcdutil.Member{
+		Name:         "name-test",
+		Namespace:    "test",
+		ID:           uint64(0),
+		SecurePeer:   false,
+		SecureClient: false,
+	}
+	cs := v1beta2.ClusterSpec{
+		Size:       3,
+		Repository: "quay.io/coreos/etcd",
+		Version:    "",
+		Pod: &v1beta2.PodPolicy{
+			InitContainers: []v1.Container{
+				{
+					Name:  "initTest01",
+					Image: "quay.io/coreos/etcd",
+				},
+				{
+					Name:  "initTest02",
+					Image: "quay.io/coreos/etcd",
+				},
+			},
+			SideCarContainers: []v1.Container{
+				{
+					Name:  "sideCar01",
+					Image: "quay.io/coreos/etcd",
+				},
+				{
+					Name:  "sideCar02",
+					Image: "quay.io/coreos/etcd",
+				},
+			},
+		},
+	}
+	pod := newEtcdPod(m, []string{"test-cluster-name"}, "test-cluster-name", "emptyState", "emptyToken", cs)
+	if len(pod.Spec.InitContainers) != 3 {
+		t.Error("init container failed")
+	}
+	if len(pod.Spec.Containers) != 3 {
+		t.Error("sideCar container failed")
 	}
 }

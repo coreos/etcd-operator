@@ -524,6 +524,20 @@ func (in *PodPolicy) DeepCopyInto(out *PodPolicy) {
 			(*out)[key] = val
 		}
 	}
+	if in.InitContainers != nil {
+		in, out := &in.InitContainers, &out.InitContainers
+		*out = make([]v1.Container, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.SideCarContainers != nil {
+		in, out := &in.SideCarContainers, &out.SideCarContainers
+		*out = make([]v1.Container, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.SecurityContext != nil {
 		in, out := &in.SecurityContext, &out.SecurityContext
 		if *in == nil {
