@@ -119,6 +119,10 @@ type S3BackupSource struct {
 	// Endpoint if blank points to aws. If specified, can point to s3 compatible object
 	// stores.
 	Endpoint string `json:"endpoint,omitempty"`
+
+	// ForcePathStyle, if set to true, forces s3 requests to use path style addressing
+	// (host/bucket instead of bucket.host)
+	ForcePathStyle *bool `json:"forcePathStyle"`
 }
 
 // ABSBackupSource provides the spec how to store backups on ABS.

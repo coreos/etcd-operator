@@ -85,6 +85,10 @@ type S3RestoreSource struct {
 	// Endpoint if blank points to aws. If specified, can point to s3 compatible object
 	// stores.
 	Endpoint string `json:"endpoint"`
+
+	// ForcePathStyle, if set to true, forces s3 requests to use path style addressing
+	// (host/bucket instead of bucket.host)
+	ForcePathStyle *bool `json:"forcePathStyle"`
 }
 
 type ABSRestoreSource struct {

@@ -10,3 +10,8 @@ spec:
     # e.g: "mybucket/etcd.backup"
     path: <full-s3-path>
     awsSecret: <aws-secret>
+    ## endpoint configures custom (non-aws) s3 endpoint
+    #endpoint: https://play.minio.io:9000
+    ## forcePathStyle, if set to true, forces s3 requests to use path style addressing
+    ## (host/bucket instead of bucket.host)
+    #forcePathStyle: true

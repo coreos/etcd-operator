@@ -15,6 +15,7 @@
 package s3factory
 
 import (
+	"github.com/aws/aws-sdk-go/aws"
 	"testing"
 
 	"k8s.io/api/core/v1"
@@ -29,12 +30,16 @@ func TestSetupAWSConfig(t *testing.T) {
 	client := fake.NewSimpleClientset(sec)
 
 	e := "example.com"
-	opts, err := setupAWSConfig(client, "", "", e, "")
+	opts, err := setupAWSConfig(client, "", "", e, aws.Bool(true),"")
 	if err != nil {
 		t.Error(err)
 	}
 
 	if e != *opts.Config.Endpoint {
 		t.Errorf("got: %s wanted: %s", *opts.Config.Endpoint, e)
+	}
+
+	if !aws.BoolValue(opts.Config.S3ForcePathStyle) {
+		t.Error("forcePathStyle should have set Config.S3ForcePathStyle in the Config")
 	}
 }

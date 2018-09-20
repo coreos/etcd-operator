@@ -39,7 +39,7 @@ type S3Client struct {
 }
 
 // NewClientFromSecret returns a S3 client based on given k8s secret containing aws credentials.
-func NewClientFromSecret(kubecli kubernetes.Interface, namespace, endpoint, awsSecret string) (w *S3Client, err error) {
+func NewClientFromSecret(kubecli kubernetes.Interface, namespace, endpoint string, forcePathStyle *bool, awsSecret string) (w *S3Client, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("new S3 client failed: %v", err)
@@ -50,7 +50,7 @@ func NewClientFromSecret(kubecli kubernetes.Interface, namespace, endpoint, awsS
 	if err != nil {
 		return nil, fmt.Errorf("failed to create aws config dir: (%v)", err)
 	}
-	so, err := setupAWSConfig(kubecli, namespace, awsSecret, endpoint, w.configDir)
+	so, err := setupAWSConfig(kubecli, namespace, awsSecret, endpoint, forcePathStyle, w.configDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup aws config: (%v)", err)
 	}
@@ -68,12 +68,13 @@ func (w *S3Client) Close() {
 }
 
 // setupAWSConfig setup local AWS config/credential files from Kubernetes aws secret.
-func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, endpoint, configDir string) (*session.Options, error) {
+func setupAWSConfig(kubecli kubernetes.Interface, ns, secret, endpoint string, forcePathStyle *bool, configDir string) (*session.Options, error) {
 	options := &session.Options{}
 	options.SharedConfigState = session.SharedConfigEnable
 
 	// empty string defaults to aws
 	options.Config.Endpoint = &endpoint
+	options.Config.S3ForcePathStyle = forcePathStyle
 
 	se, err := kubecli.CoreV1().Secrets(ns).Get(secret, metav1.GetOptions{})
 	if err != nil {
