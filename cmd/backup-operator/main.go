@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"flag"
+	"net/http"
 	"os"
 	"runtime"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	version "github.com/coreos/etcd-operator/version"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
@@ -37,11 +39,13 @@ import (
 )
 
 var (
-	createCRD bool
+	createCRD  bool
+	listenAddr string
 )
 
 func init() {
 	flag.BoolVar(&createCRD, "create-crd", true, "The backup operator will not create the EtcdBackup CRD when this flag is set to false.")
+	flag.StringVar(&listenAddr, "listen-addr", "0.0.0.0:8080", "The address on which the HTTP server will listen to")
 	flag.Parse()
 }
 
@@ -65,6 +69,10 @@ func main() {
 	logrus.Infof("Git SHA: %s", version.GitSHA)
 
 	kubecli := k8sutil.MustNewKubeClient()
+
+	http.Handle("/metrics", prometheus.Handler())
+	go http.ListenAndServe(listenAddr, nil)
+
 	rl, err := resourcelock.New(
 		resourcelock.EndpointsResourceLock,
 		namespace,
