@@ -59,6 +59,9 @@ func (s3w *s3Writer) Write(ctx context.Context, path string, r io.Reader) (int64
 	if err != nil {
 		return 0, err
 	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 	if resp.ContentLength == nil {
 		return 0, fmt.Errorf("failed to compute s3 object size")
 	}

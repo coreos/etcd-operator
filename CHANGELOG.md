@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- Fixed leaking http connections while verifying backup snapshots. [#1976](https://github.com/coreos/etcd-operator/pull/1976)
+
 ### Deprecated
 
 ### Security
@@ -49,12 +51,12 @@ Same as v0.8.4. The version is bumping to 0.9.0 due to adding a new ABS backup A
 
 - Added ABS support for backup and restore
 - Added tag to initContainer to enable offline deploys
-- Enabled configurable backup timeout in backup operator 
+- Enabled configurable backup timeout in backup operator
 
 ### Changed
 
 - Set 30s default request timeout for kube client
-- Change check-dns init container image to busybox:1.28.0-glibc to fix nslookup failure in some environment.  
+- Change check-dns init container image to busybox:1.28.0-glibc to fix nslookup failure in some environment.
 
 ### Removed
 
@@ -113,7 +115,7 @@ Same as v0.8.4. The version is bumping to 0.9.0 due to adding a new ABS backup A
 
 ## [Release 0.8.0]
 
-**Important Changes** 
+**Important Changes**
 
 Both etcd backup operator and etcd restore operator have changed their CR definition.
 Please follow the latest backup/restore CR definition for future backup and restore.
@@ -187,7 +189,7 @@ We'd better use quay.io and keep it compatible to work for 3.1 versions of etcd.
 
 ## [Release 0.7.0]
 
-Existing backup and restore features in EtcdCluster API won’t be supported after 0.7.0 release. 
+Existing backup and restore features in EtcdCluster API won’t be supported after 0.7.0 release.
 See [Decoupling Backup and Restore Logic from Etcd Operator](https://github.com/coreos/etcd-operator/issues/1626) for more detail.
 
 If applicable then see the [upgrade guide](./doc/user/upgrade/upgrade_guide.md) on how to upgrade from `v0.6.1` to `v0.7.0` .
@@ -233,7 +235,7 @@ is specified, backup binary changes to serve http backup requests only mode.
 
 ## [Release 0.6.0]
 
-**BREAKING CHANGE**: operator level S3 backup is removed. See [upgrade](./doc/user/upgrade/upgrade_guide.md) on how to upgrade from 0.5.x to 0.6.0. 
+**BREAKING CHANGE**: operator level S3 backup is removed. See [upgrade](./doc/user/upgrade/upgrade_guide.md) on how to upgrade from 0.5.x to 0.6.0.
 
 ### Added
 
