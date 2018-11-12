@@ -1,4 +1,7 @@
 # etcd operator
+
+test ci:\o/
+
 unit/integration:
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-unit-master/badge/icon)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-unit-master/lastBuild/)
 e2e (Kubernetes stable):
