@@ -1,10 +1,5 @@
 ## How to use codegen
 
-Dependencies:
-- Docker
-
-In repo root dir, run:
-
 ```sh
 ./hack/k8s/codegen/update-generated.sh
 ```

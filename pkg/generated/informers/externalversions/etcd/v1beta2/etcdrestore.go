@@ -21,7 +21,7 @@ package v1beta2
 import (
 	time "time"
 
-	etcd_v1beta2 "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	etcdv1beta2 "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	versioned "github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/coreos/etcd-operator/pkg/generated/informers/externalversions/internalinterfaces"
 	v1beta2 "github.com/coreos/etcd-operator/pkg/generated/listers/etcd/v1beta2"
@@ -70,7 +70,7 @@ func NewFilteredEtcdRestoreInformer(client versioned.Interface, namespace string
 				return client.EtcdV1beta2().EtcdRestores(namespace).Watch(options)
 			},
 		},
-		&etcd_v1beta2.EtcdRestore{},
+		&etcdv1beta2.EtcdRestore{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,7 +81,7 @@ func (f *etcdRestoreInformer) defaultInformer(client versioned.Interface, resync
 }
 
 func (f *etcdRestoreInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&etcd_v1beta2.EtcdRestore{}, f.defaultInformer)
+	return f.factory.InformerFor(&etcdv1beta2.EtcdRestore{}, f.defaultInformer)
 }
 
 func (f *etcdRestoreInformer) Lister() v1beta2.EtcdRestoreLister {
