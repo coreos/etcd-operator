@@ -1,6 +1,6 @@
 # Build step: docker build --tag gcr.io/coreos-k8s-scale-testing/logcollector -f hack/build/logcollector/Dockerfile .
 
-FROM golang:1.10
+FROM golang:1.11.2
 
 ADD ./ /go/src/github.com/coreos/etcd-operator
 
