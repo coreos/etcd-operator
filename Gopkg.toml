@@ -37,7 +37,7 @@ required = [
 
 [[constraint]]
   name = "github.com/coreos/etcd"
-  version = "=3.3.10"
+  version = "=3.2.13"
 
 [[override]]
   name = "google.golang.org/grpc"

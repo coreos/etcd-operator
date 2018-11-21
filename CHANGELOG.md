@@ -7,7 +7,6 @@
 ### Changed
 
 - Update Go version to 1.11.2
-- Update etcd to v3.3.10
 - Update k8s to 1.11.4
 - k8s codegen updates are longer performed via container. Go dependencies are now vendored
   and updates are performed with shell script locally.
