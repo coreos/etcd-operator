@@ -2,6 +2,20 @@
 
 ### Added
 
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+## [Release 0.9.3]
+
+### Added
+
 - Added `spec.pod.DNSTimeoutInSecond` to `EtcdCluster` that allows setting a maximum allowed time for the init container of the etcd pod to reverse DNS lookup its IP given the hostname.
 
 ### Changed
@@ -11,16 +25,9 @@
 - k8s codegen updates are longer performed via container. Go dependencies are now vendored
   and updates are performed with shell script locally.
 
-### Removed
-
 ### Fixed
 
-
 - Fixed leaking http connections while verifying backup snapshots. [#1976](https://github.com/coreos/etcd-operator/pull/1976)
-
-### Deprecated
-
-### Security
 
 ## [Release 0.9.2]
 
