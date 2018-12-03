@@ -127,7 +127,7 @@ func getClientWithMaxRev(ctx context.Context, endpoints []string, tc *tls.Config
 	}
 
 	if maxClient == nil {
-		return nil, 0, fmt.Errorf("could not create an etcd client for the max revision purpose from given endpoints (%v)", endpoints)
+		errors = append(errors, fmt.Sprintf("could not create an etcd client for the max revision purpose from given endpoints (%v)", endpoints))
 	}
 
 	var err error
