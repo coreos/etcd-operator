@@ -143,6 +143,12 @@ func (b *Backup) handleBackup(spec *api.BackupSpec) (*api.BackupStatus, error) {
 			return nil, err
 		}
 		return bs, nil
+	case api.BackupStorageTypeGCS:
+		bs, err := handleGCS(ctx, b.kubecli, spec.GCS, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace)
+		if err != nil {
+			return nil, err
+		}
+		return bs, nil
 	default:
 		logrus.Fatalf("unknown StorageType: %v", spec.StorageType)
 	}
