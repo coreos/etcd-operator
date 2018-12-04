@@ -2,12 +2,19 @@
 
 
 [[projects]]
-  digest = "1:c4638ce2e73b35bb3b0a109d687d798159a1844e1174a80c1cc6d1895d2f6fe0"
+  digest = "1:15eddd48bdb90c4a60b6e8ace553b9b77c95be44f9da53094f980faf2d63809f"
   name = "cloud.google.com/go"
-  packages = ["compute/metadata"]
+  packages = [
+    "compute/metadata",
+    "iam",
+    "internal",
+    "internal/optional",
+    "internal/version",
+    "storage",
+  ]
   pruneopts = "NT"
-  revision = "74b12019e2aa53ec27882158f59192d7cd6d1998"
-  version = "v0.33.1"
+  revision = "20d4028b8a750c2aca76bf9fefa8ed2d0109b573"
+  version = "v0.19.0"
 
 [[projects]]
   digest = "1:f323f98930459f65f4699b5bfba563743680e2633d96e72d61a9732648e2d07c"
@@ -265,6 +272,14 @@
   revision = "24818f796faf91cd76ec7bddd72458fbced7a6c1"
 
 [[projects]]
+  digest = "1:5cfcdb1646a889af81a01e9a83c7ccbb45e9b14c314eaf17552459d2b797e557"
+  name = "github.com/googleapis/gax-go"
+  packages = ["."]
+  pruneopts = "NT"
+  revision = "b001040cd31805261cbd978842099e326dfa857b"
+  version = "v2.0.2"
+
+[[projects]]
   digest = "1:289332c13b80edfefc88397cce5266c16845dcf204fa2f6ac7e464ee4c7f6e96"
   name = "github.com/googleapis/gnostic"
   packages = [
@@ -415,7 +430,7 @@
     "model",
   ]
   pruneopts = "NT"
-  revision = "aeab699e26f4d4089dba5e522e5d9babd2adbaf7"
+  revision = "4724e9255275ce38f7179b2478abeae4e28c904f"
 
 [[projects]]
   branch = "master"
@@ -428,7 +443,7 @@
     "xfs",
   ]
   pruneopts = "NT"
-  revision = "185b4288413d2a0dd0806f78c90dde719829e5ae"
+  revision = "619930b0b4713cc1280189bf0a4c54b3fb506f60"
 
 [[projects]]
   digest = "1:6bc0652ea6e39e22ccd522458b8bdd8665bf23bdc5a20eec90056e4dc7e273ca"
@@ -480,11 +495,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:417055c259ab65cfeacd7d0bf0b039c2809e80300cf0894937ff4eec2c5a866a"
+  digest = "1:ce3b5a0b23a695fc03e6d5cf10b427ff8d83fbeff793b0e0aed6e623c8836e1b"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   pruneopts = "NT"
-  revision = "3d3f9f413869b949e48070b5bc593aa22cc2b8f2"
+  revision = "e657309f52e71501f9934566ac06dc5c2f7f11a1"
 
 [[projects]]
   branch = "master"
@@ -534,7 +549,7 @@
     "windows",
   ]
   pruneopts = "NT"
-  revision = "0cf1ed9e522b7dbb416f080a5c8003de9b702bf4"
+  revision = "62eef0e2fa9b2c385f7b2778e763486da6880d37"
 
 [[projects]]
   digest = "1:8c74f97396ed63cc2ef04ebb5fc37bb032871b8fd890a25991ed40974b00cd2a"
@@ -570,7 +585,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:902e9806c564b2507f3ac39a8265ee0b17602566bd97dce944fa45ed83143414"
+  digest = "1:47efe3ab270e3717dd484f66108933f799a12c13dd4aa54fc88036d12ccaf957"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -579,13 +594,25 @@
     "internal/gopathwalk",
   ]
   pruneopts = "NT"
-  revision = "ff0519d4cf5e7411f0ac96c0571c3d8589d8458c"
+  revision = "04b5d21e00f1f47bd824a6ade581e7189bacde87"
 
 [[projects]]
   branch = "master"
   digest = "1:4181d5197a94c644385976583f3fb6a59d8b8e7ff00d754ebc466a3e89f50f0f"
   name = "google.golang.org/api"
-  packages = ["support/bundler"]
+  packages = [
+    "gensupport",
+    "googleapi",
+    "googleapi/internal/uritemplates",
+    "googleapi/transport",
+    "internal",
+    "iterator",
+    "option",
+    "storage/v1",
+    "support/bundler",
+    "transport/http",
+    "transport/http/internal/propagation",
+  ]
   pruneopts = "NT"
   revision = "faade3cbb06a30202f2da53a8a5e3c4afe60b0c2"
 
@@ -614,6 +641,7 @@
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api/annotations",
+    "googleapis/iam/v1",
     "googleapis/rpc/status",
   ]
   pruneopts = "NT"
@@ -950,6 +978,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "cloud.google.com/go/storage",
     "github.com/Azure/azure-sdk-for-go/storage",
     "github.com/Azure/go-autorest/autorest/azure",
     "github.com/aws/aws-sdk-go/aws",
@@ -964,7 +993,9 @@
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/sirupsen/logrus",
+    "golang.org/x/oauth2",
     "golang.org/x/time/rate",
+    "google.golang.org/api/option",
     "k8s.io/api/apps/v1beta1",
     "k8s.io/api/core/v1",
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
