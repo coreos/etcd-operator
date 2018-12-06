@@ -5,6 +5,7 @@
 The etcd-restore-operator can restore an etcd cluster on Kubernetes from backup.
 
 The overall workflow is:
+
 - Create the etcd-restore-operator
 - Create an `EtcdRestore` Custom Resource which triggers a restore request that specifies:
   - the etcd cluster spec
@@ -15,78 +16,100 @@ The overall workflow is:
 Note that currently the etcd-restore-operator only supports restoring from backups saved on S3.
 
 **Prerequisite**
+
 - Setup RBAC and deploy an etcd operator. See [Install Guide][install_guide]
-- Have an etcd backup saved on S3. See the [etcd-backup-operator README][backup-operator-README] as one way to save a backup to S3.
+- Have an etcd backup saved on S3. See the [etcd-backup-operator README][backup-operator-readme] as one way to save a backup to S3.
 
->Note: This demo uses the `default` namespace.
-
+> Note: This demo uses the `default` namespace.
 
 ### Simulate disaster failure
 
 1. Make sure `example-etcd-cluster` EtcdCluster CR exists
 
-    ```sh
-    kubectl get etcdcluster example-etcd-cluster
-    ```
+   ```sh
+   kubectl get etcdcluster example-etcd-cluster
+   ```
 
 2. Kill etcd pods to simulate disaster failure
 
-    ```sh
-    kubectl delete pod -l app=etcd,etcd_cluster=example-etcd-cluster --force --grace-period=0
-    ```
+   ```sh
+   kubectl delete pod -l app=etcd,etcd_cluster=example-etcd-cluster --force --grace-period=0
+   ```
 
 ### Deploy the etcd-restore-operator
 
 1. Create a deployment of the etcd-restore-operator:
 
-    ```sh
-    kubectl create -f example/etcd-restore-operator/deployment.yaml
-    ```
+   ```sh
+   kubectl create -f example/etcd-restore-operator/deployment.yaml
+   ```
 
 2. Verify the following resources exist:
 
-    ```sh
-    $ kubectl get pods
-    NAME                                     READY     STATUS    RESTARTS   AGE
-    etcd-restore-operator-4203122180-npn3g   1/1       Running   0          7s
-    ```
+   ```sh
+   $ kubectl get pods
+   NAME                                     READY     STATUS    RESTARTS   AGE
+   etcd-restore-operator-4203122180-npn3g   1/1       Running   0          7s
+   ```
 
 3. Verify that the etcd-restore-operator creates the `EtcdRestore` CRD:
 
-    ```sh
-    $ kubectl get crd
-    NAME                                       KIND
-    etcdrestores.etcd.database.coreos.com      CustomResourceDefinition.v1beta1.apiextensions.k8s.io
-    ```
+   ```sh
+   $ kubectl get crd
+   NAME                                       KIND
+   etcdrestores.etcd.database.coreos.com      CustomResourceDefinition.v1beta1.apiextensions.k8s.io
+   ```
 
-### Setup AWS Secret
+### AWS
+
+#### Without AWS Secret (with IAM roles)
+
+If you are using node IAM roles or applications like [Kiam] or [Kube2iam] to auth the requests to AWS resources without using credentials, you need to set the `spec.s3.endpoint` field (including the region in the url) and `spec.s3.endpoint` to the `bucket/file` (leave `spec.s3.awsSecret` empty). Example:
+
+```yaml
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdRestore"
+metadata:
+  name: example-etcd-cluster
+spec:
+  etcdCluster:
+    name: example-etcd-cluster
+  backupStorageType: S3
+  s3:
+    # The format of "path" must be: "<s3-bucket-name>/<path-to-backup-file>"
+    # e.g: "mybucket/etcd.backup"
+    path: <full-s3-path>
+    endpoint: s3.us-east-1.amazonaws.com
+```
+
+#### With AWS Secret
 
 Create a Kubernetes secret that contains AWS credentials and config. This is used by the etcd-restore-operator to retrieve the backup from S3.
 
 1. Verify that the local aws config and credentials files exist:
 
-    ```sh
-    $ cat $AWS_DIR/credentials
-    [default]
-    aws_access_key_id = XXX
-    aws_secret_access_key = XXX
+   ```sh
+   $ cat $AWS_DIR/credentials
+   [default]
+   aws_access_key_id = XXX
+   aws_secret_access_key = XXX
 
-    $ cat $AWS_DIR/config
-    [default]
-    region = <region>
-    ```
+   $ cat $AWS_DIR/config
+   [default]
+   region = <region>
+   ```
 
 2. Create the secret `aws`:
 
-    ```sh
-    kubectl create secret generic aws --from-file=$AWS_DIR/credentials --from-file=$AWS_DIR/config
-    ```
+   ```sh
+   kubectl create secret generic aws --from-file=$AWS_DIR/credentials --from-file=$AWS_DIR/config
+   ```
 
 ### Create EtcdRestore CR
 
 Create the `EtcdRestore` CR:
 
->Note: This example uses k8s secret "aws" and S3 path "mybucket/etcd.backup"
+> Note: This example uses k8s secret "aws" and S3 path "mybucket/etcd.backup"
 
 ```sh
 sed -e 's|<full-s3-path>|mybucket/etcd.backup|g' \
@@ -99,45 +122,47 @@ sed -e 's|<full-s3-path>|mybucket/etcd.backup|g' \
 
 1. Check the `status` section of the `EtcdRestore` CR:
 
-    ```sh
-    $ kubectl get etcdrestore example-etcd-cluster -o yaml
-    apiVersion: etcd.database.coreos.com/v1beta2
-    kind: EtcdRestore
-    ...
-    status:
-      succeeded: true
-    ```
+   ```sh
+   $ kubectl get etcdrestore example-etcd-cluster -o yaml
+   apiVersion: etcd.database.coreos.com/v1beta2
+   kind: EtcdRestore
+   ...
+   status:
+     succeeded: true
+   ```
 
 2. Verify the `EtcdCluster` CR for the restored cluster:
 
-    ```
-    $ kubectl get etcdcluster
-    NAME                    KIND
-    example-etcd-cluster   EtcdCluster.v1beta2.etcd.database.coreos.com
-    ```
+   ```
+   $ kubectl get etcdcluster
+   NAME                    KIND
+   example-etcd-cluster   EtcdCluster.v1beta2.etcd.database.coreos.com
+   ```
 
 3. Verify that the etcd-operator scales the cluster to the desired size:
 
-    ```sh
-    $ kubectl get pods
-    NAME                                     READY     STATUS    RESTARTS   AGE
-    etcd-operator-2486363115-ltc17           1/1       Running   0          1h
-    etcd-restore-operator-4203122180-npn3g   1/1       Running   0          30m
-    example-etcd-cluster-795649v9kq          1/1       Running   1          3m
-    example-etcd-cluster-jtp447ggnq          1/1       Running   1          4m
-    example-etcd-cluster-psw7sf2hhr          1/1       Running   1          4m
-    ```
+   ```sh
+   $ kubectl get pods
+   NAME                                     READY     STATUS    RESTARTS   AGE
+   etcd-operator-2486363115-ltc17           1/1       Running   0          1h
+   etcd-restore-operator-4203122180-npn3g   1/1       Running   0          30m
+   example-etcd-cluster-795649v9kq          1/1       Running   1          3m
+   example-etcd-cluster-jtp447ggnq          1/1       Running   1          4m
+   example-etcd-cluster-psw7sf2hhr          1/1       Running   1          4m
+   ```
 
 ### Cleanup
 
-Delete the etcd-restore-operator deployment and service, and the `EtcdRestore` CR. 
->Note: Deleting the `EtcdRestore` CR won't delete the `EtcdCluster` CR.
+Delete the etcd-restore-operator deployment and service, and the `EtcdRestore` CR.
+
+> Note: Deleting the `EtcdRestore` CR won't delete the `EtcdCluster` CR.
 
 ```sh
 kubectl delete etcdrestore example-etcd-cluster
 kubectl delete -f example/etcd-restore-operator/deployment.yaml
 ```
 
-
-[backup-operator-README]:./backup-operator.md
-[install_guide]:../install_guide.md
+[backup-operator-readme]: ./backup-operator.md
+[install_guide]: ../install_guide.md
+[kiam]: https://github.com/uswitch/kiam
+[kube2iam]: https://github.com/jtblin/kube2iam

@@ -31,10 +31,16 @@ import (
 // handleS3 saves etcd cluster's backup to specificed S3 path.
 func handleS3(ctx context.Context, kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []string, clientTLSSecret, namespace string) (*api.BackupStatus, error) {
 	// TODO: controls NewClientFromSecret with ctx. This depends on upstream kubernetes to support API calls with ctx.
-	cli, err := s3factory.NewClientFromSecret(kubecli, namespace, s.Endpoint, s.AWSSecret)
+	cfg := s3factory.ClientConfig{
+		Endpoint:  s.Endpoint,
+		Namespace: namespace,
+		AWSSecret: s.AWSSecret,
+	}
+	cli, err := s3factory.NewClient(cfg, kubecli)
 	if err != nil {
 		return nil, err
 	}
+
 	defer cli.Close()
 
 	var tlsConfig *tls.Config

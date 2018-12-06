@@ -38,3 +38,45 @@ func TestSetupAWSConfig(t *testing.T) {
 		t.Errorf("got: %s wanted: %s", *opts.Config.Endpoint, e)
 	}
 }
+
+func TestS3ClientForIAMRoles(t *testing.T) {
+	tests := []struct {
+		name   string
+		cfg    ClientConfig
+		expErr bool
+	}{
+		{
+			name: "A configuration without AWS secret, should return a client without credentials.",
+			cfg: ClientConfig{
+				Endpoint: "s3.eu-west-1.amazonaws.com",
+			},
+			expErr: false,
+		},
+		{
+			name: "A configuration without AWS secret and bad endpoint without region, should return a error.",
+			cfg: ClientConfig{
+				Endpoint: "s3.amazonaws.com",
+			},
+			expErr: true,
+		},
+		{
+			name:   "A configuration without AWS secret and no endpoint, should return a error.",
+			cfg:    ClientConfig{},
+			expErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			client := fake.NewSimpleClientset()
+			_, err := NewClient(test.cfg, client)
+
+			if test.expErr && err == nil {
+				t.Errorf("error expected, dind't got error")
+			} else if !test.expErr && err != nil {
+				t.Errorf("error not expected got: %s", err)
+			}
+		})
+	}
+}
