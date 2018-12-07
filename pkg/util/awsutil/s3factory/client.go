@@ -50,8 +50,7 @@ type ClientConfig struct {
 
 // NewClient returns a new S3Client. This client can be based on profiles, keys...
 // (from secret), or IAM Role based (nodes, Kube2iam, Kiam...), the client
-// type will be infered based on the missing (or not missing) data in the
-// client configuration.
+// type will be inferred based on ClientConfig.
 func NewClient(cfg ClientConfig, kubecli kubernetes.Interface) (*S3Client, error) {
 	// If credentials not required then use the S3 client based on IAM roles.
 	if cfg.AWSSecret == "" {
@@ -63,7 +62,7 @@ func NewClient(cfg ClientConfig, kubecli kubernetes.Interface) (*S3Client, error
 
 // newClientForIAMRole returns a S3 client that doesn't have credentials set and will do that
 // AWS S3 client fallback to machines assigned IAM role (or in case of using Kube2iam, Kiam...,
-// use the methods used to act on befhalf of the assumed roles given by these systems).
+// use the methods on behalf of the assumed roles given by these systems).
 func newClientForIAMRole(endpoint string) (w *S3Client, err error) {
 	defer func() {
 		if err != nil {
@@ -75,12 +74,10 @@ func newClientForIAMRole(endpoint string) (w *S3Client, err error) {
 	region := s3utils.GetRegionFromURL(url.URL{
 		Host: endpoint,
 	})
-
 	if region == "" {
 		return nil, fmt.Errorf("could not infer region from '%s' s3 endpoint, use an endpoint with region like `s3.us-east-1.amazonaws.com`", endpoint)
 	}
 
-	// Create AWS session default the config files, profile...
 	sess, err := session.NewSession(&aws.Config{
 		Endpoint: aws.String(endpoint),
 		Region:   aws.String(region),
