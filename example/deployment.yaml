@@ -9,6 +9,8 @@ spec:
       labels:
         name: etcd-operator
     spec:
+      securityContext:
+        runAsUser: 1000
       containers:
       - name: etcd-operator
         image: quay.io/coreos/etcd-operator:v0.9.3
