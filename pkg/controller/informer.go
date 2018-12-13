@@ -129,7 +129,7 @@ func (c *Controller) syncEtcdClus(clus *api.EtcdCluster) {
 	// re-watch or restart could give ADD event.
 	// If for an ADD event the cluster spec is invalid then it is not added to the local cache
 	// so modifying that cluster will result in another ADD event
-	if _, ok := c.clusters[clus.Name]; ok {
+	if _, ok := c.clusters[getNamespacedName(clus)]; ok {
 		ev.Type = kwatch.Modified
 	}
 
