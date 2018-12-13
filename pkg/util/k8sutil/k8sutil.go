@@ -59,7 +59,7 @@ const (
 
 	randomSuffixLength = 10
 	// k8s object name has a maximum length
-	maxNameLength = 63 - randomSuffixLength - 1
+	MaxNameLength = 63 - randomSuffixLength - 1
 
 	defaultBusyboxImage = "busybox:1.28.0-glibc"
 
@@ -517,8 +517,8 @@ func mergeLabels(l1, l2 map[string]string) {
 
 func UniqueMemberName(clusterName string) string {
 	suffix := utilrand.String(randomSuffixLength)
-	if len(clusterName) > maxNameLength {
-		clusterName = clusterName[:maxNameLength]
+	if len(clusterName) > MaxNameLength {
+		clusterName = clusterName[:MaxNameLength]
 	}
 	return clusterName + "-" + suffix
 }

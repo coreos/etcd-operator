@@ -159,3 +159,24 @@ func TestHandleClusterEventNamespacedIgnored(t *testing.T) {
 		t.Errorf("cluster should be ignored")
 	}
 }
+
+func TestHandleClusterEventWithLongClusterName(t *testing.T) {
+	c := New(Config{})
+
+	clus := &api.EtcdCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "example-etcd-cluster123456789123456789123456789123456789123456",
+		},
+	}
+	e := &Event{
+		Type:   watch.Added,
+		Object: clus,
+	}
+	if ignored, err := c.handleClusterEvent(e); !ignored {
+		if err == nil {
+			t.Errorf("err should not be nil")
+		}
+	} else {
+		t.Errorf("cluster should not be ignored")
+	}
+}
