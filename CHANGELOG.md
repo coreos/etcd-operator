@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Fixed a bug where `same CR names` in different namespaces with cluster-wide operator were not working as expected [#2026](https://github.com/coreos/etcd-operator/pull/2026)
+
 ### Deprecated
 
 ### Security
