@@ -239,7 +239,6 @@ func (b *Backup) handleErr(err error, key interface{}) {
 }
 
 func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSpec) (*api.BackupStatus, error) {
-	// TODO(Yuki Nishiwaki) validate spec for periodic job
 	err := validate(spec)
 	if err != nil {
 		return nil, err
@@ -286,6 +285,9 @@ func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSp
 func validate(spec *api.BackupSpec) error {
 	if len(spec.EtcdEndpoints) == 0 {
 		return errors.New("spec.etcdEndpoints should not be empty")
+	}
+	if spec.BackupPolicy != nil && spec.BackupPolicy.BackupIntervalInSecond < 0 {
+		return errros.New("spec.backupPoloicy.backupIntervalInSecond should not be lower than 0")
 	}
 	return nil
 }
