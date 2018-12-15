@@ -207,6 +207,7 @@ func (b *Backup) reportBackupStatus(bs *api.BackupStatus, berr error, eb *api.Et
 		eb.Status.Succeeded = true
 		eb.Status.EtcdRevision = bs.EtcdRevision
 		eb.Status.EtcdVersion = bs.EtcdVersion
+		eb.Status.LastSuccessDate = bs.LastSuccessDate
 	}
 	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(eb)
 	if err != nil {

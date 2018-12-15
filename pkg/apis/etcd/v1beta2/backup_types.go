@@ -113,6 +113,8 @@ type BackupStatus struct {
 	EtcdVersion string `json:"etcdVersion,omitempty"`
 	// EtcdRevision is the revision of etcd's KV store where the backup is performed on.
 	EtcdRevision int64 `json:"etcdRevision,omitempty"`
+	// LastSuccessDate indicate the time to get snapshot last time
+	LastSuccessDate time.Time `json:"lastSuccessDate,omitempty"`
 }
 
 // S3BackupSource provides the spec how to store backups on S3.

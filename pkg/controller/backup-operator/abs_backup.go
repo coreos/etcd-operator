@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup"
@@ -39,12 +40,12 @@ func handleABS(ctx context.Context, kubecli kubernetes.Interface, s *api.ABSBack
 	if tlsConfig, err = generateTLSConfig(kubecli, clientTLSSecret, namespace); err != nil {
 		return nil, err
 	}
-
+	now := time.Now().UTC()
 	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewABSWriter(cli.ABS), tlsConfig, endpoints, namespace)
 
-	rev, etcdVersion, err := bm.SaveSnap(ctx, s.Path)
+	rev, etcdVersion, err := bm.SaveSnap(ctx, s.Path, now)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save snapshot (%v)", err)
 	}
-	return &api.BackupStatus{EtcdVersion: etcdVersion, EtcdRevision: rev}, nil
+	return &api.BackupStatus{EtcdVersion: etcdVersion, EtcdRevision: rev, LastSuccessDate: now}, nil
 }
