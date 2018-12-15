@@ -14,7 +14,11 @@
 
 package v1beta2
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 const (
 	// AWS S3 related consts
@@ -94,6 +98,9 @@ type BackupSource struct {
 type BackupPolicy struct {
 	// TimeoutInSecond is the maximal allowed time in second of the entire backup process.
 	TimeoutInSecond int64 `json:"timeoutInSecond,omitempty"`
+	// BackupIntervalInSecond is to specify how often operator take snapshot
+	// 0 is magic number to indicate one-shot backup
+	BackupIntervalInSecond int64 `json:"backupIntervalInSecond,omitempty"`
 }
 
 // BackupStatus represents the status of the EtcdBackup Custom Resource.

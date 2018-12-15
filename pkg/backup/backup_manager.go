@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -68,7 +69,8 @@ func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string) (int64, st
 		return 0, "", fmt.Errorf("failed to receive snapshot (%v)", err)
 	}
 	defer rc.Close()
-
+	s3Path = fmt.Sprintf(s3Path+"_v%d_%s",
+		rev, time.Now().UTC().Format("2006-01-02-15:04:05"))
 	_, err = bm.bw.Write(ctx, s3Path, rc)
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to write snapshot (%v)", err)
