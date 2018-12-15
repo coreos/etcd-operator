@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
@@ -75,6 +76,27 @@ func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, now time.T
 		return 0, "", fmt.Errorf("failed to write snapshot (%v)", err)
 	}
 	return rev, resp.Version, nil
+}
+
+// EnsureMaxbackup to ensure the number of snapshot is under maxcount
+// if the number of snapshot exceeded than maxcount, delete oldest snapshot
+func (bm *BackupManager) EnsureMaxbackup(ctx context.Context, s3Path string, maxCount int) error {
+
+	savedSnapShots, err := bm.bw.List(ctx, s3Path)
+	if err != nil {
+		return fmt.Errorf("failed to get exisiting snapashots: %v", err)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(savedSnapShots)))
+	for i, snapshotPath := range savedSnapShots {
+		if i < maxCount {
+			continue
+		}
+		err := bm.bw.Delete(ctx, snapshotPath)
+		if err != nil {
+			return fmt.Errorf("failed to delete snapshot: %v", err)
+		}
+	}
+	return nil
 }
 
 // etcdClientWithMaxRevision gets the etcd endpoint with the maximum kv store revision

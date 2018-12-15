@@ -29,7 +29,7 @@ import (
 )
 
 // handleABS saves etcd cluster's backup to specificed ABS path.
-func handleABS(ctx context.Context, kubecli kubernetes.Interface, s *api.ABSBackupSource, endpoints []string, clientTLSSecret, namespace string) (*api.BackupStatus, error) {
+func handleABS(ctx context.Context, kubecli kubernetes.Interface, s *api.ABSBackupSource, endpoints []string, clientTLSSecret, namespace string, maxBackup int) (*api.BackupStatus, error) {
 	// TODO: controls NewClientFromSecret with ctx. This depends on upstream kubernetes to support API calls with ctx.
 	cli, err := absfactory.NewClientFromSecret(kubecli, namespace, s.ABSSecret)
 	if err != nil {
@@ -46,6 +46,12 @@ func handleABS(ctx context.Context, kubecli kubernetes.Interface, s *api.ABSBack
 	rev, etcdVersion, err := bm.SaveSnap(ctx, s.Path, now)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save snapshot (%v)", err)
+	}
+	if maxBackup > 0 {
+		err := bm.EnsureMaxbackup(ctx, s.Path, maxBackup)
+		if err != nil {
+			return nil, fmt.Errorf("succeeded in saving snapshot but failed to delete old snapshot (%v)", err)
+		}
 	}
 	return &api.BackupStatus{EtcdVersion: etcdVersion, EtcdRevision: rev, LastSuccessDate: now}, nil
 }

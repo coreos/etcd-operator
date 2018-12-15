@@ -30,7 +30,7 @@ import (
 
 // TODO: replace this with generic backend interface for other options (PV, Azure)
 // handleS3 saves etcd cluster's backup to specificed S3 path.
-func handleS3(ctx context.Context, kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []string, clientTLSSecret, namespace string) (*api.BackupStatus, error) {
+func handleS3(ctx context.Context, kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []string, clientTLSSecret, namespace string, maxBackup int) (*api.BackupStatus, error) {
 	// TODO: controls NewClientFromSecret with ctx. This depends on upstream kubernetes to support API calls with ctx.
 	cli, err := s3factory.NewClientFromSecret(kubecli, namespace, s.Endpoint, s.AWSSecret)
 	if err != nil {
@@ -48,6 +48,12 @@ func handleS3(ctx context.Context, kubecli kubernetes.Interface, s *api.S3Backup
 	rev, etcdVersion, err := bm.SaveSnap(ctx, s.Path, now)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save snapshot (%v)", err)
+	}
+	if maxBackup > 0 {
+		err := bm.EnsureMaxbackup(ctx, s.Path, maxBackup)
+		if err != nil {
+			return nil, fmt.Errorf("succeeded in saving snapshot but failed to delete old snapshot (%v)", err)
+		}
 	}
 	return &api.BackupStatus{EtcdVersion: etcdVersion, EtcdRevision: rev, LastSuccessDate: now}, nil
 }

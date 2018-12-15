@@ -101,6 +101,9 @@ type BackupPolicy struct {
 	// BackupIntervalInSecond is to specify how often operator take snapshot
 	// 0 is magic number to indicate one-shot backup
 	BackupIntervalInSecond int64 `json:"backupIntervalInSecond,omitempty"`
+	// MaxBackups is to specify how many backups we want to keep
+	// 0 is magic number to indicate un-limited backups
+	MaxBackups int `json:"maxBackups,omitempty"`
 }
 
 // BackupStatus represents the status of the EtcdBackup Custom Resource.

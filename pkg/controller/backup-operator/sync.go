@@ -250,6 +250,10 @@ func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSp
 	if spec.BackupPolicy != nil && spec.BackupPolicy.TimeoutInSecond > 0 {
 		backupTimeout = time.Duration(spec.BackupPolicy.TimeoutInSecond) * time.Second
 	}
+	backupMaxCount := 0
+	if spec.BackupPolicy != nil && spec.BackupPolicy.MaxBackups > 0 {
+		backupMaxCount = spec.BackupPolicy.MaxBackups
+	}
 
 	if parentContext == nil {
 		tmpParent := context.Background()
@@ -259,19 +263,19 @@ func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSp
 	defer cancel()
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
-		bs, err := handleS3(ctx, b.kubecli, spec.S3, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace)
+		bs, err := handleS3(ctx, b.kubecli, spec.S3, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace, backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeABS:
-		bs, err := handleABS(ctx, b.kubecli, spec.ABS, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace)
+		bs, err := handleABS(ctx, b.kubecli, spec.ABS, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace, backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeGCS:
-		bs, err := handleGCS(ctx, b.kubecli, spec.GCS, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace)
+		bs, err := handleGCS(ctx, b.kubecli, spec.GCS, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace, backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
@@ -287,8 +291,13 @@ func validate(spec *api.BackupSpec) error {
 	if len(spec.EtcdEndpoints) == 0 {
 		return errors.New("spec.etcdEndpoints should not be empty")
 	}
-	if spec.BackupPolicy != nil && spec.BackupPolicy.BackupIntervalInSecond < 0 {
-		return errros.New("spec.backupPoloicy.backupIntervalInSecond should not be lower than 0")
+	if spec.BackupPolicy != nil {
+		if spec.BackupPolicy.BackupIntervalInSecond < 0 {
+			return errors.New("spec.backupPoloicy.backupIntervalInSecond should not be lower than 0")
+		}
+		if spec.BackupPolicy.MaxBackups < 0 {
+			return errors.New("spec.backupPolicy.MaxBackups should not be lower than 0")
+		}
 	}
 	return nil
 }
