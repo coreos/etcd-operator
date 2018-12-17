@@ -204,6 +204,7 @@ func (b *Backup) reportBackupStatus(bs *api.BackupStatus, berr error, eb *api.Et
 		eb.Status.Succeeded = false
 		eb.Status.Reason = berr.Error()
 	} else {
+		eb.Status.Reason = ""
 		eb.Status.Succeeded = true
 		eb.Status.EtcdRevision = bs.EtcdRevision
 		eb.Status.EtcdVersion = bs.EtcdVersion
