@@ -53,7 +53,7 @@ func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, 
 
 // SaveSnap uses backup writer to save etcd snapshot to a specified S3 path
 // and returns backup etcd server's kv store revision and its version.
-func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, now time.Time) (int64, string, error) {
+func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, now time.Time, isPeriodic bool) (int64, string, error) {
 	etcdcli, rev, err := bm.etcdClientWithMaxRevision(ctx)
 	if err != nil {
 		return 0, "", fmt.Errorf("create etcd client failed: %v", err)
@@ -70,7 +70,9 @@ func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, now time.T
 		return 0, "", fmt.Errorf("failed to receive snapshot (%v)", err)
 	}
 	defer rc.Close()
-	s3Path = fmt.Sprintf(s3Path+"_v%d_%s", rev, now.Format("2006-01-02-15:04:05"))
+	if isPeriodic {
+		s3Path = fmt.Sprintf(s3Path+"_v%d_%s", rev, now.Format("2006-01-02-15:04:05"))
+	}
 	_, err = bm.bw.Write(ctx, s3Path, rc)
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to write snapshot (%v)", err)

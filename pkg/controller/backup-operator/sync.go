@@ -82,12 +82,12 @@ func (b *Backup) processItem(key string) error {
 	}
 	// don't process the CR if it has a status since
 	// having a status means that the backup is either made or failed.
-	if !isPeriodicBackup(eb) &&
+	if !isPeriodicBackup(&eb.Spec) &&
 		(eb.Status.Succeeded || len(eb.Status.Reason) != 0) {
 		return nil
 	}
 
-	if isPeriodicBackup(eb) && b.isChanged(eb) {
+	if isPeriodicBackup(&eb.Spec) && b.isChanged(eb) {
 		// Stop previous backup runner if it exists
 		b.deletePeriodicBackupRunner(eb.ObjectMeta.UID)
 
@@ -107,7 +107,7 @@ func (b *Backup) processItem(key string) error {
 		// Store cancel function for periodic
 		b.backupRunnerStore.Store(eb.ObjectMeta.UID, BackupRunner{eb.Spec, cancel})
 
-	} else if !isPeriodicBackup(eb) {
+	} else if !isPeriodicBackup(&eb.Spec) {
 		// Perform backup
 		bs, err := b.handleBackup(nil, &eb.Spec)
 		// Report backup status
@@ -263,19 +263,22 @@ func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSp
 	defer cancel()
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
-		bs, err := handleS3(ctx, b.kubecli, spec.S3, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace, backupMaxCount)
+		bs, err := handleS3(ctx, b.kubecli, spec.S3, spec.EtcdEndpoints, spec.ClientTLSSecret,
+			b.namespace, isPeriodicBackup(spec), backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeABS:
-		bs, err := handleABS(ctx, b.kubecli, spec.ABS, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace, backupMaxCount)
+		bs, err := handleABS(ctx, b.kubecli, spec.ABS, spec.EtcdEndpoints, spec.ClientTLSSecret,
+			b.namespace, isPeriodicBackup(spec), backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeGCS:
-		bs, err := handleGCS(ctx, b.kubecli, spec.GCS, spec.EtcdEndpoints, spec.ClientTLSSecret, b.namespace, backupMaxCount)
+		bs, err := handleGCS(ctx, b.kubecli, spec.GCS, spec.EtcdEndpoints, spec.ClientTLSSecret,
+			b.namespace, isPeriodicBackup(spec), backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
