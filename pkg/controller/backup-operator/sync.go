@@ -297,7 +297,7 @@ func validate(spec *api.BackupSpec) error {
 	}
 	if spec.BackupPolicy != nil {
 		if spec.BackupPolicy.BackupIntervalInSecond < 0 {
-			return errors.New("spec.backupPoloicy.backupIntervalInSecond should not be lower than 0")
+			return errors.New("spec.backupPolicy.backupIntervalInSecond should not be lower than 0")
 		}
 		if spec.BackupPolicy.MaxBackups < 0 {
 			return errors.New("spec.backupPolicy.MaxBackups should not be lower than 0")
