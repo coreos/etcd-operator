@@ -85,7 +85,7 @@ func (s3w *s3Writer) List(ctx context.Context, basePath string) ([]string, error
 	}
 	objectKeys := []string{}
 	for _, object := range objects.Contents {
-		objectKeys = append(objectKeys, bk+"/"+ *object.Key)
+		objectKeys = append(objectKeys, bk+"/"+*object.Key)
 	}
 	return objectKeys, nil
 }

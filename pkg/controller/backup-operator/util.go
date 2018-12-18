@@ -43,7 +43,6 @@ func generateTLSConfig(kubecli kubernetes.Interface, clientTLSSecret, namespace 
 func isPeriodicBackup(ebSpec *api.BackupSpec) bool {
 	if ebSpec.BackupPolicy != nil {
 		return ebSpec.BackupPolicy.BackupIntervalInSecond != 0
-	} else {
-		return false
 	}
+	return false
 }

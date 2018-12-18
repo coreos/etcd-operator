@@ -80,14 +80,16 @@ func (b *Backup) processItem(key string) error {
 		}
 		return nil
 	}
+	isPeriodic := isPeriodicBackup(&eb.Spec)
+
 	// don't process the CR if it has a status since
 	// having a status means that the backup is either made or failed.
-	if !isPeriodicBackup(&eb.Spec) &&
+	if !isPeriodic &&
 		(eb.Status.Succeeded || len(eb.Status.Reason) != 0) {
 		return nil
 	}
 
-	if isPeriodicBackup(&eb.Spec) && b.isChanged(eb) {
+	if isPeriodic && b.isChanged(eb) {
 		// Stop previous backup runner if it exists
 		b.deletePeriodicBackupRunner(eb.ObjectMeta.UID)
 
@@ -107,9 +109,9 @@ func (b *Backup) processItem(key string) error {
 		// Store cancel function for periodic
 		b.backupRunnerStore.Store(eb.ObjectMeta.UID, BackupRunner{eb.Spec, cancel})
 
-	} else if !isPeriodicBackup(&eb.Spec) {
+	} else if !isPeriodic {
 		// Perform backup
-		bs, err := b.handleBackup(nil, &eb.Spec)
+		bs, err := b.handleBackup(nil, &eb.Spec, false)
 		// Report backup status
 		b.reportBackupStatus(bs, err, eb)
 	}
@@ -146,10 +148,9 @@ func (b *Backup) addFinalizerOfPeriodicBackupIfNeed(eb *api.EtcdBackup) (*api.Et
 		if err != nil {
 			return eb, err
 		}
-	} else {
-		return eb, nil
+		return ebNew.(*api.EtcdBackup), nil
 	}
-	return ebNew.(*api.EtcdBackup), nil
+	return eb, nil
 }
 
 func (b *Backup) removeFinalizerOfPeriodicBackup(eb *api.EtcdBackup) error {
@@ -192,7 +193,7 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 				break
 			}
 			// Perform backup
-			bs, err := b.handleBackup(&ctx, &latestEb.Spec)
+			bs, err := b.handleBackup(&ctx, &latestEb.Spec, true)
 			// Report backup status
 			b.reportBackupStatus(bs, err, latestEb)
 		}
@@ -240,7 +241,7 @@ func (b *Backup) handleErr(err error, key interface{}) {
 	b.logger.Infof("Dropping etcd backup (%v) out of the queue: %v", key, err)
 }
 
-func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSpec) (*api.BackupStatus, error) {
+func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSpec, isPeriodic bool) (*api.BackupStatus, error) {
 	err := validate(spec)
 	if err != nil {
 		return nil, err
@@ -265,21 +266,21 @@ func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSp
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
 		bs, err := handleS3(ctx, b.kubecli, spec.S3, spec.EtcdEndpoints, spec.ClientTLSSecret,
-			b.namespace, isPeriodicBackup(spec), backupMaxCount)
+			b.namespace, isPeriodic, backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeABS:
 		bs, err := handleABS(ctx, b.kubecli, spec.ABS, spec.EtcdEndpoints, spec.ClientTLSSecret,
-			b.namespace, isPeriodicBackup(spec), backupMaxCount)
+			b.namespace, isPeriodic, backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeGCS:
 		bs, err := handleGCS(ctx, b.kubecli, spec.GCS, spec.EtcdEndpoints, spec.ClientTLSSecret,
-			b.namespace, isPeriodicBackup(spec), backupMaxCount)
+			b.namespace, isPeriodic, backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
@@ -297,10 +298,10 @@ func validate(spec *api.BackupSpec) error {
 	}
 	if spec.BackupPolicy != nil {
 		if spec.BackupPolicy.BackupIntervalInSecond < 0 {
-			return errors.New("spec.backupPolicy.backupIntervalInSecond should not be lower than 0")
+			return errors.New("spec.BackupPolicy.BackupIntervalInSecond should not be lower than 0")
 		}
 		if spec.BackupPolicy.MaxBackups < 0 {
-			return errors.New("spec.backupPolicy.MaxBackups should not be lower than 0")
+			return errors.New("spec.BackupPolicy.MaxBackups should not be lower than 0")
 		}
 	}
 	return nil
