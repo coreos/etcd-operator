@@ -18,7 +18,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup"
@@ -42,18 +41,17 @@ func handleGCS(ctx context.Context, kubecli kubernetes.Interface, s *api.GCSBack
 	if tlsConfig, err = generateTLSConfig(kubecli, clientTLSSecret, namespace); err != nil {
 		return nil, err
 	}
-	now := time.Now().UTC()
 	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewGCSWriter(cli.GCS), tlsConfig, endpoints, namespace)
 
-	rev, etcdVersion, err := bm.SaveSnap(ctx, s.Path, now, isPeriodic)
+	rev, etcdVersion, now, err := bm.SaveSnap(ctx, s.Path, isPeriodic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save snapshot (%v)", err)
 	}
 	if maxBackup > 0 {
-		err := bm.EnsureMaxbackup(ctx, s.Path, maxBackup)
+		err := bm.EnsureMaxBackup(ctx, s.Path, maxBackup)
 		if err != nil {
 			return nil, fmt.Errorf("succeeded in saving snapshot but failed to delete old snapshot (%v)", err)
 		}
 	}
-	return &api.BackupStatus{EtcdVersion: etcdVersion, EtcdRevision: rev, LastSuccessDate: now}, nil
+	return &api.BackupStatus{EtcdVersion: etcdVersion, EtcdRevision: rev, LastSuccessDate: *now}, nil
 }

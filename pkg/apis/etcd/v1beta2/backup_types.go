@@ -15,8 +15,6 @@
 package v1beta2
 
 import (
-	"time"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -117,7 +115,7 @@ type BackupStatus struct {
 	// EtcdRevision is the revision of etcd's KV store where the backup is performed on.
 	EtcdRevision int64 `json:"etcdRevision,omitempty"`
 	// LastSuccessDate indicate the time to get snapshot last time
-	LastSuccessDate time.Time `json:"lastSuccessDate,omitempty"`
+	LastSuccessDate metav1.Time `json:"lastSuccessDate,omitempty"`
 }
 
 // S3BackupSource provides the spec how to store backups on S3.

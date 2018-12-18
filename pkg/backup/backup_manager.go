@@ -26,6 +26,7 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -53,21 +54,22 @@ func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, 
 
 // SaveSnap uses backup writer to save etcd snapshot to a specified S3 path
 // and returns backup etcd server's kv store revision and its version.
-func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, now time.Time, isPeriodic bool) (int64, string, error) {
+func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, isPeriodic bool) (int64, string, *metav1.Time, error) {
+	now := time.Now().UTC()
 	etcdcli, rev, err := bm.etcdClientWithMaxRevision(ctx)
 	if err != nil {
-		return 0, "", fmt.Errorf("create etcd client failed: %v", err)
+		return 0, "", nil, fmt.Errorf("create etcd client failed: %v", err)
 	}
 	defer etcdcli.Close()
 
 	resp, err := etcdcli.Status(ctx, etcdcli.Endpoints()[0])
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to retrieve etcd version from the status call: %v", err)
+		return 0, "", nil, fmt.Errorf("failed to retrieve etcd version from the status call: %v", err)
 	}
 
 	rc, err := etcdcli.Snapshot(ctx)
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to receive snapshot (%v)", err)
+		return 0, "", nil, fmt.Errorf("failed to receive snapshot (%v)", err)
 	}
 	defer rc.Close()
 	if isPeriodic {
@@ -75,9 +77,9 @@ func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, now time.T
 	}
 	_, err = bm.bw.Write(ctx, s3Path, rc)
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to write snapshot (%v)", err)
+		return 0, "", nil, fmt.Errorf("failed to write snapshot (%v)", err)
 	}
-	return rev, resp.Version, nil
+	return rev, resp.Version, &metav1.Time{now}, nil
 }
 
 // EnsureMaxBackup to ensure the number of snapshot is under maxcount

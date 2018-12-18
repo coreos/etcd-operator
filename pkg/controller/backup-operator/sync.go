@@ -74,11 +74,7 @@ func (b *Backup) processItem(key string) error {
 
 	if eb.DeletionTimestamp != nil {
 		b.deletePeriodicBackupRunner(eb.ObjectMeta.UID)
-		err := b.removeFinalizerOfPeriodicBackup(eb)
-		if err != nil {
-			return err
-		}
-		return nil
+		return b.removeFinalizerOfPeriodicBackup(eb)
 	}
 	isPeriodic := isPeriodicBackup(&eb.Spec)
 
@@ -168,10 +164,7 @@ func (b *Backup) removeFinalizerOfPeriodicBackup(eb *api.EtcdBackup) error {
 	}
 	metadata.SetFinalizers(finalizers)
 	_, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(ebNew.(*api.EtcdBackup))
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api.EtcdBackup) {
