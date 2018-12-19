@@ -495,6 +495,8 @@ Check https://github.com/coreos/etcd-operator/blob/master/doc/user/upgrade/upgra
 
 ### Fixed
 
+- Fixed an issue where liveness probes failed when authentication was enabled. [#1957](https://github.com/coreos/etcd-operator/issues/1957)
+
 ### Deprecated
 
 ### Security
