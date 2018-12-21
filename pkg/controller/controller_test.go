@@ -62,14 +62,14 @@ func TestHandleClusterEventDeleteFailedCluster(t *testing.T) {
 		Object: clus,
 	}
 
-	c.clusters[name] = &cluster.Cluster{}
+	c.clusters[getNamespacedName(clus)] = &cluster.Cluster{}
 
 	if _, err := c.handleClusterEvent(e); err != nil {
 		t.Fatal(err)
 	}
 
-	if c.clusters[name] != nil {
-		t.Errorf("failed cluster not cleaned up after delete event, cluster struct: %v", c.clusters[name])
+	if c.clusters[getNamespacedName(clus)] != nil {
+		t.Errorf("failed cluster not cleaned up after delete event, cluster struct: %v", c.clusters[getNamespacedName(clus)])
 	}
 }
 
@@ -78,7 +78,8 @@ func TestHandleClusterEventClusterwide(t *testing.T) {
 
 	clus := &api.EtcdCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "test",
+			Name:      "test",
+			Namespace: "a",
 			Annotations: map[string]string{
 				"etcd.database.coreos.com/scope": "clusterwide",
 			},
@@ -107,6 +108,35 @@ func TestHandleClusterEventClusterwideIgnored(t *testing.T) {
 	}
 	if ignored, _ := c.handleClusterEvent(e); !ignored {
 		t.Errorf("cluster should be ignored")
+	}
+}
+
+func TestHandleClusterEventClusterwideAddTwoCR(t *testing.T) {
+	c := New(Config{ClusterWide: true})
+	clusA := &api.EtcdCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "a",
+		},
+	}
+	clusB := &api.EtcdCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "b",
+		},
+	}
+	e := &Event{
+		Type:   watch.Added,
+		Object: clusA,
+	}
+	ignored, errA := c.handleClusterEvent(e)
+	if !ignored && errA != nil {
+		t.Errorf("cluster should be Added")
+	}
+	e.Object = clusB
+	ignored, errB := c.handleClusterEvent(e)
+	if !ignored && errB != nil {
+		t.Errorf("cluster should be Added")
 	}
 }
 

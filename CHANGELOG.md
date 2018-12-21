@@ -2,19 +2,34 @@
 
 ### Added
 
-- Added `spec.pod.DNSTimeoutInSecond` to `EtcdCluster` that allows setting a maximum allowed time for the init container of the etcd pod to reverse DNS lookup its IP given the hostname.
-
 ### Changed
 
 ### Removed
 
 ### Fixed
 
-- Fixed leaking http connections while verifying backup snapshots. [#1976](https://github.com/coreos/etcd-operator/pull/1976)
+- Fixed a bug where `same CR names` in different namespaces with cluster-wide operator were not working as expected [#2026](https://github.com/coreos/etcd-operator/pull/2026)
 
 ### Deprecated
 
 ### Security
+
+## [Release 0.9.3]
+
+### Added
+
+- Added `spec.pod.DNSTimeoutInSecond` to `EtcdCluster` that allows setting a maximum allowed time for the init container of the etcd pod to reverse DNS lookup its IP given the hostname.
+
+### Changed
+
+- Update Go version to 1.11.2
+- Update k8s to 1.11.4
+- k8s codegen updates are longer performed via container. Go dependencies are now vendored
+  and updates are performed with shell script locally.
+
+### Fixed
+
+- Fixed leaking http connections while verifying backup snapshots. [#1976](https://github.com/coreos/etcd-operator/pull/1976)
 
 ## [Release 0.9.2]
 
@@ -479,6 +494,8 @@ Check https://github.com/coreos/etcd-operator/blob/master/doc/user/upgrade/upgra
 ### Removed
 
 ### Fixed
+
+- Fixed an issue where liveness probes failed when authentication was enabled. [#1957](https://github.com/coreos/etcd-operator/issues/1957)
 
 ### Deprecated
 

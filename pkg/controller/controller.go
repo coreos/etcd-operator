@@ -74,7 +74,7 @@ func (c *Controller) handleClusterEvent(event *Event) (bool, error) {
 	if clus.Status.IsFailed() {
 		clustersFailed.Inc()
 		if event.Type == kwatch.Deleted {
-			delete(c.clusters, clus.Name)
+			delete(c.clusters, getNamespacedName(clus))
 			return false, nil
 		}
 		return false, fmt.Errorf("ignore failed cluster (%s). Please delete its CR", clus.Name)
@@ -88,30 +88,30 @@ func (c *Controller) handleClusterEvent(event *Event) (bool, error) {
 
 	switch event.Type {
 	case kwatch.Added:
-		if _, ok := c.clusters[clus.Name]; ok {
+		if _, ok := c.clusters[getNamespacedName(clus)]; ok {
 			return false, fmt.Errorf("unsafe state. cluster (%s) was created before but we received event (%s)", clus.Name, event.Type)
 		}
 
 		nc := cluster.New(c.makeClusterConfig(), clus)
 
-		c.clusters[clus.Name] = nc
+		c.clusters[getNamespacedName(clus)] = nc
 
 		clustersCreated.Inc()
 		clustersTotal.Inc()
 
 	case kwatch.Modified:
-		if _, ok := c.clusters[clus.Name]; !ok {
+		if _, ok := c.clusters[getNamespacedName(clus)]; !ok {
 			return false, fmt.Errorf("unsafe state. cluster (%s) was never created but we received event (%s)", clus.Name, event.Type)
 		}
-		c.clusters[clus.Name].Update(clus)
+		c.clusters[getNamespacedName(clus)].Update(clus)
 		clustersModified.Inc()
 
 	case kwatch.Deleted:
-		if _, ok := c.clusters[clus.Name]; !ok {
+		if _, ok := c.clusters[getNamespacedName(clus)]; !ok {
 			return false, fmt.Errorf("unsafe state. cluster (%s) was never created but we received event (%s)", clus.Name, event.Type)
 		}
-		c.clusters[clus.Name].Delete()
-		delete(c.clusters, clus.Name)
+		c.clusters[getNamespacedName(clus)].Delete()
+		delete(c.clusters, getNamespacedName(clus))
 		clustersDeleted.Inc()
 		clustersTotal.Dec()
 	}
@@ -133,4 +133,8 @@ func (c *Controller) initCRD() error {
 		return fmt.Errorf("failed to create CRD: %v", err)
 	}
 	return k8sutil.WaitCRDReady(c.KubeExtCli, api.EtcdClusterCRDName)
+}
+
+func getNamespacedName(c *api.EtcdCluster) string {
+	return fmt.Sprintf("%s%c%s", c.Namespace, '/', c.Name)
 }

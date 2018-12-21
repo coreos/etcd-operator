@@ -62,7 +62,7 @@ func (c *FakeEtcdClusters) List(opts v1.ListOptions) (result *v1beta2.EtcdCluste
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1beta2.EtcdClusterList{}
+	list := &v1beta2.EtcdClusterList{ListMeta: obj.(*v1beta2.EtcdClusterList).ListMeta}
 	for _, item := range obj.(*v1beta2.EtcdClusterList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)

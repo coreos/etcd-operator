@@ -40,6 +40,28 @@ spec:
 
 For other topology keys, see https://kubernetes.io/docs/concepts/configuration/assign-pod-node/ .
 
+## Three member cluster with preferred anti-affinity between pods and nodes (place pods in different nodes if possible)
+
+> Note: change $cluster_name to the EtcdCluster's name.
+
+```yaml
+spec:
+  size: 3
+  pod:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: etcd_cluster
+                operator: In
+                values:
+                - $cluster_name
+            topologyKey: kubernetes.io/hostname
+```
+
 ## Three member cluster with resource requirement
 
 ```yaml
@@ -98,8 +120,24 @@ spec:
       fsGroup: 9000
 ```
 
-## Custom pod probe configuration
+## Custom PersistentVolumeClaim definition
 
+> Note: Change $STORAGECLASS for your preferred StorageClass or remove the line to use the default one. 
+
+```yaml
+spec:
+  size: 3
+  pod:
+    persistentVolumeClaimSpec:
+      storageClassName: $STORAGECLASS
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+```
+
+## Custom pod probe configuration
 ```yaml
 spec:
   size: 3

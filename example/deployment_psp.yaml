@@ -1,21 +1,24 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: etcd-restore-operator
-  labels:
-    name: etcd-restore-operator
+  name: etcd-operator
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        name: etcd-restore-operator
+        name: etcd-operator
     spec:
+      securityContext:
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
-      - name: etcd-restore-operator
+      - name: etcd-operator
         image: quay.io/coreos/etcd-operator:v0.9.3
         command:
-        - etcd-restore-operator
+        - etcd-operator
+        # Uncomment to act for resources in all namespaces. More information in doc/user/clusterwide.md
+        #- -cluster-wide
         env:
         - name: MY_POD_NAMESPACE
           valueFrom:
