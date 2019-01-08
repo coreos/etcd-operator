@@ -89,11 +89,16 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 			return errors.New("empty s3 restore source")
 		}
 		s3RestoreSource := restoreSource.S3
-		if len(s3RestoreSource.AWSSecret) == 0 || len(s3RestoreSource.Path) == 0 {
-			return errors.New("invalid s3 restore source field (spec.s3), must specify all required subfields")
+		if len(s3RestoreSource.Path) == 0 {
+			return errors.New("invalid s3 restore source field (spec.s3), must specify s3 restore path")
 		}
 
-		s3Cli, err := s3factory.NewClientFromSecret(r.kubecli, r.namespace, s3RestoreSource.Endpoint, s3RestoreSource.AWSSecret)
+		cfg := s3factory.ClientConfig{
+			Endpoint:  s3RestoreSource.Endpoint,
+			Namespace: r.namespace,
+			AWSSecret: s3RestoreSource.AWSSecret,
+		}
+		s3Cli, err := s3factory.NewClient(cfg, r.kubecli)
 		if err != nil {
 			return fmt.Errorf("failed to create S3 client: %v", err)
 		}
