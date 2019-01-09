@@ -29,7 +29,7 @@ func TestSetupAWSConfig(t *testing.T) {
 	client := fake.NewSimpleClientset(sec)
 
 	e := "example.com"
-	opts, err := setupAWSConfig(client, "", "", e, "")
+	opts, err := setupAWSConfig(client, "", "", e, "", false)
 	if err != nil {
 		t.Error(err)
 	}

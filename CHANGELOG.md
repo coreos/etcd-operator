@@ -2,6 +2,9 @@
 
 ### Added
 
+- Added `spec.BackupSource.S3.ForcePathStyle` to `EtcdBackup` to force path style s3 uploads. [#2036](https://github.com/coreos/etcd-operator/pull/2036)
+- Added `spec.RestoreSource.S3.ForcePathStyle` to `EtcdRestore` to force path style s3 downloads. [#2036](https://github.com/coreos/etcd-operator/pull/2036)
+
 ### Changed
 
 ### Removed
