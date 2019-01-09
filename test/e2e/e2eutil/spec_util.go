@@ -51,8 +51,9 @@ func NewS3Backup(endpoints []string, clusterName, path, secret, clientTLSSecret 
 			ClientTLSSecret: clientTLSSecret,
 			BackupSource: api.BackupSource{
 				S3: &api.S3BackupSource{
-					Path:      path,
-					AWSSecret: secret,
+					Path:           path,
+					AWSSecret:      secret,
+					ForcePathStyle: false,
 				},
 			},
 		},
