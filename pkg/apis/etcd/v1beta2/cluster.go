@@ -99,6 +99,9 @@ type ClusterSpec struct {
 
 	// etcd cluster TLS configuration
 	TLS *TLSPolicy `json:"TLS,omitempty"`
+
+	// ExtendedArgs is a form to add more arguments that can be used for all etcd instances
+	ExtendedArgs string `json:"extendedArgs,omitempty"`
 }
 
 // PodPolicy defines the policy to create pod for the etcd container.

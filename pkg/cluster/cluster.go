@@ -315,6 +315,7 @@ func (c *Cluster) startSeedMember() error {
 		Namespace:    c.cluster.Namespace,
 		SecurePeer:   c.isSecurePeer(),
 		SecureClient: c.isSecureClient(),
+		ExtendedArgs: c.cluster.Spec.ExtendedArgs,
 	}
 	ms := etcdutil.NewMemberSet(m)
 	if err := c.createPod(ms, m, "new"); err != nil {

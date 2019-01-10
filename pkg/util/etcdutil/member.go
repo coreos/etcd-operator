@@ -33,6 +33,9 @@ type Member struct {
 
 	SecurePeer   bool
 	SecureClient bool
+
+	// ExtendedArgs
+	ExtendedArgs string
 }
 
 func (m *Member) Addr() string {

@@ -309,6 +309,7 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
+	commands += fmt.Sprintf(" %s", m.ExtendedArgs)
 
 	labels := map[string]string{
 		"app":          "etcd",
