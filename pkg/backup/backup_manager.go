@@ -84,9 +84,8 @@ func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, isPeriodic
 
 // EnsureMaxBackup to ensure the number of snapshot is under maxcount
 // if the number of snapshot exceeded than maxcount, delete oldest snapshot
-func (bm *BackupManager) EnsureMaxBackup(ctx context.Context, s3Path string, maxCount int) error {
-
-	savedSnapShots, err := bm.bw.List(ctx, s3Path)
+func (bm *BackupManager) EnsureMaxBackup(ctx context.Context, basePath string, maxCount int) error {
+	savedSnapShots, err := bm.bw.List(ctx, basePath)
 	if err != nil {
 		return fmt.Errorf("failed to get exisiting snapshots: %v", err)
 	}
