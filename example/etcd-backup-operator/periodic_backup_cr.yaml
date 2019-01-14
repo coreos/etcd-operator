@@ -1,0 +1,16 @@
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdBackup"
+metadata:
+  name: example-etcd-cluster-periodic-backup
+spec:
+  etcdEndpoints: [<etcd-cluster-endpoints>]
+  storageType: S3
+  backupPolicy:
+    # 0 > enable periodic backup
+    backupIntervalInSecond: 125
+    maxBackups: 4
+  s3:
+    # The format of "path" must be: "<s3-bucket-name>/<path-to-backup-file>"
+    # e.g: "mybucket/etcd.backup"
+    path: <full-s3-path>
+    awsSecret: <aws-secret>
