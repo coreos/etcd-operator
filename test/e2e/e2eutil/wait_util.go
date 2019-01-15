@@ -16,12 +16,14 @@ package e2eutil
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
@@ -274,4 +276,17 @@ func WaitUntilOperatorReady(kubecli kubernetes.Interface, namespace, name string
 		return fmt.Errorf("failed to wait for pod (%v) to become ready: %v", podName, err)
 	}
 	return nil
+}
+
+func WaitUntilNoBackupFiles(wr writer.Writer, path string, timeout int) error {
+	return retryutil.Retry(time.Second, timeout, func() (bool, error) {
+		allBackups, err := wr.List(context.Background(), path)
+		if err != nil {
+			return false, fmt.Errorf("failed to list backup files: %v", err)
+		}
+		if len(allBackups) > 0 {
+			return false, fmt.Errorf("%d existing backup files are detected", len(allBackups))
+		}
+		return true, nil
+	})
 }
