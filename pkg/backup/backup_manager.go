@@ -79,7 +79,7 @@ func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, isPeriodic
 	if err != nil {
 		return 0, "", nil, fmt.Errorf("failed to write snapshot (%v)", err)
 	}
-	return rev, resp.Version, &metav1.Time{now}, nil
+	return rev, resp.Version, &metav1.Time{Time: now}, nil
 }
 
 // EnsureMaxBackup to ensure the number of snapshot is under maxcount
