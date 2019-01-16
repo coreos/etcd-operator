@@ -4,6 +4,13 @@
 
 ### Changed
 
+- EtcdBackup: Support periodically backup. This change added 3 new fileds in EtcdBackup schema, 2 variables is in spec, 1 varialbe is in status.
+  - in spec.backupPolicy
+    - maxBackup which indicate maximum number of backup to keep
+    - backupIntervalInSecond which indicate how often do backup operation.
+  - in status
+    - LastSuccessDate which indicate the last time to succeed in taking backup
+
 ### Removed
 
 ### Fixed
