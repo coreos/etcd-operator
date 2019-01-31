@@ -79,9 +79,11 @@ func (b *Backup) processItem(key string) error {
 
 func (b *Backup) reportBackupStatus(bs *api.BackupStatus, berr error, eb *api.EtcdBackup) {
 	if berr != nil {
+		backupsFailed.Inc()
 		eb.Status.Succeeded = false
 		eb.Status.Reason = berr.Error()
 	} else {
+		backupsCreated.Inc()
 		eb.Status.Succeeded = true
 		eb.Status.EtcdRevision = bs.EtcdRevision
 		eb.Status.EtcdVersion = bs.EtcdVersion
