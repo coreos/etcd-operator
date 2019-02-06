@@ -128,7 +128,7 @@ func (r *Restore) handleErr(err error, key interface{}) {
 }
 
 // prepareSeed does the following:
-// - fetches and deletes the reference EtcdCluster CR
+// - fetches and deletes the reference EtcdCluster CR (if exists)
 // - creates new EtcdCluster CR with same metadata and spec as the reference CR
 // - and spec.paused=true and status.phase="Running"
 //  - spec.paused=true: keep operator from touching membership
@@ -148,32 +148,44 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 
 	// Fetch the reference EtcdCluster
 	ecRef := er.Spec.EtcdCluster
+	clusterName := ecRef.Name
 	ec, err := r.etcdCRCli.EtcdV1beta2().EtcdClusters(r.namespace).Get(ecRef.Name, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to get reference EtcdCluster(%s/%s): %v", r.namespace, ecRef.Name, err)
-	}
-	if err := ec.Spec.Validate(); err != nil {
-		return fmt.Errorf("invalid cluster spec: %v", err)
-	}
+		// TODO: Check if error is "Not Found"
+		// EtcdCluster resource is not found, assume this restore operator has enough spec, create
+		// the resource according to that. transfer labels and annotations from the restore object.
+		// ignore OwnerReferences.
+		ec = &api.EtcdCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            clusterName,
+				Labels:          er.ObjectMeta.Labels,
+				Annotations:     er.ObjectMeta.Annotations,
+			},
+			Spec: ecRef,
+		}
+	} else {
+		if err := ec.Spec.Validate(); err != nil {
+			return fmt.Errorf("invalid cluster spec: %v", err)
+		}
 
-	// Delete reference EtcdCluster
-	err = r.etcdCRCli.EtcdV1beta2().EtcdClusters(r.namespace).Delete(ecRef.Name, &metav1.DeleteOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to delete reference EtcdCluster (%s/%s): %v", r.namespace, ecRef.Name, err)
-	}
-	// Need to delete etcd pods, etc. completely before creating new cluster.
-	r.deleteClusterResourcesCompletely(ecRef.Name)
+		// Delete reference EtcdCluster
+		err = r.etcdCRCli.EtcdV1beta2().EtcdClusters(r.namespace).Delete(ecRef.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to delete reference EtcdCluster (%s/%s): %v", r.namespace, ecRef.Name, err)
+		}
+		// Need to delete etcd pods, etc. completely before creating new cluster.
+		r.deleteClusterResourcesCompletely(ecRef.Name)
 
-	// Create the restored EtcdCluster with the same metadata and spec as reference EtcdCluster
-	clusterName := ecRef.Name
-	ec = &api.EtcdCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            clusterName,
-			Labels:          ec.ObjectMeta.Labels,
-			Annotations:     ec.ObjectMeta.Annotations,
-			OwnerReferences: ec.ObjectMeta.OwnerReferences,
-		},
-		Spec: ec.Spec,
+		// Create the restored EtcdCluster with the same metadata and spec as reference EtcdCluster
+		ec = &api.EtcdCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            clusterName,
+				Labels:          ec.ObjectMeta.Labels,
+				Annotations:     ec.ObjectMeta.Annotations,
+				OwnerReferences: ec.ObjectMeta.OwnerReferences,
+			},
+			Spec: ec.Spec,
+		}
 	}
 
 	ec.Spec.Paused = true

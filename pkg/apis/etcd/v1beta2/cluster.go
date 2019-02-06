@@ -65,6 +65,9 @@ func (c *EtcdCluster) AsOwner() metav1.OwnerReference {
 }
 
 type ClusterSpec struct {
+	// Optional; only useful when creating a cluster from a backup using restore-operator
+	Name string `json:"name"`
+
 	// Size is the expected size of the etcd cluster.
 	// The etcd-operator will eventually make the size of the running
 	// cluster equal to the expected size.

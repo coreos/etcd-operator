@@ -47,7 +47,7 @@ type RestoreSpec struct {
 	// will be used to create the new restored EtcdCluster CR.
 	// This reference EtcdCluster CR and all its resources will be deleted before the
 	// restored EtcdCluster CR is created.
-	EtcdCluster EtcdClusterRef `json:"etcdCluster"`
+	EtcdCluster ClusterSpec `json:"etcdCluster"`
 }
 
 // EtcdCluster references an EtcdCluster resource whose metadata and spec
