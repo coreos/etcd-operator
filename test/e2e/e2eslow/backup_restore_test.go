@@ -82,9 +82,11 @@ func TestBackupAndRestore(t *testing.T) {
 
 	s3Path := path.Join(os.Getenv("TEST_S3_BUCKET"), "jenkins", suffix, time.Now().Format(time.RFC3339), "etcd.backup")
 
+	// Backup then restore tests
 	testEtcdBackupOperatorForS3Backup(t, clusterName, operatorClientTLSSecret, s3Path)
-	testEtcdBackupOperatorForPeriodicS3Backup(t, clusterName, operatorClientTLSSecret, s3Path)
 	testEtcdRestoreOperatorForS3Source(t, clusterName, s3Path)
+	// Periodic backup test
+	testEtcdBackupOperatorForPeriodicS3Backup(t, clusterName, operatorClientTLSSecret, s3Path)
 }
 
 func verifyAWSEnvVars() error {
