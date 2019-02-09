@@ -175,18 +175,22 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 			break
 		case <-t.C:
 			var latestEb *api.EtcdBackup
+			var bs *api.BackupStatus
 			var err error
-			for {
+			for i := 1; i < 6; i++ {
 				latestEb, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Get(eb.Name, metav1.GetOptions{})
 				if err != nil {
-					b.logger.Warningf("Failed to get latest EtcdBackup %v : (%v)", eb.Name, err)
+					b.logger.Warningf("[Attempt: %d/5] Failed to get latest EtcdBackup %v : (%v)",
+						i, eb.Name, err)
 					time.Sleep(1)
 					continue
 				}
 				break
 			}
-			// Perform backup
-			bs, err := b.handleBackup(&ctx, &latestEb.Spec, true)
+			if err == nil {
+				// Perform backup
+				bs, err = b.handleBackup(&ctx, &latestEb.Spec, true)
+			}
 			// Report backup status
 			b.reportBackupStatus(bs, err, latestEb)
 		}
