@@ -100,3 +100,50 @@ func (absw *absWriter) Write(ctx context.Context, path string, r io.Reader) (int
 
 	return blob.Properties.ContentLength, nil
 }
+
+func (absw *absWriter) List(ctx context.Context, basePath string) ([]string, error) {
+	// TODO: support context.
+	container, _, err := util.ParseBucketAndKey(basePath)
+	if err != nil {
+		return nil, err
+	}
+
+	containerRef := absw.abs.GetContainerReference(container)
+	containerExists, err := containerRef.Exists()
+	if err != nil {
+		return nil, err
+	}
+	if !containerExists {
+		return nil, fmt.Errorf("container %v does not exist", container)
+	}
+
+	blobs, err := containerRef.ListBlobs(
+		storage.ListBlobsParameters{Prefix: basePath})
+	if err != nil {
+		return nil, err
+	}
+	blobKeys := []string{}
+	for _, blob := range blobs.Blobs {
+		blobKeys = append(blobKeys, container+"/"+blob.Name)
+	}
+	return blobKeys, nil
+}
+
+func (absw *absWriter) Delete(ctx context.Context, path string) error {
+	// TODO: support context.
+	container, key, err := util.ParseBucketAndKey(path)
+	if err != nil {
+		return err
+	}
+	containerRef := absw.abs.GetContainerReference(container)
+	containerExists, err := containerRef.Exists()
+	if err != nil {
+		return err
+	}
+	if !containerExists {
+		return fmt.Errorf("container %v does not exist", container)
+	}
+
+	blob := containerRef.GetBlobReference(key)
+	return blob.Delete(&storage.DeleteBlobOptions{})
+}

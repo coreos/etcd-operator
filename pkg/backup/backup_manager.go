@@ -18,12 +18,15 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"sort"
+	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -51,29 +54,52 @@ func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, 
 
 // SaveSnap uses backup writer to save etcd snapshot to a specified S3 path
 // and returns backup etcd server's kv store revision and its version.
-func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string) (int64, string, error) {
+func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, isPeriodic bool) (int64, string, *metav1.Time, error) {
+	now := time.Now().UTC()
 	etcdcli, rev, err := bm.etcdClientWithMaxRevision(ctx)
 	if err != nil {
-		return 0, "", fmt.Errorf("create etcd client failed: %v", err)
+		return 0, "", nil, fmt.Errorf("create etcd client failed: %v", err)
 	}
 	defer etcdcli.Close()
 
 	resp, err := etcdcli.Status(ctx, etcdcli.Endpoints()[0])
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to retrieve etcd version from the status call: %v", err)
+		return 0, "", nil, fmt.Errorf("failed to retrieve etcd version from the status call: %v", err)
 	}
 
 	rc, err := etcdcli.Snapshot(ctx)
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to receive snapshot (%v)", err)
+		return 0, "", nil, fmt.Errorf("failed to receive snapshot (%v)", err)
 	}
 	defer rc.Close()
-
+	if isPeriodic {
+		s3Path = fmt.Sprintf(s3Path+"_v%d_%s", rev, now.Format("2006-01-02-15:04:05"))
+	}
 	_, err = bm.bw.Write(ctx, s3Path, rc)
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to write snapshot (%v)", err)
+		return 0, "", nil, fmt.Errorf("failed to write snapshot (%v)", err)
 	}
-	return rev, resp.Version, nil
+	return rev, resp.Version, &metav1.Time{Time: now}, nil
+}
+
+// EnsureMaxBackup to ensure the number of snapshot is under maxcount
+// if the number of snapshot exceeded than maxcount, delete oldest snapshot
+func (bm *BackupManager) EnsureMaxBackup(ctx context.Context, basePath string, maxCount int) error {
+	savedSnapShots, err := bm.bw.List(ctx, basePath)
+	if err != nil {
+		return fmt.Errorf("failed to get exisiting snapshots: %v", err)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(savedSnapShots)))
+	for i, snapshotPath := range savedSnapShots {
+		if i < maxCount {
+			continue
+		}
+		err := bm.bw.Delete(ctx, snapshotPath)
+		if err != nil {
+			return fmt.Errorf("failed to delete snapshot: %v", err)
+		}
+	}
+	return nil
 }
 
 // etcdClientWithMaxRevision gets the etcd endpoint with the maximum kv store revision

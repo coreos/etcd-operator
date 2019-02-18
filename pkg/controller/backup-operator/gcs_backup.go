@@ -28,7 +28,8 @@ import (
 )
 
 // handleGCS saves etcd cluster's backup to specificed GCS path.
-func handleGCS(ctx context.Context, kubecli kubernetes.Interface, s *api.GCSBackupSource, endpoints []string, clientTLSSecret, namespace string) (*api.BackupStatus, error) {
+func handleGCS(ctx context.Context, kubecli kubernetes.Interface, s *api.GCSBackupSource, endpoints []string, clientTLSSecret,
+	namespace string, isPeriodic bool, maxBackup int) (*api.BackupStatus, error) {
 	// TODO: controls NewClientFromSecret with ctx. This depends on upstream kubernetes to support API calls with ctx.
 	cli, err := gcsfactory.NewClientFromSecret(ctx, kubecli, namespace, s.GCPSecret)
 	if err != nil {
@@ -40,12 +41,17 @@ func handleGCS(ctx context.Context, kubecli kubernetes.Interface, s *api.GCSBack
 	if tlsConfig, err = generateTLSConfig(kubecli, clientTLSSecret, namespace); err != nil {
 		return nil, err
 	}
-
 	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewGCSWriter(cli.GCS), tlsConfig, endpoints, namespace)
 
-	rev, etcdVersion, err := bm.SaveSnap(ctx, s.Path)
+	rev, etcdVersion, now, err := bm.SaveSnap(ctx, s.Path, isPeriodic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save snapshot (%v)", err)
 	}
-	return &api.BackupStatus{EtcdVersion: etcdVersion, EtcdRevision: rev}, nil
+	if maxBackup > 0 {
+		err := bm.EnsureMaxBackup(ctx, s.Path, maxBackup)
+		if err != nil {
+			return nil, fmt.Errorf("succeeded in saving snapshot but failed to delete old snapshot (%v)", err)
+		}
+	}
+	return &api.BackupStatus{EtcdVersion: etcdVersion, EtcdRevision: rev, LastSuccessDate: *now}, nil
 }

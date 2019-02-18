@@ -15,15 +15,20 @@
 package e2eslow
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
 	"os"
 	"path"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/backup/writer"
+	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -77,8 +82,11 @@ func TestBackupAndRestore(t *testing.T) {
 
 	s3Path := path.Join(os.Getenv("TEST_S3_BUCKET"), "jenkins", suffix, time.Now().Format(time.RFC3339), "etcd.backup")
 
+	// Backup then restore tests
 	testEtcdBackupOperatorForS3Backup(t, clusterName, operatorClientTLSSecret, s3Path)
 	testEtcdRestoreOperatorForS3Source(t, clusterName, s3Path)
+	// Periodic backup test
+	testEtcdBackupOperatorForPeriodicS3Backup(t, clusterName, operatorClientTLSSecret, s3Path)
 }
 
 func verifyAWSEnvVars() error {
@@ -164,6 +172,97 @@ func testEtcdBackupOperatorForS3Backup(t *testing.T, clusterName, operatorClient
 		t.Fatalf("failed to verify backup: %v", err)
 	}
 	t.Logf("backup for cluster (%s) has been saved", clusterName)
+}
+
+// testEtcdBackupOperatorForPeriodicS3Backup test if etcd backup operator can periodically backup and upload to s3.
+// This e2e test would check basic function of periodic backup and MaxBackup functionality
+func testEtcdBackupOperatorForPeriodicS3Backup(t *testing.T, clusterName, operatorClientTLSSecret, s3Path string) {
+	f := framework.Global
+
+	endpoints, err := getEndpoints(f.KubeClient, true, f.Namespace, clusterName)
+	if err != nil {
+		t.Fatalf("failed to get endpoints: %v", err)
+	}
+	backupCR := e2eutil.NewS3Backup(endpoints, clusterName, s3Path, os.Getenv("TEST_AWS_SECRET"), operatorClientTLSSecret)
+	// enable periodic backup
+	backupCR.Spec.BackupPolicy = &api.BackupPolicy{BackupIntervalInSecond: 5, MaxBackups: 2}
+	backupS3Source := backupCR.Spec.BackupSource.S3
+
+	// initialize s3 client
+	s3cli, err := s3factory.NewClientFromSecret(
+		f.KubeClient, f.Namespace, backupS3Source.Endpoint, backupS3Source.AWSSecret)
+	if err != nil {
+		t.Fatalf("failed to initialize s3client: %v", err)
+	}
+	wr := writer.NewS3Writer(s3cli.S3)
+
+	// check if there is existing backup file
+	allBackups, err := wr.List(context.Background(), backupS3Source.Path)
+	if err != nil {
+		t.Fatalf("failed to list backup files: %v", err)
+	}
+	if len(allBackups) > 0 {
+		t.Logf("existing backup file is detected: %s", strings.Join(allBackups, ","))
+		// try to delete all existing backup files
+		if err := e2eutil.DeleteBackupFiles(wr, allBackups); err != nil {
+			t.Fatalf("failed to delete existing backup: %v", err)
+		}
+		// make sure no exisiting backups
+		// will wait for 10 sec until deleting operation completed
+		if err := e2eutil.WaitUntilNoBackupFiles(wr, backupS3Source.Path, 10); err != nil {
+			t.Fatalf("failed to make sure no old backup: %v", err)
+		}
+	}
+
+	// create etcdbackup resource
+	eb, err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Create(backupCR)
+	if err != nil {
+		t.Fatalf("failed to create etcd back cr: %v", err)
+	}
+	defer func() {
+		if err := f.CRClient.EtcdV1beta2().EtcdBackups(f.Namespace).Delete(eb.Name, nil); err != nil {
+			t.Fatalf("failed to delete etcd backup cr: %v", err)
+		}
+		// cleanup backup files
+		allBackups, err = wr.List(context.Background(), backupS3Source.Path)
+		if err != nil {
+			t.Fatalf("failed to list backup files: %v", err)
+		}
+		if err := e2eutil.DeleteBackupFiles(wr, allBackups); err != nil {
+			t.Fatalf("failed to cleanup backup files: %v", err)
+		}
+	}()
+
+	var firstBackup string
+	var periodicBackup, maxBackup bool
+	// Check if periodic backup is correctly performed
+	// Check if maxBackup is correctly performed
+	err = retryutil.Retry(time.Second, 20, func() (bool, error) {
+		allBackups, err = wr.List(context.Background(), backupS3Source.Path)
+		sort.Strings(allBackups)
+		if err != nil {
+			return false, fmt.Errorf("failed to list backup files: %v", err)
+		}
+		if len(allBackups) > 0 {
+			if firstBackup == "" {
+				firstBackup = allBackups[0]
+			}
+			// Check if firt seen backup file is deleted or not
+			if firstBackup != allBackups[0] {
+				maxBackup = true
+			}
+			if len(allBackups) > 1 {
+				periodicBackup = true
+			}
+		}
+		if periodicBackup && maxBackup {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		t.Fatalf("failed to verify periodic bakcup: %v", err)
+	}
 }
 
 // testEtcdRestoreOperatorForS3Source tests if the restore-operator can restore an etcd cluster from an S3 restore source

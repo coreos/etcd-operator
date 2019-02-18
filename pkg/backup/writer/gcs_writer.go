@@ -23,6 +23,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/api/iterator"
 )
 
 var _ Writer = &gcsWriter{}
@@ -57,4 +58,38 @@ func (gcsw *gcsWriter) Write(ctx context.Context, path string, r io.Reader) (int
 		err = fmt.Errorf("failed to write GCS object: %v", err)
 	}
 	return n, err
+}
+
+func (gcsw *gcsWriter) List(ctx context.Context, basePath string) ([]string, error) {
+	bucket, key, err := util.ParseBucketAndKey(basePath)
+	if err != nil {
+		return nil, err
+	}
+	objects := gcsw.gcs.Bucket(bucket).Objects(ctx, &storage.Query{Prefix: key})
+	if objects == nil {
+		return nil, fmt.Errorf("failed to get objects having %s prefix", key)
+	}
+
+	objectKeys := []string{}
+
+	for {
+		objAttrs, err := objects.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		objectKeys = append(objectKeys, bucket+"/"+objAttrs.Name)
+	}
+	return objectKeys, nil
+}
+
+func (gcsw *gcsWriter) Delete(ctx context.Context, path string) error {
+	bucket, key, err := util.ParseBucketAndKey(path)
+	if err != nil {
+		return err
+	}
+
+	return gcsw.gcs.Bucket(bucket).Object(key).Delete(ctx)
 }
