@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 
 	"github.com/sirupsen/logrus"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -177,11 +178,17 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 			var latestEb *api.EtcdBackup
 			var bs *api.BackupStatus
 			var err error
-			for i := 1; i < 6; i++ {
+			retryLimit := 5
+			for i := 1; i < retryLimit+1; i++ {
 				latestEb, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Get(eb.Name, metav1.GetOptions{})
 				if err != nil {
-					b.logger.Warningf("[Attempt: %d/5] Failed to get latest EtcdBackup %v : (%v)",
-						i, eb.Name, err)
+					if apierrors.IsNotFound(err) {
+						b.logger.Infof("Could not find EtcdBackup. Stopping periodic backup for EtcdBackup CR %v",
+							eb.Name)
+						break
+					}
+					b.logger.Warningf("[Attempt: %d/%d] Failed to get latest EtcdBackup %v : (%v)",
+						i, retryLimit, eb.Name, err)
 					time.Sleep(1)
 					continue
 				}
