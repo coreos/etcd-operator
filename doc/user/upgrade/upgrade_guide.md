@@ -173,7 +173,7 @@ See the release notes of `v0.4.0` for noticeable changes: https://github.com/cor
 
 ## v0.2.x -> v0.3.x
 ### Prerequisite:
-To upgrade to `v0.3.x` the current operator verison **must** first be upgraded to `v0.2.6+`, since versions < `v0.2.6` are not compatible with `v0.3.x` .
+To upgrade to `v0.3.x` the current operator version **must** first be upgraded to `v0.2.6+`, since versions < `v0.2.6` are not compatible with `v0.3.x` .
 
 ### Noticeable changes:
 - `Spec.Backup.MaxBackups` update:
