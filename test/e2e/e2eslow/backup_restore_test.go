@@ -190,7 +190,7 @@ func testEtcdBackupOperatorForPeriodicS3Backup(t *testing.T, clusterName, operat
 
 	// initialize s3 client
 	s3cli, err := s3factory.NewClientFromSecret(
-		f.KubeClient, f.Namespace, backupS3Source.Endpoint, backupS3Source.AWSSecret)
+		f.KubeClient, f.Namespace, backupS3Source.Endpoint, backupS3Source.AWSSecret, backupS3Source.ForcePathStyle)
 	if err != nil {
 		t.Fatalf("failed to initialize s3client: %v", err)
 	}
