@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"io"
@@ -23,13 +24,15 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	watchtools "k8s.io/client-go/tools/watch"
 )
 
 func main() {
@@ -62,9 +65,15 @@ func main() {
 					logrus.Errorf("failed to watch for pod (%s): %v", pod.Name, err)
 					return
 				}
+				ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), 100*time.Second)
+				defer cancel()
 				// We need to wait Pod Running before collecting its log
-				ev, err := watch.Until(100*time.Second, watcher, podRunning)
+				ev, err := watchtools.UntilWithoutRetry(ctx, watcher, podRunning)
 				if err != nil {
+					if err == watchtools.ErrWatchClosed {
+						// present a consistent error interface to callers
+						err = wait.ErrWaitTimeout
+					}
 					logrus.Errorf("failed to reach Running for pod (%s): %v", pod.Name, err)
 					return
 				}
