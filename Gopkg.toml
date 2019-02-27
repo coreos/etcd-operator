@@ -12,28 +12,23 @@ required = [
 
 [[override]]
   name = "k8s.io/code-generator"
-  # revision for tag "kubernetes-1.11.4"
-  revision = "8c97d6ab64da020f8b151e9d3ed8af3172f5c390"
+  version = "kubernetes-1.12.6"
 
 [[override]]
   name = "k8s.io/api"
-  # revision for tag "kubernetes-1.11.4"
-  revision = "37c5ce6f2f592fbbd798bb86a8814d0918b3abe1"
+  version = "kubernetes-1.12.6"
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  # revision for tag "kubernetes-1.11.4"
-  revision = "67bb9d92aa024a38a3e323cbb9e115e82c0d50b3"
+  version = "kubernetes-1.12.6"
 
 [[override]]
   name = "k8s.io/apimachinery"
-  # revision for tag "kubernetes-1.11.4"
-  revision = "8ee1a638bafa4ae9691077e690cb45dd54f45111"
+  version = "kubernetes-1.12.6"
 
 [[override]]
   name = "k8s.io/client-go"
-  # revision for tag "kubernetes-1.11.4"
-  revision = "3db8bfc8858dc9a5d6e7ef5817f58a7ca30b0c6a"
+  version = "kubernetes-1.12.6"
 
 [[constraint]]
   name = "github.com/coreos/etcd"
