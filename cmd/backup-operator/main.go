@@ -27,7 +27,7 @@ import (
 	version "github.com/coreos/etcd-operator/version"
 
 	"github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -79,7 +79,10 @@ func main() {
 		logrus.Fatalf("error creating lock: %v", err)
 	}
 
-	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
 		Lock:          rl,
 		LeaseDuration: 15 * time.Second,
 		RenewDeadline: 10 * time.Second,
@@ -100,9 +103,11 @@ func createRecorder(kubecli kubernetes.Interface, name, namespace string) record
 	return eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: name})
 }
 
-func run(stop <-chan struct{}) {
+func run(ctx context.Context) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c := controller.New(createCRD)
-	err := c.Start(context.TODO())
+	err := c.Start(ctx)
 	if err != nil {
 		logrus.Fatalf("operator stopped with error: %v", err)
 	}

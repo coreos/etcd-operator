@@ -7,6 +7,8 @@
 
 ### Changed
 
+- Update Go version to 1.11.5
+- Update k8s to 1.12.6
 - EtcdBackup: Support periodically backup. This change added 3 new fileds in EtcdBackup schema, 2 variables is in spec, 1 varialbe is in status.
   - in spec.backupPolicy
     - maxBackup which indicate maximum number of backup to keep

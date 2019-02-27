@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/util/slice"
 )
 
 const (
@@ -139,7 +138,7 @@ func (b *Backup) addFinalizerOfPeriodicBackupIfNeed(eb *api.EtcdBackup) (*api.Et
 	if err != nil {
 		return eb, err
 	}
-	if !slice.ContainsString(metadata.GetFinalizers(), "backup-operator-periodic", nil) {
+	if !containsString(metadata.GetFinalizers(), "backup-operator-periodic") {
 		metadata.SetFinalizers(append(metadata.GetFinalizers(), "backup-operator-periodic"))
 		_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(ebNew.(*api.EtcdBackup))
 		if err != nil {
