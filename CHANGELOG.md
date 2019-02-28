@@ -2,6 +2,20 @@
 
 ### Added
 
+### Changed
+
+### Removed
+
+### Fixed
+
+### Deprecated
+
+### Security
+
+## [Release 0.9.4]
+
+### Added
+
 - Added `spec.BackupSource.S3.ForcePathStyle` to `EtcdBackup` to force path style s3 uploads. [#2036](https://github.com/coreos/etcd-operator/pull/2036)
 - Added `spec.RestoreSource.S3.ForcePathStyle` to `EtcdRestore` to force path style s3 downloads. [#2036](https://github.com/coreos/etcd-operator/pull/2036)
 
@@ -9,18 +23,19 @@
 
 - Update Go version to 1.11.5
 - Update k8s to 1.12.6
-- EtcdBackup: Support periodically backup. This change added 3 new fileds in EtcdBackup schema, 2 variables is in spec, 1 varialbe is in status.
+- EtcdBackup: Support periodic backups. This change added 3 new fields to EtcdBackup schema, 2 variables in spec, 1 variables in status.
   - in spec.backupPolicy
-    - maxBackup which indicate maximum number of backup to keep
-    - backupIntervalInSecond which indicate how often do backup operation.
+    - maxBackup: maximum number of backups to keep.
+    - backupIntervalInSecond: how often to perform backup operation.
   - in status
-    - LastSuccessDate which indicate the last time to succeed in taking backup
+    - LastSuccessDate: last time to succeed in taking backup
 
 ### Removed
 
 ### Fixed
 
 - Fixed a bug where `same CR names` in different namespaces with cluster-wide operator were not working as expected [#2026](https://github.com/coreos/etcd-operator/pull/2026)
+- Fixed a bug where cluster names could exceed 63 octets the maximum defined by [RFC 1035 section 2.3.4](https://tools.ietf.org/html/rfc1035) resulting in hanging pods [2027](https://github.com/coreos/etcd-operator/pull/2027).
 
 ### Deprecated
 
