@@ -30,16 +30,10 @@
   - in status
     - LastSuccessDate: last time to succeed in taking backup
 
-### Removed
-
 ### Fixed
 
 - Fixed a bug where `same CR names` in different namespaces with cluster-wide operator were not working as expected [#2026](https://github.com/coreos/etcd-operator/pull/2026)
 - Fixed a bug where cluster names could exceed 63 octets the maximum defined by [RFC 1035 section 2.3.4](https://tools.ietf.org/html/rfc1035) resulting in hanging pods [2027](https://github.com/coreos/etcd-operator/pull/2027).
-
-### Deprecated
-
-### Security
 
 ## [Release 0.9.3]
 
