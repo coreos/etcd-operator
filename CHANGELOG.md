@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Don't expose unready nodes via client service. [#2063](https://github.com/coreos/etcd-operator/pull/2063)
+
 ### Deprecated
 
 ### Security
