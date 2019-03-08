@@ -34,6 +34,11 @@ const (
 	BackupStorageTypeGCS BackupStorageType = "GCS"
 	GCPAccessToken                         = "access-token"
 	GCPCredentialsJson                     = "credentials.json"
+
+	// Alibaba Cloud OSS related consts
+	BackupStorageTypeOSS                         BackupStorageType = "OSS"
+	AlibabaCloudSecretCredentialsAccessKeyID                       = "accessKeyID"
+	AlibabaCloudSecretCredentialsAccessKeySecret                   = "accessKeySecret"
 )
 
 type BackupStorageType string
@@ -90,6 +95,8 @@ type BackupSource struct {
 	ABS *ABSBackupSource `json:"abs,omitempty"`
 	// GCS defines the GCS backup source spec.
 	GCS *GCSBackupSource `json:"gcs,omitempty"`
+	// OSS defines the OSS backup source spec.
+	OSS *OSSBackupSource `json:"oss,omitempty"`
 }
 
 // BackupPolicy defines backup policy.
@@ -168,4 +175,39 @@ type GCSBackupSource struct {
 	//
 	// If omitted, client will use the default application credentials.
 	GCPSecret string `json:"gcpSecret,omitempty"`
+}
+
+// OSSBackupSource provides the spec how to store backups on OSS.
+type OSSBackupSource struct {
+	// Path is the full abs path where the backup is saved.
+	// The format of the path must be: "<oss-bucket-name>/<path-to-backup-file>"
+	// e.g: "mybucket/etcd.backup"
+	Path string `json:"path"`
+
+	// The name of the secret object that stores the credential which will be used
+	// to access Alibaba Cloud OSS.
+	//
+	// The secret must contain the following keys/fields:
+	//     accessKeyID
+	//     accessKeySecret
+	//
+	// The format of secret:
+	//
+	//   apiVersion: v1
+	//   kind: Secret
+	//   metadata:
+	//     name: <my-credential-name>
+	//   type: Opaque
+	//   data:
+	//     accessKeyID: <base64 of my-access-key-id>
+	//     accessKeySecret: <base64 of my-access-key-secret>
+	//
+	OSSSecret string `json:"ossSecret"`
+
+	// Endpoint is the OSS service endpoint on alibaba cloud, defaults to
+	// "http://oss-cn-hangzhou.aliyuncs.com".
+	//
+	// Details about regions and endpoints, see:
+	//  https://www.alibabacloud.com/help/doc-detail/31837.htm
+	Endpoint string `json:"endpoint,omitempty"`
 }
