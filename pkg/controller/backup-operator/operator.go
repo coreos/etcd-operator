@@ -17,17 +17,16 @@ package controller
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/client"
 	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/sirupsen/logrus"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -51,20 +50,33 @@ type Backup struct {
 	createCRD bool
 }
 
+type Config struct {
+	Namespace      string
+	ClusterWide    bool
+	CreateCRD      bool
+}
+
 type BackupRunner struct {
 	spec       api.BackupSpec
 	cancelFunc context.CancelFunc
 }
 
 // New creates a backup operator.
-func New(createCRD bool) *Backup {
+func New(config Config) *Backup {
+	var ns string
+	if config.ClusterWide {
+		ns = metav1.NamespaceAll
+	} else {
+		ns = config.Namespace
+	}
+
 	return &Backup{
 		logger:      logrus.WithField("pkg", "controller"),
-		namespace:   os.Getenv(constants.EnvOperatorPodNamespace),
+		namespace:   ns,
 		kubecli:     k8sutil.MustNewKubeClient(),
 		backupCRCli: client.MustNewInCluster(),
 		kubeExtCli:  k8sutil.MustNewKubeExtClient(),
-		createCRD:   createCRD,
+		createCRD:   config.CreateCRD,
 	}
 }
 

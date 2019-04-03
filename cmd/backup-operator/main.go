@@ -24,7 +24,7 @@ import (
 	controller "github.com/coreos/etcd-operator/pkg/controller/backup-operator"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-	version "github.com/coreos/etcd-operator/version"
+	"github.com/coreos/etcd-operator/version"
 
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -38,10 +38,13 @@ import (
 
 var (
 	createCRD bool
+	namespace  string
+	clusterWide bool
 )
 
 func init() {
 	flag.BoolVar(&createCRD, "create-crd", true, "The backup operator will not create the EtcdBackup CRD when this flag is set to false.")
+	flag.BoolVar(&clusterWide, "cluster-wide", false, "Enable operator to watch clusters in all namespaces")
 	flag.Parse()
 }
 
@@ -106,9 +109,19 @@ func createRecorder(kubecli kubernetes.Interface, name, namespace string) record
 func run(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c := controller.New(createCRD)
+	c := controller.New(newControllerConfig())
 	err := c.Start(ctx)
 	if err != nil {
 		logrus.Fatalf("operator stopped with error: %v", err)
 	}
+}
+
+func newControllerConfig() controller.Config {
+	cfg := controller.Config{
+		Namespace:      namespace,
+		ClusterWide:    clusterWide,
+		CreateCRD:      createCRD,
+	}
+
+	return cfg
 }
