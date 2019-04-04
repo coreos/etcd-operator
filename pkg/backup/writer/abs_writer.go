@@ -15,13 +15,11 @@
 package writer
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io"
-
 	"github.com/coreos/etcd-operator/pkg/backup/util"
+	"io"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/pborman/uuid"
@@ -47,12 +45,14 @@ const (
 func (absw *absWriter) Write(ctx context.Context, path string, r io.Reader) (int64, error) {
 	// TODO: support context.
 	container, key, err := util.ParseBucketAndKey(path)
+
 	if err != nil {
 		return 0, err
 	}
 
 	containerRef := absw.abs.GetContainerReference(container)
 	containerExists, err := containerRef.Exists()
+
 	if err != nil {
 		return 0, err
 	}
@@ -62,29 +62,34 @@ func (absw *absWriter) Write(ctx context.Context, path string, r io.Reader) (int
 	}
 
 	blob := containerRef.GetBlobReference(key)
+
 	err = blob.CreateBlockBlob(&storage.PutBlobOptions{})
 	if err != nil {
 		return 0, err
 	}
 
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(r)
-	len := len(buf.Bytes())
-	chunckCount := len/AzureBlobBlockChunkLimitInBytes + 1
-	blocks := make([]storage.Block, 0, chunckCount)
-	for i := 0; i < chunckCount; i++ {
-		blockID := base64.StdEncoding.EncodeToString([]byte(uuid.New()))
-		blocks = append(blocks, storage.Block{ID: blockID, Status: storage.BlockStatusLatest})
-		start := i * AzureBlobBlockChunkLimitInBytes
-		end := (i + 1) * AzureBlobBlockChunkLimitInBytes
-		if len < end {
-			end = len
+	blocks := make([]storage.Block, 0)
+	block := make([]byte, AzureBlobBlockChunkLimitInBytes)
+	for {
+
+		nbRead, maybeEof := io.ReadFull(r, block)
+
+		if maybeEof == io.EOF {
+			break
 		}
 
-		chunk := buf.Bytes()[start:end]
+		blockID := base64.StdEncoding.EncodeToString([]byte(uuid.New()))
+		blocks = append(blocks, storage.Block{ID: blockID, Status: storage.BlockStatusLatest})
+
+		chunk := block[0:nbRead]
 		err = blob.PutBlock(blockID, chunk, &storage.PutBlockOptions{})
+
 		if err != nil {
 			return 0, err
+		}
+
+		if maybeEof == io.ErrUnexpectedEOF {
+			break
 		}
 	}
 
