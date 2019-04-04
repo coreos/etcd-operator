@@ -25,6 +25,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -47,16 +48,30 @@ type Restore struct {
 	createCRD bool
 }
 
+type Config struct {
+	Namespace   string
+	ClusterWide bool
+	CreateCRD   bool
+	MySvcAddr   string
+}
+
 // New creates a restore operator.
-func New(createCRD bool, namespace, mySvcAddr string) *Restore {
+func New(config Config) *Restore {
+	var ns string
+	if config.ClusterWide {
+		ns = metav1.NamespaceAll
+	} else {
+		ns = config.Namespace
+	}
+
 	return &Restore{
 		logger:     logrus.WithField("pkg", "controller"),
-		namespace:  namespace,
-		mySvcAddr:  mySvcAddr,
+		namespace:  ns,
+		mySvcAddr:  config.MySvcAddr,
 		kubecli:    k8sutil.MustNewKubeClient(),
 		etcdCRCli:  client.MustNewInCluster(),
 		kubeExtCli: k8sutil.MustNewKubeExtClient(),
-		createCRD:  createCRD,
+		createCRD:  config.CreateCRD,
 	}
 }
 
