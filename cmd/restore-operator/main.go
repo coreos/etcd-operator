@@ -133,7 +133,7 @@ func newControllerConfig() controller.Config {
 		Namespace:   namespace,
 		ClusterWide: clusterWide,
 		CreateCRD:   createCRD,
-		MySvcAddr:   fmt.Sprintf("%s:%d", serviceNameForMyself, servicePortForMyself),
+		MySvcAddr:   fmt.Sprintf("%s.%s:%d", serviceNameForMyself, namespace, servicePortForMyself),
 	}
 
 	return cfg
