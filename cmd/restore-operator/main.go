@@ -38,8 +38,8 @@ import (
 )
 
 var (
-	namespace string
-	createCRD bool
+	namespace   string
+	createCRD   bool
 	clusterWide bool
 )
 
@@ -130,10 +130,10 @@ func run(ctx context.Context) {
 
 func newControllerConfig() controller.Config {
 	cfg := controller.Config{
-		Namespace:      namespace,
-		ClusterWide:    clusterWide,
-		CreateCRD:      createCRD,
-		MySvcAddr:		fmt.Sprintf("%s:%d", serviceNameForMyself, servicePortForMyself)
+		Namespace:   namespace,
+		ClusterWide: clusterWide,
+		CreateCRD:   createCRD,
+		MySvcAddr:   fmt.Sprintf("%s:%d", serviceNameForMyself, servicePortForMyself),
 	}
 
 	return cfg
