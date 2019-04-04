@@ -51,9 +51,9 @@ type Backup struct {
 }
 
 type Config struct {
-	Namespace      string
-	ClusterWide    bool
-	CreateCRD      bool
+	Namespace   string
+	ClusterWide bool
+	CreateCRD   bool
 }
 
 type BackupRunner struct {

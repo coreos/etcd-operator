@@ -37,8 +37,8 @@ import (
 )
 
 var (
-	createCRD bool
-	namespace  string
+	createCRD   bool
+	namespace   string
 	clusterWide bool
 )
 
@@ -118,9 +118,9 @@ func run(ctx context.Context) {
 
 func newControllerConfig() controller.Config {
 	cfg := controller.Config{
-		Namespace:      namespace,
-		ClusterWide:    clusterWide,
-		CreateCRD:      createCRD,
+		Namespace:   namespace,
+		ClusterWide: clusterWide,
+		CreateCRD:   createCRD,
 	}
 
 	return cfg
