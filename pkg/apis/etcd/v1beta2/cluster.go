@@ -189,7 +189,8 @@ func (e *EtcdCluster) SetDefaults() {
 		c.Version = DefaultEtcdVersion
 	}
 
-	c.Version = strings.TrimLeft(c.Version, "v")
+	// not used anymore, we take the full version name as final version (not prepending v to the version)
+	// c.Version = strings.TrimLeft(c.Version, "v")
 
 	// convert PodPolicy.AntiAffinity to Pod.Affinity.PodAntiAffinity
 	// TODO: Remove this once PodPolicy.AntiAffinity is removed
