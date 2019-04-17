@@ -8,4 +8,4 @@ metadata:
   #   etcd.database.coreos.com/scope: clusterwide
 spec:
   size: 3
-  version: "3.2.13"
+  version: "v3.2.13"

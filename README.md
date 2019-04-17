@@ -101,7 +101,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 5
-  version: "3.2.13"
+  version: "v3.2.13"
 ```
 
 Apply the size change to the cluster CR:
@@ -129,7 +129,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 3
-  version: "3.2.13"
+  version: "v3.2.13"
 ```
 ```
 $ kubectl apply -f example/example-etcd-cluster.yaml
@@ -222,7 +222,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 3
-  version: "3.1.10"
+  version: "v3.1.10"
   repository: "quay.io/coreos/etcd"
 ```
 
@@ -254,7 +254,7 @@ metadata:
   name: "example-etcd-cluster"
 spec:
   size: 3
-  version: "3.2.13"
+  version: "v3.2.13"
 ```
 
 Apply the version change to the cluster CR:
