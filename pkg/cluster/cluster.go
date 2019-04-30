@@ -316,6 +316,9 @@ func (c *Cluster) startSeedMember() error {
 		SecurePeer:   c.isSecurePeer(),
 		SecureClient: c.isSecureClient(),
 	}
+	if c.cluster.Spec.Pod != nil {
+		m.ClusterDomain = c.cluster.Spec.Pod.ClusterDomain
+	}
 	ms := etcdutil.NewMemberSet(m)
 	if err := c.createPod(ms, m, "new"); err != nil {
 		return fmt.Errorf("failed to create seed member (%s): %v", m.Name, err)

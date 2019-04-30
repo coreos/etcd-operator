@@ -217,6 +217,9 @@ func (r *Restore) createSeedMember(ec *api.EtcdCluster, svcAddr, clusterName str
 		SecurePeer:   ec.Spec.TLS.IsSecurePeer(),
 		SecureClient: ec.Spec.TLS.IsSecureClient(),
 	}
+	if ec.Spec.Pod != nil {
+		m.ClusterDomain = ec.Spec.Pod.ClusterDomain
+	}
 	ms := etcdutil.NewMemberSet(m)
 	backupURL := backupapi.BackupURLForRestore("http", svcAddr, clusterName)
 	ec.SetDefaults()
