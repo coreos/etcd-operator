@@ -318,12 +318,14 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		"etcd_cluster": clusterName,
 	}
 
-	livenessProbe := newEtcdProbe(cs.TLS.IsSecureClient())
-	readinessProbe := newEtcdProbe(cs.TLS.IsSecureClient())
-	readinessProbe.InitialDelaySeconds = 1
-	readinessProbe.TimeoutSeconds = 5
-	readinessProbe.PeriodSeconds = 5
-	readinessProbe.FailureThreshold = 3
+	livenessProbe := newEtcdProbe(cs.TLS.IsSecureClient(), cs.Pod.LivenessProbe)
+	readinessProbe := newEtcdProbe(cs.TLS.IsSecureClient(), cs.Pod.ReadinessProbe)
+	if cs.Pod.ReadinessProbe == nil {
+		readinessProbe.InitialDelaySeconds = 1
+		readinessProbe.TimeoutSeconds = 5
+		readinessProbe.PeriodSeconds = 5
+		readinessProbe.FailureThreshold = 3
+	}
 
 	container := containerWithProbes(
 		etcdContainer(strings.Split(commands, " "), cs.Repository, cs.Version),

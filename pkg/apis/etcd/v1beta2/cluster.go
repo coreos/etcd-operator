@@ -157,6 +157,14 @@ type PodPolicy struct {
 	// reverse DNS lookup its IP given the hostname.
 	// The default is to wait indefinitely and has a vaule of 0.
 	DNSTimeoutInSecond int64 `json:"DNSTimeoutInSecond,omitempty"`
+  
+  // LivenessProbe specifies the parameters for the probe.
+	// The "livenessprobe.handler" will be set by etcd operator and shouldn't be defined"
+	LivenessProbe *v1.Probe `json:"livenessProbe,omitempty"`
+
+	// ReadinessProbe specifies the parameters for the probe.
+	// The "readinessprobe.handler" will be set by etcd operator and shouldn't be defined"
+	ReadinessProbe *v1.Probe `json:"readinessProbe,omitempty"`
 }
 
 // TODO: move this to initializer

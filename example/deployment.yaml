@@ -16,6 +16,8 @@ spec:
         - etcd-operator
         # Uncomment to act for resources in all namespaces. More information in doc/user/clusterwide.md
         #- -cluster-wide
+        # Uncomment to set the cluster reconcile interval (default 8 sec) to reduce monitoring overhead.
+        #- -re-interval=15s
         env:
         - name: MY_POD_NAMESPACE
           valueFrom:

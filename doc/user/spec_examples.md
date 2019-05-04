@@ -137,5 +137,23 @@ spec:
           storage: 1Gi
 ```
 
+## Custom pod probe configuration
+```yaml
+spec:
+  size: 3
+  pod:
+    livenessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 300
+      periodSeconds: 60
+      successThreshold: 1
+      timeoutSeconds: 10
+    readinessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 1
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 5
+```
 [cluster-tls]: cluster_tls.md
 [pod-security-context]: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
