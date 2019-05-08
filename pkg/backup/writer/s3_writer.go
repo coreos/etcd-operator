@@ -67,3 +67,39 @@ func (s3w *s3Writer) Write(ctx context.Context, path string, r io.Reader) (int64
 	}
 	return *resp.ContentLength, nil
 }
+
+// List return the file paths which match the given s3 path
+func (s3w *s3Writer) List(ctx context.Context, basePath string) ([]string, error) {
+	bk, key, err := util.ParseBucketAndKey(basePath)
+	if err != nil {
+		return nil, err
+	}
+
+	objects, err := s3w.s3.ListObjectsWithContext(ctx,
+		&s3.ListObjectsInput{
+			Bucket: aws.String(bk),
+			Prefix: aws.String(key),
+		})
+	if err != nil {
+		return nil, err
+	}
+	objectKeys := []string{}
+	for _, object := range objects.Contents {
+		objectKeys = append(objectKeys, bk+"/"+*object.Key)
+	}
+	return objectKeys, nil
+}
+
+func (s3w *s3Writer) Delete(ctx context.Context, path string) error {
+	bk, key, err := util.ParseBucketAndKey(path)
+	if err != nil {
+		return err
+	}
+
+	_, err = s3w.s3.DeleteObjectWithContext(ctx,
+		&s3.DeleteObjectInput{
+			Bucket: aws.String(bk),
+			Key:    aws.String(key),
+		})
+	return err
+}

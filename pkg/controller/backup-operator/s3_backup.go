@@ -29,9 +29,10 @@ import (
 
 // TODO: replace this with generic backend interface for other options (PV, Azure)
 // handleS3 saves etcd cluster's backup to specificed S3 path.
-func handleS3(ctx context.Context, kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []string, clientTLSSecret, namespace string) (*api.BackupStatus, error) {
+func handleS3(ctx context.Context, kubecli kubernetes.Interface, s *api.S3BackupSource, endpoints []string, clientTLSSecret,
+	namespace string, isPeriodic bool, maxBackup int) (*api.BackupStatus, error) {
 	// TODO: controls NewClientFromSecret with ctx. This depends on upstream kubernetes to support API calls with ctx.
-	cli, err := s3factory.NewClientFromSecret(kubecli, namespace, s.Endpoint, s.AWSSecret)
+	cli, err := s3factory.NewClientFromSecret(kubecli, namespace, s.Endpoint, s.AWSSecret, s.ForcePathStyle)
 	if err != nil {
 		return nil, err
 	}
@@ -41,12 +42,17 @@ func handleS3(ctx context.Context, kubecli kubernetes.Interface, s *api.S3Backup
 	if tlsConfig, err = generateTLSConfig(kubecli, clientTLSSecret, namespace); err != nil {
 		return nil, err
 	}
-
 	bm := backup.NewBackupManagerFromWriter(kubecli, writer.NewS3Writer(cli.S3), tlsConfig, endpoints, namespace)
 
-	rev, etcdVersion, err := bm.SaveSnap(ctx, s.Path)
+	rev, etcdVersion, now, err := bm.SaveSnap(ctx, s.Path, isPeriodic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save snapshot (%v)", err)
 	}
-	return &api.BackupStatus{EtcdVersion: etcdVersion, EtcdRevision: rev}, nil
+	if maxBackup > 0 {
+		err := bm.EnsureMaxBackup(ctx, s.Path, maxBackup)
+		if err != nil {
+			return nil, fmt.Errorf("succeeded in saving snapshot but failed to delete old snapshot (%v)", err)
+		}
+	}
+	return &api.BackupStatus{EtcdVersion: etcdVersion, EtcdRevision: rev, LastSuccessDate: *now}, nil
 }

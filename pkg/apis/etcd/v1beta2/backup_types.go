@@ -14,7 +14,9 @@
 
 package v1beta2
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 const (
 	// AWS S3 related consts
@@ -27,6 +29,16 @@ const (
 	AzureSecretStorageAccount                   = "storage-account"
 	AzureSecretStorageKey                       = "storage-key"
 	AzureCloudKey                               = "cloud"
+
+	// Google GCS related consts
+	BackupStorageTypeGCS BackupStorageType = "GCS"
+	GCPAccessToken                         = "access-token"
+	GCPCredentialsJson                     = "credentials.json"
+
+	// Alibaba Cloud OSS related consts
+	BackupStorageTypeOSS                         BackupStorageType = "OSS"
+	AlibabaCloudSecretCredentialsAccessKeyID                       = "accessKeyID"
+	AlibabaCloudSecretCredentialsAccessKeySecret                   = "accessKeySecret"
 )
 
 type BackupStorageType string
@@ -81,12 +93,22 @@ type BackupSource struct {
 	S3 *S3BackupSource `json:"s3,omitempty"`
 	// ABS defines the ABS backup source spec.
 	ABS *ABSBackupSource `json:"abs,omitempty"`
+	// GCS defines the GCS backup source spec.
+	GCS *GCSBackupSource `json:"gcs,omitempty"`
+	// OSS defines the OSS backup source spec.
+	OSS *OSSBackupSource `json:"oss,omitempty"`
 }
 
 // BackupPolicy defines backup policy.
 type BackupPolicy struct {
 	// TimeoutInSecond is the maximal allowed time in second of the entire backup process.
 	TimeoutInSecond int64 `json:"timeoutInSecond,omitempty"`
+	// BackupIntervalInSecond is to specify how often operator take snapshot
+	// 0 is magic number to indicate one-shot backup
+	BackupIntervalInSecond int64 `json:"backupIntervalInSecond,omitempty"`
+	// MaxBackups is to specify how many backups we want to keep
+	// 0 is magic number to indicate un-limited backups
+	MaxBackups int `json:"maxBackups,omitempty"`
 }
 
 // BackupStatus represents the status of the EtcdBackup Custom Resource.
@@ -99,6 +121,8 @@ type BackupStatus struct {
 	EtcdVersion string `json:"etcdVersion,omitempty"`
 	// EtcdRevision is the revision of etcd's KV store where the backup is performed on.
 	EtcdRevision int64 `json:"etcdRevision,omitempty"`
+	// LastSuccessDate indicate the time to get snapshot last time
+	LastSuccessDate metav1.Time `json:"lastSuccessDate,omitempty"`
 }
 
 // S3BackupSource provides the spec how to store backups on S3.
@@ -119,6 +143,11 @@ type S3BackupSource struct {
 	// Endpoint if blank points to aws. If specified, can point to s3 compatible object
 	// stores.
 	Endpoint string `json:"endpoint,omitempty"`
+
+	// ForcePathStyle forces to use path style over the default subdomain style.
+	// This is useful when you have an s3 compatible endpoint that doesn't support
+	// subdomain buckets.
+	ForcePathStyle bool `json:"forcePathStyle"`
 }
 
 // ABSBackupSource provides the spec how to store backups on ABS.
@@ -130,4 +159,55 @@ type ABSBackupSource struct {
 
 	// The name of the secret object that stores the Azure storage credential
 	ABSSecret string `json:"absSecret"`
+}
+
+// GCSBackupSource provides the spec how to store backups on GCS.
+type GCSBackupSource struct {
+	// Path is the full GCS path where the backup is saved.
+	// The format of the path must be: "<gcs-bucket-name>/<path-to-backup-file>"
+	// e.g: "mygcsbucket/etcd.backup"
+	Path string `json:"path"`
+
+	// The name of the secret object that stores the Google storage credential
+	// containing at most ONE of the following:
+	// An access token with file name of 'access-token'.
+	// JSON credentials with file name of 'credentials.json'.
+	//
+	// If omitted, client will use the default application credentials.
+	GCPSecret string `json:"gcpSecret,omitempty"`
+}
+
+// OSSBackupSource provides the spec how to store backups on OSS.
+type OSSBackupSource struct {
+	// Path is the full abs path where the backup is saved.
+	// The format of the path must be: "<oss-bucket-name>/<path-to-backup-file>"
+	// e.g: "mybucket/etcd.backup"
+	Path string `json:"path"`
+
+	// The name of the secret object that stores the credential which will be used
+	// to access Alibaba Cloud OSS.
+	//
+	// The secret must contain the following keys/fields:
+	//     accessKeyID
+	//     accessKeySecret
+	//
+	// The format of secret:
+	//
+	//   apiVersion: v1
+	//   kind: Secret
+	//   metadata:
+	//     name: <my-credential-name>
+	//   type: Opaque
+	//   data:
+	//     accessKeyID: <base64 of my-access-key-id>
+	//     accessKeySecret: <base64 of my-access-key-secret>
+	//
+	OSSSecret string `json:"ossSecret"`
+
+	// Endpoint is the OSS service endpoint on alibaba cloud, defaults to
+	// "http://oss-cn-hangzhou.aliyuncs.com".
+	//
+	// Details about regions and endpoints, see:
+	//  https://www.alibabacloud.com/help/doc-detail/31837.htm
+	Endpoint string `json:"endpoint,omitempty"`
 }

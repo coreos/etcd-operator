@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"fmt"
 
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
@@ -37,4 +38,20 @@ func generateTLSConfig(kubecli kubernetes.Interface, clientTLSSecret, namespace 
 		}
 	}
 	return tlsConfig, nil
+}
+
+func isPeriodicBackup(ebSpec *api.BackupSpec) bool {
+	if ebSpec.BackupPolicy != nil {
+		return ebSpec.BackupPolicy.BackupIntervalInSecond != 0
+	}
+	return false
+}
+
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
 }

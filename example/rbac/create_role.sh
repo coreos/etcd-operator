@@ -14,7 +14,7 @@ Options:
   --role-binding-name=STRING Name of ClusterRoleBinding to create
                                (default=\"etcd-operator\", environment variable: ROLE_BINDING_NAME)
   --namespace=STRING         namespace to create role and role binding in. Must already exist.
-                               (default=\"default\", environment vairable: NAMESPACE)
+                               (default=\"default\", environment variable: NAMESPACE)
 " >&2
 }
 

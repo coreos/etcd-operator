@@ -15,6 +15,7 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -23,8 +24,10 @@ import (
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
 	"github.com/coreos/etcd-operator/pkg/backup/reader"
+	"github.com/coreos/etcd-operator/pkg/util/alibabacloudutil/ossfactory"
 	"github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory"
 	"github.com/coreos/etcd-operator/pkg/util/azureutil/absfactory"
+	"github.com/coreos/etcd-operator/pkg/util/gcputil/gcsfactory"
 
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,7 +94,7 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 			return errors.New("invalid s3 restore source field (spec.s3), must specify all required subfields")
 		}
 
-		s3Cli, err := s3factory.NewClientFromSecret(r.kubecli, r.namespace, s3RestoreSource.Endpoint, s3RestoreSource.AWSSecret)
+		s3Cli, err := s3factory.NewClientFromSecret(r.kubecli, r.namespace, s3RestoreSource.Endpoint, s3RestoreSource.AWSSecret, s3RestoreSource.ForcePathStyle)
 		if err != nil {
 			return fmt.Errorf("failed to create S3 client: %v", err)
 		}
@@ -117,6 +120,42 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 
 		backupReader = reader.NewABSReader(absCli.ABS)
 		path = absRestoreSource.Path
+	case api.BackupStorageTypeGCS:
+		ctx := context.TODO()
+		restoreSource := cr.Spec.RestoreSource
+		if restoreSource.GCS == nil {
+			return errors.New("empty gcs restore source")
+		}
+		gcsRestoreSource := restoreSource.GCS
+		if len(gcsRestoreSource.Path) == 0 {
+			return errors.New("invalid gcs restore source field (spec.gcs), must specify all required subfields")
+		}
+
+		gcsCli, err := gcsfactory.NewClientFromSecret(ctx, r.kubecli, r.namespace, gcsRestoreSource.GCPSecret)
+		if err != nil {
+			return fmt.Errorf("failed to create GCS client: %v", err)
+		}
+		defer gcsCli.GCS.Close()
+
+		backupReader = reader.NewGCSReader(ctx, gcsCli.GCS)
+		path = gcsRestoreSource.Path
+	case api.BackupStorageTypeOSS:
+		restoreSource := cr.Spec.RestoreSource
+		if restoreSource.OSS == nil {
+			return errors.New("empty oss restore source")
+		}
+		ossRestoreSource := restoreSource.OSS
+		if len(ossRestoreSource.OSSSecret) == 0 || len(ossRestoreSource.Path) == 0 {
+			return errors.New("invalid oss restore source field (spec.oss), must specify all required subfields")
+		}
+
+		ossCli, err := ossfactory.NewClientFromSecret(r.kubecli, r.namespace, ossRestoreSource.Endpoint, ossRestoreSource.OSSSecret)
+		if err != nil {
+			return fmt.Errorf("failed to create OSS client: %v", err)
+		}
+
+		backupReader = reader.NewOSSReader(ossCli.OSS)
+		path = ossRestoreSource.Path
 	default:
 		return fmt.Errorf("unknown backup storage type (%s) for restore CR (%v)", cr.Spec.BackupStorageType, restoreName)
 	}

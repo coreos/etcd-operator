@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The etcd-operator Authors
+Copyright 2019 The etcd-operator Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ package v1beta2
 import (
 	time "time"
 
-	etcd_v1beta2 "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	etcdv1beta2 "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	versioned "github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/coreos/etcd-operator/pkg/generated/informers/externalversions/internalinterfaces"
 	v1beta2 "github.com/coreos/etcd-operator/pkg/generated/listers/etcd/v1beta2"
@@ -70,7 +70,7 @@ func NewFilteredEtcdBackupInformer(client versioned.Interface, namespace string,
 				return client.EtcdV1beta2().EtcdBackups(namespace).Watch(options)
 			},
 		},
-		&etcd_v1beta2.EtcdBackup{},
+		&etcdv1beta2.EtcdBackup{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,7 +81,7 @@ func (f *etcdBackupInformer) defaultInformer(client versioned.Interface, resyncP
 }
 
 func (f *etcdBackupInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&etcd_v1beta2.EtcdBackup{}, f.defaultInformer)
+	return f.factory.InformerFor(&etcdv1beta2.EtcdBackup{}, f.defaultInformer)
 }
 
 func (f *etcdBackupInformer) Lister() v1beta2.EtcdBackupLister {

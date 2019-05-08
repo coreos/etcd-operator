@@ -36,7 +36,7 @@ spec:
 Restore Spec defined as:
 
 ```Go
-// RestoreSpec defines how to restore an etcd cluster from exsiting backup.
+// RestoreSpec defines how to restore an etcd cluster from existing backup.
 type RestoreSpec struct {
 	// EtcdCluster defines the same spec that etcd operator will run later.
 	// Using this spec, restore operator will prepare the seed that

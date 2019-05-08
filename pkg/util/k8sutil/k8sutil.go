@@ -20,6 +20,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,11 +60,11 @@ const (
 
 	randomSuffixLength = 10
 	// k8s object name has a maximum length
-	maxNameLength = 63 - randomSuffixLength - 1
+	MaxNameLength = 63 - randomSuffixLength - 1
 
 	defaultBusyboxImage = "busybox:1.28.0-glibc"
 
-	// AnnotationScope annotation name for defining instance scope. Used for specifing cluster wide clusters.
+	// AnnotationScope annotation name for defining instance scope. Used for specifying cluster wide clusters.
 	AnnotationScope = "etcd.database.coreos.com/scope"
 	//AnnotationClusterWide annotation value for cluster wide clusters.
 	AnnotationClusterWide = "clusterwide"
@@ -158,7 +159,7 @@ func CreateClientService(kubecli kubernetes.Interface, clusterName, ns string, o
 		TargetPort: intstr.FromInt(EtcdClientPort),
 		Protocol:   v1.ProtocolTCP,
 	}}
-	return createService(kubecli, ClientServiceName(clusterName), clusterName, ns, "", ports, owner)
+	return createService(kubecli, ClientServiceName(clusterName), clusterName, ns, "", ports, owner, false)
 }
 
 func ClientServiceName(clusterName string) string {
@@ -178,11 +179,11 @@ func CreatePeerService(kubecli kubernetes.Interface, clusterName, ns string, own
 		Protocol:   v1.ProtocolTCP,
 	}}
 
-	return createService(kubecli, clusterName, clusterName, ns, v1.ClusterIPNone, ports, owner)
+	return createService(kubecli, clusterName, clusterName, ns, v1.ClusterIPNone, ports, owner, true)
 }
 
-func createService(kubecli kubernetes.Interface, svcName, clusterName, ns, clusterIP string, ports []v1.ServicePort, owner metav1.OwnerReference) error {
-	svc := newEtcdServiceManifest(svcName, clusterName, clusterIP, ports)
+func createService(kubecli kubernetes.Interface, svcName, clusterName, ns, clusterIP string, ports []v1.ServicePort, owner metav1.OwnerReference, publishNotReadyAddresses bool) error {
+	svc := newEtcdServiceManifest(svcName, clusterName, clusterIP, ports, publishNotReadyAddresses)
 	addOwnerRefToObject(svc.GetObjectMeta(), owner)
 	_, err := kubecli.CoreV1().Services(ns).Create(svc)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
@@ -225,20 +226,21 @@ func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, time
 	return retPod, nil
 }
 
-func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.ServicePort) *v1.Service {
+func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.ServicePort, publishNotReadyAddresses bool) *v1.Service {
 	labels := LabelsForCluster(clusterName)
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   svcName,
 			Labels: labels,
 			Annotations: map[string]string{
-				TolerateUnreadyEndpointsAnnotation: "true",
+				TolerateUnreadyEndpointsAnnotation: strconv.FormatBool(publishNotReadyAddresses),
 			},
 		},
 		Spec: v1.ServiceSpec{
 			Ports:     ports,
 			Selector:  labels,
 			ClusterIP: clusterIP,
+			// PublishNotReadyAddresses: publishNotReadyAddresses, // TODO(ckoehn): Activate once TolerateUnreadyEndpointsAnnotation is deprecated.
 		},
 	}
 	return svc
@@ -517,8 +519,8 @@ func mergeLabels(l1, l2 map[string]string) {
 
 func UniqueMemberName(clusterName string) string {
 	suffix := utilrand.String(randomSuffixLength)
-	if len(clusterName) > maxNameLength {
-		clusterName = clusterName[:maxNameLength]
+	if len(clusterName) > MaxNameLength {
+		clusterName = clusterName[:MaxNameLength]
 	}
 	return clusterName + "-" + suffix
 }

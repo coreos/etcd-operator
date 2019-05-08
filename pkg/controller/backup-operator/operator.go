@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/client"
@@ -45,7 +46,14 @@ type Backup struct {
 	backupCRCli versioned.Interface
 	kubeExtCli  apiextensionsclient.Interface
 
+	backupRunnerStore sync.Map
+
 	createCRD bool
+}
+
+type BackupRunner struct {
+	spec       api.BackupSpec
+	cancelFunc context.CancelFunc
 }
 
 // New creates a backup operator.

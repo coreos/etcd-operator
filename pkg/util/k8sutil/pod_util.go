@@ -69,11 +69,11 @@ func containerWithRequirements(c v1.Container, r v1.ResourceRequirements) v1.Con
 }
 
 func newEtcdProbe(isSecure bool) *v1.Probe {
-	// etcd pod is alive only if a linearizable get succeeds.
-	cmd := "ETCDCTL_API=3 etcdctl get foo"
+	// etcd pod is healthy only if it can participate in consensus
+	cmd := "ETCDCTL_API=3 etcdctl endpoint status"
 	if isSecure {
 		tlsFlags := fmt.Sprintf("--cert=%[1]s/%[2]s --key=%[1]s/%[3]s --cacert=%[1]s/%[4]s", operatorEtcdTLSDir, etcdutil.CliCertFile, etcdutil.CliKeyFile, etcdutil.CliCAFile)
-		cmd = fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=https://localhost:%d %s get foo", EtcdClientPort, tlsFlags)
+		cmd = fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=https://localhost:%d %s endpoint status", EtcdClientPort, tlsFlags)
 	}
 	return &v1.Probe{
 		Handler: v1.Handler{

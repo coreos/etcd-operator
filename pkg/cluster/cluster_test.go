@@ -56,3 +56,19 @@ func TestUpdateEventUpdateLocalClusterObj(t *testing.T) {
 		t.Errorf("expect version=%s, get=%s", newVersion, c.cluster.ResourceVersion)
 	}
 }
+
+func TestNewLongClusterName(t *testing.T) {
+	clus := &api.EtcdCluster{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: api.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-etcd-cluster123456789123456789123456789123456789123456",
+			Namespace: metav1.NamespaceDefault,
+		},
+	}
+	clus.SetClusterName("example-etcd-cluster123456789123456789123456789123456789123456")
+	if c := New(Config{}, clus); c != nil {
+		t.Errorf("expect c to be nil")
+	}
+}

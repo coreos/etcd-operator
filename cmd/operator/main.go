@@ -35,7 +35,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -118,7 +118,10 @@ func main() {
 		logrus.Fatalf("error creating lock: %v", err)
 	}
 
-	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
 		Lock:          rl,
 		LeaseDuration: 15 * time.Second,
 		RenewDeadline: 10 * time.Second,
@@ -134,7 +137,9 @@ func main() {
 	panic("unreachable")
 }
 
-func run(stop <-chan struct{}) {
+func run(ctx context.Context) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	cfg := newControllerConfig()
 
 	startChaos(context.Background(), cfg.KubeCli, cfg.Namespace, chaosLevel)

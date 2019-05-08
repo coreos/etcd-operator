@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The etcd-operator Authors
+Copyright 2019 The etcd-operator Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ func (c *FakeEtcdRestores) List(opts v1.ListOptions) (result *v1beta2.EtcdRestor
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1beta2.EtcdRestoreList{}
+	list := &v1beta2.EtcdRestoreList{ListMeta: obj.(*v1beta2.EtcdRestoreList).ListMeta}
 	for _, item := range obj.(*v1beta2.EtcdRestoreList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)

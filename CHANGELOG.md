@@ -2,19 +2,57 @@
 
 ### Added
 
-- Added `spec.pod.DNSTimeoutInSecond` to `EtcdCluster` that allows setting a maximum allowed time for the init container of the etcd pod to reverse DNS lookup its IP given the hostname.
-
 ### Changed
 
 ### Removed
 
 ### Fixed
 
-- Fixed leaking http connections while verifying backup snapshots. [#1976](https://github.com/coreos/etcd-operator/pull/1976)
+- Don't expose unready nodes via client service. [#2063](https://github.com/coreos/etcd-operator/pull/2063)
 
 ### Deprecated
 
 ### Security
+
+## [Release 0.9.4]
+
+### Added
+
+- Added `spec.BackupSource.S3.ForcePathStyle` to `EtcdBackup` to force path style s3 uploads. [#2036](https://github.com/coreos/etcd-operator/pull/2036)
+- Added `spec.RestoreSource.S3.ForcePathStyle` to `EtcdRestore` to force path style s3 downloads. [#2036](https://github.com/coreos/etcd-operator/pull/2036)
+
+### Changed
+
+- Update Go version to 1.11.5
+- Update k8s to 1.12.6
+- EtcdBackup: Support periodic backups. This change added 3 new fields to EtcdBackup schema, 2 variables in spec, 1 variables in status.
+  - in spec.backupPolicy
+    - maxBackup: maximum number of backups to keep.
+    - backupIntervalInSecond: how often to perform backup operation.
+  - in status
+    - LastSuccessDate: last time to succeed in taking backup
+
+### Fixed
+
+- Fixed a bug where `same CR names` in different namespaces with cluster-wide operator were not working as expected [#2026](https://github.com/coreos/etcd-operator/pull/2026)
+- Fixed a bug where cluster names could exceed 63 octets the maximum defined by [RFC 1035 section 2.3.4](https://tools.ietf.org/html/rfc1035) resulting in hanging pods [2027](https://github.com/coreos/etcd-operator/pull/2027).
+
+## [Release 0.9.3]
+
+### Added
+
+- Added `spec.pod.DNSTimeoutInSecond` to `EtcdCluster` that allows setting a maximum allowed time for the init container of the etcd pod to reverse DNS lookup its IP given the hostname.
+
+### Changed
+
+- Update Go version to 1.11.2
+- Update k8s to 1.11.4
+- k8s codegen updates are longer performed via container. Go dependencies are now vendored
+  and updates are performed with shell script locally.
+
+### Fixed
+
+- Fixed leaking http connections while verifying backup snapshots. [#1976](https://github.com/coreos/etcd-operator/pull/1976)
 
 ## [Release 0.9.2]
 
@@ -406,7 +444,7 @@ Existing self hosted etcd cluster MUST be recreated for updating to this release
 - Add static TLS support for self-hosted etcd mode.
 - The operator will now post Kubernetes [events](https://kubernetes.io/docs/resources-reference/v1.6/#event-v1-core). To allow this the necessary RBAC rule for the resource `events` must be added to the clusterrole. See the [rbac guide](https://github.com/coreos/etcd-operator/blob/master/doc/user/rbac.md#create-clusterrole) to see how to set up RBAC rules for the operator. If the rbac rule for 'events' is not present then the operator will continue to function normally but will also print out an error message on the failure to post an event.
 - Add revision field in backup status.
-- Support getting a specific backup with verison and revision from the backup service.
+- Support getting a specific backup with version and revision from the backup service.
 
 ### Changed
 
@@ -479,6 +517,8 @@ Check https://github.com/coreos/etcd-operator/blob/master/doc/user/upgrade/upgra
 ### Removed
 
 ### Fixed
+
+- Fixed an issue where liveness probes failed when authentication was enabled. [#1957](https://github.com/coreos/etcd-operator/issues/1957)
 
 ### Deprecated
 

@@ -16,10 +16,12 @@ package e2eutil
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"k8s.io/api/core/v1"
@@ -61,4 +63,13 @@ func printContainerStatus(buf *bytes.Buffer, ss []v1.ContainerStatus) {
 			buf.WriteString(fmt.Sprintf("%s: Terminated: message (%s) reason (%s)\n", s.Name, s.State.Terminated.Message, s.State.Terminated.Reason))
 		}
 	}
+}
+
+func DeleteBackupFiles(wr writer.Writer, files []string) error {
+	for _, v := range files {
+		if err := wr.Delete(context.Background(), v); err != nil {
+			return err
+		}
+	}
+	return nil
 }
