@@ -63,6 +63,7 @@ const (
 	MaxNameLength = 63 - randomSuffixLength - 1
 
 	defaultBusyboxImage = "busybox:1.28.0-glibc"
+	defaultCurlImage = "tutum/curl:latest"
 
 	// AnnotationScope annotation name for defining instance scope. Used for specifying cluster wide clusters.
 	AnnotationScope = "etcd.database.coreos.com/scope"
@@ -104,7 +105,8 @@ func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, 
 	return []v1.Container{
 		{
 			Name:  "fetch-backup",
-			Image: "tutum/curl",
+			//Image default: "tutum/curl:latest",
+			Image: imageNameCurl(cs.Pod),
 			Command: []string{
 				"/bin/bash", "-ec",
 				fmt.Sprintf(`
@@ -145,6 +147,14 @@ func imageNameBusybox(policy *api.PodPolicy) string {
 		return policy.BusyboxImage
 	}
 	return defaultBusyboxImage
+}
+
+// imageNameCurl returns the default image for curl init container, or the image specified in the PodPolicy
+func imageNameCurl(policy *api.PodPolicy) string {
+	if policy != nil && len(policy.CurlImage) > 0 {
+		return policy.CurlImage
+	}
+	return defaultCurlImage
 }
 
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
