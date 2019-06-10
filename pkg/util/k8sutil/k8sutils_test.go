@@ -47,3 +47,31 @@ func TestSetBusyboxImageName(t *testing.T) {
 		t.Errorf("expect image=%s, get=%s", expected, image)
 	}
 }
+
+func TestDefaultCurlImageName(t *testing.T) {
+	policy := &api.PodPolicy{}
+	image := imageNameCurl(policy)
+	expected := defaultCurlImage
+	if image != expected {
+		t.Errorf("expect image=%s, get=%s", expected, image)
+	}
+}
+
+func TestDefaultNilCurlImageName(t *testing.T) {
+	image := imageNameCurl(nil)
+	expected := defaultCurlImage
+	if image != expected {
+		t.Errorf("expect image=%s, get=%s", expected, image)
+	}
+}
+
+func TestSetBusyboxImageName(t *testing.T) {
+	policy := &api.PodPolicy{
+		CurlImage: "myRepo/curl:1.3.2",
+	}
+	image := imageNameCurl(policy)
+	expected := "myRepo/curl:1.3.2"
+	if image != expected {
+		t.Errorf("expect image=%s, get=%s", expected, image)
+	}
+}
