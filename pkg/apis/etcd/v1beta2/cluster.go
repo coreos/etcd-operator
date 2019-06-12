@@ -162,6 +162,12 @@ type PodPolicy struct {
 	// '.cluster.local'.
 	// The default is to not set a cluster domain explicitly.
 	ClusterDomain string `json:"ClusterDomain"`
+
+	// hostNetwork will set HostNetwork: true in podspec
+	HostNetwork bool `json:"hostNetwork,omitempty"`
+
+	// dnsPolicy will set dnsPolicy: <whatever> in podspec
+	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
 }
 
 // TODO: move this to initializer

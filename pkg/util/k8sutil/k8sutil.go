@@ -402,6 +402,15 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			SecurityContext:              podSecurityContext(cs.Pod),
 		},
 	}
+
+	if cs.Pod.DNSPolicy != "" {
+		pod.Spec.DNSPolicy = cs.Pod.DNSPolicy
+	}
+
+	if cs.Pod.HostNetwork {
+		pod.Spec.HostNetwork = true
+	}
+
 	SetEtcdVersion(pod, cs.Version)
 	return pod
 }
