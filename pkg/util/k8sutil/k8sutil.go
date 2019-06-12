@@ -106,7 +106,7 @@ func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, 
 		{
 			Name:  "fetch-backup",
 			//Image default: "tutum/curl:latest",
-			Image: imageNameCurl(cs.Pod),
+			Image: imageNameCurl(podPolicy),
 			Command: []string{
 				"/bin/bash", "-ec",
 				fmt.Sprintf(`

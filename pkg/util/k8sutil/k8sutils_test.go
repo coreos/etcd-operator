@@ -65,7 +65,7 @@ func TestDefaultNilCurlImageName(t *testing.T) {
 	}
 }
 
-func TestSetBusyboxImageName(t *testing.T) {
+func TestSetCurlImageName(t *testing.T) {
 	policy := &api.PodPolicy{
 		CurlImage: "myRepo/curl:1.3.2",
 	}
