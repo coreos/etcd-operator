@@ -101,7 +101,7 @@ func PVCNameFromMember(memberName string) string {
 	return memberName
 }
 
-func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, m *etcdutil.Member) []v1.Container {
+func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, m *etcdutil.Member, podPolicy *api.PodPolicy) []v1.Container {
 	return []v1.Container{
 		{
 			Name:  "fetch-backup",
@@ -271,7 +271,7 @@ func AddEtcdVolumeToPod(pod *v1.Pod, pvc *v1.PersistentVolumeClaim) {
 
 func addRecoveryToPod(pod *v1.Pod, token string, m *etcdutil.Member, cs api.ClusterSpec, backupURL *url.URL) {
 	pod.Spec.InitContainers = append(pod.Spec.InitContainers,
-		makeRestoreInitContainers(backupURL, token, cs.Repository, cs.Version, m)...)
+		makeRestoreInitContainers(backupURL, token, cs.Repository, cs.Version, m, cs.Pod)...)
 }
 
 func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
