@@ -19,7 +19,10 @@ import (
 	"crypto/tls"
 	"fmt"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -83,13 +86,69 @@ func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, isPeriodic
 }
 
 // EnsureMaxBackup to ensure the number of snapshot is under maxcount
+// We need to naturally sort it, help functions below:
+type Compare func(str1, str2 string) bool
+
+func (cmp Compare) Sort(strs []string) {
+	strSort := &strSorter{
+		strs: strs,
+		cmp:  cmp,
+	}
+	sort.Sort(strSort)
+}
+
+type strSorter struct {
+	strs []string
+	cmp  func(str1, str2 string) bool
+}
+
+func extractNumberFromString(str string, size int) (num int) {
+
+	strSlice := make([]string, 0)
+	for _, v := range str {
+		if unicode.IsDigit(v) {
+			strSlice = append(strSlice, string(v))
+		}
+	}
+
+	if size == 0 { // default
+		num, err := strconv.Atoi(strings.Join(strSlice, ""))
+		if err != nil {
+			return fmt.Errorf("failed: %v", err)
+		}
+
+		return num
+	} else {
+		num, err := strconv.Atoi(strSlice[size-1])
+		if err != nil {
+			return fmt.Errorf("failed: %v", err)
+		}
+
+		return num
+	}
+}
+
+func (s *strSorter) Len() int { return len(s.strs) }
+
+func (s *strSorter) Swap(i, j int) { s.strs[i], s.strs[j] = s.strs[j], s.strs[i] }
+
+func (s *strSorter) Less(i, j int) bool { return s.cmp(s.strs[i], s.strs[j]) }
+
 // if the number of snapshot exceeded than maxcount, delete oldest snapshot
 func (bm *BackupManager) EnsureMaxBackup(ctx context.Context, basePath string, maxCount int) error {
 	savedSnapShots, err := bm.bw.List(ctx, basePath)
 	if err != nil {
 		return fmt.Errorf("failed to get exisiting snapshots: %v", err)
 	}
-	sort.Sort(sort.Reverse(sort.StringSlice(savedSnapShots)))
+
+	// closure order for natural string number sorting
+	compareStringNumber := func(str1, str2 string) bool {
+		// switch this <> around to change the order (asc vs des)
+		return extractNumberFromString(str1, 0) < extractNumberFromString(str2, 0)
+	}
+	// this is sorted on the etcd revision number, the smaller the number the older it is
+	Compare(compareStringNumber).Sort(savedSnapShots)
+
 	for i, snapshotPath := range savedSnapShots {
 		if i < maxCount {
 			continue
