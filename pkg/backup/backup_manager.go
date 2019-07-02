@@ -114,14 +114,14 @@ func extractNumberFromString(str string, size int) (num int) {
 	if size == 0 { // default
 		num, err := strconv.Atoi(strings.Join(strSlice, ""))
 		if err != nil {
-			return fmt.Errorf("failed: %v", err)
+			fmt.Errorf("failed: %v", err)
 		}
 
 		return num
 	} else {
 		num, err := strconv.Atoi(strSlice[size-1])
 		if err != nil {
-			return fmt.Errorf("failed: %v", err)
+			fmt.Errorf("failed: %v", err)
 		}
 
 		return num
