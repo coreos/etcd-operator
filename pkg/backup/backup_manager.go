@@ -102,6 +102,7 @@ type strSorter struct {
 	cmp  func(str1, str2 string) bool
 }
 
+// Thanks to https://www.socketloop.com/tutorials/golang-natural-string-sorting-example
 func extractNumberFromString(str string, size int) (num int) {
 
 	strSlice := make([]string, 0)
