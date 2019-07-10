@@ -103,7 +103,7 @@ type strSorter struct {
 }
 
 // Thanks to https://www.socketloop.com/tutorials/golang-natural-string-sorting-example
-func extractNumberFromString(str string, size int) (num int) {
+func extractNumberFromString(str string, size int) (num float64) {
 
 	strSlice := make([]string, 0)
 	for _, v := range str {
@@ -113,14 +113,14 @@ func extractNumberFromString(str string, size int) (num int) {
 	}
 
 	if size == 0 { // default
-		num, err := strconv.Atoi(strings.Join(strSlice, ""))
+		num, err := strconv.ParseFloat(strings.Join(strSlice, ""), 64)
 		if err != nil {
 			fmt.Errorf("failed: %v", err)
 		}
 
 		return num
 	} else {
-		num, err := strconv.Atoi(strSlice[size-1])
+		num, err := strconv.ParseFloat(strSlice[size-1], 64)
 		if err != nil {
 			fmt.Errorf("failed: %v", err)
 		}
@@ -145,7 +145,7 @@ func (bm *BackupManager) EnsureMaxBackup(ctx context.Context, basePath string, m
 	// closure order for natural string number sorting
 	compareStringNumber := func(str1, str2 string) bool {
 		// switch this <> around to change the order (asc vs des)
-		return extractNumberFromString(str1, 0) < extractNumberFromString(str2, 0)
+		return extractNumberFromString(str1, 0) > extractNumberFromString(str2, 0)
 	}
 	// this is sorted on the etcd revision number, the smaller the number the older it is
 	Compare(compareStringNumber).Sort(savedSnapShots)
