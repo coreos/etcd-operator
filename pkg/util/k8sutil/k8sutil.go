@@ -63,7 +63,7 @@ const (
 	MaxNameLength = 63 - randomSuffixLength - 1
 
 	defaultBusyboxImage = "busybox:1.28.0-glibc"
-	defaultCurlImage = "tutum/curl:latest"
+	defaultCurlImage    = "tutum/curl:latest"
 
 	// AnnotationScope annotation name for defining instance scope. Used for specifying cluster wide clusters.
 	AnnotationScope = "etcd.database.coreos.com/scope"
@@ -104,7 +104,7 @@ func PVCNameFromMember(memberName string) string {
 func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, m *etcdutil.Member, podPolicy *api.PodPolicy) []v1.Container {
 	return []v1.Container{
 		{
-			Name:  "fetch-backup",
+			Name: "fetch-backup",
 			//Image default: "tutum/curl:latest",
 			Image: imageNameCurl(podPolicy),
 			Command: []string{
