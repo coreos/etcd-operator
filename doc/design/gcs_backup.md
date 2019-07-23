@@ -59,7 +59,7 @@ spec:
   # set permissions
   BACKUP_BUCKET='my-etcd-backups-bucket'
   gsutil mb "$BACKUP_BUCKET"
-  gsutil iam ch "serviceAccount:${BACKUP_ACCOUNT_EMAIL}:objectCreator" "$BACKUP_BUCKET"
+  gsutil iam ch "serviceAccount:${BACKUP_ACCOUNT_EMAIL}:objectCreator" gs://"$BACKUP_BUCKET"
 
   # create secret
   kubectl create secret generic gcp-credentials \
