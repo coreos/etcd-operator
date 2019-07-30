@@ -2,7 +2,7 @@
 
 ## Overview
 
-etcd backup operator backups the data of a etcd cluster running on [Kubernetes][Kube] to a remote storage such as AWS [S3][s3].
+etcd backup operator backs up the data of a etcd cluster running on [Kubernetes][Kube] to a remote storage such as AWS [S3][s3].
 
 ## Getting Started
 

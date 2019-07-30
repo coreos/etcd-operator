@@ -103,7 +103,7 @@ func (absw *absWriter) Write(ctx context.Context, path string, r io.Reader) (int
 
 func (absw *absWriter) List(ctx context.Context, basePath string) ([]string, error) {
 	// TODO: support context.
-	container, _, err := util.ParseBucketAndKey(basePath)
+	container, key, err := util.ParseBucketAndKey(basePath)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (absw *absWriter) List(ctx context.Context, basePath string) ([]string, err
 	}
 
 	blobs, err := containerRef.ListBlobs(
-		storage.ListBlobsParameters{Prefix: basePath})
+		storage.ListBlobsParameters{Prefix: key})
 	if err != nil {
 		return nil, err
 	}

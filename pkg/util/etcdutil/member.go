@@ -33,10 +33,13 @@ type Member struct {
 
 	SecurePeer   bool
 	SecureClient bool
+
+	// ClusterDomain is the DNS name of the cluster. E.g. .cluster.local.
+	ClusterDomain string
 }
 
 func (m *Member) Addr() string {
-	return fmt.Sprintf("%s.%s.%s.svc", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
+	return fmt.Sprintf("%s.%s.%s.svc%s", m.Name, clusterNameFromMemberName(m.Name), m.Namespace, m.ClusterDomain)
 }
 
 // ClientURL is the client URL for this member
