@@ -68,6 +68,11 @@ func containerWithRequirements(c v1.Container, r v1.ResourceRequirements) v1.Con
 	return c
 }
 
+// liveness probe needs to take care of the following steps' time:
+// * time to transmit a 4GB snapshot from leader to member -- 4000MB / 50MB/s = 80s
+// * time to load snapshot —— 4000MB / 200MB/s = 20s
+// * time to set up streams and follow up leader revisions -- 100s * 10 heartbeat/s * 1KB/heartbeat / 1024KB/MB / 50MB/s ~= 20s
+// total time -- 120s
 func newEtcdProbe(isSecure bool) *v1.Probe {
 	// etcd pod is healthy only if it can participate in consensus
 	cmd := "ETCDCTL_API=3 etcdctl endpoint status"
@@ -81,7 +86,7 @@ func newEtcdProbe(isSecure bool) *v1.Probe {
 				Command: []string{"/bin/sh", "-ec", cmd},
 			},
 		},
-		InitialDelaySeconds: 10,
+		InitialDelaySeconds: 120,
 		TimeoutSeconds:      10,
 		PeriodSeconds:       60,
 		FailureThreshold:    3,
