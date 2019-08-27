@@ -94,6 +94,7 @@ func (bm *BackupManager) EnsureMaxBackup(ctx context.Context, basePath string, m
 		if i < maxCount {
 			continue
 		}
+		logrus.Infof("deleting snapshot %s", snapshotPath)
 		err := bm.bw.Delete(ctx, snapshotPath)
 		if err != nil {
 			return fmt.Errorf("failed to delete snapshot: %v", err)
