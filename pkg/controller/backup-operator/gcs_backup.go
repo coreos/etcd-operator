@@ -29,7 +29,7 @@ import (
 
 // handleGCS saves etcd cluster's backup to specificed GCS path.
 func handleGCS(ctx context.Context, kubecli kubernetes.Interface, s *api.GCSBackupSource, endpoints []string, clientTLSSecret,
-	namespace string, isPeriodic bool, maxBackup int) (*api.BackupStatus, error) {
+	namespace string, isPeriodic bool, maxBackup int, degragementBeforeBackup bool) (*api.BackupStatus, error) {
 	// TODO: controls NewClientFromSecret with ctx. This depends on upstream kubernetes to support API calls with ctx.
 	cli, err := gcsfactory.NewClientFromSecret(ctx, kubecli, namespace, s.GCPSecret)
 	if err != nil {
