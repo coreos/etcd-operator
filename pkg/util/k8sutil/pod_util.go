@@ -81,10 +81,6 @@ func newEtcdProbe(isSecure bool) *v1.Probe {
 				Command: []string{"/bin/sh", "-ec", cmd},
 			},
 		},
-		InitialDelaySeconds: 10,
-		TimeoutSeconds:      10,
-		PeriodSeconds:       60,
-		FailureThreshold:    3,
 	}
 }
 

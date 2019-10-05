@@ -302,6 +302,30 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
 		dataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ListenClientURL(), m.ClientURL(), strings.Join(initialCluster, ","), state)
+	if cs.HeartbeatTimeout > 0 {
+		commands += fmt.Sprintf(" --heartbeat-interval=%d", cs.HeartbeatTimeout)
+	}
+
+	if cs.ElectionTimeout > 0 {
+		commands += fmt.Sprintf(" --election-timeout=%d", cs.ElectionTimeout)
+	}
+
+	if cs.SnapshotCount > 0 {
+		commands += fmt.Sprintf(" --snapshot-count=%d", cs.SnapshotCount)
+	}
+
+	if cs.AutoCompactionMode != "" {
+		commands += fmt.Sprintf(" --auto-compaction-mode=%s", cs.AutoCompactionMode)
+	}
+
+	if cs.AutoCompactionRetention != "" {
+		commands += fmt.Sprintf(" --auto-compaction-retention=%s", cs.AutoCompactionRetention)
+	}
+
+	if cs.ExperimentalPeerSkipClientSANVerification {
+		commands += fmt.Sprintf(" --experimental-peer-skip-client-san-verification")
+	}
+
 	if m.SecurePeer {
 		commands += fmt.Sprintf(" --peer-client-cert-auth=true --peer-trusted-ca-file=%[1]s/peer-ca.crt --peer-cert-file=%[1]s/peer.crt --peer-key-file=%[1]s/peer.key", peerTLSDir)
 	}
@@ -318,12 +342,7 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 		"etcd_cluster": clusterName,
 	}
 
-	livenessProbe := newEtcdProbe(cs.TLS.IsSecureClient())
-	readinessProbe := newEtcdProbe(cs.TLS.IsSecureClient())
-	readinessProbe.InitialDelaySeconds = 1
-	readinessProbe.TimeoutSeconds = 5
-	readinessProbe.PeriodSeconds = 5
-	readinessProbe.FailureThreshold = 3
+	livenessProbe, readinessProbe := provisionProbeConfigs(cs)
 
 	container := containerWithProbes(
 		etcdContainer(strings.Split(commands, " "), cs.Repository, cs.Version),
@@ -404,6 +423,60 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 	}
 	SetEtcdVersion(pod, cs.Version)
 	return pod
+}
+
+func provisionProbeConfigs(cs api.ClusterSpec) (livenessProbe *v1.Probe, readinessProbe *v1.Probe) {
+	livenessProbe = newEtcdProbe(cs.TLS.IsSecureClient())
+
+	if cs.LivenessProbeConfig.InitialDelaySeconds != 0 {
+		livenessProbe.InitialDelaySeconds = cs.LivenessProbeConfig.InitialDelaySeconds
+	} else {
+		livenessProbe.InitialDelaySeconds = 10
+	}
+
+	if cs.LivenessProbeConfig.TimeoutSeconds != 0 {
+		livenessProbe.TimeoutSeconds = cs.LivenessProbeConfig.TimeoutSeconds
+	} else {
+		livenessProbe.TimeoutSeconds = 10
+	}
+
+	if cs.LivenessProbeConfig.PeriodSeconds != 0 {
+		livenessProbe.PeriodSeconds = cs.LivenessProbeConfig.PeriodSeconds
+	} else {
+		livenessProbe.PeriodSeconds = 60
+	}
+
+	if cs.LivenessProbeConfig.FailureThreshold != 0 {
+		livenessProbe.FailureThreshold = cs.LivenessProbeConfig.FailureThreshold
+	} else {
+		livenessProbe.FailureThreshold = 3
+	}
+
+	readinessProbe = newEtcdProbe(cs.TLS.IsSecureClient())
+
+	if cs.ReadinessProbeConfig.InitialDelaySeconds != 0 {
+		livenessProbe.InitialDelaySeconds = cs.LivenessProbeConfig.InitialDelaySeconds
+	} else {
+		livenessProbe.InitialDelaySeconds = 1
+	}
+
+	if cs.ReadinessProbeConfig.TimeoutSeconds != 0 {
+		livenessProbe.TimeoutSeconds = cs.LivenessProbeConfig.TimeoutSeconds
+	} else {
+		livenessProbe.TimeoutSeconds = 5
+	}
+
+	if cs.ReadinessProbeConfig.PeriodSeconds != 0 {
+		livenessProbe.PeriodSeconds = cs.LivenessProbeConfig.PeriodSeconds
+	} else {
+		livenessProbe.PeriodSeconds = 5
+	}
+
+	if cs.ReadinessProbeConfig.FailureThreshold != 0 {
+		livenessProbe.FailureThreshold = cs.LivenessProbeConfig.FailureThreshold
+	} else {
+		livenessProbe.FailureThreshold = 3
+	}
 }
 
 func podSecurityContext(podPolicy *api.PodPolicy) *v1.PodSecurityContext {

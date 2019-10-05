@@ -64,6 +64,39 @@ func (c *EtcdCluster) AsOwner() metav1.OwnerReference {
 	}
 }
 
+type ProbeConfig struct {
+	InitialDelaySeconds int `json:"initialDelaySeconds,omitempty"`
+	TimeoutSeconds      int `json:"timeoutSeconds,omitempty"`
+	PeriodSeconds       int `json:"periodSeconds,omitempty"`
+	FailureThreshold    int `json:"failureThreshold,omitempty"`
+}
+
+type EtcdConfig struct {
+	// Heartbeat timeout setting for etcd pod
+	HeartbeatTimeout int `json:"heartbeatTimeout,omitempty"`
+
+	// Election timeout setting for etcd pod
+	ElectionTimeout int `json:"electionTimeout,omitempty"`
+
+	// Snapshot count setting for etcd pod
+	SnapshotCount int `json:"snapshotCount,omitempty"`
+
+	// AutoCompactionMode, https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/maintenance.md
+	AutoCompactionMode string `json:"autoCompactionMode,omitempty"`
+
+	// AutoCompactionRetention, https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/maintenance.md
+	AutoCompactionRetention string `json:"autoCompactionRetention,omitempty"`
+
+	// ExperimentalPeerSkipClientSANVerification indicates whether the peer client san verification will be skipped.
+	ExperimentalPeerSkipClientSANVerification bool `json:"experimentalPeerSkipClientSANVerification,omitempty"`
+
+	// ReadinessProbeConfig is for the container's readiness probe.
+	ReadinessProbeConfig ProbeConfig `json:"readinessProbe,omitempty"`
+
+	// LivenessProbeConfig is for the container's readiness probe.
+	LivenessProbeConfig ProbeConfig `json:"livenessProbe,omitempty"`
+}
+
 type ClusterSpec struct {
 	// Size is the expected size of the etcd cluster.
 	// The etcd-operator will eventually make the size of the running
@@ -91,6 +124,9 @@ type ClusterSpec struct {
 
 	// Paused is to pause the control of the operator for the etcd cluster.
 	Paused bool `json:"paused,omitempty"`
+
+	// EtcdConfig contains the more configs for the etcd pods.
+	EtcdConfig `json:",inline"`
 
 	// Pod defines the policy to create pod for the etcd pod.
 	//
