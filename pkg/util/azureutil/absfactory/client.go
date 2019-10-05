@@ -55,18 +55,34 @@ func NewClientFromSecret(kubecli kubernetes.Interface, namespace, absSecret stri
 	storageAccount := se.Data[api.AzureSecretStorageAccount]
 	storageKey := se.Data[api.AzureSecretStorageKey]
 	cloudName := se.Data[api.AzureCloudKey]
+	sasURI := se.Data[api.AzureSecretSASURI]
 
 	cloud, err := parseAzureEnvironment(string(cloudName))
 	if err != nil {
 		return nil, err
 	}
+	var bc storage.Client
+	if len(sasURI) != 0 {
+		qIndex := strings.IndexAny(sasURI, "?")
+		if qIndex != -1 {
+			baseURL := sasURI[0:qIndex]
+			sasToken := sasURI[qIndex+1:]
 
-	bc, err := storage.NewBasicClientOnSovereignCloud(
-		string(storageAccount),
-		string(storageKey),
-		cloud)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Azure storage client: %v", err)
+			bc, err := storage.NewAccountSASClientFromEndpointToken(baseURL, sasToken)
+			if err != nil {
+				return nil, fmt.Errorf("create ABS client (from SAS token) failed: %v", err)
+			}
+		} else {
+			return nil, fmt.Errorf("No '?' in the URI, invalid sas token uri")
+		}
+	} else {
+		bc, err := storage.NewBasicClientOnSovereignCloud(
+			string(storageAccount),
+			string(storageKey),
+			cloud)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Azure storage client: %v", err)
+		}
 	}
 
 	abs := bc.GetBlobService()
