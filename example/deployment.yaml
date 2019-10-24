@@ -1,13 +1,16 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: etcd-operator
 spec:
+  selector:
+    matchLabels:
+      app: etcd-operator
   replicas: 1
   template:
     metadata:
       labels:
-        name: etcd-operator
+        app: etcd-operator
     spec:
       containers:
       - name: etcd-operator
