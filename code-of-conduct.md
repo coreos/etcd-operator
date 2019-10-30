@@ -34,7 +34,8 @@ when an individual is representing the project or its community.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported by contacting a project maintainer, Brandon Philips
-<brandon.philips@coreos.com>, and/or Rithu John <rithu.john@coreos.com>.
+<brandon.philips@coreos.com>, and/or Meghan Schofield
+<meghan.schofield@coreos.com>.
 
 This Code of Conduct is adapted from the Contributor Covenant
 (http://contributor-covenant.org), version 1.2.0, available at
@@ -58,4 +59,5 @@ refund) any individual found to be engaging in discriminatory or offensive
 speech or actions.
 
 Please bring any concerns to the immediate attention of designated on-site
-staff, Brandon Philips <brandon.philips@coreos.com>, and/or Rithu John <rithu.john@coreos.com>.
+staff, Brandon Philips <brandon.philips@coreos.com>, and/or Meghan Schofield
+<meghan.schofield@coreos.com>.
