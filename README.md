@@ -1,6 +1,6 @@
 # etcd operator
 unit/integration:
-[![Build Status](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-unit-master/badge/icon)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-unit-master/lastBuild/)
+[![Build Status](https://jenkins-etcd-public.prod.coreos.systems/view/operator/job/etcd-operator-unit-master/badge/icon)](https://jenkins-etcd-public.prod.coreos.systems/view/operator/job/etcd-operator-unit-master/)
 e2e (Kubernetes stable):
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-operator-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-master/)
 e2e (upgrade):
