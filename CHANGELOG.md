@@ -2,8 +2,6 @@
 
 ### Added
 
-- Added `spec.Pod.ClusterDomain` to explicitly set the cluster domain used for the etcd member URLs. [#2082](https://github.com/coreos/etcd-operator/pull/2082)
-
 ### Changed
 
 ### Removed
