@@ -69,9 +69,6 @@ type RestoreSource struct {
 
 	// GCS tells where on GCS the backup is saved and how to fetch the backup.
 	GCS *GCSRestoreSource `json:"gcs,omitempty"`
-
-	// OSS tells where on OSS the backup is saved and how to fetch the backup.
-	OSS *OSSRestoreSource `json:"oss,omitempty"`
 }
 
 type S3RestoreSource struct {
@@ -121,40 +118,6 @@ type GCSRestoreSource struct {
 	//
 	// If omitted, client will use the default application credentials.
 	GCPSecret string `json:"gcpSecret,omitempty"`
-}
-
-type OSSRestoreSource struct {
-	// Path is the full abs path where the backup is saved.
-	// The format of the path must be: "<oss-bucket-name>/<path-to-backup-file>"
-	// e.g: "myossbucket/etcd.backup"
-	Path string `json:"path"`
-
-	// The name of the secret object that stores the credential which will be used
-	// to access Alibaba Cloud OSS.
-	//
-	// The secret must contain the following keys/fields:
-	//     accessKeyID
-	//     accessKeySecret
-	//
-	// The format of secret:
-	//
-	//   apiVersion: v1
-	//   kind: Secret
-	//   metadata:
-	//     name: <my-credential-name>
-	//   type: Opaque
-	//   data:
-	//     accessKeyID: <base64 of my-access-key-id>
-	//     accessKeySecret: <base64 of my-access-key-secret>
-	//
-	OSSSecret string `json:"ossSecret"`
-
-	// Endpoint is the OSS service endpoint on alibaba cloud, defaults to
-	// "http://oss-cn-hangzhou.aliyuncs.com".
-	//
-	// Details about regions and endpoints, see:
-	//  https://www.alibabacloud.com/help/doc-detail/31837.htm
-	Endpoint string `json:"endpoint,omitempty"`
 }
 
 // RestoreStatus reports the status of this restore operation.
