@@ -56,14 +56,6 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
-  digest = "1:9a6d75376aa0c967c34dda295d1901fea4c2b29db11d21f9ea50ce81e8cca39e"
-  name = "github.com/aliyun/aliyun-oss-go-sdk"
-  packages = ["oss"]
-  pruneopts = "NT"
-  revision = "2b29687e15f2cc71fb3a50f28be1d6d30c40c86a"
-  version = "1.9.4"
-
-[[projects]]
   digest = "1:1e47beabb90c1e4cc35a3b9ee2d43c191930940363d6c02d2c59acd38c07cef6"
   name = "github.com/aws/aws-sdk-go"
   packages = [
@@ -982,7 +974,6 @@
     "cloud.google.com/go/storage",
     "github.com/Azure/azure-sdk-for-go/storage",
     "github.com/Azure/go-autorest/autorest/azure",
-    "github.com/aliyun/aliyun-oss-go-sdk/oss",
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/s3",
@@ -1004,6 +995,7 @@
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
     "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apimachinery/pkg/api/errors",
+    "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/fields",

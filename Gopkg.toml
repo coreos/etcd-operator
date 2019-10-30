@@ -73,7 +73,3 @@ required = [
   [[prune.project]]
     name = "k8s.io/code-generator"
     non-go = false
-
-[[constraint]]
-  name = "github.com/aliyun/aliyun-oss-go-sdk"
-  version = "=1.9.4"
