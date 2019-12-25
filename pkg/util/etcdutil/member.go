@@ -38,13 +38,17 @@ type Member struct {
 	ClusterDomain string
 }
 
-func (m *Member) Addr() string {
+func (m *Member) ClientAddr() string {
+	return fmt.Sprintf("%s-client.%s.svc%s", clusterNameFromMemberName(m.Name), m.Namespace, m.ClusterDomain)
+}
+
+func (m *Member) PeerAddr() string {
 	return fmt.Sprintf("%s.%s.%s.svc%s", m.Name, clusterNameFromMemberName(m.Name), m.Namespace, m.ClusterDomain)
 }
 
 // ClientURL is the client URL for this member
 func (m *Member) ClientURL() string {
-	return fmt.Sprintf("%s://%s:2379", m.clientScheme(), m.Addr())
+	return fmt.Sprintf("%s://%s:2379", m.clientScheme(), m.ClientAddr())
 }
 
 func (m *Member) clientScheme() string {
@@ -69,7 +73,7 @@ func (m *Member) ListenPeerURL() string {
 }
 
 func (m *Member) PeerURL() string {
-	return fmt.Sprintf("%s://%s:2380", m.peerScheme(), m.Addr())
+	return fmt.Sprintf("%s://%s:2380", m.peerScheme(), m.PeerAddr())
 }
 
 type MemberSet map[string]*Member
