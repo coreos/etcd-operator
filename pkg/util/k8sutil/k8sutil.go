@@ -388,7 +388,7 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 				            exit 1
 				        fi
 						sleep 1
-					done`, DNSTimeout, m.Addr())},
+					done`, DNSTimeout, m.PeerAddr())},
 			}},
 			Containers:    []v1.Container{container},
 			RestartPolicy: v1.RestartPolicyNever,
