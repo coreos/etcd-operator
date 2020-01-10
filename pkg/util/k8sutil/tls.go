@@ -33,6 +33,15 @@ func GetTLSDataFromSecret(kubecli kubernetes.Interface, ns, se string) (*TLSData
 	if err != nil {
 		return nil, err
 	}
+
+	if secret.Type == v1.SecretTypeTLS {
+		return &TLSData{
+			CertData: secret.Data["tls.crt"],
+			KeyData:  secret.Data["tls.key"],
+			CAData:   secret.Data["ca.crt"],
+		}, nil
+	}
+
 	return &TLSData{
 		CertData: secret.Data[etcdutil.CliCertFile],
 		KeyData:  secret.Data[etcdutil.CliKeyFile],
