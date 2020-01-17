@@ -25,8 +25,10 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/wait"
 	kwatch "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 )
 
 // TODO: get rid of this once we use workqueue
@@ -36,7 +38,7 @@ func init() {
 	pt = newPanicTimer(time.Minute, "unexpected long blocking (> 1 Minute) when handling cluster event")
 }
 
-func (c *Controller) Start() error {
+func (c *Controller) Start(ctx context.Context) error {
 	// TODO: get rid of this init code. CRD and storage class will be managed outside of operator.
 	for {
 		err := c.initResource()
@@ -49,11 +51,12 @@ func (c *Controller) Start() error {
 	}
 
 	probe.SetReady()
-	c.run()
-	panic("unreachable")
+	go c.run(ctx)
+	<-ctx.Done()
+	return ctx.Err()
 }
 
-func (c *Controller) run() {
+func (c *Controller) run(ctx context.Context) {
 	var ns string
 	if c.Config.ClusterWide {
 		ns = metav1.NamespaceAll
@@ -67,15 +70,29 @@ func (c *Controller) run() {
 		ns,
 		fields.Everything())
 
-	_, informer := cache.NewIndexerInformer(source, &api.EtcdCluster{}, 0, cache.ResourceEventHandlerFuncs{
+	c.queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "etcd-operator")
+	c.indexer, c.informer = cache.NewIndexerInformer(source, &api.EtcdCluster{}, 0, cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.onAddEtcdClus,
 		UpdateFunc: c.onUpdateEtcdClus,
 		DeleteFunc: c.onDeleteEtcdClus,
 	}, cache.Indexers{})
 
-	ctx := context.TODO()
-	// TODO: use workqueue to avoid blocking
-	informer.Run(ctx.Done())
+	defer c.queue.ShutDown()
+
+	c.logger.Info("starting etcd controller")
+	go c.informer.Run(ctx.Done())
+
+	if !cache.WaitForCacheSync(ctx.Done(), c.informer.HasSynced) {
+		return
+	}
+
+	const numWorkers = 1
+	for i := 0; i < numWorkers; i++ {
+		go wait.Until(c.runWorker, time.Second, ctx.Done())
+	}
+
+	<-ctx.Done()
+	c.logger.Info("stopping etcd controller")
 }
 
 func (c *Controller) initResource() error {
@@ -89,37 +106,61 @@ func (c *Controller) initResource() error {
 }
 
 func (c *Controller) onAddEtcdClus(obj interface{}) {
-	c.syncEtcdClus(obj.(*api.EtcdCluster))
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		panic(err)
+	}
+	c.queue.Add(key)
 }
 
 func (c *Controller) onUpdateEtcdClus(oldObj, newObj interface{}) {
-	c.syncEtcdClus(newObj.(*api.EtcdCluster))
+	key, err := cache.MetaNamespaceKeyFunc(newObj)
+	if err != nil {
+		panic(err)
+	}
+	c.queue.Add(key)
 }
 
 func (c *Controller) onDeleteEtcdClus(obj interface{}) {
-	clus, ok := obj.(*api.EtcdCluster)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			panic(fmt.Sprintf("unknown object from EtcdCluster delete event: %#v", obj))
-		}
-		clus, ok = tombstone.Obj.(*api.EtcdCluster)
-		if !ok {
-			panic(fmt.Sprintf("Tombstone contained object that is not an EtcdCluster: %#v", obj))
-		}
-	}
-	ev := &Event{
-		Type:   kwatch.Deleted,
-		Object: clus,
-	}
-
-	pt.start()
-	_, err := c.handleClusterEvent(ev)
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		c.logger.Warningf("fail to handle event: %v", err)
+		panic(err)
 	}
-	pt.stop()
+	c.queue.Add(key)
 }
+
+// func (c *Controller) onAddEtcdClus(obj interface{}) {
+// 	c.syncEtcdClus(obj.(*api.EtcdCluster))
+// }
+
+// func (c *Controller) onUpdateEtcdClus(oldObj, newObj interface{}) {
+// 	c.syncEtcdClus(newObj.(*api.EtcdCluster))
+// }
+
+// func (c *Controller) onDeleteEtcdClus(obj interface{}) {
+// 	clus, ok := obj.(*api.EtcdCluster)
+// 	if !ok {
+// 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+// 		if !ok {
+// 			panic(fmt.Sprintf("unknown object from EtcdCluster delete event: %#v", obj))
+// 		}
+// 		clus, ok = tombstone.Obj.(*api.EtcdCluster)
+// 		if !ok {
+// 			panic(fmt.Sprintf("Tombstone contained object that is not an EtcdCluster: %#v", obj))
+// 		}
+// 	}
+// 	ev := &Event{
+// 		Type:   kwatch.Deleted,
+// 		Object: clus,
+// 	}
+
+// 	pt.start()
+// 	_, err := c.handleClusterEvent(ev)
+// 	if err != nil {
+// 		c.logger.Warningf("fail to handle event: %v", err)
+// 	}
+// 	pt.stop()
+// }
 
 func (c *Controller) syncEtcdClus(clus *api.EtcdCluster) {
 	ev := &Event{

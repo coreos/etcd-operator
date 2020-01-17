@@ -145,7 +145,7 @@ func run(ctx context.Context) {
 	startChaos(context.Background(), cfg.KubeCli, cfg.Namespace, chaosLevel)
 
 	c := controller.New(cfg)
-	err := c.Start()
+	err := c.Start(ctx)
 	logrus.Fatalf("controller Start() failed: %v", err)
 }
 
