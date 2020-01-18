@@ -43,6 +43,13 @@ func (c *Controller) processItem(key string) error {
 	}
 
 	if !exists {
+		if _, ok := c.clusters[key]; !ok {
+			return nil
+		}
+		c.clusters[key].Delete()
+		delete(c.clusters, key)
+		clustersDeleted.Inc()
+		clustersTotal.Dec()
 		return nil
 	}
 

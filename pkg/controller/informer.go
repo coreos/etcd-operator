@@ -26,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kwatch "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -127,59 +126,6 @@ func (c *Controller) onDeleteEtcdClus(obj interface{}) {
 		panic(err)
 	}
 	c.queue.Add(key)
-}
-
-// func (c *Controller) onAddEtcdClus(obj interface{}) {
-// 	c.syncEtcdClus(obj.(*api.EtcdCluster))
-// }
-
-// func (c *Controller) onUpdateEtcdClus(oldObj, newObj interface{}) {
-// 	c.syncEtcdClus(newObj.(*api.EtcdCluster))
-// }
-
-// func (c *Controller) onDeleteEtcdClus(obj interface{}) {
-// 	clus, ok := obj.(*api.EtcdCluster)
-// 	if !ok {
-// 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-// 		if !ok {
-// 			panic(fmt.Sprintf("unknown object from EtcdCluster delete event: %#v", obj))
-// 		}
-// 		clus, ok = tombstone.Obj.(*api.EtcdCluster)
-// 		if !ok {
-// 			panic(fmt.Sprintf("Tombstone contained object that is not an EtcdCluster: %#v", obj))
-// 		}
-// 	}
-// 	ev := &Event{
-// 		Type:   kwatch.Deleted,
-// 		Object: clus,
-// 	}
-
-// 	pt.start()
-// 	_, err := c.handleClusterEvent(ev)
-// 	if err != nil {
-// 		c.logger.Warningf("fail to handle event: %v", err)
-// 	}
-// 	pt.stop()
-// }
-
-func (c *Controller) syncEtcdClus(clus *api.EtcdCluster) {
-	ev := &Event{
-		Type:   kwatch.Added,
-		Object: clus,
-	}
-	// re-watch or restart could give ADD event.
-	// If for an ADD event the cluster spec is invalid then it is not added to the local cache
-	// so modifying that cluster will result in another ADD event
-	if _, ok := c.clusters[getNamespacedName(clus)]; ok {
-		ev.Type = kwatch.Modified
-	}
-
-	pt.start()
-	_, err := c.handleClusterEvent(ev)
-	if err != nil {
-		c.logger.Warningf("fail to handle event: %v", err)
-	}
-	pt.stop()
 }
 
 func (c *Controller) managed(clus *api.EtcdCluster) bool {
