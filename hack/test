@@ -22,7 +22,7 @@ function fmt_pass {
 	docker run --rm \
 		-v "${PWD}":"${DOCKER_REPO_ROOT}" \
 		-w "${DOCKER_REPO_ROOT}" \
-		gcr.io/coreos-k8s-scale-testing/etcd-operator-builder:0.4.1-2 \
+		etcd-operator-builder:latest \
 		"./hack/fmt_pass"
 }
 
