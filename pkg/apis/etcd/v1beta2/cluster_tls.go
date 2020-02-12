@@ -47,7 +47,7 @@ func (tp *TLSPolicy) Validate() error {
 	st := tp.Static
 
 	if len(st.OperatorSecret) != 0 {
-		if len(st.Member.ServerSecret) == 0 {
+		if st.Member == nil || len(st.Member.ServerSecret) == 0 {
 			return errors.New("operator secret set but member serverSecret not set")
 		}
 	} else if st.Member != nil && len(st.Member.ServerSecret) != 0 {
