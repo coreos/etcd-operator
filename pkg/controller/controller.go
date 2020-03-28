@@ -27,6 +27,8 @@ import (
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kwatch "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 )
 
 var initRetryWaitTime = 30 * time.Second
@@ -39,6 +41,11 @@ type Event struct {
 type Controller struct {
 	logger *logrus.Entry
 	Config
+
+	// k8s workqueue pattern
+	indexer  cache.Indexer
+	informer cache.Controller
+	queue    workqueue.RateLimitingInterface
 
 	clusters map[string]*cluster.Cluster
 }

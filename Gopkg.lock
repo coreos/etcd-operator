@@ -124,6 +124,7 @@
   revision = "95a726a27e09030f9ccbd9982a1508f5a6d25ada"
   version = "v3.2.13"
 
+
 [[projects]]
   digest = "1:4b8b5811da6970495e04d1f4e98bb89518cc3cfc3b3f456bdb876ed7b6c74049"
   name = "github.com/davecgh/go-spew"
@@ -324,6 +325,17 @@
   pruneopts = "NT"
   revision = "1624edc4454b8682399def8740d46db5e4362ba4"
   version = "v1.1.5"
+
+[[projects]]
+  digest = "1:9aef72dc639ffc347ab8b81dc74d85ad12c64708e8bf8cdc43fac17b6018585d"
+  name = "github.com/kubernetes/client-go"
+  packages = [
+    "tools/cache",
+    "util/workqueue",
+  ]
+  pruneopts = "NT"
+  revision = "78295b709ec6fa5be12e35892477a326dea2b5d3"
+  version = "kubernetes-1.12.6"
 
 [[projects]]
   branch = "master"
@@ -987,10 +999,46 @@
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/s3",
     "github.com/aws/aws-sdk-go/service/s3/s3manager",
+    "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2",
+    "github.com/coreos/etcd-operator/pkg/backup",
+    "github.com/coreos/etcd-operator/pkg/backup/backupapi",
+    "github.com/coreos/etcd-operator/pkg/backup/reader",
+    "github.com/coreos/etcd-operator/pkg/backup/util",
+    "github.com/coreos/etcd-operator/pkg/backup/writer",
+    "github.com/coreos/etcd-operator/pkg/chaos",
+    "github.com/coreos/etcd-operator/pkg/client",
+    "github.com/coreos/etcd-operator/pkg/cluster",
+    "github.com/coreos/etcd-operator/pkg/controller",
+    "github.com/coreos/etcd-operator/pkg/controller/backup-operator",
+    "github.com/coreos/etcd-operator/pkg/controller/restore-operator",
+    "github.com/coreos/etcd-operator/pkg/generated/clientset/versioned",
+    "github.com/coreos/etcd-operator/pkg/generated/clientset/versioned/scheme",
+    "github.com/coreos/etcd-operator/pkg/generated/clientset/versioned/typed/etcd/v1beta2",
+    "github.com/coreos/etcd-operator/pkg/generated/clientset/versioned/typed/etcd/v1beta2/fake",
+    "github.com/coreos/etcd-operator/pkg/generated/informers/externalversions/etcd",
+    "github.com/coreos/etcd-operator/pkg/generated/informers/externalversions/etcd/v1beta2",
+    "github.com/coreos/etcd-operator/pkg/generated/informers/externalversions/internalinterfaces",
+    "github.com/coreos/etcd-operator/pkg/generated/listers/etcd/v1beta2",
+    "github.com/coreos/etcd-operator/pkg/util",
+    "github.com/coreos/etcd-operator/pkg/util/alibabacloudutil/ossfactory",
+    "github.com/coreos/etcd-operator/pkg/util/awsutil/s3factory",
+    "github.com/coreos/etcd-operator/pkg/util/azureutil/absfactory",
+    "github.com/coreos/etcd-operator/pkg/util/constants",
+    "github.com/coreos/etcd-operator/pkg/util/etcdutil",
+    "github.com/coreos/etcd-operator/pkg/util/gcputil/gcsfactory",
+    "github.com/coreos/etcd-operator/pkg/util/k8sutil",
+    "github.com/coreos/etcd-operator/pkg/util/probe",
+    "github.com/coreos/etcd-operator/pkg/util/retryutil",
+    "github.com/coreos/etcd-operator/test/e2e/e2eutil",
+    "github.com/coreos/etcd-operator/test/e2e/framework",
+    "github.com/coreos/etcd-operator/test/e2e/upgradetest/framework",
+    "github.com/coreos/etcd-operator/version",
     "github.com/coreos/etcd/clientv3",
     "github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes",
     "github.com/coreos/etcd/etcdserver/etcdserverpb",
     "github.com/coreos/etcd/pkg/transport",
+    "github.com/kubernetes/client-go/tools/cache",
+    "github.com/kubernetes/client-go/util/workqueue",
     "github.com/pborman/uuid",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
@@ -1004,6 +1052,7 @@
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
     "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apimachinery/pkg/api/errors",
+    "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/fields",
