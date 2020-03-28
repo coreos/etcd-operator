@@ -11,11 +11,11 @@ if ! which docker > /dev/null; then
 	exit 1
 fi
 
-: ${IMAGE:?"Need to set IMAGE, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator-builder"}
+: ${IMAGE:?"Need to set IMAGE, e.g. etcd-operator-builder"}
 
 echo "building container..."
 docker build --tag "${IMAGE}" -f hack/build/e2e/builder/Dockerfile . 1>/dev/null
 
-# For gcr users, do "gcloud docker -a" to have access.
-echo "pushing container..."
-docker push "${IMAGE}"
+# If using a non-local docker registry, push the image:
+# echo "pushing image..."
+# docker push "${IMAGE}"
