@@ -61,12 +61,15 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 		return errors.New("restore name is not specified")
 	}
 
+	namespace := req.URL.Query().Get("namespace")
+
 	obj := &api.EtcdRestore{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      restoreName,
-			Namespace: r.namespace,
+			Namespace: namespace,
 		},
 	}
+
 	v, exists, err := r.indexer.Get(obj)
 	if err != nil {
 		return fmt.Errorf("failed to get restore CR for restore-name (%v): %v", restoreName, err)
@@ -94,7 +97,7 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 			return errors.New("invalid s3 restore source field (spec.s3), must specify all required subfields")
 		}
 
-		s3Cli, err := s3factory.NewClientFromSecret(r.kubecli, r.namespace, s3RestoreSource.Endpoint, s3RestoreSource.AWSSecret, s3RestoreSource.ForcePathStyle)
+		s3Cli, err := s3factory.NewClientFromSecret(r.kubecli, cr.Namespace, s3RestoreSource.Endpoint, s3RestoreSource.AWSSecret, s3RestoreSource.ForcePathStyle)
 		if err != nil {
 			return fmt.Errorf("failed to create S3 client: %v", err)
 		}
@@ -112,7 +115,7 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 			return errors.New("invalid abs restore source field (spec.abs), must specify all required subfields")
 		}
 
-		absCli, err := absfactory.NewClientFromSecret(r.kubecli, r.namespace, absRestoreSource.ABSSecret)
+		absCli, err := absfactory.NewClientFromSecret(r.kubecli, cr.Namespace, absRestoreSource.ABSSecret)
 		if err != nil {
 			return fmt.Errorf("failed to create ABS client: %v", err)
 		}
@@ -131,7 +134,7 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 			return errors.New("invalid gcs restore source field (spec.gcs), must specify all required subfields")
 		}
 
-		gcsCli, err := gcsfactory.NewClientFromSecret(ctx, r.kubecli, r.namespace, gcsRestoreSource.GCPSecret)
+		gcsCli, err := gcsfactory.NewClientFromSecret(ctx, r.kubecli, cr.Namespace, gcsRestoreSource.GCPSecret)
 		if err != nil {
 			return fmt.Errorf("failed to create GCS client: %v", err)
 		}
@@ -149,7 +152,7 @@ func (r *Restore) serveBackup(w http.ResponseWriter, req *http.Request) error {
 			return errors.New("invalid oss restore source field (spec.oss), must specify all required subfields")
 		}
 
-		ossCli, err := ossfactory.NewClientFromSecret(r.kubecli, r.namespace, ossRestoreSource.Endpoint, ossRestoreSource.OSSSecret)
+		ossCli, err := ossfactory.NewClientFromSecret(r.kubecli, cr.Namespace, ossRestoreSource.Endpoint, ossRestoreSource.OSSSecret)
 		if err != nil {
 			return fmt.Errorf("failed to create OSS client: %v", err)
 		}

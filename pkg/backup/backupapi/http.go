@@ -15,6 +15,7 @@
 package backupapi
 
 import (
+	"fmt"
 	"net/url"
 	"path"
 )
@@ -24,10 +25,11 @@ const (
 )
 
 // BackupURLForRestore creates a URL struct for retrieving an existing backup specified by a restore CR
-func BackupURLForRestore(scheme, host, restoreName string) *url.URL {
+func BackupURLForRestore(scheme, host, restoreName string, namespace string) *url.URL {
 	return &url.URL{
-		Scheme: scheme,
-		Host:   host,
-		Path:   path.Join(APIV1, "backup", restoreName),
+		Scheme:   scheme,
+		Host:     host,
+		Path:     path.Join(APIV1, "backup", restoreName),
+		RawQuery: fmt.Sprintf("namespace=%s", namespace),
 	}
 }
