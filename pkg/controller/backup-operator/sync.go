@@ -169,10 +169,11 @@ func (b *Backup) removeFinalizerOfPeriodicBackup(eb *api.EtcdBackup) error {
 
 func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api.EtcdBackup) {
 	defer t.Stop()
+periodicRunnerFunc:
 	for {
 		select {
 		case <-ctx.Done():
-			break
+			break periodicRunnerFunc
 		case <-t.C:
 			var latestEb *api.EtcdBackup
 			var bs *api.BackupStatus
@@ -184,7 +185,7 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 					if apierrors.IsNotFound(err) {
 						b.logger.Infof("Could not find EtcdBackup. Stopping periodic backup for EtcdBackup CR %v",
 							eb.Name)
-						break
+						break periodicRunnerFunc
 					}
 					b.logger.Warningf("[Attempt: %d/%d] Failed to get latest EtcdBackup %v : (%v)",
 						i, retryLimit, eb.Name, err)
