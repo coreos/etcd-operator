@@ -28,6 +28,7 @@ const (
 	BackupStorageTypeABS      BackupStorageType = "ABS"
 	AzureSecretStorageAccount                   = "storage-account"
 	AzureSecretStorageKey                       = "storage-key"
+	AzureSecretSASURI                           = "storage-sas-uri"
 	AzureCloudKey                               = "cloud"
 
 	// Google GCS related consts

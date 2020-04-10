@@ -98,6 +98,7 @@ func (bm *BackupManager) EnsureMaxBackup(ctx context.Context, basePath string, m
 		if err != nil {
 			return fmt.Errorf("failed to delete snapshot: %v", err)
 		}
+		logrus.Infof("Successfully deleted snapshot: (%s)", snapshotPath)
 	}
 	return nil
 }
