@@ -21,6 +21,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/coreos/etcd-operator/pkg/backup/util"
 	"github.com/coreos/etcd-operator/pkg/backup/writer"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 
@@ -73,6 +74,7 @@ func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, isPeriodic
 	}
 	defer rc.Close()
 	if isPeriodic {
+		// NOTE: make sure this path format stays in sync with util.SortableBackupPaths
 		s3Path = fmt.Sprintf(s3Path+"_v%d_%s", rev, now.Format("2006-01-02-15:04:05"))
 	}
 	_, err = bm.bw.Write(ctx, s3Path, rc)
@@ -89,11 +91,12 @@ func (bm *BackupManager) EnsureMaxBackup(ctx context.Context, basePath string, m
 	if err != nil {
 		return fmt.Errorf("failed to get exisiting snapshots: %v", err)
 	}
-	sort.Sort(sort.Reverse(sort.StringSlice(savedSnapShots)))
+	sort.Sort(sort.Reverse(util.SortableBackupPaths(sort.StringSlice(savedSnapShots))))
 	for i, snapshotPath := range savedSnapShots {
 		if i < maxCount {
 			continue
 		}
+		logrus.Infof("deleting snapshot %s", snapshotPath)
 		err := bm.bw.Delete(ctx, snapshotPath)
 		if err != nil {
 			return fmt.Errorf("failed to delete snapshot: %v", err)
