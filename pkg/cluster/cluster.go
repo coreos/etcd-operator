@@ -377,9 +377,9 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 		if err != nil {
 			return fmt.Errorf("failed to create PVC for member (%s): %v", m.Name, err)
 		}
-		k8sutil.AddEtcdVolumeToPod(pod, pvc)
+		k8sutil.AddEtcdVolumeToPod(pod, pvc, false)
 	} else {
-		k8sutil.AddEtcdVolumeToPod(pod, nil)
+		k8sutil.AddEtcdVolumeToPod(pod, nil, c.cluster.Spec.Pod.Tmpfs)
 	}
 	_, err := c.config.KubeCli.CoreV1().Pods(c.cluster.Namespace).Create(pod)
 	return err

@@ -162,6 +162,11 @@ type PodPolicy struct {
 	// '.cluster.local'.
 	// The default is to not set a cluster domain explicitly.
 	ClusterDomain string `json:"ClusterDomain"`
+
+	// Sets the 'emptyDir.medium' field for the etcd-data volume to "Memory".
+	// The default is to not use memory as the storage medium
+	// No effect if persistent volume is used
+	Tmpfs bool `json:"tmpfs,omitempty"`
 }
 
 // TODO: move this to initializer
