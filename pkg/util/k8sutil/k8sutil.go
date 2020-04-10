@@ -136,7 +136,7 @@ fi
 }
 
 func ImageName(repo, version string) string {
-	return fmt.Sprintf("%s:v%v", repo, version)
+	return fmt.Sprintf("%s:%s", repo, version)
 }
 
 // imageNameBusybox returns the default image for busybox init container, or the image specified in the PodPolicy
