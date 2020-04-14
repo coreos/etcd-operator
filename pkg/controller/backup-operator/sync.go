@@ -107,7 +107,7 @@ func (b *Backup) processItem(key string) error {
 
 	} else if !isPeriodic {
 		// Perform backup
-		bs, err := b.handleBackup(nil, &eb.Spec, false)
+		bs, err := b.handleBackup(nil, &eb.Spec, false, eb.Namespace)
 		// Report backup status
 		b.reportBackupStatus(bs, err, eb)
 	}
@@ -140,7 +140,7 @@ func (b *Backup) addFinalizerOfPeriodicBackupIfNeed(eb *api.EtcdBackup) (*api.Et
 	}
 	if !containsString(metadata.GetFinalizers(), "backup-operator-periodic") {
 		metadata.SetFinalizers(append(metadata.GetFinalizers(), "backup-operator-periodic"))
-		_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(ebNew.(*api.EtcdBackup))
+		_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.ObjectMeta.Namespace).Update(ebNew.(*api.EtcdBackup))
 		if err != nil {
 			return eb, err
 		}
@@ -163,7 +163,7 @@ func (b *Backup) removeFinalizerOfPeriodicBackup(eb *api.EtcdBackup) error {
 		finalizers = append(finalizers, finalizer)
 	}
 	metadata.SetFinalizers(finalizers)
-	_, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(ebNew.(*api.EtcdBackup))
+	_, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.Namespace).Update(ebNew.(*api.EtcdBackup))
 	return err
 }
 
@@ -179,7 +179,7 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 			var err error
 			retryLimit := 5
 			for i := 1; i < retryLimit+1; i++ {
-				latestEb, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Get(eb.Name, metav1.GetOptions{})
+				latestEb, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.Namespace).Get(eb.Name, metav1.GetOptions{})
 				if err != nil {
 					if apierrors.IsNotFound(err) {
 						b.logger.Infof("Could not find EtcdBackup. Stopping periodic backup for EtcdBackup CR %v",
@@ -195,7 +195,7 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 			}
 			if err == nil {
 				// Perform backup
-				bs, err = b.handleBackup(&ctx, &latestEb.Spec, true)
+				bs, err = b.handleBackup(&ctx, &latestEb.Spec, true, latestEb.Namespace)
 			}
 			// Report backup status
 			b.reportBackupStatus(bs, err, latestEb)
@@ -214,7 +214,7 @@ func (b *Backup) reportBackupStatus(bs *api.BackupStatus, berr error, eb *api.Et
 		eb.Status.EtcdVersion = bs.EtcdVersion
 		eb.Status.LastSuccessDate = bs.LastSuccessDate
 	}
-	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(eb)
+	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.Namespace).Update(eb)
 	if err != nil {
 		b.logger.Warningf("failed to update status of backup CR %v : (%v)", eb.Name, err)
 	}
@@ -244,7 +244,7 @@ func (b *Backup) handleErr(err error, key interface{}) {
 	b.logger.Infof("Dropping etcd backup (%v) out of the queue: %v", key, err)
 }
 
-func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSpec, isPeriodic bool) (*api.BackupStatus, error) {
+func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSpec, isPeriodic bool, namespace string) (*api.BackupStatus, error) {
 	err := validate(spec)
 	if err != nil {
 		return nil, err
@@ -269,28 +269,28 @@ func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSp
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
 		bs, err := handleS3(ctx, b.kubecli, spec.S3, spec.EtcdEndpoints, spec.ClientTLSSecret,
-			b.namespace, isPeriodic, backupMaxCount)
+			namespace, isPeriodic, backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeABS:
 		bs, err := handleABS(ctx, b.kubecli, spec.ABS, spec.EtcdEndpoints, spec.ClientTLSSecret,
-			b.namespace, isPeriodic, backupMaxCount)
+			namespace, isPeriodic, backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeGCS:
 		bs, err := handleGCS(ctx, b.kubecli, spec.GCS, spec.EtcdEndpoints, spec.ClientTLSSecret,
-			b.namespace, isPeriodic, backupMaxCount)
+			namespace, isPeriodic, backupMaxCount)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeOSS:
 		bs, err := handleOSS(ctx, b.kubecli, spec.OSS, spec.EtcdEndpoints, spec.ClientTLSSecret,
-			b.namespace, isPeriodic, backupMaxCount)
+			namespace, isPeriodic, backupMaxCount)
 		if err != nil {
 			return nil, err
 		}

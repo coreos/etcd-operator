@@ -133,7 +133,7 @@ func getClientWithMaxRev(ctx context.Context, endpoints []string, tc *tls.Config
 
 		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("failed to get revision from endpoint (%s)", endpoint))
+			errors = append(errors, fmt.Sprintf("failed to get revision from endpoint (%s): %v", endpoint, err))
 			continue
 		}
 
@@ -152,10 +152,6 @@ func getClientWithMaxRev(ctx context.Context, endpoints []string, tc *tls.Config
 		cli.Close()
 	}
 
-	if maxClient == nil {
-		return nil, 0, fmt.Errorf("could not create an etcd client for the max revision purpose from given endpoints (%v)", endpoints)
-	}
-
 	var err error
 	if len(errors) > 0 {
 		errorStr := ""
@@ -163,6 +159,10 @@ func getClientWithMaxRev(ctx context.Context, endpoints []string, tc *tls.Config
 			errorStr += errStr + "\n"
 		}
 		err = fmt.Errorf(errorStr)
+	}
+
+	if maxClient == nil {
+		return nil, 0, fmt.Errorf("could not create an etcd client for the max maxirevision purpose from given endpoints (%v)", endpoints)
 	}
 
 	return maxClient, maxRev, err
