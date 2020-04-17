@@ -18,7 +18,7 @@ import (
 	"errors"
 	"strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -162,6 +162,11 @@ type PodPolicy struct {
 	// '.cluster.local'.
 	// The default is to not set a cluster domain explicitly.
 	ClusterDomain string `json:"ClusterDomain"`
+
+	// curl init container image. default is tutum/curl.
+	// pulling tutum/curl:latest requires external access.
+	// More info: https://github.com/coreos/etcd-operator/issues/1933
+	CurlImage string `json:"curlImage,omitempty"`
 }
 
 // TODO: move this to initializer

@@ -63,6 +63,7 @@ const (
 	MaxNameLength = 63 - randomSuffixLength - 1
 
 	defaultBusyboxImage = "busybox:1.28.0-glibc"
+	defaultCurlImage    = "tutum/curl:latest"
 
 	// AnnotationScope annotation name for defining instance scope. Used for specifying cluster wide clusters.
 	AnnotationScope = "etcd.database.coreos.com/scope"
@@ -100,11 +101,12 @@ func PVCNameFromMember(memberName string) string {
 	return memberName
 }
 
-func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, m *etcdutil.Member) []v1.Container {
+func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, m *etcdutil.Member, podPolicy *api.PodPolicy) []v1.Container {
 	return []v1.Container{
 		{
-			Name:  "fetch-backup",
-			Image: "tutum/curl",
+			Name: "fetch-backup",
+			//Image default: "tutum/curl:latest",
+			Image: imageNameCurl(podPolicy),
 			Command: []string{
 				"/bin/bash", "-ec",
 				fmt.Sprintf(`
@@ -145,6 +147,14 @@ func imageNameBusybox(policy *api.PodPolicy) string {
 		return policy.BusyboxImage
 	}
 	return defaultBusyboxImage
+}
+
+// imageNameCurl returns the default image for curl init container, or the image specified in the PodPolicy
+func imageNameCurl(policy *api.PodPolicy) string {
+	if policy != nil && len(policy.CurlImage) > 0 {
+		return policy.CurlImage
+	}
+	return defaultCurlImage
 }
 
 func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
@@ -261,7 +271,7 @@ func AddEtcdVolumeToPod(pod *v1.Pod, pvc *v1.PersistentVolumeClaim) {
 
 func addRecoveryToPod(pod *v1.Pod, token string, m *etcdutil.Member, cs api.ClusterSpec, backupURL *url.URL) {
 	pod.Spec.InitContainers = append(pod.Spec.InitContainers,
-		makeRestoreInitContainers(backupURL, token, cs.Repository, cs.Version, m)...)
+		makeRestoreInitContainers(backupURL, token, cs.Repository, cs.Version, m, cs.Pod)...)
 }
 
 func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
