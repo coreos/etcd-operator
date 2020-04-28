@@ -367,7 +367,7 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 			Annotations: map[string]string{},
 		},
 		Spec: v1.PodSpec{
-			InitContainers: []v1.Container{{
+			InitContainers: append(cs.Pod.InitContainers, v1.Container{
 				// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
 				// More info: https://github.com/docker-library/busybox/issues/27
 				//Image default: "busybox:1.28.0-glibc",
@@ -389,8 +389,8 @@ func newEtcdPod(m *etcdutil.Member, initialCluster []string, clusterName, state,
 				        fi
 						sleep 1
 					done`, DNSTimeout, m.Addr())},
-			}},
-			Containers:    []v1.Container{container},
+			}),
+			Containers:    append([]v1.Container{container}, cs.Pod.SideCarContainers...),
 			RestartPolicy: v1.RestartPolicyNever,
 			Volumes:       volumes,
 			// DNS A record: `[m.Name].[clusterName].Namespace.svc`

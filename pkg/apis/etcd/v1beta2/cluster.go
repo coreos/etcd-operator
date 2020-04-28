@@ -149,6 +149,14 @@ type PodPolicy struct {
 	// More info: https://github.com/docker-library/busybox/issues/27
 	BusyboxImage string `json:"busyboxImage,omitempty"`
 
+	// initContainer
+	// https://github.com/coreos/etcd-operator/issues/1805
+	InitContainers []v1.Container `json:"initContainers,omitempty"`
+
+	// sideCar such for watchdog
+	// https://github.com/coreos/etcd-operator/issues/1718
+	SideCarContainers []v1.Container `json:"sideCarContainers,omitempty"`
+
 	// SecurityContext specifies the security context for the entire pod
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
