@@ -52,16 +52,14 @@ func (s3w *s3Writer) Write(ctx context.Context, path string, r io.Reader) (int64
 		return 0, err
 	}
 
-	resp, err := s3w.s3.GetObject(&s3.GetObjectInput{
+	resp, err := s3w.s3.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(bk),
 		Key:    aws.String(key),
 	})
 	if err != nil {
 		return 0, err
 	}
-	if resp.Body != nil {
-		defer resp.Body.Close()
-	}
+	
 	if resp.ContentLength == nil {
 		return 0, fmt.Errorf("failed to compute s3 object size")
 	}
