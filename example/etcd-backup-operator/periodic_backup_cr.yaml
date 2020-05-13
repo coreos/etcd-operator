@@ -9,6 +9,8 @@ spec:
     # 0 > enable periodic backup
     backupIntervalInSecond: 125
     maxBackups: 4
+    # Backup timeout default is 60 seconds.
+    timeoutInSecond: 120
   s3:
     # The format of "path" must be: "<s3-bucket-name>/<path-to-backup-file>"
     # e.g: "mybucket/etcd.backup"
