@@ -54,7 +54,7 @@ func NewBackupManagerFromWriter(kubecli kubernetes.Interface, bw writer.Writer, 
 
 // SaveSnap uses backup writer to save etcd snapshot to a specified S3 path
 // and returns backup etcd server's kv store revision and its version.
-func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, isPeriodic bool) (int64, string, *metav1.Time, error) {
+func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, isPeriodic bool, degragementBeforeBackup bool) (int64, string, *metav1.Time, error) {
 	now := time.Now().UTC()
 	etcdcli, rev, err := bm.etcdClientWithMaxRevision(ctx)
 	if err != nil {
@@ -65,6 +65,13 @@ func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, isPeriodic
 	resp, err := etcdcli.Status(ctx, etcdcli.Endpoints()[0])
 	if err != nil {
 		return 0, "", nil, fmt.Errorf("failed to retrieve etcd version from the status call: %v", err)
+	}
+
+	if degragementBeforeBackup {
+		logrus.Info("running defragment for cluster.")
+		if err := bm.defrag(ctx, etcdcli); err != nil {
+			logrus.Error("defrag failed: %v", err)
+		}
 	}
 
 	rc, err := etcdcli.Snapshot(ctx)
@@ -80,6 +87,28 @@ func (bm *BackupManager) SaveSnap(ctx context.Context, s3Path string, isPeriodic
 		return 0, "", nil, fmt.Errorf("failed to write snapshot (%v)", err)
 	}
 	return rev, resp.Version, &metav1.Time{Time: now}, nil
+}
+
+func (bm *BackupManager) defrag(ctx context.Context, etcdcli *clientv3.Client) error {
+	mems, err := etcdcli.MemberList(ctx)
+	if err != nil {
+		return fmt.Errorf("defrag: failed to get cluster endpoints (%v)", err)
+	}
+
+	eps := []string{}
+	for _, me := range mems.Members {
+		eps = append(eps, me.ClientURLs...)
+	}
+
+	for _, ep := range eps {
+		_, err := etcdcli.Defragment(ctx, ep)
+		if err != nil {
+			// If this fails we want to continue but just log the error
+			fmt.Errorf("defrag: failed to defrag member %s (%v)", ep, err)
+		}
+	}
+
+	return nil
 }
 
 // EnsureMaxBackup to ensure the number of snapshot is under maxcount

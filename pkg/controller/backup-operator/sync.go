@@ -269,28 +269,28 @@ func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSp
 	switch spec.StorageType {
 	case api.BackupStorageTypeS3:
 		bs, err := handleS3(ctx, b.kubecli, spec.S3, spec.EtcdEndpoints, spec.ClientTLSSecret,
-			b.namespace, isPeriodic, backupMaxCount)
+			b.namespace, isPeriodic, backupMaxCount, spec.BackupPolicy.DefragmentBeforeBackup)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeABS:
 		bs, err := handleABS(ctx, b.kubecli, spec.ABS, spec.EtcdEndpoints, spec.ClientTLSSecret,
-			b.namespace, isPeriodic, backupMaxCount)
+			b.namespace, isPeriodic, backupMaxCount, spec.BackupPolicy.DefragmentBeforeBackup)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeGCS:
 		bs, err := handleGCS(ctx, b.kubecli, spec.GCS, spec.EtcdEndpoints, spec.ClientTLSSecret,
-			b.namespace, isPeriodic, backupMaxCount)
+			b.namespace, isPeriodic, backupMaxCount, spec.BackupPolicy.DefragmentBeforeBackup)
 		if err != nil {
 			return nil, err
 		}
 		return bs, nil
 	case api.BackupStorageTypeOSS:
 		bs, err := handleOSS(ctx, b.kubecli, spec.OSS, spec.EtcdEndpoints, spec.ClientTLSSecret,
-			b.namespace, isPeriodic, backupMaxCount)
+			b.namespace, isPeriodic, backupMaxCount, spec.BackupPolicy.DefragmentBeforeBackup)
 		if err != nil {
 			return nil, err
 		}

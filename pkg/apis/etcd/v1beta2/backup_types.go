@@ -109,6 +109,8 @@ type BackupPolicy struct {
 	// MaxBackups is to specify how many backups we want to keep
 	// 0 is magic number to indicate un-limited backups
 	MaxBackups int `json:"maxBackups,omitempty"`
+	// DefragmentBeforeBackup is to specify whether we do one defragement before backup.
+	DefragmentBeforeBackup bool `json:"defragmentBeforeBackup,omitempty"`
 }
 
 // BackupStatus represents the status of the EtcdBackup Custom Resource.
