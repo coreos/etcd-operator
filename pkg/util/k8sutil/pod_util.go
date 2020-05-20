@@ -93,6 +93,8 @@ func applyPodPolicy(clusterName string, pod *v1.Pod, policy *api.PodPolicy) {
 		return
 	}
 
+	pod.Spec.ServiceAccountName = policy.ServiceAccountName
+
 	if policy.Affinity != nil {
 		pod.Spec.Affinity = policy.Affinity
 	}
