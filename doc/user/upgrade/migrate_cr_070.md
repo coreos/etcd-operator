@@ -1,4 +1,4 @@
-# Custom Resource Migration Guide for 0.7.0 relase
+# Custom Resource Migration Guide for 0.7.0 release
 
 In 0.7.0 release, BackupPolicy and RestorePolicy are removed from EtcdCluster spec.
 This doc provides the migration guide for the change.
