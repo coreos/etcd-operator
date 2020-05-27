@@ -42,7 +42,7 @@ See [instructions on how to install/uninstall etcd operator](doc/user/install_gu
 ### Create and destroy an etcd cluster
 
 ```bash
-$ kubectl create -f example/example-etcd-cluster.yaml
+$ kubectl apply -f example/example-etcd-cluster.yaml
 ```
 
 A 3 member etcd cluster will be created.
