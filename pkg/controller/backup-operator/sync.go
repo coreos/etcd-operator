@@ -21,8 +21,9 @@ import (
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/backup/metrics"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
-
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -101,14 +102,17 @@ func (b *Backup) processItem(key string) error {
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
 		go b.periodicRunnerFunc(ctx, ticker, eb)
-
 		// Store cancel function for periodic
 		b.backupRunnerStore.Store(eb.ObjectMeta.UID, BackupRunner{eb.Spec, cancel})
 
 	} else if !isPeriodic {
 		// Perform backup
+		metrics.BackupsAttemptedTotal.With(prometheus.Labels(prometheus.Labels{
+			"namespace": eb.ObjectMeta.Namespace,
+			"name":      eb.ObjectMeta.Name,
+		})).Inc()
 		bs, err := b.handleBackup(nil, &eb.Spec, false)
-		// Report backup status
+		//status of backup
 		b.reportBackupStatus(bs, err, eb)
 	}
 	return err
@@ -195,9 +199,13 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 			}
 			if err == nil {
 				// Perform backup
+				metrics.BackupsAttemptedTotal.With(prometheus.Labels(prometheus.Labels{
+					"namespace": eb.ObjectMeta.Namespace,
+					"name":      eb.ObjectMeta.Name,
+				})).Inc()
 				bs, err = b.handleBackup(&ctx, &latestEb.Spec, true)
 			}
-			// Report backup status
+			//BackupStatus here
 			b.reportBackupStatus(bs, err, latestEb)
 		}
 	}
@@ -213,6 +221,15 @@ func (b *Backup) reportBackupStatus(bs *api.BackupStatus, berr error, eb *api.Et
 		eb.Status.EtcdRevision = bs.EtcdRevision
 		eb.Status.EtcdVersion = bs.EtcdVersion
 		eb.Status.LastSuccessDate = bs.LastSuccessDate
+		metrics.BackupsSuccessTotal.With(prometheus.Labels(prometheus.Labels{
+			"namespace": eb.ObjectMeta.Namespace,
+			"name":      eb.ObjectMeta.Name,
+		})).Inc()
+		metrics.BackupsLastSuccess.With(prometheus.Labels(prometheus.Labels{
+			"namespace": eb.ObjectMeta.Namespace,
+			"name":      eb.ObjectMeta.Name,
+		})).Set(float64(time.Now().Unix()))
+
 	}
 	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(b.namespace).Update(eb)
 	if err != nil {
@@ -249,7 +266,6 @@ func (b *Backup) handleBackup(parentContext *context.Context, spec *api.BackupSp
 	if err != nil {
 		return nil, err
 	}
-
 	// When BackupPolicy.TimeoutInSecond <= 0, use default DefaultBackupTimeout.
 	backupTimeout := time.Duration(constants.DefaultBackupTimeout)
 	if spec.BackupPolicy != nil && spec.BackupPolicy.TimeoutInSecond > 0 {

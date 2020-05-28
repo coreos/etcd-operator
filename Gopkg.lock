@@ -396,7 +396,10 @@
 [[projects]]
   digest = "1:a22debd993d18b9203c985810f33f52e7583724800ee8d15e7d362e7175639d1"
   name = "github.com/prometheus/client_golang"
-  packages = ["prometheus"]
+  packages = [
+    "prometheus",
+    "prometheus/promhttp",
+  ]
   pruneopts = "NT"
   revision = "c5b7fccd204277076155f10851dad72b76a49317"
   version = "v0.8.0"
@@ -994,6 +997,7 @@
     "github.com/pborman/uuid",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
+    "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/sirupsen/logrus",
     "golang.org/x/oauth2",
     "golang.org/x/time/rate",
@@ -1004,6 +1008,7 @@
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
     "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apimachinery/pkg/api/errors",
+    "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/fields",
