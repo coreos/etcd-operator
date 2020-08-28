@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	defaultRepository  = "quay.io/coreos/etcd"
-	DefaultEtcdVersion = "3.2.13"
+	DefaultEtcdRepository = "quay.io/coreos/etcd"
+	DefaultEtcdVersion    = "3.2.13"
 )
 
 var (
@@ -149,6 +149,12 @@ type PodPolicy struct {
 	// More info: https://github.com/docker-library/busybox/issues/27
 	BusyboxImage string `json:"busyboxImage,omitempty"`
 
+	// etcd image name.  If unset behaves as if the value was `${repository}:v${version}`
+	// Some variable expansions will be performed:
+	// ${repository} is replaced with the repository (ClusterSpec.Repository)
+	// ${version} is replaced with the etcd version
+	EtcdImage string `json:"etcdImage,omitempty"`
+
 	// SecurityContext specifies the security context for the entire pod
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
@@ -187,7 +193,7 @@ func (c *ClusterSpec) Validate() error {
 func (e *EtcdCluster) SetDefaults() {
 	c := &e.Spec
 	if len(c.Repository) == 0 {
-		c.Repository = defaultRepository
+		c.Repository = DefaultEtcdRepository
 	}
 
 	if len(c.Version) == 0 {
