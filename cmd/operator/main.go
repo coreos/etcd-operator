@@ -73,15 +73,6 @@ func init() {
 }
 
 func main() {
-	namespace = os.Getenv(constants.EnvOperatorPodNamespace)
-	if len(namespace) == 0 {
-		logrus.Fatalf("must set env (%s)", constants.EnvOperatorPodNamespace)
-	}
-	name = os.Getenv(constants.EnvOperatorPodName)
-	if len(name) == 0 {
-		logrus.Fatalf("must set env (%s)", constants.EnvOperatorPodName)
-	}
-
 	if printVersion {
 		fmt.Println("etcd-operator Version:", version.Version)
 		fmt.Println("Git SHA:", version.GitSHA)
@@ -94,6 +85,15 @@ func main() {
 	logrus.Infof("Git SHA: %s", version.GitSHA)
 	logrus.Infof("Go Version: %s", runtime.Version())
 	logrus.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
+
+	namespace = os.Getenv(constants.EnvOperatorPodNamespace)
+	if len(namespace) == 0 {
+		logrus.Fatalf("must set env (%s)", constants.EnvOperatorPodNamespace)
+	}
+	name = os.Getenv(constants.EnvOperatorPodName)
+	if len(name) == 0 {
+		logrus.Fatalf("must set env (%s)", constants.EnvOperatorPodName)
+	}
 
 	id, err := os.Hostname()
 	if err != nil {
