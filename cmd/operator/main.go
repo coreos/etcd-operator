@@ -69,6 +69,7 @@ func init() {
 	flag.BoolVar(&createCRD, "create-crd", true, "The operator will not create the EtcdCluster CRD when this flag is set to false.")
 	flag.DurationVar(&gcInterval, "gc-interval", 10*time.Minute, "GC interval")
 	flag.BoolVar(&clusterWide, "cluster-wide", false, "Enable operator to watch clusters in all namespaces")
+	flag.StringVar(&logLevel, "log-level", "info", "Log level, one of debug, info, warn, error, fatal, panic")
 	flag.Parse()
 }
 
@@ -90,6 +91,10 @@ func main() {
 		os.Exit(0)
 	}
 
+	// set Log Level
+	logLevelVal,_ := logrus.ParseLevel(logLevel)
+	logrus.SetLevel(logLevelVal)
+	
 	logrus.Infof("etcd-operator Version: %v", version.Version)
 	logrus.Infof("Git SHA: %s", version.GitSHA)
 	logrus.Infof("Go Version: %s", runtime.Version())
