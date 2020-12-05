@@ -52,7 +52,7 @@ func TestBackupAndRestore(t *testing.T) {
 
 	// Create cluster with TLS
 	f := framework.Global
-	suffix := fmt.Sprintf("%d", rand.Uint64())
+	suffix := fmt.Sprintf("%019d", rand.Uint64())
 	clusterName := "test-etcd-backup-restore-" + suffix
 	memberPeerTLSSecret := "etcd-peer-tls-" + suffix
 	memberClientTLSSecret := "etcd-server-tls-" + suffix
