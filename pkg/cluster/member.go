@@ -51,17 +51,12 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 
 func (c *Cluster) newMember() *etcdutil.Member {
 	name := k8sutil.UniqueMemberName(c.cluster.Name)
-	m := &etcdutil.Member{
+	return &etcdutil.Member{
 		Name:         name,
 		Namespace:    c.cluster.Namespace,
 		SecurePeer:   c.isSecurePeer(),
 		SecureClient: c.isSecureClient(),
 	}
-
-	if c.cluster.Spec.Pod != nil {
-		m.ClusterDomain = c.cluster.Spec.Pod.ClusterDomain
-	}
-	return m
 }
 
 func podsToMemberSet(pods []*v1.Pod, sc bool) etcdutil.MemberSet {

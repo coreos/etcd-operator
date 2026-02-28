@@ -157,11 +157,6 @@ type PodPolicy struct {
 	// reverse DNS lookup its IP given the hostname.
 	// The default is to wait indefinitely and has a vaule of 0.
 	DNSTimeoutInSecond int64 `json:"DNSTimeoutInSecond,omitempty"`
-
-	// ClusterDomain is the cluster domain to use for member URLs E.g.
-	// '.cluster.local'.
-	// The default is to not set a cluster domain explicitly.
-	ClusterDomain string `json:"ClusterDomain"`
 }
 
 // TODO: move this to initializer
